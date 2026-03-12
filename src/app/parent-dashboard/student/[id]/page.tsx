@@ -1,0 +1,944 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { API_BASE_URL } from "@/lib/api";
+import { getToken, authFetch } from "@/lib/auth";
+import toast, { Toaster } from "react-hot-toast";
+import ReceiptModal from "@/components/ReceiptModal";
+
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+type ActiveSection = "fees" | "attendance" | "results" | "holidays" | "info";
+
+declare global {
+    interface Window {
+        Razorpay: any;
+    }
+}
+
+export default function StudentDashboardPage() {
+    const params = useParams();
+    const studentId = params.id;
+
+    const now = new Date();
+    const [attendanceMonth, setAttendanceMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+    const currentYear = parseInt(attendanceMonth.split('-')[0]);
+    const currentMonth = parseInt(attendanceMonth.split('-')[1]);
+    const [academicSessionId, setAcademicSessionId] = useState<number | null>(null);
+    const [academicYearString, setAcademicYearString] = useState<string>("");
+    const [activeSection, setActiveSection] = useState<ActiveSection>("fees");
+
+    const [info, setInfo] = useState<any>(null);
+    const [attendance, setAttendance] = useState<any>(null);
+    const [fees, setFees] = useState<any>(null);
+    const [examResults, setExamResults] = useState<any>(null);
+    const [holidays, setHolidays] = useState<any[]>([]);
+    const [sessions, setSessions] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // Fee payment selection state (multi-select checkboxes)
+    const [selectedMonths2Pay, setSelectedMonths2Pay] = useState<string[]>([]);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [payProcessing, setPayProcessing] = useState(false);
+    const [showReceipt, setShowReceipt] = useState<any>(null);
+    const [showReceiptsListModal, setShowReceiptsListModal] = useState<{ feeMonth: string, payments: any[], adjustments: any[], balanceRemaining: number, totalDue?: number, studentName?: string, studentClass?: string, studentSection?: string } | null>(null);
+
+    const authHeaders = { Authorization: `Bearer ${getToken()}` };
+
+    const loadAll = useCallback(async () => {
+        setLoading(true);
+        try {
+            // First load sessions and info
+            const [infoRes, sessionsRes] = await Promise.all([
+                authFetch(`${API_BASE_URL}/parent/student/${studentId}/info`, { headers: authHeaders }),
+                authFetch(`${API_BASE_URL}/parent/academic-sessions`, { headers: authHeaders })
+            ]);
+
+            let infoData = null;
+            let sessionsList = [];
+
+            if (infoRes.ok) infoData = await infoRes.json();
+            if (sessionsRes.ok) sessionsList = await sessionsRes.json();
+
+            setInfo(infoData);
+            setSessions(sessionsList);
+
+            // Force to use the currently active session globally first, 
+            // fallback to whatever the student's active enrollment says, 
+            // then fallback to index 0
+            const globalActiveSession = sessionsList.find((s: any) => s.isActive);
+            const activeSessionId = globalActiveSession?.id || infoData?.academicSessionId || sessionsList[0]?.id;
+            const activeSessionStr = globalActiveSession?.name || infoData?.academicSession || sessionsList[0]?.name;
+
+            setAcademicSessionId(activeSessionId);
+            setAcademicYearString(activeSessionStr);
+
+            // Now load the rest dependent on session/year
+            const [attRes, feeRes, examRes, holidayRes] = await Promise.all([
+                authFetch(`${API_BASE_URL}/parent/student/${studentId}/attendance?year=${currentYear}&month=${currentMonth}`, { headers: authHeaders }),
+                authFetch(`${API_BASE_URL}/parent/student/${studentId}/fees?academicYear=${activeSessionStr}`, { headers: authHeaders }),
+                authFetch(`${API_BASE_URL}/parent/student/${studentId}/exam-results?sessionId=${activeSessionId}`, { headers: authHeaders }),
+                authFetch(`${API_BASE_URL}/parent/student/${studentId}/holidays`, { headers: authHeaders })
+            ]);
+
+            if (attRes.ok) setAttendance(await attRes.json());
+            if (feeRes.ok) setFees(await feeRes.json());
+            if (examRes.ok) setExamResults(await examRes.json());
+            if (holidayRes.ok) setHolidays(await holidayRes.json());
+
+        } catch (err) { console.error(err); }
+        finally { setLoading(false); }
+    }, [studentId, currentYear, currentMonth]);
+
+    useEffect(() => { loadAll(); }, [loadAll]);
+
+    const reloadAttendance = useCallback(async () => {
+        try {
+            const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/attendance?year=${currentYear}&month=${currentMonth}`, { headers: authHeaders });
+            if (res.ok) setAttendance(await res.json());
+        } catch { }
+    }, [studentId, currentYear, currentMonth]);
+
+    useEffect(() => { reloadAttendance(); }, [reloadAttendance]);
+
+    const reloadFeesAndExams = useCallback(async () => {
+        if (!academicYearString || !academicSessionId) return;
+        try {
+            const [feeRes, examRes] = await Promise.all([
+                authFetch(`${API_BASE_URL}/parent/student/${studentId}/fees?academicYear=${academicYearString}`, { headers: authHeaders }),
+                authFetch(`${API_BASE_URL}/parent/student/${studentId}/exam-results?sessionId=${academicSessionId}`, { headers: authHeaders })
+            ]);
+            if (feeRes.ok) setFees(await feeRes.json());
+            if (examRes.ok) setExamResults(await examRes.json());
+        } catch { }
+    }, [studentId, academicYearString, academicSessionId]);
+
+    useEffect(() => { reloadFeesAndExams(); }, [reloadFeesAndExams]);
+
+    const toggleMonthPay = (monthKey: string) => {
+        setSelectedMonths2Pay(prev =>
+            prev.includes(monthKey) ? prev.filter(k => k !== monthKey) : [...prev, monthKey]
+        );
+    };
+
+    const handleSessionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const id = Number(e.target.value);
+        const session = sessions.find(s => s.id === id);
+        if (session) {
+            setAcademicSessionId(id);
+            setAcademicYearString(session.name);
+            setSelectedMonths2Pay([]);
+        }
+    };
+
+    const handleConfirmPay = () => {
+        if (selectedMonths2Pay.length === 0) return;
+        setShowConfirmModal(true);
+    };
+
+    const loadRazorpayScript = () => {
+        return new Promise((resolve) => {
+            if (window.Razorpay) {
+                resolve(true);
+                return;
+            }
+            const script = document.createElement("script");
+            script.src = "https://checkout.razorpay.com/v1/checkout.js";
+            script.onload = () => resolve(true);
+            script.onerror = () => resolve(false);
+            document.body.appendChild(script);
+        });
+    };
+
+    const processPayment = async () => {
+        setPayProcessing(true);
+        try {
+            const amount = selectedMonths2Pay.reduce((sum, key) => {
+                const m = dueMonths.find((x: any) => x.key === key);
+                return sum + (m ? m.amount : 0);
+            }, 0);
+
+            // Compute total base fee and discount for the selected months from the unified API data
+            let baseFeeAmount = 0;
+            let discountAmount = 0;
+            let lateFeeTotal = 0;
+            const discountNames: string[] = [];
+
+            selectedMonths2Pay.forEach(key => {
+                const m = dueMonths.find((x: any) => x.key === key);
+                if (m) {
+                    baseFeeAmount += m.baseFee || 0;
+                    discountAmount += m.discount || 0;
+                    lateFeeTotal += m.lateFee || 0;
+                    // Attempt to extract discount names if provided by backend (optional detail)
+                    if (m.appliedDiscounts && Array.isArray(m.appliedDiscounts)) {
+                        m.appliedDiscounts.forEach((d: any) => {
+                            if (!discountNames.includes(d.name)) discountNames.push(d.name);
+                        });
+                    }
+                }
+            });
+
+            // 1. Ask backend to generate a Razorpay Order
+            const res = await authFetch(`${API_BASE_URL}/fees/razorpay/order`, {
+                method: "POST",
+                headers: { ...authHeaders, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    studentId: Number(studentId),
+                    academicYear: academicYearString,
+                    feeMonths: selectedMonths2Pay,
+                })
+            });
+
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.message || "Failed to initiate payment");
+            }
+
+            const order = await res.json();
+
+            // 2. Load the official Razorpay script into the browser
+            const scriptLoaded = await loadRazorpayScript();
+            if (!scriptLoaded) throw new Error("Failed to load Razorpay SDK. Check your connection.");
+
+            const rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+            if (!rzpKey) throw new Error("Razorpay public key missing from frontend environment");
+
+            // 3. Configure the checkout popup
+            const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin;
+            const options = {
+                key: rzpKey,
+                amount: order.amount,
+                currency: order.currency,
+                name: "School Management System",
+                description: `Fee Payment for ${selectedMonths2Pay.length} months`,
+                order_id: order.id,
+                prefill: {
+                    name: `${info.firstName} ${info.lastName}`,
+                    contact: info.mobile || ""
+                },
+                theme: { color: "#4f46e5" },
+                // Redirect user automatically to a success verification page
+                callback_url: `${baseUrl}/api/razorpay-success-callback`,
+                redirect: true,
+            };
+
+            const rzpObj = new window.Razorpay(options);
+
+            rzpObj.on('payment.failed', function (response: any) {
+                // Redirect user to a failure verification page
+                window.location.href = `${baseUrl}/parent-dashboard/payment-failure?order_id=${order.id}&error=${encodeURIComponent(response.error.description || "Unknown Error")}`;
+            });
+
+            // Open the popup
+            rzpObj.open();
+
+            // Re-enable the button behind the popup so it's not permanently disabled
+            setPayProcessing(false);
+
+        } catch (err: any) {
+            console.error(err);
+            toast.error(err.message || "Failed to initiate payment");
+            setPayProcessing(false);
+        }
+    };
+
+    if (loading || !info) return (
+        <div className="flex flex-col items-center justify-center py-24 gap-4">
+            <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-slate-400 text-sm">Loading student dashboard...</p>
+        </div>
+    );
+
+    const pieData = attendance ? [
+        { name: "Present", value: attendance.present || 0, color: "#22c55e" },
+        { name: "Late", value: attendance.late || 0, color: "#facc15" },
+        { name: "Half Day", value: attendance.halfDay || 0, color: "#a855f7" },
+        { name: "Leave", value: attendance.leave || 0, color: "#3b82f6" },
+        { name: "Absent", value: attendance.absent || 0, color: "#ef4444" },
+        { name: "Holiday", value: attendance.holiday || 0, color: "#0ea5e9" },
+    ].filter(d => d.value > 0) : [];
+
+    // Calendar logic
+    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+    const firstDayOfMonth = new Date(currentYear, currentMonth - 1, 1).getDay();
+    const calendarDays = Array.from({ length: 42 }, (_, i) => {
+        const dayNumber = i - firstDayOfMonth + 1;
+        if (dayNumber > 0 && dayNumber <= daysInMonth) {
+            const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}`;
+            const record = attendance?.records?.find((r: any) => r.date === dateStr);
+            const isSunday = new Date(currentYear, currentMonth - 1, dayNumber).getDay() === 0;
+            // Sundays are auto-holidays; if there's an explicit record use it, otherwise mark SUNDAY
+            const effectiveStatus = record?.status || (isSunday ? 'SUNDAY' : undefined);
+            return { day: dayNumber, date: dateStr, status: effectiveStatus, isSunday };
+        }
+        return { day: null, date: null, status: null, isSunday: false };
+    });
+
+    const getStatusColor = (status: string | null | undefined) => {
+        switch (status) {
+            case 'PRESENT': return 'bg-green-500 border-green-600 text-white shadow-sm shadow-green-500/20';
+            case 'LATE': return 'bg-yellow-400 border-yellow-500 text-white shadow-sm shadow-yellow-400/20';
+            case 'HALF_DAY': return 'bg-purple-500 border-purple-600 text-white shadow-sm shadow-purple-500/20';
+            case 'LEAVE': return 'bg-blue-500 border-blue-600 text-white shadow-sm shadow-blue-500/20';
+            case 'ABSENT': return 'bg-red-500 border-red-600 text-white shadow-sm shadow-red-500/20';
+            case 'HOLIDAY': return 'bg-sky-500 border-sky-600 text-white shadow-sm shadow-sky-500/20';
+            case 'SUNDAY': return 'bg-orange-500/20 border-orange-500/40 text-orange-300';
+            default: return 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700/50';
+        }
+    };
+
+    const dueMonths = fees?.months?.filter((m: any) => !m.paid && m.amount > 0) || [];
+    const paidMonths = fees?.months?.filter((m: any) => m.paid && m.amount > 0) || [];
+
+    const selectedAmountTotal = selectedMonths2Pay.reduce((sum, key) => {
+        const m = dueMonths.find((x: any) => x.key === key);
+        return sum + (m ? m.amount : 0);
+    }, 0);
+
+    return (
+        <div className="space-y-4 max-w-5xl">
+            <Toaster position="top-right" />
+
+            {/* Back */}
+            <Link href="/parent-dashboard" className="inline-flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                All Students
+            </Link>
+
+            {/* ── Student Header Card ── */}
+            <div className="bg-linear-to-r from-indigo-600/20 to-purple-600/20 border border-indigo-500/30 rounded-2xl p-5">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg shrink-0">
+                        {info.firstName?.[0]}{info.lastName?.[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <h1 className="text-white text-2xl font-bold">{info.firstName} {info.lastName}</h1>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                            {info.className && <span className="px-2.5 py-1 bg-indigo-500/20 text-indigo-300 text-xs rounded-full">{info.className}</span>}
+                            {info.sectionName && <span className="px-2.5 py-1 bg-purple-500/20 text-purple-300 text-xs rounded-full">Section {info.sectionName}</span>}
+                            {info.rollNo && <span className="px-2.5 py-1 bg-slate-700 text-slate-300 text-xs rounded-full">Roll No: {info.rollNo}</span>}
+                            {academicYearString && <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 text-xs rounded-full">{academicYearString}</span>}
+                            {info.subjects?.length > 0 && <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 text-xs rounded-full">{info.subjects.length} Subjects</span>}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* ── Section Nav Tabs ── */}
+            <div className="flex gap-1 bg-slate-900/80 border border-slate-800 rounded-xl p-1 overflow-x-auto no-scrollbar">
+                {([
+                    ["fees", "💰 Fee & Dues"],
+                    ["attendance", "📊 Attendance"],
+                    ["results", "📝 Exam Results"],
+                    ["holidays", "🏝️ Holidays"],
+                    ["info", "👤 Personal Info"],
+                ] as const).map(([key, label]) => (
+                    <button key={key} onClick={() => setActiveSection(key)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all shrink-0 ${activeSection === key ? "bg-indigo-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>
+                        {label}
+                    </button>
+                ))}
+            </div>
+
+            {/* ════════════════════════════════
+                FEE & DUES TAB
+            ════════════════════════════════ */}
+            {activeSection === "fees" && (
+                <div className="space-y-4">
+                    {/* Academic year selector + summary */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                            <label className="text-slate-400 text-sm">Academic Year:</label>
+                            <select value={academicSessionId || ""} onChange={handleSessionChange}
+                                className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                {sessions.map(s => <option key={s.id} value={s.id}>{s.name} {s.isActive && "(Current)"}</option>)}
+                            </select>
+                        </div>
+                        <div className="flex flex-wrap gap-3 text-sm">
+                            <span className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg border border-emerald-500/20 font-medium">
+                                Paid Total: ₹{Number(fees?.totalPaid || 0).toLocaleString()}
+                            </span>
+                            <span className="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg border border-red-500/20 font-medium">
+                                Due Total: ₹{Number(fees?.totalDue || 0).toLocaleString()}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* ── Due Months (Selectable checkboxes to pay) ── */}
+                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col h-full">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-white font-bold flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-red-400 inline-block"></span>
+                                    Pending Dues ({dueMonths.length})
+                                </h2>
+                                {dueMonths.length > 0 && (
+                                    <button onClick={() => setSelectedMonths2Pay(dueMonths.map((m: any) => m.key))} className="text-xs text-indigo-400 hover:text-indigo-300">
+                                        Select All
+                                    </button>
+                                )}
+                            </div>
+
+                            {dueMonths.length === 0 ? (
+                                <div className="text-center py-12 flex-1 flex flex-col justify-center">
+                                    <div className="text-4xl mb-3">🎉</div>
+                                    <p className="text-emerald-400 font-semibold text-base">All fees cleared!</p>
+                                    <p className="text-slate-500 text-sm mt-1">No pending dues for this session.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2 overflow-y-auto max-h-[350px] pr-2 custom-scrollbar">
+                                    {dueMonths.map((m: any) => (
+                                        <div key={m.key} className={`flex flex-col p-3 rounded-xl transition-all border ${selectedMonths2Pay.includes(m.key) ? "bg-indigo-600/20 border-indigo-500/50 cursor-pointer" : m.status === 'PARTIAL' ? "bg-yellow-500/5 border-yellow-500/30 hover:border-yellow-500/50 cursor-pointer" : "bg-slate-800/50 border-slate-700/50 hover:border-slate-600 cursor-pointer"}`}>
+                                            <label className="flex justify-between items-center cursor-pointer w-full">
+                                                <div className="flex items-center gap-3">
+                                                    <input type="checkbox"
+                                                        checked={selectedMonths2Pay.includes(m.key)}
+                                                        onChange={() => toggleMonthPay(m.key)}
+                                                        className="w-4 h-4 rounded border-slate-600 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-900 bg-slate-800" />
+                                                    <span className="text-white text-sm font-medium">{m.label}</span>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="text-right">
+                                                        <div className="text-white font-bold text-sm">₹{Number(m.amount).toLocaleString()}</div>
+                                                        {m.status === 'PARTIAL' && m.totalPaid > 0 && (
+                                                            <div className="text-yellow-400 text-[10px]">₹{Number(m.totalPaid).toLocaleString()} paid of ₹{Number(m.totalDue).toLocaleString()}</div>
+                                                        )}
+                                                    </div>
+                                                    {m.status === 'UPCOMING' ? (
+                                                        <span className="text-sky-400 text-[10px] px-2 py-0.5 bg-sky-500/10 rounded-full font-bold uppercase tracking-wider">Upcoming</span>
+                                                    ) : m.status === 'PARTIAL' ? (
+                                                        <span className="text-yellow-400 text-[10px] px-2 py-0.5 bg-yellow-500/10 rounded-full font-bold uppercase tracking-wider">Partial</span>
+                                                    ) : (
+                                                        <span className="text-red-400 text-[10px] px-2 py-0.5 bg-red-500/10 rounded-full font-bold uppercase tracking-wider">Due</span>
+                                                    )}
+                                                </div>
+                                            </label>
+                                            {(m.categoryBreakdown?.length > 0 || m.discount > 0 || m.lateFee > 0) && (
+                                                <div className="mt-2 ml-7 pl-3 border-l-2 border-slate-700/50 space-y-1">
+                                                    {m.categoryBreakdown?.map((cat: any, i: number) => (
+                                                        <div key={i} className="flex justify-between text-xs text-slate-400">
+                                                            <span>{cat.categoryName}</span>
+                                                            <span>₹{cat.amount}</span>
+                                                        </div>
+                                                    ))}
+                                                    {m.discount > 0 && (
+                                                        <div className="flex justify-between text-xs text-emerald-400/80">
+                                                            <span>Discount</span>
+                                                            <span>-₹{m.discount}</span>
+                                                        </div>
+                                                    )}
+                                                    {m.lateFee > 0 && (
+                                                        <div className="flex justify-between text-xs text-red-400/80">
+                                                            <span>Late Fee</span>
+                                                            <span>+₹{m.lateFee}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {/* View Receipt button for partially-paid months */}
+                                            {m.status === 'PARTIAL' && m.payments && m.payments.length > 0 && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        if (m.payments && m.payments.length > 1) {
+                                                            setShowReceiptsListModal({
+                                                                feeMonth: m.label,
+                                                                payments: m.payments,
+                                                                adjustments: m.adjustments ?? [],
+                                                                balanceRemaining: m.outstanding ?? 0,
+                                                                totalDue: m.totalDue,
+                                                                studentName: info ? `${info.firstName} ${info.lastName}` : undefined,
+                                                                studentClass: info?.className,
+                                                                studentSection: info?.sectionName,
+                                                            });
+                                                        } else {
+                                                            const paymentToView = m.payments?.[0] || m.payment;
+                                                            setShowReceipt({
+                                                                ...paymentToView,
+                                                                // Use components as-is — they hold correct per-period amounts.
+                                                                // The "Total Paid" row shows what was actually collected.
+                                                                components: paymentToView?.components ?? [],
+                                                                feeMonth: m.label,
+                                                                studentName: info ? `${info.firstName} ${info.lastName}` : undefined,
+                                                                studentClass: info?.className,
+                                                                studentSection: info?.sectionName,
+                                                                adjustments: m.adjustments ?? [],
+                                                                balanceRemaining: m.outstanding ?? 0,
+                                                                totalPayable: m.totalDue ?? null,
+                                                            });
+                                                        }
+                                                    }}
+                                                    className="mt-2 ml-7 text-xs px-2.5 py-1 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 rounded-lg transition-colors border border-yellow-500/20 hover:border-yellow-500/40"
+                                                >
+                                                    View Partial Receipt
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Pay button pinned to bottom */}
+                            {selectedMonths2Pay.length > 0 && (
+                                <div className="mt-4 pt-4 border-t border-slate-800">
+                                    <div className="flex items-center justify-between mb-3 text-sm">
+                                        <span className="text-slate-400">Selected ({selectedMonths2Pay.length} months)</span>
+                                        <span className="text-white font-bold text-xl">₹{selectedAmountTotal.toLocaleString()}</span>
+                                    </div>
+                                    <button onClick={handleConfirmPay}
+                                        className="w-full py-3 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-indigo-500/25">
+                                        Proceed to Pay
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ── Paid Months (with receipt) ── */}
+                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col h-full">
+                            <h2 className="text-white font-bold mb-4 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+                                Payment History ({paidMonths.length})
+                            </h2>
+                            {paidMonths.length === 0 ? (
+                                <p className="text-slate-500 text-sm text-center py-12 flex-1 flex flex-col justify-center">No payment history found for {academicYearString}</p>
+                            ) : (
+                                <div className="space-y-2 overflow-y-auto max-h-[350px] pr-2 custom-scrollbar">
+                                    {paidMonths.map((m: any) => (
+                                        <div key={m.key} className="flex items-center gap-3 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-white text-sm font-medium">{m.label}</p>
+                                            </div>
+                                            <div className="text-right whitespace-nowrap">
+                                                <div className="text-emerald-400 text-sm font-bold block mb-1">₹{(m.payments && m.payments.length > 1 ? m.payments.reduce((sum: number, p: any) => sum + Number(p.amountPaid || 0), 0) : Number(m.payment?.amountPaid || 0)).toLocaleString()}</div>
+                                                <button onClick={() => {
+                                                    if (m.payments && m.payments.length > 1) {
+                                                        setShowReceiptsListModal({
+                                                            feeMonth: m.label,
+                                                            payments: m.payments,
+                                                            adjustments: m.adjustments ?? [],
+                                                            balanceRemaining: m.outstanding ?? 0,
+                                                            totalDue: m.totalDue,
+                                                            studentName: info ? `${info.firstName} ${info.lastName}` : undefined,
+                                                            studentClass: info?.className,
+                                                            studentSection: info?.sectionName,
+                                                        });
+                                                    } else {
+                                                        const paymentToView = m.payment;
+                                                        setShowReceipt({
+                                                            ...paymentToView,
+                                                            // Use components as-is — they hold correct per-period amounts.
+                                                            // The "Total Paid" row shows what was actually collected.
+                                                            components: paymentToView?.components ?? [],
+                                                            feeMonth: m.label,
+                                                            studentName: info ? `${info.firstName} ${info.lastName}` : undefined,
+                                                            studentClass: info?.className,
+                                                            studentSection: info?.sectionName,
+                                                            adjustments: m.adjustments ?? [],
+                                                            balanceRemaining: m.outstanding ?? 0,
+                                                            totalPayable: m.totalDue ?? null,
+                                                        });
+                                                    }
+                                                }}
+                                                    className="text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors border border-slate-700 hover:border-slate-500">
+                                                    Receipt
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ════════════════════════════════
+                ATTENDANCE TAB
+            ════════════════════════════════ */}
+            {activeSection === "attendance" && (
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                        <h2 className="text-white font-bold text-lg">📊 Attendance</h2>
+                        <div className="flex gap-2">
+                            <input
+                                type="month"
+                                value={attendanceMonth}
+                                onChange={e => setAttendanceMonth(e.target.value)}
+                                className="bg-slate-800 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
+                            />
+                        </div>
+                    </div>
+
+                    {attendance && attendance.total > 0 ? (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                            <div className="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50">
+                                <h3 className="text-white font-semibold text-center mb-4">{MONTH_NAMES[currentMonth - 1]} {currentYear}</h3>
+                                <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                                        <div key={day} className="text-slate-400 text-xs font-medium py-1">{day}</div>
+                                    ))}
+                                </div>
+                                <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+                                    {calendarDays.reduce((rows: any[], key, index) => {
+                                        // chunk into weeks
+                                        const weekIndex = Math.floor(index / 7);
+                                        if (!rows[weekIndex]) rows[weekIndex] = [];
+                                        rows[weekIndex].push(key);
+                                        return rows;
+                                    }, []).map((week, wIndex) => {
+                                        // only render weeks that have at least one day
+                                        if (week.every((d: any) => d.day === null)) return null;
+                                        return week.map((d: any, i: number) => (
+                                            <div key={`${wIndex}-${i}`}
+                                                title={d.day ? (d.status === 'SUNDAY' ? `${d.date}: Sunday (Weekly Holiday)` : d.status ? `${d.date}: ${d.status}` : d.date) : ''}
+                                                className={`aspect-square flex items-center justify-center rounded-lg text-sm font-medium border ${d.day ? getStatusColor(d.status) : 'bg-transparent border-transparent'} transition-colors duration-200`}>
+                                                {d.day || ''}
+                                            </div>
+                                        ));
+                                    })}
+                                </div>
+                                <div className="flex flex-wrap justify-center gap-4 mt-6 text-xs text-slate-300">
+                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-green-500 shadow-sm shadow-green-500/30"></span> Present</div>
+                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-yellow-400 shadow-sm shadow-yellow-400/30"></span> Late</div>
+                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-purple-500 shadow-sm shadow-purple-500/30"></span> Half Day</div>
+                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-blue-500 shadow-sm shadow-blue-500/30"></span> Leave</div>
+                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500 shadow-sm shadow-red-500/30"></span> Absent</div>
+                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-sky-500 shadow-sm shadow-sky-500/30"></span> Holiday</div>
+                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-orange-500/60 border border-orange-500/40"></span> Sunday</div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-6">
+                                <div className="flex justify-center flex-col items-center">
+                                    <div className="relative">
+                                        <ResponsiveContainer width={220} height={220}>
+                                            <PieChart>
+                                                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value">
+                                                    {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                                                </Pie>
+                                                <Tooltip formatter={(val: any, name: any) => [`${val} days`, name]} contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }} />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                        <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+                                            <span className="text-white text-3xl font-bold">{attendance.percentage}%</span>
+                                            <span className="text-slate-400 text-xs mt-1 uppercase tracking-wider font-semibold">Present</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {[
+                                        { label: "Present", value: attendance.present, color: "text-green-400", bg: "bg-green-500/10 border-green-500/20" },
+                                        { label: "Late", value: attendance.late || 0, color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/20" },
+                                        { label: "Half Day", value: attendance.halfDay || 0, color: "text-purple-400", bg: "bg-purple-500/10 border-purple-500/20" },
+                                        { label: "Leave", value: attendance.leave || 0, color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
+                                        { label: "Absent", value: attendance.absent, color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
+                                        { label: "Holiday", value: attendance.holiday || 0, color: "text-sky-400", bg: "bg-sky-500/10 border-sky-500/20" },
+                                    ].map(item => (
+                                        <div key={item.label} className={`border rounded-xl p-3 text-center shadow-sm ${item.bg}`}>
+                                            <div className={`text-2xl font-bold ${item.color} mb-1`}>{item.value}</div>
+                                            <div className="text-slate-400 font-medium text-[10px] uppercase">{item.label}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-2 bg-slate-800 border border-slate-700 rounded-xl p-3 text-center">
+                                    <div className="text-slate-300 font-medium text-xs">Total Working Days</div>
+                                    <div className="text-xl font-bold text-white mt-1">{attendance.total - (attendance.holiday || 0)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="py-16 text-center border-2 border-dashed border-slate-800 rounded-xl">
+                            <div className="text-4xl mb-3 opacity-60">📅</div>
+                            <p className="text-slate-400 font-medium">No attendance data for {MONTH_NAMES[currentMonth - 1]} {currentYear}</p>
+                            <p className="text-slate-500 text-sm mt-1">There are no records found for this month.</p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ════════════════════════════════
+                EXAM RESULTS TAB
+            ════════════════════════════════ */}
+            {activeSection === "results" && (
+                <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                            <label className="text-slate-400 text-sm">Session:</label>
+                            <select value={academicSessionId || ""} onChange={handleSessionChange}
+                                className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                {sessions.map(s => <option key={s.id} value={s.id}>{s.name} {s.isActive && "(Current)"}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                        <h2 className="text-white font-bold text-lg mb-4">📝 Examination Dashboard</h2>
+
+                        {(!examResults || examResults.subjects?.length === 0) ? (
+                            <div className="text-center py-16 border-2 border-dashed border-slate-800 rounded-xl">
+                                <div className="text-4xl mb-3 opacity-50">📑</div>
+                                <p className="text-slate-400 text-sm font-medium">No results published for {academicYearString}</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto rounded-xl border border-slate-800">
+                                <table className="w-full text-sm text-left whitespace-nowrap">
+                                    <thead className="text-xs text-slate-400 bg-slate-800/50 uppercase">
+                                        <tr>
+                                            <th className="px-4 py-3 font-semibold">Subject</th>
+                                            {examResults.categories.map((cat: string) => (
+                                                <th key={cat} className="px-4 py-3 font-semibold text-center">{cat}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-800">
+                                        {examResults.subjects.map((sub: any, idx: number) => (
+                                            <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
+                                                <td className="px-4 py-3 font-medium text-white">{sub.subjectName}</td>
+                                                {examResults.categories.map((cat: string) => {
+                                                    const mark = sub.marks[cat];
+                                                    return (
+                                                        <td key={cat} className="px-4 py-3 text-center">
+                                                            {mark ? (
+                                                                <div className="flex flex-col items-center">
+                                                                    <span className="text-white font-medium">{mark.obtainedMarks}/{mark.totalMarks}</span>
+                                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                                        <span className="text-[10px] text-slate-400">{Math.round(mark.percentage)}%</span>
+                                                                        {mark.grade && (
+                                                                            <span className={`text-[10px] px-1.5 rounded font-bold ${mark.isPass ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}>
+                                                                                {mark.grade}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-slate-600">-</span>
+                                                            )}
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ════════════════════════════════
+                HOLIDAYS TAB
+            ════════════════════════════════ */}
+            {activeSection === "holidays" && (
+                <div className="space-y-4">
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-xl">
+                                🏝️
+                            </div>
+                            <div>
+                                <h2 className="text-white font-bold text-lg">School Holidays</h2>
+                                <p className="text-slate-400 text-sm">Upcoming and past holidays applicable for {info?.firstName}</p>
+                            </div>
+                        </div>
+
+                        {holidays.length === 0 ? (
+                            <div className="text-center py-16 border-2 border-dashed border-slate-800 rounded-xl">
+                                <div className="text-4xl mb-3 opacity-50">📅</div>
+                                <p className="text-slate-400 text-sm font-medium">No holidays declared at this moment.</p>
+                            </div>
+                        ) : (
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                {holidays.map((h: any) => {
+                                    const start = new Date(h.startDate);
+                                    const end = new Date(h.endDate);
+                                    const isSingleDay = start.getTime() === end.getTime();
+                                    const isUpcoming = end >= now;
+
+                                    return (
+                                        <div key={h.id} className={`p-5 rounded-2xl border transition-colors ${isUpcoming ? 'bg-sky-500/10 border-sky-500/30 hover:border-sky-500/50' : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'}`}>
+                                            <div className="flex justify-between items-start mb-3">
+                                                <h3 className="text-white font-bold">{h.description}</h3>
+                                                {isUpcoming ? (
+                                                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-sky-500/20 text-sky-400 tracking-wider">Upcoming</span>
+                                                ) : (
+                                                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-slate-700 text-slate-400 tracking-wider">Past</span>
+                                                )}
+                                            </div>
+
+                                            <div className="flex items-center text-sm text-slate-300 gap-2 mb-3">
+                                                <svg className="w-4 h-4 opacity-70 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                <span>
+                                                    {start.toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                    {!isSingleDay && ` - ${end.toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                                                </span>
+                                            </div>
+
+                                            {h.isEntireSchool ? (
+                                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                    Entire School
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex flex-wrap gap-1">
+                                                    {h.classes?.map((c: any) => (
+                                                        <span key={c.id} className="text-[10px] border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 px-1.5 py-0.5 rounded shadow-sm">{c.name}</span>
+                                                    ))}
+                                                </span>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ════════════════════════════════
+                PERSONAL INFO TAB
+            ════════════════════════════════ */}
+            {activeSection === "info" && (
+                <div className="space-y-4">
+                    {/* Subjects */}
+                    {info.subjects?.length > 0 && (
+                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                            <h2 className="text-white font-bold mb-3">📚 Enrolled Subjects</h2>
+                            <div className="flex flex-wrap gap-2">
+                                {info.subjects.map((s: string, i: number) => (
+                                    <span key={i} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors text-sm rounded-lg border border-slate-700">{s}</span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {/* Personal details */}
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                        <h2 className="text-white font-bold mb-4">👤 Student Information</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {[
+                                { label: "Father's Name", value: info.fathersName },
+                                { label: "Mother's Name", value: info.mothersName },
+                                { label: "Date of Birth", value: info.dateOfBirth ? new Date(info.dateOfBirth).toLocaleDateString("en-IN", { day: 'numeric', month: 'long', year: 'numeric' }) : null },
+                                { label: "Gender", value: info.gender },
+                                { label: "Mobile", value: info.mobile },
+                                { label: "Class", value: info.className },
+                                { label: "Section", value: info.sectionName },
+                                { label: "Roll No", value: info.rollNo },
+                                { label: "Academic Session", value: academicYearString },
+                            ].filter(f => f.value).map(field => (
+                                <div key={field.label} className="flex gap-3 p-3 bg-slate-800/50 rounded-xl border border-transparent hover:border-slate-700 transition-colors">
+                                    <span className="text-slate-500 text-sm min-w-[130px]">{field.label}</span>
+                                    <span className="text-white text-sm font-medium">{field.value}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Payment Confirmation Modal ── */}
+            {showConfirmModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+                        <div className="mb-5 text-center">
+                            <div className="w-16 h-16 bg-indigo-500/20 text-indigo-400 rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
+                                💳
+                            </div>
+                            <h3 className="text-white font-bold text-xl">Confirm Payment</h3>
+                            <p className="text-slate-400 text-sm mt-1">You are paying for {selectedMonths2Pay.length} months</p>
+                        </div>
+
+                        <div className="bg-slate-800 rounded-xl p-4 mb-5 space-y-2">
+                            {selectedMonths2Pay.map(key => {
+                                const m = fees?.months.find((x: any) => x.key === key);
+                                return (
+                                    <div key={key} className="flex justify-between text-sm">
+                                        <span className="text-slate-300">{m?.label}</span>
+                                        <span className="text-white font-medium">₹{Number(m?.amount).toLocaleString()}</span>
+                                    </div>
+                                );
+                            })}
+                            <div className="border-t border-slate-700 pt-2 mt-2 flex justify-between">
+                                <span className="text-slate-400">Total Amount</span>
+                                <span className="text-indigo-400 font-bold text-lg">₹{selectedAmountTotal.toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button onClick={() => setShowConfirmModal(false)} disabled={payProcessing}
+                                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl transition-colors text-sm disabled:opacity-50">
+                                Cancel
+                            </button>
+                            <button onClick={processPayment} disabled={payProcessing}
+                                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2">
+                                {payProcessing ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Processing...</> : "Confirm Pay"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Receipt Selection Modal ── */}
+            {showReceiptsListModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+                        <div className="bg-slate-800 px-5 py-4 flex justify-between items-center">
+                            <h3 className="text-white font-bold text-lg">Multiple Receipts</h3>
+                            <button onClick={() => setShowReceiptsListModal(null)} className="text-slate-400 hover:text-white transition-colors">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div className="p-5">
+                            <p className="text-slate-400 text-sm mb-4">You made multiple partial payments for {showReceiptsListModal.feeMonth}. Please select a receipt to view.</p>
+                            
+                            <div className="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                                {showReceiptsListModal.payments.map((p: any, idx: number) => (
+                                    <button 
+                                        key={idx}
+                                        onClick={() => {
+                                            setShowReceiptsListModal(null);
+                                            setShowReceipt({
+                                                ...p,
+                                                // Use components as-is — correct per-period amounts from DB
+                                                components: p.components ?? [],
+                                                feeMonth: showReceiptsListModal.feeMonth,
+                                                studentName: showReceiptsListModal.studentName,
+                                                studentClass: showReceiptsListModal.studentClass,
+                                                studentSection: showReceiptsListModal.studentSection,
+                                                adjustments: showReceiptsListModal.adjustments,
+                                                balanceRemaining: showReceiptsListModal.balanceRemaining,
+                                                totalPayable: showReceiptsListModal.totalDue ?? null,
+                                            });
+                                        }}
+                                        className="w-full text-left p-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-indigo-500/50 transition-all flex justify-between items-center group"
+                                    >
+                                        <div>
+                                            <div className="text-white font-medium text-sm mb-1">{p.receiptNumber}</div>
+                                            <div className="text-slate-500 text-xs">{new Date(p.paymentDate).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })} · {p.paymentMethod}</div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-indigo-400 font-bold text-sm group-hover:text-indigo-300">₹{Number(p.amountPaid).toLocaleString()}</div>
+                                            <div className="text-xs px-2 py-0.5 mt-1 bg-indigo-500/10 text-indigo-400 rounded inline-block">View &rarr;</div>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Receipt Detail Modal ── */}
+            {showReceipt && (
+                <ReceiptModal
+                    receiptData={showReceipt}
+                    onClose={() => setShowReceipt(null)}
+                />
+            )}
+        </div>
+    );
+}
