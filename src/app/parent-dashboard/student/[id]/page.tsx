@@ -304,32 +304,31 @@ export default function StudentDashboardPage() {
             <Toaster position="top-right" />
 
             {/* Back */}
-            <Link href="/parent-dashboard" className="inline-flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm">
+            <Link href="/parent-dashboard" className="inline-flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm animate-fade-in">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                 All Students
             </Link>
 
             {/* ── Student Header Card ── */}
-            <div className="bg-linear-to-r from-indigo-600/20 to-purple-600/20 border border-indigo-500/30 rounded-2xl p-5">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg shrink-0">
+            <div className="bg-linear-to-r from-indigo-600/20 to-purple-600/20 border border-indigo-500/30 rounded-xl sm:rounded-2xl p-3 sm:p-5 animate-slide-up">
+                <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-lg sm:text-2xl font-bold shadow-lg shrink-0">
                         {info.firstName?.[0]}{info.lastName?.[0]}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h1 className="text-white text-2xl font-bold">{info.firstName} {info.lastName}</h1>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                            {info.className && <span className="px-2.5 py-1 bg-indigo-500/20 text-indigo-300 text-xs rounded-full">{info.className}</span>}
-                            {info.sectionName && <span className="px-2.5 py-1 bg-purple-500/20 text-purple-300 text-xs rounded-full">Section {info.sectionName}</span>}
-                            {info.rollNo && <span className="px-2.5 py-1 bg-slate-700 text-slate-300 text-xs rounded-full">Roll No: {info.rollNo}</span>}
-                            {academicYearString && <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 text-xs rounded-full">{academicYearString}</span>}
-                            {info.subjects?.length > 0 && <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 text-xs rounded-full">{info.subjects.length} Subjects</span>}
+                        <h1 className="text-white text-lg sm:text-2xl font-bold truncate">{info.firstName} {info.lastName}</h1>
+                        <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-1 sm:mt-2">
+                            {info.className && <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-indigo-500/20 text-indigo-300 text-[10px] sm:text-xs rounded-full whitespace-nowrap">{info.className}</span>}
+                            {info.sectionName && <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-purple-500/20 text-purple-300 text-[10px] sm:text-xs rounded-full whitespace-nowrap">Sec {info.sectionName}</span>}
+                            {info.rollNo && <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-slate-700 text-slate-300 text-[10px] sm:text-xs rounded-full whitespace-nowrap">Roll: {info.rollNo}</span>}
+                            {academicYearString && <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-emerald-500/20 text-emerald-300 text-[10px] sm:text-xs rounded-full whitespace-nowrap hidden sm:inline-block">{academicYearString}</span>}
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* ── Section Nav Tabs ── */}
-            <div className="flex gap-1 bg-slate-900/80 border border-slate-800 rounded-xl p-1 overflow-x-auto no-scrollbar">
+            <div className="flex gap-1 bg-slate-900/80 border border-slate-800 rounded-xl p-1 overflow-x-auto no-scrollbar animate-slide-up" style={{ animationDelay: '50ms' }}>
                 {([
                     ["fees", "💰 Fee & Dues"],
                     ["attendance", "📊 Attendance"],
@@ -348,7 +347,7 @@ export default function StudentDashboardPage() {
                 FEE & DUES TAB
             ════════════════════════════════ */}
             {activeSection === "fees" && (
-                <div className="space-y-4">
+                <div className="space-y-4 animate-scale-in">
                     {/* Academic year selector + summary */}
                     <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
                         <div className="flex items-center gap-3">
@@ -560,7 +559,7 @@ export default function StudentDashboardPage() {
                 ATTENDANCE TAB
             ════════════════════════════════ */}
             {activeSection === "attendance" && (
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 animate-scale-in">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
                         <h2 className="text-white font-bold text-lg">📊 Attendance</h2>
                         <div className="flex gap-2">
@@ -664,7 +663,7 @@ export default function StudentDashboardPage() {
                 EXAM RESULTS TAB
             ════════════════════════════════ */}
             {activeSection === "results" && (
-                <div className="space-y-4">
+                <div className="space-y-4 animate-scale-in">
                     <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
                         <div className="flex items-center gap-3">
                             <label className="text-slate-400 text-sm">Session:</label>
@@ -734,7 +733,7 @@ export default function StudentDashboardPage() {
                 HOLIDAYS TAB
             ════════════════════════════════ */}
             {activeSection === "holidays" && (
-                <div className="space-y-4">
+                <div className="space-y-4 animate-scale-in">
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-xl">
@@ -803,7 +802,7 @@ export default function StudentDashboardPage() {
                 PERSONAL INFO TAB
             ════════════════════════════════ */}
             {activeSection === "info" && (
-                <div className="space-y-4">
+                <div className="space-y-4 animate-scale-in">
                     {/* Subjects */}
                     {info.subjects?.length > 0 && (
                         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
