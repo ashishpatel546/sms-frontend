@@ -17,7 +17,7 @@ export default function ReportsDashboard() {
     const router = useRouter();
     const rbac = useRbac();
     const [mounted, setMounted] = useState(false);
-    const [activeTab, setActiveTab] = useState<'FEES' | 'EXAMINATIONS' | 'ATTENDANCE' | 'STUDENTS' | 'STAFF'>('FEES');
+    const [activeTab, setActiveTab] = useState<'FEES' | 'PENDING_DUES' | 'EXAMINATIONS' | 'ATTENDANCE' | 'STUDENTS' | 'STAFF'>('FEES');
 
     // FILTERS
     const [academicSessions, setAcademicSessions] = useState<any[]>([]);
@@ -46,13 +46,26 @@ export default function ReportsDashboard() {
     const [admissionsFromSession, setAdmissionsFromSession] = useState('');
     const [admissionsToSession, setAdmissionsToSession] = useState('');
 
+    // Pending Dues Filters
+    const [pendingSessionId, setPendingSessionId] = useState('');
+    const [pendingClassId, setPendingClassId] = useState('');
+    const [pendingAvailableSections, setPendingAvailableSections] = useState<any[]>([]);
+    const [pendingSectionId, setPendingSectionId] = useState('');
+    const [pendingStudentId, setPendingStudentId] = useState('');
+    const [pendingMobile, setPendingMobile] = useState('');
+    const [pendingMonth, setPendingMonth] = useState('');
+    const [pendingDuesData, setPendingDuesData] = useState<any[]>([]);
+    const [pendingDuesLoading, setPendingDuesLoading] = useState(false);
+    const [pendingSortColumn, setPendingSortColumn] = useState<string>('className');
+    const [pendingSortDirection, setPendingSortDirection] = useState<'asc' | 'desc'>('asc');
+
     // Pagination for adjustments
     const [feeAdjPage, setFeeAdjPage] = useState(1);
     const FEE_ADJ_PER_PAGE = 10;
 
     // DATA STATES
-    const [monthlyCollection, setMonthlyCollection] = useState([]);
-    const [collectionStatus, setCollectionStatus] = useState([]);
+    const [monthlyCollection, setMonthlyCollection] = useState<any[]>([]);
+    const [collectionStatus, setCollectionStatus] = useState<any[]>([]);
     const [feeAdjustments, setFeeAdjustments] = useState<any[]>([]);
     const [waivedOffTrend, setWaivedOffTrend] = useState([]);
     const [examClassAvg, setExamClassAvg] = useState([]);
@@ -89,6 +102,7 @@ export default function ReportsDashboard() {
                         setSelectedExamYear(sid);
                         setAttendanceSession(sid);
                         setEnrollmentFromSession(sid);
+                        setPendingSessionId(sid);
                         setAdmissionsToSession(sid);
                         if (data.length > 3) setAdmissionsFromSession(data[3].id.toString());
                         else if (data.length > 0) setAdmissionsFromSession(data[data.length - 1].id.toString());
@@ -111,20 +125,46 @@ export default function ReportsDashboard() {
         if (activeTab !== 'FEES') return;
         const fetchData = async () => {
             try {
-                const [mcRes, csRes, faRes, wotRes] = await Promise.all([
+                const currentMonth = new Date().getMonth() + 1;
+                const acYearName = academicSessions.find(s => s.id.toString() === collectionStatusSession)?.name || '';
+                
+                const [mcRes, csRes, faRes, wotRes, pdRes] = await Promise.all([
                     authFetch(`${API_BASE_URL}/dashboard/reports/monthly-collection?sessionId=${feeCollectionSession}`),
-                    authFetch(`${API_BASE_URL}/dashboard/reports/collection-status?sessionId=${collectionStatusSession}&month=${collectionPendingMonth}`),
+                    authFetch(`${API_BASE_URL}/dashboard/reports/collection-status?sessionId=${collectionStatusSession}&month=${currentMonth}`),
                     authFetch(`${API_BASE_URL}/dashboard/reports/fee-adjustments?fromDate=${feeAdjustmentsFromDate}&toDate=${feeAdjustmentsToDate}`),
-                    authFetch(`${API_BASE_URL}/dashboard/reports/waived-off-trend?sessionId=${waivedOffTrendSession}`)
+                    authFetch(`${API_BASE_URL}/dashboard/reports/waived-off-trend?sessionId=${waivedOffTrendSession}`),
+                    // Only fetch pending dues if we have the academic year
+                    acYearName ? authFetch(`${API_BASE_URL}/fees/reports/pending-dues?academicYear=${encodeURIComponent(acYearName)}`) : Promise.resolve(null)
                 ]);
                 if (mcRes.ok) setMonthlyCollection(await mcRes.json());
-                if (csRes.ok) setCollectionStatus(await csRes.json());
+                
+                if (csRes.ok) {
+                    const statusData = await csRes.json();
+                    let totalPending = 0;
+                    
+                    if (pdRes && pdRes.ok) {
+                        const pendingData = await pdRes.json();
+                        totalPending = pendingData.reduce((sum: number, row: any) => sum + (Number(row.pendingAmount) || 0), 0);
+                    } else {
+                        // Fallback to the mocked pending dues if real calculation fails
+                        totalPending = statusData.find((d: any) => d.name === 'Pending Dues')?.value || 0;
+                    }
+                    
+                    const collectedAmount = statusData.find((d: any) => d.name === 'Collected')?.value || 0;
+                    
+                    setCollectionStatus([
+                        { name: 'Collected', value: collectedAmount },
+                        { name: 'Pending Dues', value: totalPending }
+                    ]);
+                }
+
                 if (faRes.ok) setFeeAdjustments(await faRes.json());
                 if (wotRes.ok) setWaivedOffTrend(await wotRes.json());
             } catch (e) { console.error(e); }
         };
         fetchData();
-    }, [activeTab, feeCollectionSession, collectionStatusSession, collectionPendingMonth, feeAdjustmentsFromDate, feeAdjustmentsToDate, waivedOffTrendSession]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab, feeCollectionSession, collectionStatusSession, feeAdjustmentsFromDate, feeAdjustmentsToDate, waivedOffTrendSession, academicSessions]);
 
     // EXAMS
     useEffect(() => {
@@ -189,6 +229,100 @@ export default function ReportsDashboard() {
         fetchData();
     }, [activeTab]);
 
+    // PENDING DUES
+    useEffect(() => {
+        if (activeTab !== 'PENDING_DUES') return;
+        if (!pendingSessionId) return;
+
+        const fetchData = async () => {
+            setPendingDuesLoading(true);
+            try {
+                let query = `?academicYear=${encodeURIComponent(
+                    academicSessions.find(s => s.id.toString() === pendingSessionId)?.name || ''
+                )}`;
+                if (pendingClassId) query += `&classId=${pendingClassId}`;
+                if (pendingSectionId) query += `&sectionId=${pendingSectionId}`;
+                if (pendingStudentId) query += `&studentId=${pendingStudentId}`;
+                if (pendingMobile) query += `&mobileNumber=${pendingMobile}`;
+                if (pendingMonth) query += `&month=${pendingMonth}`;
+
+                const res = await authFetch(`${API_BASE_URL}/fees/reports/pending-dues${query}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setPendingDuesData(data);
+                } else {
+                    toast.error('Failed to fetch pending dues data');
+                }
+            } catch (e) { 
+                console.error(e); 
+                toast.error('An error occurred while fetching pending dues data');
+            } finally {
+                setPendingDuesLoading(false);
+            }
+        };
+        
+        // Add a small debounce if typing Student ID or Mobile
+        const timeoutId = setTimeout(() => {
+            fetchData();
+        }, 500);
+        return () => clearTimeout(timeoutId);
+    }, [activeTab, pendingSessionId, pendingClassId, pendingSectionId, pendingStudentId, pendingMobile, pendingMonth, academicSessions]);
+
+    // Sorting Helper for Pending Dues
+    const handlePendingSort = (column: string) => {
+        if (pendingSortColumn === column) {
+            setPendingSortDirection(pendingSortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setPendingSortColumn(column);
+            setPendingSortDirection('asc');
+        }
+    };
+
+    const sortedPendingDues = [...pendingDuesData].sort((a, b) => {
+        let valA = a[pendingSortColumn];
+        let valB = b[pendingSortColumn];
+        
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+        
+        if (valA < valB) return pendingSortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return pendingSortDirection === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    const exportToCSV = () => {
+        if (sortedPendingDues.length === 0) {
+            toast.error('No data to export');
+            return;
+        }
+
+        const headers = ['Student ID', 'Roll No', 'First Name', 'Last Name', 'Mobile', 'Class', 'Section', 'Pending Amount'];
+        const rows = sortedPendingDues.map(row => [
+            row.studentId,
+            row.rollNo || '',
+            `"${row.firstName || ''}"`,
+            `"${row.lastName || ''}"`,
+            `"${row.mobile || ''}"`,
+            `"${row.className || ''}"`,
+            `"${row.sectionName || ''}"`,
+            row.pendingAmount
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(e => e.join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Pending_Dues_Report_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     useEffect(() => {
         if (mounted && !rbac.isAdmin) {
             toast.error("You don't have permission to access Reports.");
@@ -222,6 +356,12 @@ export default function ReportsDashboard() {
                     onClick={() => setActiveTab('FEES')}
                 >
                     💰 Fees & Revenue
+                </button>
+                <button
+                    className={`py-2 px-4 font-semibold text-sm mr-4 border-b-2 whitespace-nowrap transition-colors ${activeTab === 'PENDING_DUES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                    onClick={() => setActiveTab('PENDING_DUES')}
+                >
+                    💸 Pending Dues
                 </button>
                 <button
                     className={`py-2 px-4 font-semibold text-sm mr-4 border-b-2 whitespace-nowrap transition-colors ${activeTab === 'EXAMINATIONS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
@@ -283,58 +423,40 @@ export default function ReportsDashboard() {
                         </div>
 
                         {/* Collection vs Pending */}
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                            <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-                                <h2 className="text-lg font-bold text-slate-800">Collection vs Pending Dues (Est.)</h2>
-                                <div className="flex items-center gap-2">
-                                    <select 
-                                        className="border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
-                                        value={collectionStatusSession}
-                                        onChange={(e) => setCollectionStatusSession(e.target.value)}
-                                    >
-                                        <option value="">Select Session</option>
-                                        {academicSessions.map(session => (
-                                            <option key={session.id} value={session.id.toString()}>{session.name}</option>
-                                        ))}
-                                    </select>
-                                    <select 
-                                        className="border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
-                                        value={collectionPendingMonth}
-                                        onChange={(e) => setCollectionPendingMonth(e.target.value)}
-                                    >
-                                        <option value="">Whole Session</option>
-                                        <option value="4">April</option>
-                                        <option value="5">May</option>
-                                        <option value="6">June</option>
-                                        <option value="7">July</option>
-                                        <option value="8">August</option>
-                                        <option value="9">September</option>
-                                        <option value="10">October</option>
-                                        <option value="11">November</option>
-                                        <option value="12">December</option>
-                                        <option value="1">January</option>
-                                        <option value="2">February</option>
-                                        <option value="3">March</option>
-                                    </select>
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                            <div className="flex justify-between items-start mb-2">
+                                <div>
+                                    <h2 className="text-lg font-bold text-slate-800">Collection vs Pending Dues</h2>
+                                    <p className="text-sm text-gray-500 mt-1 max-w-md">
+                                        This chart compares the total amount <strong>collected in the current month</strong> against the overall <strong>pending dues up to today's date</strong>.
+                                    </p>
                                 </div>
                             </div>
-                            <div className="h-72">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={collectionStatus}
-                                            innerRadius={70}
-                                            outerRadius={100}
-                                            paddingAngle={5}
-                                            dataKey="value"
-                                        >
-                                            <Cell fill="#10b981" />
-                                            <Cell fill="#f43f5e" />
-                                        </Pie>
-                                        <Tooltip formatter={(val: any) => `₹${val.toLocaleString()}`} />
-                                        <Legend verticalAlign="bottom" height={36}/>
-                                    </PieChart>
-                                </ResponsiveContainer>
+                            
+                            <div className="h-72 flex-1 mt-4 relative">
+                                {collectionStatus.every((d) => d.value === 0) ? (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                                        <svg className="w-12 h-12 mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                                        <p>No fee data found for this period.</p>
+                                    </div>
+                                ) : (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={collectionStatus}
+                                                innerRadius={70}
+                                                outerRadius={100}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                            >
+                                                <Cell fill="#10b981" />
+                                                <Cell fill="#f43f5e" />
+                                            </Pie>
+                                            <Tooltip formatter={(val: any) => `₹${val.toLocaleString()}`} />
+                                            <Legend verticalAlign="bottom" height={36}/>
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -452,6 +574,185 @@ export default function ReportsDashboard() {
                                     </LineChart>
                                 </ResponsiveContainer>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB CONTENT: PENDING DUES */}
+            {activeTab === 'PENDING_DUES' && (
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 mb-6">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800">Pending Dues Report</h2>
+                                <p className="text-sm text-gray-500">Filter and export pending fee dues.</p>
+                            </div>
+                            <button
+                                onClick={exportToCSV}
+                                disabled={pendingDuesData.length === 0}
+                                className="bg-emerald-600 text-white px-4 py-2 rounded shadow hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                Download CSV
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Session</label>
+                                <select
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    value={pendingSessionId}
+                                    onChange={(e) => setPendingSessionId(e.target.value)}
+                                >
+                                    <option value="">Select Session</option>
+                                    {academicSessions.map(session => (
+                                        <option key={session.id} value={session.id.toString()}>{session.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Class</label>
+                                <select
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    value={pendingClassId}
+                                    onChange={(e) => {
+                                        setPendingClassId(e.target.value);
+                                        setPendingSectionId('');
+                                        const cls = classes.find(c => c.id.toString() === e.target.value);
+                                        setPendingAvailableSections(cls ? cls.sections : []);
+                                    }}
+                                >
+                                    <option value="">All Classes</option>
+                                    {classes.map((cls: any) => (
+                                        <option key={cls.id} value={cls.id.toString()}>{cls.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Section</label>
+                                <select
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50 disabled:opacity-50"
+                                    value={pendingSectionId}
+                                    onChange={(e) => setPendingSectionId(e.target.value)}
+                                    disabled={!pendingClassId}
+                                >
+                                    <option value="">All Sections</option>
+                                    {pendingAvailableSections.map((sec: any) => (
+                                        <option key={sec.id} value={sec.id.toString()}>{sec.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Student ID</label>
+                                <input
+                                    type="text"
+                                    placeholder="ID..."
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    value={pendingStudentId}
+                                    onChange={(e) => setPendingStudentId(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Mobile No.</label>
+                                <input
+                                    type="text"
+                                    placeholder="Mobile..."
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    value={pendingMobile}
+                                    onChange={(e) => setPendingMobile(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Month</label>
+                                <select 
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    value={pendingMonth}
+                                    onChange={(e) => setPendingMonth(e.target.value)}
+                                >
+                                    <option value="">Whole Session</option>
+                                    <option value="4">April</option>
+                                    <option value="5">May</option>
+                                    <option value="6">June</option>
+                                    <option value="7">July</option>
+                                    <option value="8">August</option>
+                                    <option value="9">September</option>
+                                    <option value="10">October</option>
+                                    <option value="11">November</option>
+                                    <option value="12">December</option>
+                                    <option value="1">January</option>
+                                    <option value="2">February</option>
+                                    <option value="3">March</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-[600px] overflow-y-auto">
+                            {pendingDuesLoading ? (
+                                <div className="p-12 flex justify-center">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                                </div>
+                            ) : (
+                                <table className="w-full text-sm text-left text-gray-600">
+                                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+                                        <tr>
+                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100" onClick={() => handlePendingSort('studentId')}>
+                                                Student ID {pendingSortColumn === 'studentId' && (pendingSortDirection === 'asc' ? '↑' : '↓')}
+                                            </th>
+                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100" onClick={() => handlePendingSort('rollNo')}>
+                                                Roll No {pendingSortColumn === 'rollNo' && (pendingSortDirection === 'asc' ? '↑' : '↓')}
+                                            </th>
+                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100" onClick={() => handlePendingSort('firstName')}>
+                                                Name {pendingSortColumn === 'firstName' && (pendingSortDirection === 'asc' ? '↑' : '↓')}
+                                            </th>
+                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100" onClick={() => handlePendingSort('className')}>
+                                                Class {pendingSortColumn === 'className' && (pendingSortDirection === 'asc' ? '↑' : '↓')}
+                                            </th>
+                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100" onClick={() => handlePendingSort('sectionName')}>
+                                                Section {pendingSortColumn === 'sectionName' && (pendingSortDirection === 'asc' ? '↑' : '↓')}
+                                            </th>
+                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100" onClick={() => handlePendingSort('mobile')}>
+                                                Mobile {pendingSortColumn === 'mobile' && (pendingSortDirection === 'asc' ? '↑' : '↓')}
+                                            </th>
+                                            <th className="px-5 py-3 font-semibold text-right cursor-pointer hover:bg-slate-100" onClick={() => handlePendingSort('pendingAmount')}>
+                                                Pending Amount {pendingSortColumn === 'pendingAmount' && (pendingSortDirection === 'asc' ? '↑' : '↓')}
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {sortedPendingDues.length > 0 ? (
+                                            sortedPendingDues.map((row, idx) => (
+                                                <tr key={idx} className="border-b border-gray-100 hover:bg-slate-50/50">
+                                                    <td className="px-5 py-3 font-medium text-blue-600">{row.studentId}</td>
+                                                    <td className="px-5 py-3">{row.rollNo || '-'}</td>
+                                                    <td className="px-5 py-3 font-semibold text-slate-800">{row.firstName} {row.lastName}</td>
+                                                    <td className="px-5 py-3">{row.className}</td>
+                                                    <td className="px-5 py-3">{row.sectionName}</td>
+                                                    <td className="px-5 py-3">{row.mobile}</td>
+                                                    <td className="px-5 py-3 text-right font-bold text-red-600">₹{row.pendingAmount.toLocaleString()}</td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={7} className="p-8 text-center text-gray-500">
+                                                    No pending dues found matching the selected filters.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                    {sortedPendingDues.length > 0 && (
+                                        <tfoot className="bg-slate-50 border-t border-gray-200 font-bold text-slate-800 sticky bottom-0">
+                                            <tr>
+                                                <td colSpan={6} className="px-5 py-3 text-right uppercase text-xs text-slate-500">Total Pending Dues</td>
+                                                <td className="px-5 py-3 text-right text-red-600 text-lg">
+                                                    ₹{sortedPendingDues.reduce((sum, row) => sum + row.pendingAmount, 0).toLocaleString()}
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    )}
+                                </table>
+                            )}
                         </div>
                     </div>
                 </div>
