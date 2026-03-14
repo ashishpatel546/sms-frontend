@@ -1,0 +1,54 @@
+name: Deploy School Frontend
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target GitHub Environment (e.g., production-dps)'
+        required: true
+        type: environment
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy Frontend
+    runs-on: ubuntu-latest
+    
+    # 🔗 Links this job to the GitHub Environment selected during dispatch
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build and Generate PWA Assets
+        env:
+          # Repository variables
+          COLEGIO_HUB_API_URL: ${{ vars.COLEGIO_HUB_API_URL }}
+          
+          # Environment variables mapped from the selected GitHub environment
+          SCHOOL_SLUG: ${{ vars.SCHOOL_SLUG }}
+          NEXT_PUBLIC_SCHOOL_SLUG: ${{ vars.NEXT_PUBLIC_SCHOOL_SLUG }}
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+          
+          # Secure secrets mapped from the selected GitHub environment
+          COLEGIO_SERVICE_TOKEN: ${{ secrets.COLEGIO_SERVICE_TOKEN }}
+        run: |
+          echo "Building Next.js frontend for school: $SCHOOL_SLUG"
+          npm run build
+
+      - name: Deploy to Production
+        run: |
+          echo "Build completed successfully."
+          echo "TODO: Add your specific deployment commands here."
+          # Example for Vercel deployment:
+          # npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
