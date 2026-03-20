@@ -42,8 +42,8 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mobile, password }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Login failed");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Invalid mobile number or password");
       setTokens(data.access_token, data.refresh_token);
       if (data.user.mustChangePassword) {
         router.push("/change-password");
@@ -67,8 +67,8 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Login failed");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Invalid email or password");
       setTokens(data.access_token, data.refresh_token);
       if (data.user.mustChangePassword) {
         router.push("/change-password");
