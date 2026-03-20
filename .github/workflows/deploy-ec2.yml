@@ -1,0 +1,96 @@
+name: Deploy Frontend to EC2
+
+on:
+  push:
+    branches:
+      - stage
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target Environment (e.g., demo, school-xyz)'
+        required: true
+        default: 'demo'
+
+env:
+  APP_ENV: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/stage' && 'testing' || 'demo') }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/stage' && 'testing' || 'demo') }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Match your local Node.js version
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js project
+        # This requires the .env variables to be present during build time if they are used
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+        run: npm run build
+
+      - name: Deploy to EC2 - Prepare Environment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            DIR_NAME="sms-frontend-${{ env.APP_ENV }}"
+            mkdir -p /home/${{ secrets.EC2_USERNAME }}/$DIR_NAME
+            cd /home/${{ secrets.EC2_USERNAME }}/$DIR_NAME
+
+            # Clean up old build artifacts to prevent ghost files
+            rm -rf .next
+
+            # Create/Update .env file from GitHub Secrets for runtime (if needed)
+            if [ "${{ env.APP_ENV }}" = "testing" ]; then
+              echo "PORT=3001" > .env
+            else
+              echo "PORT=3002" > .env
+            fi
+            echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" >> .env
+            # Add any other required environment variables here
+
+      - name: Copy files via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          # Next.js standalone output or regular build needs .next, public, package files
+          source: ".next/,public/,package.json,package-lock.json,ecosystem.config.js"
+          target: "/home/${{ secrets.EC2_USERNAME }}/sms-frontend-${{ env.APP_ENV }}"
+
+      - name: Install Prod Dependencies and Restart PM2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Explicitly load Node/NVM in this non-interactive shell
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            export PATH=$PATH:/usr/local/bin
+
+            DIR_NAME="sms-frontend-${{ env.APP_ENV }}"
+            cd /home/${{ secrets.EC2_USERNAME }}/$DIR_NAME
+            
+            # Install production dependencies
+            npm ci --omit=dev
+            
+            # Restart or start PM2 with the dynamic name
+            export PM2_NAME=$DIR_NAME
+            pm2 start ecosystem.config.js --only $DIR_NAME --update-env || pm2 restart $DIR_NAME --update-env
+            pm2 save
