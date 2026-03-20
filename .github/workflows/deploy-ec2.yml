@@ -37,6 +37,11 @@ jobs:
         # This requires the .env variables to be present during build time if they are used
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_SCHOOL_NAME: ${{ secrets.NEXT_PUBLIC_SCHOOL_NAME }}
+          NEXT_PUBLIC_SCHOOL_LOGO: ${{ secrets.NEXT_PUBLIC_SCHOOL_LOGO }}
+          NEXT_PUBLIC_RAZORPAY_KEY_ID: ${{ secrets.NEXT_PUBLIC_RAZORPAY_KEY_ID }}
+          NEXT_PUBLIC_FRONTEND_URL: ${{ secrets.NEXT_PUBLIC_FRONTEND_URL }}
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
         run: npm run build
 
       - name: Deploy to EC2 - Prepare Environment
@@ -60,6 +65,11 @@ jobs:
               echo "PORT=3002" > .env
             fi
             echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" >> .env
+            echo "NEXT_PUBLIC_SCHOOL_NAME=${{ secrets.NEXT_PUBLIC_SCHOOL_NAME }}" >> .env
+            echo "NEXT_PUBLIC_SCHOOL_LOGO=${{ secrets.NEXT_PUBLIC_SCHOOL_LOGO }}" >> .env
+            echo "NEXT_PUBLIC_RAZORPAY_KEY_ID=${{ secrets.NEXT_PUBLIC_RAZORPAY_KEY_ID }}" >> .env
+            echo "NEXT_PUBLIC_FRONTEND_URL=${{ secrets.NEXT_PUBLIC_FRONTEND_URL }}" >> .env
+            echo "AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}" >> .env
             # Add any other required environment variables here
 
       - name: Copy files via SCP
