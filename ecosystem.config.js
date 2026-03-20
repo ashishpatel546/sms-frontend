@@ -1,29 +1,34 @@
+require('dotenv').config();
+const PORT = process.env.PORT || 3000;
+
 module.exports = {
   apps: [
     {
       name: 'sms-frontend-dev',
-      script: 'npm',
-      args: 'run dev',
+      script: 'node_modules/next/dist/bin/next',
+      args: `dev -p ${PORT}`,
       instances: 1,
+      exec_mode: 'fork',
       autorestart: true,
       watch: false, // Next.js dev server handles hot-reloading
       env_file: '.env',
       env: {
         NODE_ENV: 'development',
-        PORT: process.env.PORT || 3000,
+        PORT,
       },
     },
     {
       name: process.env.PM2_NAME || 'sms-frontend-prod',
-      script: 'npm',
-      args: 'start',
-      instances: 1, // Using 1 instance for Next.js is standard unless explicitly scaling with cluster module
+      script: 'node_modules/next/dist/bin/next',
+      args: `start -p ${PORT}`,
+      instances: 1,
+      exec_mode: 'fork',
       autorestart: true,
       watch: false,
       env_file: '.env',
       env: {
         NODE_ENV: 'production',
-        PORT: process.env.PORT,
+        PORT,
       },
     },
   ],
