@@ -547,7 +547,7 @@ export default function ReportsDashboard() {
                         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                             <div className="p-5 border-b border-gray-200 flex justify-between items-center flex-wrap gap-4">
                                 <div>
-                                    <h2 className="text-lg font-bold text-slate-800">Waived-off Trend (Mock Pending)</h2>
+                                    <h2 className="text-lg font-bold text-slate-800">Waived-off Trend</h2>
                                     <p className="text-sm text-gray-500">Comparison of waived-off fees.</p>
                                 </div>
                                 <select 

@@ -65,6 +65,9 @@ export default function AddStaffForm({
     const [formData, setFormData] = useState(EMPTY_FORM);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [emailPrefix, setEmailPrefix] = useState("");
+    const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null);
+    const [checkingEmail, setCheckingEmail] = useState(false);
 
     // Designation
     const [designations, setDesignations] = useState<any[]>([]);
@@ -116,6 +119,32 @@ export default function AddStaffForm({
             setCities([]);
         }
     }, [formData.address.country, formData.address.state]);
+
+    // Check email availability
+    useEffect(() => {
+        if (!emailPrefix.trim()) {
+            setEmailAvailable(null);
+            return;
+        }
+
+        const debounceTimer = setTimeout(async () => {
+            setCheckingEmail(true);
+            try {
+                const fullEmail = `${emailPrefix}@colegios.in`;
+                const res = await authFetch(`${API_BASE_URL}/users/check-availability?email=${fullEmail}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setEmailAvailable(data.available);
+                }
+            } catch (err) {
+                console.error("Failed to check email availability", err);
+            } finally {
+                setCheckingEmail(false);
+            }
+        }, 500);
+
+        return () => clearTimeout(debounceTimer);
+    }, [emailPrefix]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const target = e.target as HTMLInputElement;
@@ -222,6 +251,9 @@ export default function AddStaffForm({
             // role is only sent when allowRoleSelect is explicitly shown
             if (!allowRoleSelect) delete payload.role;
 
+            const fullEmail = `${emailPrefix}@colegios.in`;
+            payload.email = fullEmail;
+
             const res = await authFetch(`${API_BASE_URL}/staff`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -325,8 +357,31 @@ export default function AddStaffForm({
                     <div className="grid gap-4 sm:grid-cols-3">
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Email Address <span className="text-red-500">*</span></label>
-                            <input type="email" name="email" value={formData.email} onChange={handleChange} required
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                            <div className="flex items-center">
+                                <div className="relative flex-1">
+                                    <input
+                                        type="text"
+                                        value={emailPrefix}
+                                        onChange={(e) => setEmailPrefix(e.target.value.toLowerCase().replace(/\s/g, ""))}
+                                        required
+                                        placeholder="username"
+                                        className={`bg-gray-50 border ${emailAvailable === false ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-l-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5`}
+                                    />
+                                    {checkingEmail && (
+                                        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                                            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                        </div>
+                                    )}
+                                </div>
+                                <span className="inline-flex items-center px-3 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg">
+                                    @colegios.in
+                                </span>
+                            </div>
+                            {emailPrefix && !checkingEmail && (
+                                <p className={`mt-1 text-xs font-medium ${emailAvailable ? "text-green-600" : "text-red-500"}`}>
+                                    {emailAvailable ? "✓ This email prefix is available" : "✕ This email prefix is already taken"}
+                                </p>
+                            )}
                         </div>
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Mobile <span className="text-red-500">*</span></label>

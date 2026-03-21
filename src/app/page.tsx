@@ -17,7 +17,7 @@ export default function LoginPage() {
   // Parent form
   const [mobile, setMobile] = useState("");
   // Staff form
-  const [email, setEmail] = useState("");
+  const [emailPrefix, setEmailPrefix] = useState("");
   const [password, setPassword] = useState("");
 
   // Redirect if already logged in
@@ -62,10 +62,11 @@ export default function LoginPage() {
     setError("");
     setIsLoading(true);
     try {
+      const fullEmail = `${emailPrefix}@colegios.in`;
       const res = await fetch(`${API_BASE_URL}/auth/login/staff`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: fullEmail, password }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || "Invalid email or password");
@@ -88,10 +89,10 @@ export default function LoginPage() {
       <div className="relative hidden md:flex md:w-1/2 flex-col justify-between p-12 overflow-hidden">
         {/* Background school image */}
         <div className="absolute inset-0"
-          style={{ backgroundImage: 'url(/school-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}
+          style={{ backgroundImage: 'url(/colegios-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}
         />
-        {/* Gradient overlay on top of image */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/88 via-purple-900/82 to-slate-900/92" />
+        {/* Gradient overlay on top of image - enhanced contrast for text */}
+        <div className="absolute inset-0 bg-slate-950/60" />
         <div className="absolute inset-0 opacity-30"
           style={{
             backgroundImage: `radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.5) 0%, transparent 60%),
@@ -105,34 +106,49 @@ export default function LoginPage() {
 
         <div className="relative z-10">
           {/* Logo */}
-          <div className="flex items-center gap-3 mb-16">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
+          <div className="flex items-center gap-4 mb-14">
+            <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-xl border border-white/20 p-2 hover:scale-105 transition-transform">
+              <img src="/colegios/colegios-logo.png" alt="Colegios Logo" className="w-full h-full object-contain drop-shadow-md" />
+            </a>
+            <div className="flex flex-col">
+              <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="text-white font-extrabold text-4xl tracking-tight drop-shadow-md hover:text-indigo-200 transition-colors">
+                Colegios
+              </a>
+              <a href="https://appme.in" target="_blank" rel="noopener noreferrer" className="text-indigo-100 text-sm font-bold tracking-widest uppercase drop-shadow-md mt-1 hover:text-white transition-colors">
+                A Flagship Product of AppMe Pvt Ltd.
+              </a>
             </div>
-            <span className="text-white font-bold text-2xl tracking-tight">
-              {process.env.NEXT_PUBLIC_SCHOOL_NAME || 'EduSphere'}
-            </span>
           </div>
 
           {/* Headline */}
-          <h1 className="text-white text-5xl font-extrabold leading-tight mb-6">
-            Empowering<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
-              Every Learner
+          <h1 className="text-white text-4xl lg:text-5xl font-extrabold leading-tight mb-8 drop-shadow-lg">
+            Digitizing Schools<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-purple-300 drop-shadow-sm">
+              for the Future.
             </span>
           </h1>
-          <p className="text-slate-400 text-lg leading-relaxed max-w-md">
-            A unified platform for administrators, teachers, and parents to manage school life seamlessly.
-          </p>
+          
+          <div className="space-y-4 mb-8 p-6 rounded-2xl bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl">
+            <p className="text-white text-xl font-bold tracking-wide leading-relaxed">
+              Colegios - The Smart Operating System for Modern Schools.
+            </p>
+            <p className="text-slate-200 text-base leading-relaxed max-w-md font-medium">
+              Colegios is an all-in-one, feature-rich school management ecosystem. We are building a stronger, smarter future by bringing cutting-edge digital infrastructure straight to the roots of our education system.
+            </p>
+            <p className="text-white text-sm font-black flex items-center gap-2 uppercase tracking-wider pt-2">
+              <svg className="w-5 h-5 text-indigo-400 drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Igniting a Digital Revolution in Education.
+            </p>
+          </div>
         </div>
 
         <div className="relative z-10">
           {/* Feature pills */}
           <div className="flex flex-wrap gap-3">
-            {['📊 Analytics', '📋 Attendance', '💰 Fee Management', '📝 Examinations', '👥 Parent Portal'].map(f => (
-              <span key={f} className="px-3 py-1.5 bg-white/10 backdrop-blur-sm text-slate-300 text-sm rounded-full border border-white/10">
+            {['📊 Report & Analytics', '📋 Attendance', '💰 Fee Management', '📝 Examinations', '👥 Parent Portal'].map(f => (
+              <span key={f} className="px-4 py-2 cursor-pointer bg-white/10 hover:bg-white/20 hover:scale-105 hover:-translate-y-1 transition-all duration-300 backdrop-blur-md text-white font-medium text-sm rounded-xl border border-indigo-500/30 shadow-lg hover:shadow-indigo-500/40">
                 {f}
               </span>
             ))}
@@ -144,14 +160,12 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center p-6 sm:p-10 min-h-screen md:min-h-0">
         <div className="w-full max-w-md">
           {/* Mobile logo */}
-          <div className="flex md:hidden items-center gap-2 mb-8 justify-center">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
+          <div className="flex md:hidden items-center gap-3 mb-8 justify-center">
+            <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center p-2 border border-slate-700 shadow-lg">
+              <img src="/colegios/colegios-logo.png" alt="Colegios Logo" className="w-full h-full object-contain" />
             </div>
-            <span className="text-white font-bold text-xl">
-              {process.env.NEXT_PUBLIC_SCHOOL_NAME || 'EduSphere'}
+            <span className="text-white font-extrabold text-2xl tracking-tight">
+              Colegios
             </span>
           </div>
 
@@ -192,20 +206,25 @@ export default function LoginPage() {
               <form onSubmit={handleStaffLogin} className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">Email Address</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                      <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                      </svg>
+                  <div className="flex items-center">
+                    <div className="relative flex-1">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                        </svg>
+                      </div>
+                      <input
+                        type="text"
+                        value={emailPrefix}
+                        onChange={e => setEmailPrefix(e.target.value.toLowerCase().replace(/\s/g, ""))}
+                        required
+                        placeholder="admin"
+                        className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-l-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                      />
                     </div>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      required
-                      placeholder="admin@school.com"
-                      className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                    />
+                    <span className="inline-flex items-center px-4 py-3 text-sm font-bold text-slate-300 bg-slate-800 border border-l-0 border-slate-700 rounded-r-xl">
+                      @colegios.in
+                    </span>
                   </div>
                 </div>
                 <div>
@@ -338,10 +357,26 @@ export default function LoginPage() {
 
           <p className="text-center text-slate-600 text-sm mt-6">
             Need help? Contact{" "}
-            <a href="mailto:admin@school.com" className="text-indigo-400 hover:text-indigo-300 transition-colors">
-              IT Support
+            <a href="mailto:support@colegios.in" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
+              support@colegios.in
             </a>
           </p>
+
+          <div className="mt-8 text-center text-xs text-slate-600 space-y-1">
+            <p>
+              &copy; {new Date().getFullYear()}{" "}
+              <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
+                Colegios
+              </a>
+              . All rights reserved.
+            </p>
+            <p>
+              Developed by{" "}
+              <a href="https://appme.in" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-400 font-medium transition-colors">
+                AppMe Pvt Ltd.
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </div>
