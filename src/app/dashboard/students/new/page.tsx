@@ -45,15 +45,65 @@ export default function AddStudentPage() {
     const [availableDiscounts, setAvailableDiscounts] = useState<any[]>([]);
     const [selectedDiscounts, setSelectedDiscounts] = useState<number[]>([]);
 
+    // Enrollment State
+    const [enrollStudent, setEnrollStudent] = useState(false);
+    const [classes, setClasses] = useState<any[]>([]);
+    const [academicSessions, setAcademicSessions] = useState<any[]>([]);
+    const [subjects, setSubjects] = useState<any[]>([]);
+    const [sections, setSections] = useState<any[]>([]);
+    
+    const [selectedClass, setSelectedClass] = useState("");
+    const [selectedSection, setSelectedSection] = useState("");
+    const [selectedSessionId, setSelectedSessionId] = useState<number | "">("");
+    const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+
     useEffect(() => {
-        const fetchDiscounts = async () => {
+        const fetchInitialData = async () => {
             try {
-                const res = await authFetch(`${API_BASE_URL}/fees/discounts`);
-                if (res.ok) setAvailableDiscounts(await res.json());
-            } catch {}
+                const [discountsRes, classesRes, sessionsRes, subjectsRes] = await Promise.all([
+                    authFetch(`${API_BASE_URL}/fees/discounts`),
+                    authFetch(`${API_BASE_URL}/classes`),
+                    authFetch(`${API_BASE_URL}/academic-sessions`),
+                    authFetch(`${API_BASE_URL}/subjects`)
+                ]);
+                
+                if (discountsRes.ok) setAvailableDiscounts(await discountsRes.json());
+                if (classesRes.ok) setClasses(await classesRes.json());
+                if (subjectsRes.ok) setSubjects(await subjectsRes.json());
+                if (sessionsRes.ok) {
+                    const data = await sessionsRes.json();
+                    setAcademicSessions(data);
+                    const active = data.find((s: any) => s.isActive);
+                    if (active) setSelectedSessionId(active.id);
+                }
+            } catch (err) {
+                console.error("Failed to fetch initial data", err);
+            }
         };
-        fetchDiscounts();
+        fetchInitialData();
     }, []);
+
+    // Filter sections when class changes (for the Enrollment Form)
+    useEffect(() => {
+        if (selectedClass) {
+            const cls = classes.find((c: any) => c.id === parseInt(selectedClass));
+            if (cls) {
+                setSections(cls.sections || []);
+            } else {
+                setSections([]);
+            }
+        } else {
+            setSections([]);
+        }
+    }, [selectedClass, classes]);
+
+    const handleSubjectToggle = (subjectId: string) => {
+        setSelectedSubjects(prev =>
+            prev.includes(subjectId)
+                ? prev.filter(id => id !== subjectId)
+                : [...prev, subjectId]
+        );
+    };
 
     // Sibling Modal State
     const [showSiblingModal, setShowSiblingModal] = useState(false);
@@ -211,6 +261,10 @@ export default function AddStudentPage() {
                 }
             });
 
+            if (enrollStudent && (!selectedClass || !selectedSection)) {
+                throw new Error("Please select Class and Section to enroll the student.");
+            }
+
             const res = await authFetch(`${API_BASE_URL}/students`, {
                 method: "POST",
                 headers: {
@@ -222,6 +276,36 @@ export default function AddStudentPage() {
             if (!res.ok) {
                 const errData = await res.json();
                 throw new Error(errData.message || "Failed to create student");
+            }
+            
+            const newStudent = await res.json();
+
+            // Handle Enrollment if requested
+            if (enrollStudent) {
+                try {
+                    const enrollRes = await authFetch(`${API_BASE_URL}/students/${newStudent.id}/enroll`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            classId: parseInt(selectedClass),
+                            sectionId: parseInt(selectedSection),
+                            subjectIds: selectedSubjects.map(id => parseInt(id)),
+                            academicSessionId: selectedSessionId !== "" ? selectedSessionId : undefined
+                        }),
+                    });
+
+                    if (!enrollRes.ok) {
+                        toast.error("Student created successfully, but enrollment failed.");
+                    } else {
+                        toast.success("Student created and enrolled successfully!");
+                    }
+                } catch (enrollErr) {
+                    toast.error("Student created successfully, but enrollment failed.");
+                }
+            } else {
+                toast.success("Student created successfully!");
             }
 
             router.push("/dashboard/students");
@@ -480,6 +564,97 @@ export default function AddStudentPage() {
                             </div>
                         </div>
                     )}
+
+                    {/* Enrollment Section */}
+                    <div className="pt-4 border-t mt-8">
+                        <label className="flex items-center space-x-3 mb-6 cursor-pointer p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <input
+                                type="checkbox"
+                                checked={enrollStudent}
+                                onChange={(e) => setEnrollStudent(e.target.checked)}
+                                className="w-5 h-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span className="text-base font-bold text-blue-900">Enroll this student immediately?</span>
+                        </label>
+
+                        {enrollStudent && (
+                            <div className="bg-white p-6 rounded-lg border border-slate-200 space-y-6">
+                                <h3 className="text-lg font-bold text-slate-700 border-b pb-2">Enrollment Details</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block mb-1 text-sm font-medium">Academic Session</label>
+                                        <select
+                                            className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 bg-white"
+                                            value={selectedSessionId}
+                                            onChange={e => setSelectedSessionId(e.target.value === "" ? "" : parseInt(e.target.value))}
+                                        >
+                                            <option value="">-- Select Session --</option>
+                                            {academicSessions.map((s: any) => (
+                                                <option key={s.id} value={s.id}>{s.name} {s.isActive ? '(Active)' : ''}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block mb-1 text-sm font-medium">Class <span className="text-red-500">*</span></label>
+                                        <select
+                                            className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 bg-white"
+                                            value={selectedClass}
+                                            onChange={e => {
+                                                setSelectedClass(e.target.value);
+                                                setSelectedSection(""); // reset section when class changes
+                                            }}
+                                            required={enrollStudent}
+                                        >
+                                            <option value="">-- Select Class --</option>
+                                            {classes.map((c: any) => (
+                                                <option key={c.id} value={c.id}>{c.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block mb-1 text-sm font-medium">Section <span className="text-red-500">*</span></label>
+                                        <select
+                                            className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-slate-100"
+                                            value={selectedSection}
+                                            onChange={e => setSelectedSection(e.target.value)}
+                                            disabled={!selectedClass || sections.length === 0}
+                                            required={enrollStudent}
+                                        >
+                                            <option value="">-- Select Section --</option>
+                                            {sections.map((sec: any) => (
+                                                <option key={sec.id} value={sec.id}>{sec.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Subject Selection */}
+                                <div>
+                                    <label className="block mb-2 text-sm font-medium">Elective/Extra Subjects (Optional)</label>
+                                    <div className="p-3 border rounded bg-slate-50 max-h-48 overflow-y-auto">
+                                        {subjects.length === 0 ? (
+                                            <p className="text-sm text-slate-500">No subjects available.</p>
+                                        ) : (
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                {subjects.map((sub: any) => (
+                                                    <label key={sub.id} className="flex items-center space-x-2 text-sm cursor-pointer p-1 hover:bg-slate-200 rounded">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedSubjects.includes(sub.id.toString())}
+                                                            onChange={() => handleSubjectToggle(sub.id.toString())}
+                                                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                        />
+                                                        <span>{sub.name} <span className="text-xs text-slate-400">({sub.code})</span></span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-1">Core subjects for the selected class are assigned automatically.</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
 
                     <div className="flex items-center space-x-4 pt-4 border-t">
                         <button type="submit" disabled={loading} className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-bold rounded-lg text-lg w-full sm:w-auto px-8 py-3 text-center disabled:opacity-50">

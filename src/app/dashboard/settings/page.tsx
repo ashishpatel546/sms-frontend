@@ -396,6 +396,7 @@ export default function SettingsPage() {
                                 <table className="w-full text-sm text-left text-gray-500">
                                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                                         <tr>
+                                            <th scope="col" className="px-4 py-3">ID</th>
                                             <th scope="col" className="px-4 py-3">Name</th>
                                             <th scope="col" className="px-4 py-3">Period</th>
                                             <th scope="col" className="px-4 py-3 text-center">Status</th>
@@ -405,6 +406,7 @@ export default function SettingsPage() {
                                     <tbody>
                                         {sessions.map((s: any) => (
                                             <tr key={s.id} className="bg-white border-b hover:bg-gray-50">
+                                                <td className="px-4 py-3 font-mono text-xs text-gray-500">{s.id}</td>
                                                 <td className="px-4 py-3 font-semibold text-slate-800">{s.name}</td>
                                                 <td className="px-4 py-3 text-xs">
                                                     {new Date(s.startDate).toLocaleDateString()} to {new Date(s.endDate).toLocaleDateString()}

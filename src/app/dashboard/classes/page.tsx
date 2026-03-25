@@ -20,6 +20,7 @@ export default function ClassesPage() {
                 (cls.sections && cls.sections.length > 0)
                     ? cls.sections.map((sec: any) => ({
                         id: sec.id,
+                        sectionId: sec.id,
                         className: cls.name, // "Class 10"
                         sectionName: sec.name, // "A"
                         classTeacher: sec.classStaff?.user
@@ -30,6 +31,7 @@ export default function ClassesPage() {
                     }))
                     : [{ // Handle class with no sections if any
                         id: `cls-${cls.id}`,
+                        sectionId: 'N/A',
                         className: cls.name,
                         sectionName: 'No Sections',
                         classTeacher: '',
@@ -45,7 +47,9 @@ export default function ClassesPage() {
     if (error) return <div className="p-4 text-red-500">Failed to load classes</div>;
 
     const columns = [
+        { header: "Class ID", accessor: "classId", sortable: true },
         { header: "Class", accessor: "className", sortable: true },
+        { header: "Section ID", accessor: "sectionId", sortable: true },
         { header: "Section", accessor: "sectionName", sortable: true },
         { header: "Class Teacher", accessor: "classTeacher", sortable: true },
         { header: "No. of Students", accessor: "studentCount", sortable: true },

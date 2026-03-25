@@ -42,6 +42,12 @@ export default function StudentsPage() {
 
     const totalPages = Math.ceil(total / pageSize);
 
+    // Bulk Import Modal State
+    const [showBulkModal, setShowBulkModal] = useState(false);
+    const [bulkFile, setBulkFile] = useState<File | null>(null);
+    const [bulkUploading, setBulkUploading] = useState(false);
+    const [bulkResult, setBulkResult] = useState<{ successful: number; failed: number; errors: string[] } | null>(null);
+
     const buildParams = (overridePage?: number) => {
         const params = new URLSearchParams();
         if (searchId) params.append("id", searchId);
@@ -148,6 +154,46 @@ export default function StudentsPage() {
         setTimeout(() => fetchStudents(1), 0);
     };
 
+    const handleBulkUpload = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!bulkFile) return;
+
+        setBulkUploading(true);
+        setBulkResult(null);
+        try {
+            const formData = new FormData();
+            formData.append("file", bulkFile);
+
+            const res = await authFetch(`${API_BASE_URL}/students/bulk-import`, {
+                method: "POST",
+                body: formData, // No Content-Type header here, browser sets it with boundary for multipart/form-data
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                toast.error(err.message || "Failed to upload file");
+            } else {
+                const result = await res.json();
+                
+                if (result.successful > 0 && result.failed === 0) {
+                    toast.success(`Successfully imported ${result.successful} students`);
+                    setShowBulkModal(false);
+                    fetchStudents(1); // Refresh list
+                } else {
+                    setBulkResult(result);
+                    if (result.successful > 0) {
+                        toast.success(`Partially imported ${result.successful} students. Check errors.`);
+                        fetchStudents(1); // Refresh list
+                    }
+                }
+            }
+        } catch (error) {
+            toast.error("An error occurred during bulk import");
+        } finally {
+            setBulkUploading(false);
+        }
+    };
+
     const columns = [
         { header: "ID", accessor: "id", sortable: true },
         {
@@ -233,6 +279,18 @@ export default function StudentsPage() {
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                     <h1 className="text-2xl font-bold text-slate-800">Students Management</h1>
                     <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                        {rbac.canBulkOperateStudents && (
+                            <button
+                                onClick={() => {
+                                    setBulkFile(null);
+                                    setBulkResult(null);
+                                    setShowBulkModal(true);
+                                }}
+                                className="flex-1 sm:flex-none text-center text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-none whitespace-nowrap"
+                            >
+                                Bulk Import
+                            </button>
+                        )}
                         {rbac.canBulkOperateStudents && (
                             <Link href="/dashboard/students/promotions" className="flex-1 sm:flex-none text-center text-white bg-amber-600 hover:bg-amber-700 focus:ring-4 focus:ring-amber-300 font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-none whitespace-nowrap">
                                 Bulk Promotions
@@ -401,6 +459,76 @@ export default function StudentsPage() {
                         </>
                     )}
                 </div>
+
+                {/* Bulk Import Modal */}
+                {showBulkModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+                        <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+                            <div className="flex items-center justify-between p-4 border-b">
+                                <h3 className="text-xl font-semibold text-gray-900">Bulk Import Students</h3>
+                                <button onClick={() => setShowBulkModal(false)} className="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+                                    <svg className="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div className="p-4 overflow-y-auto">
+                                <div className="mb-4 text-sm text-gray-600 bg-blue-50 p-4 rounded-lg border border-blue-100">
+                                    <p className="font-semibold mb-2">CSV Format Requirements:</p>
+                                    <ul className="list-disc pl-5 space-y-1">
+                                        <li>Must contain headers exactly as below:</li>
+                                        <li className="font-mono text-xs bg-gray-100 p-1 rounded overflow-x-auto whitespace-nowrap">firstName,lastName,gender,dateOfBirth,mobile,email,category,religion,bloodGroup,classId,sectionId,academicSessionId,subjectIds</li>
+                                        <li><span className="font-semibold">dateOfBirth:</span> Use format YYYY-MM-DD</li>
+                                        <li><span className="font-semibold">subjectIds:</span> Pipe separated values e.g. <code className="bg-gray-200 px-1 rounded">1|3|4</code></li>
+                                    </ul>
+                                </div>
+
+                                <form onSubmit={handleBulkUpload}>
+                                    <label className="block mb-2 text-sm font-medium text-gray-900">Upload CSV File</label>
+                                    <input 
+                                        type="file" 
+                                        accept=".csv"
+                                        onChange={(e) => setBulkFile(e.target.files?.[0] || null)}
+                                        className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none p-2 mb-4" 
+                                        required
+                                    />
+
+                                    {bulkResult && (
+                                        <div className={`p-4 mb-4 text-sm rounded-lg ${bulkResult.failed > 0 ? 'bg-orange-50 text-orange-800 border border-orange-200' : 'bg-green-50 text-green-800 border border-green-200'}`}>
+                                            <p className="font-bold mb-2">Import Results:</p>
+                                            <p>✅ {bulkResult.successful} students successfully created and enrolled.</p>
+                                            {bulkResult.failed > 0 && <p>❌ {bulkResult.failed} failed.</p>}
+                                            {bulkResult.errors?.length > 0 && (
+                                                <div className="mt-2 max-h-32 overflow-y-auto text-xs bg-white p-2 rounded border border-orange-100">
+                                                    {bulkResult.errors.map((err, i) => (
+                                                        <div key={i} className="mb-1 text-red-600 font-mono">{err}</div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div className="flex justify-end gap-2 mt-6">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setShowBulkModal(false)} 
+                                            className="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5"
+                                        >
+                                            Close
+                                        </button>
+                                        <button 
+                                            type="submit" 
+                                            disabled={!bulkFile || bulkUploading}
+                                            className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 disabled:opacity-50"
+                                        >
+                                            {bulkUploading ? 'Importing...' : 'Upload & Import'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </main>
     );

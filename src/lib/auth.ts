@@ -112,11 +112,16 @@ export async function authFetch(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  let headers = {
+  let headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...getAuthHeaders(),
-    ...(options.headers || {}),
+    ...((options.headers as Record<string, string>) || {}),
   };
+
+  // If body is FormData, remove Content-Type so the browser sets it automatically with the correct boundary
+  if (options.body instanceof FormData) {
+    delete headers['Content-Type'];
+  }
 
   let res = await fetch(url, { ...options, headers });
 
