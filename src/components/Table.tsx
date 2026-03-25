@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface Column {
-    header: string;
+    header: React.ReactNode;
     accessor?: string; // Key to access data
     render?: (row: any) => React.ReactNode; // Custom render function
     className?: string; // Custom class for header/cell
