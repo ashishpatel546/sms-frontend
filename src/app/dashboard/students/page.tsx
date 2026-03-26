@@ -174,17 +174,15 @@ export default function StudentsPage() {
                 toast.error(err.message || "Failed to upload file");
             } else {
                 const result = await res.json();
+                setBulkResult(result);
                 
                 if (result.successful > 0 && result.failed === 0) {
                     toast.success(`Successfully imported ${result.successful} students`);
-                    setShowBulkModal(false);
                     fetchStudents(1); // Refresh list
-                } else {
-                    setBulkResult(result);
-                    if (result.successful > 0) {
-                        toast.success(`Partially imported ${result.successful} students. Check errors.`);
-                        fetchStudents(1); // Refresh list
-                    }
+                    setTimeout(() => setShowBulkModal(false), 2000);
+                } else if (result.successful > 0) {
+                    toast.success(`Partially imported ${result.successful} students. Check errors.`);
+                    fetchStudents(1); // Refresh list
                 }
             }
         } catch (error) {
@@ -279,7 +277,7 @@ export default function StudentsPage() {
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                     <h1 className="text-2xl font-bold text-slate-800">Students Management</h1>
                     <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                        {rbac.canBulkOperateStudents && (
+                        {rbac.canManageStudents && (
                             <button
                                 onClick={() => {
                                     setBulkFile(null);
@@ -476,11 +474,31 @@ export default function StudentsPage() {
                                 <div className="mb-4 text-sm text-gray-600 bg-blue-50 p-4 rounded-lg border border-blue-100">
                                     <p className="font-semibold mb-2">CSV Format Requirements:</p>
                                     <ul className="list-disc pl-5 space-y-1">
-                                        <li>Must contain headers exactly as below:</li>
-                                        <li className="font-mono text-xs bg-gray-100 p-1 rounded overflow-x-auto whitespace-nowrap">firstName,lastName,gender,dateOfBirth,mobile,email,category,religion,bloodGroup,classId,sectionId,academicSessionId,subjectIds</li>
+                                        <li>Must contain headers exactly as shown below (order matters):</li>
+                                        <li className="font-mono text-xs bg-gray-100 p-1 rounded overflow-x-auto whitespace-nowrap">firstName,lastName,gender,dateOfBirth,mobile,email,alternateMobile,category,religion,bloodGroup,aadhaarNumber,fathersName,fatherAadhaarNumber,mothersName,motherAadhaarNumber,addressLine1,addressLine2,landmark,city,state,postalCode,country,classId,sectionId,academicSessionId,subjectIds</li>
+                                        <li><span className="font-semibold text-red-600">Required:</span> firstName, lastName, gender, dateOfBirth, mobile, fathersName, mothersName, category, religion</li>
+                                        <li><span className="font-semibold">Optional fields</span> can be left empty, but the column must still be present.</li>
                                         <li><span className="font-semibold">dateOfBirth:</span> Use format YYYY-MM-DD</li>
-                                        <li><span className="font-semibold">subjectIds:</span> Pipe separated values e.g. <code className="bg-gray-200 px-1 rounded">1|3|4</code></li>
+                                        <li><span className="font-semibold">subjectIds:</span> Pipe-separated values e.g. <code className="bg-gray-200 px-1 rounded">1|3|4</code></li>
+                                        <li><span className="font-semibold">country:</span> Full country name e.g. <code className="bg-gray-200 px-1 rounded">INDIA</code> (leave blank to default to INDIA)</li>
                                     </ul>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const headers = "firstName,lastName,gender,dateOfBirth,mobile,email,alternateMobile,category,religion,bloodGroup,aadhaarNumber,fathersName,fatherAadhaarNumber,mothersName,motherAadhaarNumber,addressLine1,addressLine2,landmark,city,state,postalCode,country,classId,sectionId,academicSessionId,subjectIds";
+                                            const sample = "John,Doe,Male,2010-05-15,9876543210,john.doe@example.com,,General,HINDU,O+,,Ramesh Doe,,Sunita Doe,,12 Main Street,,Near Park,Delhi,DL,110001,INDIA,1,1,1,1|2";
+                                            const blob = new Blob([headers + "\n" + sample], { type: "text/csv" });
+                                            const url = URL.createObjectURL(blob);
+                                            const a = document.createElement("a");
+                                            a.href = url;
+                                            a.download = "students-import-template.csv";
+                                            a.click();
+                                            URL.revokeObjectURL(url);
+                                        }}
+                                        className="mt-3 inline-flex items-center gap-1 text-xs text-blue-700 hover:text-blue-900 font-medium underline"
+                                    >
+                                        ⬇ Download CSV Template
+                                    </button>
                                 </div>
 
                                 <form onSubmit={handleBulkUpload}>
