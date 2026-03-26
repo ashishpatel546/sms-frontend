@@ -164,6 +164,11 @@ export default function AttendancePage() {
             try {
                 setLoading(true);
                 const res = await authFetch(`${API_BASE_URL}/attendance/class/${selectedClassId}/section/${selectedSectionId}?date=${selectedDate}`);
+                
+                if (!res.ok) {
+                    throw new Error("Attendance not found");
+                }
+
                 const data = await res.json();
 
                 if (data && data.id) {
@@ -182,22 +187,19 @@ export default function AttendancePage() {
                     });
 
                     setAttendanceRecords(records);
-                    setAttendanceRecords(records);
-                } else {
-                    setExistingAttendance(null);
-                    // Default all to PRESENT, unless it's a Sunday
-                    const targetDate = new Date(selectedDate);
-                    targetDate.setHours(0, 0, 0, 0);
-                    const isSunday = targetDate.getDay() === 0;
-
-                    const records: Record<number, { status: string, remarks: string }> = {};
-                    students.forEach(s => {
-                        records[s.id] = { status: isSunday ? "HOLIDAY" : "PRESENT", remarks: "" };
-                    });
-                    setAttendanceRecords(records);
                 }
             } catch (err) {
-                console.error("Failed to fetch attendance records", err);
+                // If 404 or error, reset state properly
+                setExistingAttendance(null);
+                const targetDate = new Date(selectedDate);
+                targetDate.setHours(0, 0, 0, 0);
+                const isSunday = targetDate.getDay() === 0;
+
+                const records: Record<number, { status: string, remarks: string }> = {};
+                students.forEach(s => {
+                    records[s.id] = { status: isSunday ? "HOLIDAY" : "PRESENT", remarks: "" };
+                });
+                setAttendanceRecords(records);
             } finally {
                 setLoading(false);
             }

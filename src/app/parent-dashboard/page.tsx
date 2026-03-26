@@ -106,18 +106,18 @@ export default function ParentDashboardPage() {
                                     <h3 className="text-white text-xl font-bold truncate group-hover:text-indigo-300 transition-colors">
                                         {student.firstName} {student.lastName}
                                     </h3>
-                                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                                    <div className="flex flex-col items-start gap-2 mt-2">
                                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-500/10 text-indigo-300 text-xs rounded-lg font-medium border border-indigo-500/20 whitespace-nowrap">
                                             <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                             </svg>
-                                            {student.className}
+                                            {student.className || 'N/A'}
                                         </div>
                                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-500/10 text-purple-300 text-xs rounded-lg font-medium border border-purple-500/20 whitespace-nowrap">
                                             <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                                             </svg>
-                                            Section {student.sectionName}
+                                            Section {student.sectionName || 'N/A'}
                                         </div>
                                     </div>
                                 </div>
@@ -125,22 +125,18 @@ export default function ParentDashboardPage() {
 
                             {/* Details */}
                             <div className="flex flex-wrap gap-2 mb-6 bg-slate-950/50 rounded-2xl p-4 border border-slate-800/50">
-                                {student.rollNo && (
-                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-500/10 text-sky-300 text-xs rounded-lg font-medium border border-sky-500/20 w-fit whitespace-nowrap">
-                                        <svg className="w-3.5 h-3.5 opacity-80 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h3" />
-                                        </svg>
-                                        Roll No: {student.rollNo}
-                                    </div>
-                                )}
-                                {student.academicSession && (
-                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-300 text-xs rounded-lg font-medium border border-emerald-500/20 w-fit whitespace-nowrap">
-                                        <svg className="w-3.5 h-3.5 opacity-80 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                        {student.academicSession}
-                                    </div>
-                                )}
+                                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-500/10 text-sky-300 text-xs rounded-lg font-medium border border-sky-500/20 w-fit whitespace-nowrap">
+                                    <svg className="w-3.5 h-3.5 opacity-80 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h3" />
+                                    </svg>
+                                    Roll No: {student.rollNo || 'N/A'}
+                                </div>
+                                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-300 text-xs rounded-lg font-medium border border-emerald-500/20 w-fit whitespace-nowrap">
+                                    <svg className="w-3.5 h-3.5 opacity-80 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    {student.academicSession || 'N/A'}
+                                </div>
                             </div>
 
                             {/* View button */}

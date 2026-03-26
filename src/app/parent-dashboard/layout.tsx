@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { getUser, isAuthenticated, logout, getToken, setToken, setTokens, authFetch, resetRefreshState } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
 import { NotificationBell } from "@/components/NotificationBell";
+import NotificationPermissionBanner from "@/components/NotificationPermissionBanner";
 
 export default function ParentDashboardLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
@@ -41,6 +42,7 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950">
+            <NotificationPermissionBanner />
             {/* Top Nav */}
             <nav className="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-4 py-3 sticky top-0 z-50">
                 <div className="max-w-5xl mx-auto flex items-center justify-between">
