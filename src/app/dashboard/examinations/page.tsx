@@ -69,11 +69,9 @@ export default function ExaminationsPage() {
         Promise.all([
             authFetch(`${API_BASE_URL}/classes`).then(r => r.json()),
             authFetch(`${API_BASE_URL}/academic-sessions`).then(r => r.json()),
-            authFetch(`${API_BASE_URL}/exams/categories/active`).then(r => r.json())
-        ]).then(([classesData, sessionsData, categoriesData]) => {
+        ]).then(([classesData, sessionsData]) => {
             setClasses(Array.isArray(classesData) ? classesData : []);
             setSessions(Array.isArray(sessionsData) ? sessionsData : []);
-            setCategories(Array.isArray(categoriesData) ? categoriesData : []);
             const activeSession = sessionsData.find((s: any) => s.isActive);
             if (activeSession) {
                 const activeId = activeSession.id.toString();
@@ -81,6 +79,19 @@ export default function ExaminationsPage() {
             }
         }).catch(() => { });
     }, []);
+
+    useEffect(() => {
+        if (!searchSessionId) {
+            setCategories([]);
+            return;
+        }
+        authFetch(`${API_BASE_URL}/exams/categories/active?sessionId=${searchSessionId}`)
+            .then(r => r.json())
+            .then(data => {
+                setCategories(Array.isArray(data) ? data : []);
+            })
+            .catch(() => setCategories([]));
+    }, [searchSessionId]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();

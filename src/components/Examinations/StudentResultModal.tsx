@@ -15,7 +15,10 @@ interface Props {
 }
 
 export default function StudentResultModal({ studentId, sessionId, onClose, onSave }: Props) {
-    const { data: categories = [], isLoading: catsLoading } = useSWR(API_BASE_URL + '/exams/categories/active', fetcher);
+    const { data: categories = [], isLoading: catsLoading } = useSWR(
+        sessionId ? `${API_BASE_URL}/exams/categories/active?sessionId=${sessionId}` : null, 
+        fetcher
+    );
     // Fetch marks for student
     const { data: marks = [], isLoading: marksLoading, mutate: mutateMarks } = useSWR(
         studentId && sessionId ? `${API_BASE_URL}/exams/marks/${sessionId}/${studentId}` : null,
@@ -28,7 +31,7 @@ export default function StudentResultModal({ studentId, sessionId, onClose, onSa
 
     // Fetch Exam Settings to know the target category
     const { data: examSettings, isLoading: settingsLoading } = useSWR(
-        `${API_BASE_URL}/exams/settings`,
+        sessionId ? `${API_BASE_URL}/exams/settings?sessionId=${sessionId}` : null,
         fetcher
     );
 

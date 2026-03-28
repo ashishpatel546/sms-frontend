@@ -14,12 +14,12 @@ export default function ExaminationsDataEntryPage() {
     const [subjects, setSubjects] = useState<any[]>([]);
     const [examCategories, setExamCategories] = useState<any[]>([]);
 
+    const [selectedSessionId, setSelectedSessionId] = useState("");
+    
     const { data: examSettings, isLoading: settingsLoading } = useSWR(
-        `${API_BASE_URL}/exams/settings`,
+        selectedSessionId ? `${API_BASE_URL}/exams/settings?sessionId=${selectedSessionId}` : null,
         fetcher
     );
-
-    const [selectedSessionId, setSelectedSessionId] = useState("");
     const [selectedClassId, setSelectedClassId] = useState("");
     const [selectedSectionId, setSelectedSectionId] = useState("");
     const [selectedSubjectId, setSelectedSubjectId] = useState("");
@@ -33,16 +33,28 @@ export default function ExaminationsDataEntryPage() {
             authFetch(`${API_BASE_URL}/classes`).then(r => r.json()),
             authFetch(`${API_BASE_URL}/academic-sessions`).then(r => r.json()),
             authFetch(`${API_BASE_URL}/subjects`).then(r => r.json()),
-            authFetch(`${API_BASE_URL}/exams/categories/active`).then(r => r.json())
-        ]).then(([classesData, sessionsData, subjectsData, examCatsData]) => {
+        ]).then(([classesData, sessionsData, subjectsData]) => {
             setClasses(Array.isArray(classesData) ? classesData : []);
             setSessions(Array.isArray(sessionsData) ? sessionsData : []);
             setSubjects(Array.isArray(subjectsData) ? subjectsData : []);
-            setExamCategories(Array.isArray(examCatsData) ? examCatsData : []);
             const activeSession = sessionsData.find((s: any) => s.isActive);
             if (activeSession) setSelectedSessionId(activeSession.id.toString());
         }).catch(() => { });
     }, []);
+
+    useEffect(() => {
+        if (!selectedSessionId) {
+            setExamCategories([]);
+            return;
+        }
+        authFetch(`${API_BASE_URL}/exams/categories/active?sessionId=${selectedSessionId}`)
+            .then(r => r.json())
+            .then(data => {
+                setExamCategories(Array.isArray(data) ? data : []);
+                setSelectedExamCategoryId("");
+            })
+            .catch(() => setExamCategories([]));
+    }, [selectedSessionId]);
 
     const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const val = e.target.value;

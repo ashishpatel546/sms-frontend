@@ -20,8 +20,15 @@ export default function SettingsPage() {
     const [newSessionEnd, setNewSessionEnd] = useState("");
 
     // --- Examination Settings State ---
-    const { data: examCategories = [], mutate: mutateCategories } = useSWR('/exams/categories', fetcher);
-    const { data: examSettings, mutate: mutateSettings } = useSWR('/exams/settings', fetcher);
+    const [selectedExamSessionId, setSelectedExamSessionId] = useState<number | null>(null);
+    const { data: examCategories = [], mutate: mutateCategories } = useSWR(
+        selectedExamSessionId ? `/exams/categories?sessionId=${selectedExamSessionId}` : null,
+        fetcher
+    );
+    const { data: examSettings, mutate: mutateSettings } = useSWR(
+        selectedExamSessionId ? `/exams/settings?sessionId=${selectedExamSessionId}` : null,
+        fetcher
+    );
     const [newCategoryName, setNewCategoryName] = useState("");
     const [newCategoryDesc, setNewCategoryDesc] = useState("");
     const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
@@ -48,15 +55,18 @@ export default function SettingsPage() {
 
     // Handle initial session selection for grading
     useEffect(() => {
-        if (activeTab === 'examination' && !selectedGradingSessionId && sessions.length > 0) {
+        if (activeTab === 'examination' && sessions.length > 0) {
             const activeSession = sessions.find((s: any) => s.isActive);
-            if (activeSession) {
-                setSelectedGradingSessionId(activeSession.id);
-            } else {
-                setSelectedGradingSessionId(sessions[0].id);
+            const defaultId = activeSession ? activeSession.id : sessions[0].id;
+            
+            if (!selectedGradingSessionId) {
+                setSelectedGradingSessionId(defaultId);
+            }
+            if (!selectedExamSessionId) {
+                setSelectedExamSessionId(defaultId);
             }
         }
-    }, [activeTab, sessions, selectedGradingSessionId]);
+    }, [activeTab, sessions, selectedGradingSessionId, selectedExamSessionId]);
 
 
     // --- Holidays Settings State ---
@@ -213,11 +223,17 @@ export default function SettingsPage() {
     // --- Examination Setting Handlers ---
     const handleCreateCategory = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!selectedExamSessionId) return toast.error("Select a session first");
+
         try {
             const res = await authFetch(`${API_BASE_URL}/exams/categories`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: newCategoryName, description: newCategoryDesc })
+                body: JSON.stringify({ 
+                    name: newCategoryName, 
+                    description: newCategoryDesc,
+                    sessionId: selectedExamSessionId
+                })
             });
             if (res.ok) {
                 toast.success("Exam Category created!");
@@ -269,11 +285,14 @@ export default function SettingsPage() {
     };
 
     const handleSaveSettings = async () => {
+        if (!selectedExamSessionId) return toast.error("Select a session first");
+
         try {
             const res = await authFetch(`${API_BASE_URL}/exams/settings`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                    sessionId: selectedExamSessionId,
                     contributingCategoryIds: selectedCategoryIds,
                     finalTargetCategoryId: selectedTargetCategoryId
                 })
@@ -451,7 +470,22 @@ export default function SettingsPage() {
                     <div className="space-y-6">
                         {/* Exam Categories panel */}
                         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                            <h2 className="text-xl font-bold mb-4 text-slate-800">Exam Categories</h2>
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                                <h2 className="text-xl font-bold text-slate-800">Exam Categories</h2>
+                                <div className="mt-2 sm:mt-0">
+                                    <label className="text-xs text-slate-500 mr-2 uppercase font-semibold">For Session:</label>
+                                    <select
+                                        className="text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-1"
+                                        value={selectedExamSessionId || ''}
+                                        onChange={(e) => setSelectedExamSessionId(Number(e.target.value))}
+                                    >
+                                        <option value="">Select Session</option>
+                                        {sessions.map((s: any) => (
+                                            <option key={s.id} value={s.id}>{s.name} {s.isActive && '(Active)'}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
 
                             {/* Create category form — ADMIN+ only */}
                             {rbac.canManageExamSettings && (
@@ -510,7 +544,22 @@ export default function SettingsPage() {
 
                         {/* Final Result Settings panel */}
                         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                            <h2 className="text-xl font-bold mb-4 text-slate-800">Final Result Settings</h2>
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                                <h2 className="text-xl font-bold text-slate-800">Final Result Settings</h2>
+                                <div className="mt-2 sm:mt-0">
+                                    <label className="text-xs text-slate-500 mr-2 uppercase font-semibold">For Session:</label>
+                                    <select
+                                        className="text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-1"
+                                        value={selectedExamSessionId || ''}
+                                        onChange={(e) => setSelectedExamSessionId(Number(e.target.value))}
+                                    >
+                                        <option value="">Select Session</option>
+                                        {sessions.map((s: any) => (
+                                            <option key={s.id} value={s.id}>{s.name} {s.isActive && '(Active)'}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
 
                             <div className="mb-6">
                                 <label className="block mb-2 text-sm font-semibold text-slate-700">Target Final Category</label>
