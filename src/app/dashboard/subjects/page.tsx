@@ -22,6 +22,21 @@ export default function SubjectsPage() {
     const columns = [
         { header: "ID", accessor: "id", sortable: true, sortKey: "id" },
         { header: "Subject Name", accessor: "name", sortable: true, sortKey: "name" },
+        { header: "Category", accessor: "subjectCategory", sortable: true },
+        {
+            header: "Components",
+            render: (s: any) => (
+                <div className="flex gap-1">
+                    {s.hasTheory && <span className="bg-blue-100 text-blue-800 text-xs font-bold px-1.5 py-0.5 rounded">Th</span>}
+                    {s.hasPractical && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-1.5 py-0.5 rounded">Pr</span>}
+                    {!s.hasTheory && !s.hasPractical && <span className="text-gray-400 text-xs">-</span>}
+                </div>
+            )
+        },
+        {
+            header: "Fee Mapping",
+            render: (s: any) => s.feeCategory ? <span className="text-xs text-gray-500">{s.feeCategory.name}</span> : <span className="text-xs text-gray-300">-</span>
+        },
         {
             header: "Actions",
             render: (row: any) => rbac.canManageSubjects ? (

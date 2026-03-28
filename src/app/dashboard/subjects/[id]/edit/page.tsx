@@ -13,6 +13,8 @@ export default function EditSubjectPage() {
     const [formData, setFormData] = useState({
         name: "",
         subjectCategory: "BASE",
+        hasTheory: true,
+        hasPractical: false,
         feeCategoryId: ""
     });
     const [feeCategories, setFeeCategories] = useState<any[]>([]);
@@ -39,6 +41,8 @@ export default function EditSubjectPage() {
                     setFormData({
                         name: subject.name,
                         subjectCategory: subject.subjectCategory || "BASE",
+                        hasTheory: subject.hasTheory !== undefined ? subject.hasTheory : true,
+                        hasPractical: subject.hasPractical || false,
                         feeCategoryId: subject.feeCategory ? subject.feeCategory.id.toString() : ""
                     });
                 } else {
@@ -55,7 +59,8 @@ export default function EditSubjectPage() {
     }, [id]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const value = e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value;
+        setFormData({ ...formData, [e.target.name]: value });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -66,6 +71,8 @@ export default function EditSubjectPage() {
             const payload: any = {
                 name: formData.name,
                 subjectCategory: formData.subjectCategory,
+                hasTheory: formData.hasTheory,
+                hasPractical: formData.hasPractical
             };
             if (formData.feeCategoryId) {
                 payload.feeCategoryId = parseInt(formData.feeCategoryId);
@@ -153,6 +160,34 @@ export default function EditSubjectPage() {
                                 ))}
                             </select>
                             <p className="mt-1 text-xs text-gray-500">If mapped, opting into this subject will auto-apply this fee type dynamically.</p>
+                        </div>
+                    </div>
+
+                    <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                id="hasTheory"
+                                name="hasTheory"
+                                checked={formData.hasTheory}
+                                onChange={handleChange}
+                                className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <label htmlFor="hasTheory" className="text-sm font-medium text-gray-900">Has Theory Component?</label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                id="hasPractical"
+                                name="hasPractical"
+                                checked={formData.hasPractical}
+                                onChange={handleChange}
+                                className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <label htmlFor="hasPractical" className="text-sm font-medium text-gray-900">Has Practical Component?</label>
+                        </div>
+                        <div className="col-span-1 md:col-span-2">
+                            <p className="text-xs text-gray-500">If both are checked, exam data entry will provide separate fields for Theory and Practical marks which auto-sum to the total.</p>
                         </div>
                     </div>
 

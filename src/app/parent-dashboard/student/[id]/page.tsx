@@ -38,6 +38,7 @@ export default function StudentDashboardPage() {
     const [holidays, setHolidays] = useState<any[]>([]);
     const [sessions, setSessions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [sectionLoading, setSectionLoading] = useState(false);
 
     // Fee payment selection state (multi-select checkboxes)
     const [selectedMonths2Pay, setSelectedMonths2Pay] = useState<string[]>([]);
@@ -48,7 +49,7 @@ export default function StudentDashboardPage() {
 
     const authHeaders = { Authorization: `Bearer ${getToken()}` };
 
-    const loadAll = useCallback(async () => {
+    const loadInitialInfo = useCallback(async () => {
         setLoading(true);
         try {
             // First load sessions and info
@@ -76,47 +77,63 @@ export default function StudentDashboardPage() {
             setAcademicSessionId(activeSessionId);
             setAcademicYearString(activeSessionStr);
 
-            // Now load the rest dependent on session/year
-            const [attRes, feeRes, examRes, holidayRes] = await Promise.all([
-                authFetch(`${API_BASE_URL}/parent/student/${studentId}/attendance?year=${currentYear}&month=${currentMonth}`, { headers: authHeaders }),
-                authFetch(`${API_BASE_URL}/parent/student/${studentId}/fees?academicYear=${activeSessionStr}`, { headers: authHeaders }),
-                authFetch(`${API_BASE_URL}/parent/student/${studentId}/exam-results?sessionId=${activeSessionId}`, { headers: authHeaders }),
-                authFetch(`${API_BASE_URL}/parent/student/${studentId}/holidays`, { headers: authHeaders })
-            ]);
-
-            if (attRes.ok) setAttendance(await attRes.json());
-            if (feeRes.ok) setFees(await feeRes.json());
-            if (examRes.ok) setExamResults(await examRes.json());
-            if (holidayRes.ok) setHolidays(await holidayRes.json());
-
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
-    }, [studentId, currentYear, currentMonth]);
+    }, [studentId]);
 
-    useEffect(() => { loadAll(); }, [loadAll]);
+    useEffect(() => { loadInitialInfo(); }, [loadInitialInfo]);
 
-    const reloadAttendance = useCallback(async () => {
+    const fetchFees = useCallback(async () => {
+        if (!academicYearString) {
+            setSectionLoading(false);
+            return;
+        }
+        setSectionLoading(true);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/fees?academicYear=${academicYearString}`, { headers: authHeaders });
+            if (res.ok) setFees(await res.json());
+        } catch (err) { console.error(err); }
+        finally { setSectionLoading(false); }
+    }, [studentId, academicYearString]);
+
+    const fetchAttendance = useCallback(async () => {
+        setSectionLoading(true);
         try {
             const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/attendance?year=${currentYear}&month=${currentMonth}`, { headers: authHeaders });
             if (res.ok) setAttendance(await res.json());
-        } catch { }
+        } catch (err) { console.error(err); }
+        finally { setSectionLoading(false); }
     }, [studentId, currentYear, currentMonth]);
 
-    useEffect(() => { reloadAttendance(); }, [reloadAttendance]);
-
-    const reloadFeesAndExams = useCallback(async () => {
-        if (!academicYearString || !academicSessionId) return;
+    const fetchExamResults = useCallback(async () => {
+        if (!academicSessionId) {
+            setSectionLoading(false);
+            return;
+        }
+        setSectionLoading(true);
         try {
-            const [feeRes, examRes] = await Promise.all([
-                authFetch(`${API_BASE_URL}/parent/student/${studentId}/fees?academicYear=${academicYearString}`, { headers: authHeaders }),
-                authFetch(`${API_BASE_URL}/parent/student/${studentId}/exam-results?sessionId=${academicSessionId}`, { headers: authHeaders })
-            ]);
-            if (feeRes.ok) setFees(await feeRes.json());
-            if (examRes.ok) setExamResults(await examRes.json());
-        } catch { }
-    }, [studentId, academicYearString, academicSessionId]);
+            const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/exam-results?sessionId=${academicSessionId}`, { headers: authHeaders });
+            if (res.ok) setExamResults(await res.json());
+        } catch (err) { console.error(err); }
+        finally { setSectionLoading(false); }
+    }, [studentId, academicSessionId]);
 
-    useEffect(() => { reloadFeesAndExams(); }, [reloadFeesAndExams]);
+    const fetchHolidays = useCallback(async () => {
+        setSectionLoading(true);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/holidays`, { headers: authHeaders });
+            if (res.ok) setHolidays(await res.json());
+        } catch (err) { console.error(err); }
+        finally { setSectionLoading(false); }
+    }, [studentId]);
+
+    // Unconditionally refetch data whenever tab changes or prerequisites change
+    useEffect(() => {
+        if (activeSection === "fees") fetchFees();
+        else if (activeSection === "attendance") fetchAttendance();
+        else if (activeSection === "results") fetchExamResults();
+        else if (activeSection === "holidays") fetchHolidays();
+    }, [activeSection, fetchFees, fetchAttendance, fetchExamResults, fetchHolidays]);
 
     const toggleMonthPay = (monthKey: string) => {
         setSelectedMonths2Pay(prev =>
@@ -336,20 +353,27 @@ export default function StudentDashboardPage() {
                     ["holidays", "🏝️ Holidays"],
                     ["info", "👤 Personal Info"],
                 ] as const).map(([key, label]) => (
-                    <button key={key} onClick={() => setActiveSection(key)}
+                    <button key={key} onClick={() => { setActiveSection(key); if (key !== 'info') setSectionLoading(true); }}
                         className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all shrink-0 ${activeSection === key ? "bg-indigo-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>
                         {label}
                     </button>
                 ))}
             </div>
 
-            {/* ════════════════════════════════
-                FEE & DUES TAB
-            ════════════════════════════════ */}
-            {activeSection === "fees" && (
-                <div className="space-y-4 animate-scale-in">
-                    {/* Academic year selector + summary */}
-                    <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+            {sectionLoading ? (
+                <div className="flex flex-col items-center justify-center py-24 gap-4 animate-fade-in">
+                    <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-slate-400 text-sm">Loading data...</p>
+                </div>
+            ) : (
+                <>
+                    {/* ════════════════════════════════
+                        FEE & DUES TAB
+                    ════════════════════════════════ */}
+                    {activeSection === "fees" && (
+                        <div className="space-y-4 animate-scale-in">
+                            {/* Academic year selector + summary */}
+                            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
                         <div className="flex items-center gap-3">
                             <label className="text-slate-400 text-sm">Academic Year:</label>
                             <select value={academicSessionId || ""} onChange={handleSessionChange}
@@ -704,7 +728,15 @@ export default function StudentDashboardPage() {
                                                             {mark ? (
                                                                 <div className="flex flex-col items-center">
                                                                     <span className="text-white font-medium">{mark.obtainedMarks}/{mark.totalMarks}</span>
-                                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                                    
+                                                                    {(mark.theoryTotalMarks || mark.practicalTotalMarks) && (
+                                                                        <div className="text-[10px] text-slate-400 mt-1 flex flex-col items-center leading-tight">
+                                                                            {mark.theoryTotalMarks && <span>Th: {mark.theoryObtainedMarks}/{mark.theoryTotalMarks}</span>}
+                                                                            {mark.practicalTotalMarks && <span className="text-purple-300">Pr: {mark.practicalObtainedMarks}/{mark.practicalTotalMarks}</span>}
+                                                                        </div>
+                                                                    )}
+
+                                                                    <div className="flex items-center gap-1.5 mt-1">
                                                                         <span className="text-[10px] text-slate-400">{Math.round(mark.percentage)}%</span>
                                                                         {mark.grade && (
                                                                             <span className={`text-[10px] px-1.5 rounded font-bold ${mark.isPass ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}>
@@ -837,6 +869,8 @@ export default function StudentDashboardPage() {
                         </div>
                     </div>
                 </div>
+            )}
+                </>
             )}
 
             {/* ── Payment Confirmation Modal ── */}

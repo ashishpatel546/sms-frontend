@@ -25,6 +25,9 @@ export default function ExaminationsDataEntryPage() {
     const [selectedSubjectId, setSelectedSubjectId] = useState("");
     const [selectedExamCategoryId, setSelectedExamCategoryId] = useState("");
 
+    const selectedSubject = subjects.find(s => s.id === parseInt(selectedSubjectId));
+    const isSplit = selectedSubject?.hasTheory && selectedSubject?.hasPractical;
+
     const [studentsMarks, setStudentsMarks] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -107,19 +110,25 @@ export default function ExaminationsDataEntryPage() {
         }));
     };
 
-    const handleApplyAllTotalMarks = () => {
+    const handleApplyAllTotalMarks = (field: string = 'totalMarks') => {
         if (studentsMarks.length === 0) return;
-        const firstTotal = studentsMarks[0].totalMarks;
+        const firstTotal = studentsMarks[0][field];
         if (firstTotal === '' || firstTotal === null || firstTotal === undefined) return;
-        setStudentsMarks(prev => prev.map(m => ({ ...m, totalMarks: firstTotal })));
+        setStudentsMarks(prev => prev.map(m => ({ ...m, [field]: firstTotal })));
     };
 
     const handleSaveBulkMarks = async () => {
         if (studentsMarks.length === 0) return;
 
         const invalidStudent = studentsMarks.find(m => {
-            if (m.totalMarks == null || m.totalMarks === '' || m.obtainedMarks == null || m.obtainedMarks === '') return false;
-            return Number(m.obtainedMarks) > Number(m.totalMarks);
+            if (isSplit) {
+                const invalidTh = m.theoryTotalMarks != null && m.theoryTotalMarks !== '' && m.theoryObtainedMarks != null && m.theoryObtainedMarks !== '' && Number(m.theoryObtainedMarks) > Number(m.theoryTotalMarks);
+                const invalidPr = m.practicalTotalMarks != null && m.practicalTotalMarks !== '' && m.practicalObtainedMarks != null && m.practicalObtainedMarks !== '' && Number(m.practicalObtainedMarks) > Number(m.practicalTotalMarks);
+                return invalidTh || invalidPr;
+            } else {
+                if (m.totalMarks == null || m.totalMarks === '' || m.obtainedMarks == null || m.obtainedMarks === '') return false;
+                return Number(m.obtainedMarks) > Number(m.totalMarks);
+            }
         });
 
         if (invalidStudent) {
@@ -138,6 +147,10 @@ export default function ExaminationsDataEntryPage() {
                 studentId: m.studentId,
                 totalMarks: m.totalMarks !== '' && m.totalMarks !== null ? Number(m.totalMarks) : undefined,
                 obtainedMarks: m.obtainedMarks !== '' && m.obtainedMarks !== null ? Number(m.obtainedMarks) : undefined,
+                theoryTotalMarks: m.theoryTotalMarks !== '' && m.theoryTotalMarks !== null ? Number(m.theoryTotalMarks) : undefined,
+                theoryObtainedMarks: m.theoryObtainedMarks !== '' && m.theoryObtainedMarks !== null ? Number(m.theoryObtainedMarks) : undefined,
+                practicalTotalMarks: m.practicalTotalMarks !== '' && m.practicalTotalMarks !== null ? Number(m.practicalTotalMarks) : undefined,
+                practicalObtainedMarks: m.practicalObtainedMarks !== '' && m.practicalObtainedMarks !== null ? Number(m.practicalObtainedMarks) : undefined,
             }))
         };
 
@@ -245,19 +258,41 @@ export default function ExaminationsDataEntryPage() {
                                         <th className="px-4 py-3 text-center">Roll No</th>
                                         <th className="px-4 py-3 min-w-[120px]">
                                             <div className="flex items-center justify-between">
-                                                <span>Total Marks</span>
-                                                <button onClick={handleApplyAllTotalMarks} title="Apply first value to all" className="text-blue-600 hover:text-blue-800 focus:outline-none">
+                                                <span>{isSplit ? 'Th. Total' : 'Total Marks'}</span>
+                                                <button onClick={() => handleApplyAllTotalMarks(isSplit ? 'theoryTotalMarks' : 'totalMarks')} title="Apply first value to all" className="text-blue-600 hover:text-blue-800 focus:outline-none">
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                                                 </button>
                                             </div>
                                         </th>
-                                        <th className="px-4 py-3 min-w-[120px]">Obtained</th>
+                                        <th className="px-4 py-3 min-w-[120px]">{isSplit ? 'Th. Obtained' : 'Obtained'}</th>
+                                        
+                                        {isSplit && (
+                                            <>
+                                                <th className="px-4 py-3 min-w-[120px] bg-purple-50">
+                                                    <div className="flex items-center justify-between text-purple-900">
+                                                        <span>Pr. Total (Opt.)</span>
+                                                        <button onClick={() => handleApplyAllTotalMarks('practicalTotalMarks')} title="Apply first value to all" className="text-purple-600 hover:text-purple-800 focus:outline-none">
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                                        </button>
+                                                    </div>
+                                                </th>
+                                                <th className="px-4 py-3 min-w-[120px] bg-purple-50 text-purple-900">Pr. Obtained (Opt.)</th>
+                                                <th className="px-4 py-3 w-24 text-center bg-gray-100 font-bold">Overall</th>
+                                            </>
+                                        )}
+
                                         <th className="px-4 py-3 w-32 text-center text-blue-600 font-bold">Percentage</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {studentsMarks.map((m: any, idx: number) => {
-                                        const isInvalid = m.totalMarks != null && m.totalMarks !== '' && m.obtainedMarks != null && m.obtainedMarks !== '' && Number(m.obtainedMarks) > Number(m.totalMarks);
+                                        const isInvalidTh = isSplit && m.theoryTotalMarks != null && m.theoryTotalMarks !== '' && m.theoryObtainedMarks != null && m.theoryObtainedMarks !== '' && Number(m.theoryObtainedMarks) > Number(m.theoryTotalMarks);
+                                        const isInvalidPr = isSplit && m.practicalTotalMarks != null && m.practicalTotalMarks !== '' && m.practicalObtainedMarks != null && m.practicalObtainedMarks !== '' && Number(m.practicalObtainedMarks) > Number(m.practicalTotalMarks);
+                                        const isInvalidBase = !isSplit && m.totalMarks != null && m.totalMarks !== '' && m.obtainedMarks != null && m.obtainedMarks !== '' && Number(m.obtainedMarks) > Number(m.totalMarks);
+                                        const isInvalid = isInvalidTh || isInvalidPr || isInvalidBase;
+                                        
+                                        const calculatedTotal = isSplit ? (Number(m.theoryTotalMarks || 0) + Number(m.practicalTotalMarks || 0)) : Number(m.totalMarks || 0);
+                                        const calculatedObtained = isSplit ? (Number(m.theoryObtainedMarks || 0) + Number(m.practicalObtainedMarks || 0)) : Number(m.obtainedMarks || 0);
 
                                         return (
                                             <tr key={m.studentId} className={`border-b ${isInvalid ? 'bg-red-50 hover:bg-red-100' : (idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50')} hover:bg-slate-100`}>
@@ -265,15 +300,31 @@ export default function ExaminationsDataEntryPage() {
                                                 <td className="px-4 py-2 font-semibold text-slate-800">{m.studentName}</td>
                                                 <td className="px-4 py-2 text-center text-slate-600">{m.rollNo || '-'}</td>
                                                 <td className="px-4 py-2">
-                                                    <input type="number" min="0" value={m.totalMarks ?? ''} onChange={e => handleMarkChange(m.studentId, 'totalMarks', e.target.value)} className="w-full text-sm border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 p-1.5" placeholder="Total" />
+                                                    <input type="number" min="0" value={(isSplit ? m.theoryTotalMarks : m.totalMarks) ?? ''} onChange={e => handleMarkChange(m.studentId, isSplit ? 'theoryTotalMarks' : 'totalMarks', e.target.value)} className="w-full text-sm border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 p-1.5" placeholder="Total" />
                                                 </td>
                                                 <td className="px-4 py-2">
-                                                    <input type="number" min="0" max={m.totalMarks ?? ''} value={m.obtainedMarks ?? ''} onChange={e => handleMarkChange(m.studentId, 'obtainedMarks', e.target.value)} className={`w-full text-sm rounded p-1.5 ${isInvalid ? 'border-red-500 ring-1 ring-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50 text-red-700' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`} placeholder="Obtained" title={isInvalid ? "Obtained marks cannot exceed Total marks" : ""} />
-                                                    {isInvalid && <p className="text-[10px] text-red-600 font-bold mt-1 text-center">Exceeds Total</p>}
+                                                    <input type="number" min="0" max={(isSplit ? m.theoryTotalMarks : m.totalMarks) ?? ''} value={(isSplit ? m.theoryObtainedMarks : m.obtainedMarks) ?? ''} onChange={e => handleMarkChange(m.studentId, isSplit ? 'theoryObtainedMarks' : 'obtainedMarks', e.target.value)} className={`w-full text-sm rounded p-1.5 ${(isSplit ? isInvalidTh : isInvalidBase) ? 'border-red-500 ring-1 ring-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50 text-red-700' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`} placeholder="Obtained" title={(isSplit ? isInvalidTh : isInvalidBase) ? "Obtained marks cannot exceed Total marks" : ""} />
+                                                    {(isSplit ? isInvalidTh : isInvalidBase) && <p className="text-[10px] text-red-600 font-bold mt-1 text-center">Exceeds Total</p>}
                                                 </td>
+
+                                                {isSplit && (
+                                                    <>
+                                                        <td className="px-4 py-2 bg-purple-50/30">
+                                                            <input type="number" min="0" value={m.practicalTotalMarks ?? ''} onChange={e => handleMarkChange(m.studentId, 'practicalTotalMarks', e.target.value)} className="w-full text-sm border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500 p-1.5" placeholder="Total" />
+                                                        </td>
+                                                        <td className="px-4 py-2 bg-purple-50/30">
+                                                            <input type="number" min="0" max={m.practicalTotalMarks ?? ''} value={m.practicalObtainedMarks ?? ''} onChange={e => handleMarkChange(m.studentId, 'practicalObtainedMarks', e.target.value)} className={`w-full text-sm rounded p-1.5 ${isInvalidPr ? 'border-red-500 ring-1 ring-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50 text-red-700' : 'border-gray-300 focus:ring-purple-500 focus:border-purple-500'}`} placeholder="Obtained" title={isInvalidPr ? "Obtained marks cannot exceed Total marks" : ""} />
+                                                            {isInvalidPr && <p className="text-[10px] text-red-600 font-bold mt-1 text-center">Exceeds Total</p>}
+                                                        </td>
+                                                        <td className="px-4 py-2 text-center bg-gray-100 font-bold text-gray-800 text-sm">
+                                                            {calculatedTotal > 0 ? `${calculatedObtained}/${calculatedTotal}` : '-'}
+                                                        </td>
+                                                    </>
+                                                )}
+
                                                 <td className={`px-4 py-2 text-center font-bold ${isInvalid ? 'text-red-600 bg-red-100' : 'text-slate-700 bg-slate-50/50'}`}>
-                                                    {m.totalMarks && m.obtainedMarks ?
-                                                        `${((Number(m.obtainedMarks) * 100) / Number(m.totalMarks)).toFixed(1)}%`
+                                                    {calculatedTotal > 0 ?
+                                                        `${((calculatedObtained * 100) / calculatedTotal).toFixed(1)}%`
                                                         : '-'}
                                                 </td>
                                             </tr>

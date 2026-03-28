@@ -90,7 +90,7 @@ export default function StudentResultModal({ studentId, sessionId, onClose, onSa
                 // Should not happen if initialized properly, but safely push
                 next.push({
                     subjectId, examCategoryId: catId,
-                    totalMarks: '', obtainedMarks: '', grade: '', isPass: null,
+                    theoryTotalMarks: '', theoryObtainedMarks: '', practicalTotalMarks: '', practicalObtainedMarks: '', totalMarks: '', obtainedMarks: '', grade: '', isPass: null,
                     [field]: value
                 });
             }
@@ -101,8 +101,17 @@ export default function StudentResultModal({ studentId, sessionId, onClose, onSa
     const handleSave = async () => {
         try {
             const invalidMark = editedMarks.find(m => {
-                if (m.totalMarks == null || m.totalMarks === '' || m.obtainedMarks == null || m.obtainedMarks === '') return false;
-                return Number(m.obtainedMarks) > Number(m.totalMarks);
+                const subject = student?.studentSubjects?.find((s:any) => (s.subject?.id || s.extraSubject?.id) === m.subjectId);
+                const isSplit = subject?.subject?.hasTheory && subject?.subject?.hasPractical;
+
+                if (isSplit) {
+                    const invalidTh = m.theoryTotalMarks != null && m.theoryTotalMarks !== '' && m.theoryObtainedMarks != null && m.theoryObtainedMarks !== '' && Number(m.theoryObtainedMarks) > Number(m.theoryTotalMarks);
+                    const invalidPr = m.practicalTotalMarks != null && m.practicalTotalMarks !== '' && m.practicalObtainedMarks != null && m.practicalObtainedMarks !== '' && Number(m.practicalObtainedMarks) > Number(m.practicalTotalMarks);
+                    return invalidTh || invalidPr;
+                } else {
+                    if (m.totalMarks == null || m.totalMarks === '' || m.obtainedMarks == null || m.obtainedMarks === '') return false;
+                    return Number(m.obtainedMarks) > Number(m.totalMarks);
+                }
             });
 
             if (invalidMark) {
@@ -111,7 +120,7 @@ export default function StudentResultModal({ studentId, sessionId, onClose, onSa
             }
 
             for (const mark of editedMarks) {
-                if (mark.totalMarks !== '' || mark.obtainedMarks !== '' || mark.grade !== '' || mark.isPass !== null) {
+                if (mark.totalMarks !== '' || mark.obtainedMarks !== '' || mark.theoryTotalMarks !== '' || mark.theoryObtainedMarks !== '' || mark.practicalTotalMarks !== '' || mark.practicalObtainedMarks !== '' || mark.grade !== '' || mark.isPass !== null) {
                     await authFetch(`${API_BASE_URL}/exams/marks/student/${studentId}`, {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
@@ -121,8 +130,12 @@ export default function StudentResultModal({ studentId, sessionId, onClose, onSa
                             sessionId: sessionId,
                             subjectId: mark.subjectId,
                             examCategoryId: mark.examCategoryId,
-                            totalMarks: mark.totalMarks !== '' && mark.totalMarks !== null ? Number(mark.totalMarks) : null,
-                            obtainedMarks: mark.obtainedMarks !== '' && mark.obtainedMarks !== null ? Number(mark.obtainedMarks) : null,
+                            totalMarks: mark.totalMarks !== '' && mark.totalMarks !== null ? Number(mark.totalMarks) : undefined,
+                            obtainedMarks: mark.obtainedMarks !== '' && mark.obtainedMarks !== null ? Number(mark.obtainedMarks) : undefined,
+                            theoryTotalMarks: mark.theoryTotalMarks !== '' && mark.theoryTotalMarks !== null ? Number(mark.theoryTotalMarks) : undefined,
+                            theoryObtainedMarks: mark.theoryObtainedMarks !== '' && mark.theoryObtainedMarks !== null ? Number(mark.theoryObtainedMarks) : undefined,
+                            practicalTotalMarks: mark.practicalTotalMarks !== '' && mark.practicalTotalMarks !== null ? Number(mark.practicalTotalMarks) : undefined,
+                            practicalObtainedMarks: mark.practicalObtainedMarks !== '' && mark.practicalObtainedMarks !== null ? Number(mark.practicalObtainedMarks) : undefined,
                             grade: mark.grade || null,
                             isPass: mark.isPass
                         })
@@ -172,7 +185,7 @@ export default function StudentResultModal({ studentId, sessionId, onClose, onSa
                                     <tr>
                                         <th className="px-4 py-3 bg-gray-100 sticky left-0 z-10 w-48 align-bottom" rowSpan={2}>Subject</th>
                                         {categories.map((cat: any) => (
-                                            <th key={cat.id} className="px-4 py-3 text-center border-l border-gray-300 bg-gray-100" colSpan={4}>
+                                            <th key={cat.id} className="px-4 py-3 text-center border-l border-gray-300 bg-gray-100" colSpan={6}>
                                                 {cat.name}
                                             </th>
                                         ))}
@@ -180,11 +193,12 @@ export default function StudentResultModal({ studentId, sessionId, onClose, onSa
                                     <tr>
                                         {categories.map((cat: any) => (
                                             <React.Fragment key={`sub-${cat.id}`}>
-                                                <th className="px-2 py-2 text-center text-[10px] text-gray-500 border-l border-gray-300 bg-gray-50">Total</th>
+                                                <th className="px-2 py-2 text-center text-[10px] text-gray-500 border-l border-gray-300 bg-gray-50">Th. Marks</th>
+                                                <th className="px-2 py-2 text-center text-[10px] text-gray-500 border-l border-gray-200 bg-purple-50">Pr. Marks</th>
+                                                <th className="px-2 py-2 text-center text-[10px] text-gray-500 border-l border-gray-200 bg-gray-50">Total</th>
                                                 <th className="px-2 py-2 text-center text-[10px] text-gray-500 border-l border-gray-200 bg-gray-50">Obtained</th>
                                                 <th className="px-2 py-2 text-center text-[10px] text-blue-600 border-l border-gray-200 bg-blue-50/50">Percentage</th>
-                                                <th className="px-2 py-2 text-center text-[10px] text-gray-500 border-l border-gray-200 bg-gray-50">Grade</th>
-                                                <th className="px-2 py-2 text-center text-[10px] text-gray-500 border-l border-gray-200 bg-gray-50">Status</th>
+                                                <th className="px-2 py-2 text-center text-[10px] text-gray-500 border-l border-gray-200 bg-gray-50">Grade / Status</th>
                                             </React.Fragment>
                                         ))}
                                     </tr>
@@ -201,53 +215,96 @@ export default function StudentResultModal({ studentId, sessionId, onClose, onSa
                                                 {categories.map((cat: any) => {
                                                     const m = getMark(subject.id, cat.id);
                                                     const isTargetCategory = examSettings?.finalTargetCategoryId === cat.id;
-                                                    const isInvalid = m.totalMarks != null && m.totalMarks !== '' && m.obtainedMarks != null && m.obtainedMarks !== '' && Number(m.obtainedMarks) > Number(m.totalMarks);
+                                                    const isSplit = subject.hasTheory && subject.hasPractical;
+
+                                                    const isInvalidTh = isSplit && m.theoryTotalMarks != null && m.theoryTotalMarks !== '' && m.theoryObtainedMarks != null && m.theoryObtainedMarks !== '' && Number(m.theoryObtainedMarks) > Number(m.theoryTotalMarks);
+                                                    const isInvalidPr = isSplit && m.practicalTotalMarks != null && m.practicalTotalMarks !== '' && m.practicalObtainedMarks != null && m.practicalObtainedMarks !== '' && Number(m.practicalObtainedMarks) > Number(m.practicalTotalMarks);
+                                                    const isInvalidBase = !isSplit && m.totalMarks != null && m.totalMarks !== '' && m.obtainedMarks != null && m.obtainedMarks !== '' && Number(m.obtainedMarks) > Number(m.totalMarks);
+                                                    const isInvalid = isInvalidTh || isInvalidPr || isInvalidBase;
+                                                    
+                                                    const calculatedTotal = isSplit ? (Number(m.theoryTotalMarks || 0) + Number(m.practicalTotalMarks || 0)) : Number(m.totalMarks || 0);
+                                                    const calculatedObtained = isSplit ? (Number(m.theoryObtainedMarks || 0) + Number(m.practicalObtainedMarks || 0)) : Number(m.obtainedMarks || 0);
 
                                                     return (
                                                         <React.Fragment key={`td-${cat.id}`}>
                                                             <td className="px-2 py-2 border-l border-gray-300 text-center">
-                                                                {isEditMode ? (
-                                                                    <input type="number" min="0"
-                                                                        className={`w-16 p-1 text-center border rounded text-xs focus:ring-blue-500 focus:border-blue-500 ${isTargetCategory ? 'bg-gray-200 cursor-not-allowed text-gray-500 border-gray-300' : 'border-gray-300'}`}
-                                                                        value={m.totalMarks ?? ''}
-                                                                        onChange={e => handleMarkChange(subject.id, cat.id, 'totalMarks', e.target.value)}
-                                                                        disabled={isTargetCategory}
-                                                                        title={isTargetCategory ? "Auto-calculated" : ""}
-                                                                    />
-                                                                ) : (m.totalMarks ?? '-')}
+                                                                {isSplit ? (
+                                                                    isEditMode ? (
+                                                                        <div className="flex flex-col items-center gap-1">
+                                                                            <input type="number" min="0" placeholder="Tot"
+                                                                                className={`w-14 p-1 text-center border rounded text-[10px] focus:ring-blue-500 focus:border-blue-500 ${isTargetCategory ? 'bg-gray-200 cursor-not-allowed text-gray-500 border-gray-300' : 'border-gray-300'}`}
+                                                                                value={m.theoryTotalMarks ?? ''}
+                                                                                onChange={e => handleMarkChange(subject.id, cat.id, 'theoryTotalMarks', e.target.value)} disabled={isTargetCategory} />
+                                                                            <input type="number" min="0" max={m.theoryTotalMarks ?? ''} placeholder="Obt"
+                                                                                className={`w-14 p-1 text-center border rounded text-[10px] ${isTargetCategory ? 'bg-gray-200 cursor-not-allowed text-gray-500 border-gray-300' : (isInvalidTh ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-300')}`}
+                                                                                value={m.theoryObtainedMarks ?? ''}
+                                                                                onChange={e => handleMarkChange(subject.id, cat.id, 'theoryObtainedMarks', e.target.value)} disabled={isTargetCategory} />
+                                                                        </div>
+                                                                    ) : (m.theoryTotalMarks ? <div className="text-[10px]">Obt: <span className="font-bold">{m.theoryObtainedMarks ?? '-'}</span><br/>Tot: {m.theoryTotalMarks ?? '-'}</div> : '-')
+                                                                ) : <span className="text-gray-300">-</span>}
+                                                            </td>
+                                                            <td className="px-2 py-2 border-l border-gray-300 text-center bg-purple-50/50">
+                                                                {isSplit ? (
+                                                                    isEditMode ? (
+                                                                        <div className="flex flex-col items-center gap-1">
+                                                                            <input type="number" min="0" placeholder="Tot"
+                                                                                className={`w-14 p-1 text-center border rounded text-[10px] focus:ring-purple-500 focus:border-purple-500 ${isTargetCategory ? 'bg-gray-200 cursor-not-allowed text-gray-500 border-gray-300' : 'border-gray-300'}`}
+                                                                                value={m.practicalTotalMarks ?? ''}
+                                                                                onChange={e => handleMarkChange(subject.id, cat.id, 'practicalTotalMarks', e.target.value)} disabled={isTargetCategory} />
+                                                                            <input type="number" min="0" max={m.practicalTotalMarks ?? ''} placeholder="Obt"
+                                                                                className={`w-14 p-1 text-center border rounded text-[10px] ${isTargetCategory ? 'bg-gray-200 cursor-not-allowed text-gray-500 border-gray-300' : (isInvalidPr ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-300')}`}
+                                                                                value={m.practicalObtainedMarks ?? ''}
+                                                                                onChange={e => handleMarkChange(subject.id, cat.id, 'practicalObtainedMarks', e.target.value)} disabled={isTargetCategory} />
+                                                                        </div>
+                                                                    ) : (m.practicalTotalMarks ? <div className="text-[10px] text-purple-900">Obt: <span className="font-bold">{m.practicalObtainedMarks ?? '-'}</span><br/>Tot: {m.practicalTotalMarks ?? '-'}</div> : '-')
+                                                                ) : <span className="text-gray-300">-</span>}
+                                                            </td>
+                                                            <td className="px-2 py-2 border-l border-gray-300 text-center">
+                                                                {isSplit ? (
+                                                                    <span className="font-bold text-slate-600">{calculatedTotal > 0 ? calculatedTotal : '-'}</span>
+                                                                ) : (
+                                                                    isEditMode ? (
+                                                                        <input type="number" min="0"
+                                                                            className={`w-16 p-1 text-center border rounded text-xs focus:ring-blue-500 focus:border-blue-500 ${isTargetCategory ? 'bg-gray-200 cursor-not-allowed text-gray-500 border-gray-300' : 'border-gray-300'}`}
+                                                                            value={m.totalMarks ?? ''}
+                                                                            onChange={e => handleMarkChange(subject.id, cat.id, 'totalMarks', e.target.value)}
+                                                                            disabled={isTargetCategory}
+                                                                        />
+                                                                    ) : (m.totalMarks ?? '-')
+                                                                )}
                                                             </td>
                                                             <td className={`px-2 py-2 border-l border-gray-200 text-center ${isInvalid ? 'bg-red-50' : ''}`}>
-                                                                {isEditMode ? (
-                                                                    <div className="flex flex-col items-center">
-                                                                        <input type="number" min="0" max={m.totalMarks ?? ''}
-                                                                            className={`w-16 p-1 text-center border rounded text-xs ${isTargetCategory ? 'bg-gray-200 cursor-not-allowed text-gray-500 border-gray-300' : (isInvalid ? 'border-red-500 ring-1 ring-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50 text-red-700' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500')}`}
-                                                                            value={m.obtainedMarks ?? ''}
-                                                                            onChange={e => handleMarkChange(subject.id, cat.id, 'obtainedMarks', e.target.value)}
-                                                                            disabled={isTargetCategory}
-                                                                            title={isTargetCategory ? "Auto-calculated" : (isInvalid ? "Obtained marks cannot exceed Total marks" : "")}
-                                                                        />
-                                                                        {isInvalid && <span className="text-[9px] text-red-600 font-bold mt-0.5 leading-tight">Exceeds Total</span>}
-                                                                    </div>
+                                                                {isSplit ? (
+                                                                    <span className={`font-bold ${isInvalid ? 'text-red-600' : 'text-slate-800'}`}>{calculatedTotal > 0 ? calculatedObtained : '-'}</span>
                                                                 ) : (
-                                                                    <span className={isInvalid ? 'text-red-600 font-bold' : ''}>{m.obtainedMarks ?? '-'}</span>
+                                                                    isEditMode ? (
+                                                                        <div className="flex flex-col items-center">
+                                                                            <input type="number" min="0" max={m.totalMarks ?? ''}
+                                                                                className={`w-16 p-1 text-center border rounded text-xs ${isTargetCategory ? 'bg-gray-200 cursor-not-allowed text-gray-500 border-gray-300' : (isInvalidBase ? 'border-red-500 ring-1 ring-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50 text-red-700' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500')}`}
+                                                                                value={m.obtainedMarks ?? ''}
+                                                                                onChange={e => handleMarkChange(subject.id, cat.id, 'obtainedMarks', e.target.value)}
+                                                                                disabled={isTargetCategory}
+                                                                            />
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className={isInvalidBase ? 'text-red-600 font-bold' : ''}>{m.obtainedMarks ?? '-'}</span>
+                                                                    )
                                                                 )}
                                                             </td>
                                                             <td className="px-2 py-2 border-l border-gray-200 text-center font-bold text-slate-700 bg-blue-50/10">
-                                                                {m.totalMarks && m.obtainedMarks ?
-                                                                    `${((Number(m.obtainedMarks) * 100) / Number(m.totalMarks)).toFixed(1)}%`
+                                                                {calculatedTotal > 0 ?
+                                                                    `${((Number(calculatedObtained) * 100) / Number(calculatedTotal)).toFixed(1)}%`
                                                                     : '-'}
                                                             </td>
                                                             <td className="px-2 py-2 border-l border-gray-200 text-center font-bold text-slate-600">
-                                                                {m.grade || '-'}
-                                                            </td>
-                                                            <td className="px-2 py-2 border-l border-gray-200 text-center">
-                                                                {m.isPass === true ? (
-                                                                    <span className="px-2 py-1 text-[9px] font-bold rounded uppercase bg-green-100 text-green-700">Pass</span>
-                                                                ) : m.isPass === false ? (
-                                                                    <span className="px-2 py-1 text-[9px] font-bold rounded uppercase bg-red-100 text-red-700">Fail</span>
-                                                                ) : (
-                                                                    <span className="text-gray-400">-</span>
-                                                                )}
+                                                                <div className="flex flex-col items-center gap-1">
+                                                                    <span>{m.grade || '-'}</span>
+                                                                    {m.isPass === true ? (
+                                                                        <span className="px-2 py-0.5 text-[9px] font-bold rounded uppercase bg-green-100 text-green-700">Pass</span>
+                                                                    ) : m.isPass === false ? (
+                                                                        <span className="px-2 py-0.5 text-[9px] font-bold rounded uppercase bg-red-100 text-red-700">Fail</span>
+                                                                    ) : null}
+                                                                </div>
                                                             </td>
                                                         </React.Fragment>
                                                     );

@@ -196,7 +196,7 @@ export default function LoginPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Parent
+              Parent / Student
             </button>
           </div>
 
@@ -278,7 +278,7 @@ export default function LoginPage() {
               <>
                 <form onSubmit={handleParentLogin} className="space-y-5">
                   <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-sm text-indigo-300">
-                    <span className="font-semibold">ℹ️ Parent Login:</span> Use the mobile number registered for your child&apos;s account.
+                    <span className="font-semibold">ℹ️ Parent / Student Login:</span> Use the mobile number registered for your child&apos;s account.
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">Registered Mobile Number</label>
