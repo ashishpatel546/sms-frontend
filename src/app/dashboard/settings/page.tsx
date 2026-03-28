@@ -291,6 +291,13 @@ export default function SettingsPage() {
         e.preventDefault();
         if (!selectedGradingSessionId) return toast.error("Select a session first");
 
+        const parsedMin = parseFloat(newGradeMin);
+        const parsedMax = parseFloat(newGradeMax);
+        if (isNaN(parsedMin) || isNaN(parsedMax)) return toast.error("Enter valid percentage values");
+        if (parsedMin < 0 || parsedMax < 0) return toast.error("Percentages cannot be negative");
+        if (parsedMax > 100) return toast.error("Percentages cannot exceed 100");
+        if (parsedMin >= parsedMax) return toast.error("Min % must be strictly less than Max %");
+
         try {
             const res = await authFetch(`${API_BASE_URL}/exams/grading-system`, {
                 method: "POST",
@@ -298,8 +305,8 @@ export default function SettingsPage() {
                 body: JSON.stringify({
                     sessionId: selectedGradingSessionId,
                     gradeName: newGradeName,
-                    minPercentage: parseFloat(newGradeMin),
-                    maxPercentage: parseFloat(newGradeMax),
+                    minPercentage: parsedMin,
+                    maxPercentage: parsedMax,
                     isFailGrade: newGradeIsFail
                 })
             });
@@ -312,7 +319,8 @@ export default function SettingsPage() {
                 mutateGradingSystems();
             } else {
                 const data = await res.json();
-                toast.error(data.message || "Failed to create grading");
+                const errMsg = Array.isArray(data.message) ? data.message[0] : (data.message || "Failed to create grading");
+                toast.error(errMsg);
             }
         } catch (err) {
             toast.error("Network error");
@@ -577,11 +585,11 @@ export default function SettingsPage() {
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-[10px] uppercase font-bold text-gray-500">Min %</label>
-                                        <input type="number" step="0.01" value={newGradeMin} onChange={(e) => setNewGradeMin(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:ring-blue-500" />
+                                        <input type="number" step="0.01" min="0" max="100" value={newGradeMin} onChange={(e) => setNewGradeMin(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:ring-blue-500" />
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-[10px] uppercase font-bold text-gray-500">Max % <span className="text-[9px] font-normal lowercase">(excluding)</span></label>
-                                        <input type="number" step="0.01" value={newGradeMax} onChange={(e) => setNewGradeMax(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:ring-blue-500" />
+                                        <input type="number" step="0.01" min="0" max="100" value={newGradeMax} onChange={(e) => setNewGradeMax(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:ring-blue-500" />
                                     </div>
                                     <div className="flex items-center pt-5">
                                         <label className="flex items-center space-x-2 text-sm font-medium text-slate-800 cursor-pointer">
