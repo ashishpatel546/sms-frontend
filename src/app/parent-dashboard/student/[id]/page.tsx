@@ -8,10 +8,11 @@ import { API_BASE_URL } from "@/lib/api";
 import { getToken, authFetch } from "@/lib/auth";
 import toast, { Toaster } from "react-hot-toast";
 import ReceiptModal from "@/components/ReceiptModal";
+import ExamScheduleParentView from "./ExamScheduleParentView";
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-type ActiveSection = "fees" | "attendance" | "results" | "holidays" | "info";
+type ActiveSection = "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule";
 
 declare global {
     interface Window {
@@ -358,10 +359,11 @@ export default function StudentDashboardPage() {
                     ["fees", "💰 Fee & Dues"],
                     ["attendance", "📊 Attendance"],
                     ["results", "📝 Exam Results"],
+                    ["exam-schedule", "📅 Exam Schedule"],
                     ["holidays", "🏝️ Holidays"],
                     ["info", "👤 Personal Info"],
                 ] as const).map(([key, label]) => (
-                    <button key={key} onClick={() => { setActiveSection(key); if (key !== 'info') setSectionLoading(true); }}
+                    <button key={key} onClick={() => { setActiveSection(key); if (key !== 'info' && key !== 'exam-schedule') setSectionLoading(true); }}
                         className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all shrink-0 ${activeSection === key ? "bg-indigo-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>
                         {label}
                     </button>
@@ -1016,6 +1018,16 @@ export default function StudentDashboardPage() {
                     </div>
                 </div>
             )}
+
+            {/* ════════════════════════════════
+                EXAM SCHEDULE TAB
+            ════════════════════════════════ */}
+            {activeSection === "exam-schedule" && info?.classId && academicSessionId && (
+                <div className="animate-scale-in">
+                    <ExamScheduleParentView classId={info.classId} sessionId={academicSessionId} />
+                </div>
+            )}
+
                 </>
             )}
 

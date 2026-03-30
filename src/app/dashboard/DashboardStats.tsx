@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Users, GraduationCap, Presentation, IndianRupee, UserCheck } from 'lucide-react';
 import { authFetch } from '@/lib/auth';
+import { useRbac } from '@/lib/rbac';
 
 interface Stats {
     students: number;
@@ -23,8 +24,10 @@ const defaultStats: Stats = {
 export default function DashboardStats({ selectedDate }: { selectedDate: string }) {
     const [stats, setStats] = useState<Stats>(defaultStats);
     const [loading, setLoading] = useState(true);
+    const [isAdminUser, setIsAdminUser] = useState(false);
 
     useEffect(() => {
+        setIsAdminUser(useRbac().isAdmin);
         async function fetchStats() {
             try {
                 const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -46,7 +49,7 @@ export default function DashboardStats({ selectedDate }: { selectedDate: string 
         fetchStats();
     }, [selectedDate]);
 
-    const statCards = [
+    const statCards: Array<{ title: string; value: string | number; icon: any; color: string; bgColor: string; borderColor: string; }> = [
         {
             title: 'Total Students',
             value: stats.students,
@@ -79,18 +82,21 @@ export default function DashboardStats({ selectedDate }: { selectedDate: string 
             bgColor: 'bg-orange-100',
             borderColor: 'border-orange-200',
         },
-        {
+    ];
+
+    if (isAdminUser) {
+        statCards.push({
             title: 'Fees Collected (M)',
             value: `₹${stats.feesCollected?.toLocaleString('en-IN') || 0}`,
             icon: IndianRupee,
             color: 'text-rose-600',
             bgColor: 'bg-rose-100',
             borderColor: 'border-rose-200',
-        },
-    ];
+        });
+    }
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${isAdminUser ? 'xl:grid-cols-5' : 'xl:grid-cols-4'} gap-6`}>
             {statCards.map((stat, i) => {
                 const Icon = stat.icon;
                 return (

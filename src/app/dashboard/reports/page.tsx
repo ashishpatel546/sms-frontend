@@ -10,6 +10,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
     PieChart, Pie, Cell, LineChart, Line 
 } from 'recharts';
+import { Wallet, AlertCircle, ClipboardList, CalendarCheck, Users, UserCircle } from "lucide-react";
 
 const COLORS = ['#0ea5e9', '#f43f5e', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'];
 
@@ -424,42 +425,72 @@ export default function ReportsDashboard() {
             </div>
 
             {/* TABS */}
-            <div className="flex border-b border-gray-200 mb-6 overflow-x-auto">
+            <div className="flex p-1 bg-slate-100 rounded-xl mb-6 w-full md:w-fit shadow-inner border border-slate-200/60 overflow-x-auto">
                 <button
-                    className={`py-2 px-4 font-semibold text-sm mr-4 border-b-2 whitespace-nowrap transition-colors ${activeTab === 'FEES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                     onClick={() => setActiveTab('FEES')}
+                    className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${
+                        activeTab === 'FEES'
+                            ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                            : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                    }`}
                 >
-                    💰 Fees & Revenue
+                    <Wallet className="w-4 h-4" />
+                    Fees & Revenue
                 </button>
                 <button
-                    className={`py-2 px-4 font-semibold text-sm mr-4 border-b-2 whitespace-nowrap transition-colors ${activeTab === 'PENDING_DUES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                     onClick={() => setActiveTab('PENDING_DUES')}
+                    className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${
+                        activeTab === 'PENDING_DUES'
+                            ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                            : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                    }`}
                 >
-                    💸 Pending Dues
+                    <AlertCircle className="w-4 h-4" />
+                    Pending Dues
                 </button>
                 <button
-                    className={`py-2 px-4 font-semibold text-sm mr-4 border-b-2 whitespace-nowrap transition-colors ${activeTab === 'EXAMINATIONS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                     onClick={() => setActiveTab('EXAMINATIONS')}
+                    className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${
+                        activeTab === 'EXAMINATIONS'
+                            ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                            : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                    }`}
                 >
-                    📝 Examinations
+                    <ClipboardList className="w-4 h-4" />
+                    Examinations
                 </button>
                 <button
-                    className={`py-2 px-4 font-semibold text-sm mr-4 border-b-2 whitespace-nowrap transition-colors ${activeTab === 'ATTENDANCE' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                     onClick={() => setActiveTab('ATTENDANCE')}
+                    className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${
+                        activeTab === 'ATTENDANCE'
+                            ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                            : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                    }`}
                 >
-                    📅 Attendance
+                    <CalendarCheck className="w-4 h-4" />
+                    Attendance
                 </button>
                 <button
-                    className={`py-2 px-4 font-semibold text-sm mr-4 border-b-2 whitespace-nowrap transition-colors ${activeTab === 'STUDENTS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                     onClick={() => setActiveTab('STUDENTS')}
+                    className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${
+                        activeTab === 'STUDENTS'
+                            ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                            : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                    }`}
                 >
-                    👨‍🎓 Students
+                    <Users className="w-4 h-4" />
+                    Students
                 </button>
                 <button
-                    className={`py-2 px-4 font-semibold text-sm mr-4 border-b-2 whitespace-nowrap transition-colors ${activeTab === 'STAFF' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                     onClick={() => setActiveTab('STAFF')}
+                    className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${
+                        activeTab === 'STAFF'
+                            ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                            : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                    }`}
                 >
-                    👩‍🏫 Staff
+                    <UserCircle className="w-4 h-4" />
+                    Staff
                 </button>
             </div>
 

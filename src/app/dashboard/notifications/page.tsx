@@ -6,6 +6,7 @@ import { API_BASE_URL } from "@/lib/api";
 import { useRbac } from "@/lib/rbac";
 import Link from "next/link";
 import FeeRemindersTab from "./FeeRemindersTab";
+import { Megaphone, Banknote } from "lucide-react";
 
 type NotificationAudience = "PARENT" | "STAFF" | "ALL" | "CUSTOM";
 
@@ -76,28 +77,30 @@ export default function NotificationsPage() {
         )}
       </div>
 
-      <div className="flex space-x-2 border-b border-slate-200">
+      <div className="flex p-1 bg-slate-100 rounded-xl mb-6 w-fit shadow-inner border border-slate-200/60">
         {canSendNotifications && (
           <button
             onClick={() => setActiveTab('BROADCASTS')}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
               activeTab === 'BROADCASTS'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
             }`}
           >
+            <Megaphone className="w-4 h-4" />
             General Broadcasts
           </button>
         )}
         {canSendReminders && (
           <button
             onClick={() => setActiveTab('FEE_REMINDERS')}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
               activeTab === 'FEE_REMINDERS'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
             }`}
           >
+            <Banknote className="w-4 h-4" />
             Fee Reminders
           </button>
         )}

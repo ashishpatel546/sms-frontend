@@ -5,7 +5,7 @@ import toast, { Toaster } from "react-hot-toast";
 import useSWR from "swr";
 import { API_BASE_URL, fetcher } from "@/lib/api";
 import { Loader } from "@/components/ui/Loader";
-import { Plus, Trash2, Edit2, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Trash2, Edit2, CheckCircle2, XCircle, Settings2, GraduationCap, CalendarDays } from "lucide-react";
 import { useRbac } from "@/lib/rbac";
 import { authFetch } from "@/lib/auth";
 
@@ -364,25 +364,40 @@ export default function SettingsPage() {
         <main className="p-4 flex-1 h-full overflow-y-auto w-full max-w-7xl mx-auto">
             {error && <div className="p-4 text-red-600 mb-4 bg-red-50 rounded">Error loading sessions</div>}
             <Toaster position="top-right" />
-            <div className="flex justify-between items-center mb-6 border-b border-gray-200">
-                <h1 className="text-3xl font-bold text-slate-800 pb-2">Settings</h1>
-                <div className="flex space-x-1">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4 border-b pb-4 border-gray-200">
+                <h1 className="text-3xl font-bold text-slate-800 pb-2 md:pb-0">Settings</h1>
+                <div className="flex p-1 bg-slate-100 rounded-xl w-full md:w-fit shadow-inner border border-slate-200/60 overflow-x-auto">
                     <button
                         onClick={() => setActiveTab('system')}
-                        className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors border-b-2 ${activeTab === 'system' ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                        className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${
+                            activeTab === 'system'
+                                ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                        }`}
                     >
+                        <Settings2 className="w-4 h-4" />
                         System Settings
                     </button>
                     <button
                         onClick={() => setActiveTab('examination')}
-                        className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors border-b-2 ${activeTab === 'examination' ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                        className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${
+                            activeTab === 'examination'
+                                ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                        }`}
                     >
+                        <GraduationCap className="w-4 h-4" />
                         Examination Settings
                     </button>
                     <button
                         onClick={() => setActiveTab('holidays')}
-                        className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors border-b-2 ${activeTab === 'holidays' ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                        className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${
+                            activeTab === 'holidays'
+                                ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                        }`}
                     >
+                        <CalendarDays className="w-4 h-4" />
                         Holidays
                     </button>
                 </div>

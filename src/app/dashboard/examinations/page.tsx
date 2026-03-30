@@ -7,8 +7,13 @@ import Table from "../../../components/Table";
 import { API_BASE_URL, fetcher } from "@/lib/api";
 import StudentResultModal from "@/components/Examinations/StudentResultModal";
 import { authFetch } from "@/lib/auth";
+import ExamScheduleTab from "./ExamScheduleTab";
+import { ClipboardList, Calendar } from "lucide-react";
 
 export default function ExaminationsPage() {
+    const [activeTab, setActiveTab] = useState<"results" | "schedule">("results");
+    const [hasScheduleTabMounted, setHasScheduleTabMounted] = useState(false);
+
     const [students, setStudents] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
@@ -166,15 +171,45 @@ export default function ExaminationsPage() {
     return (
         <main className="p-4 bg-slate-50 min-h-screen">
             <div className="max-w-7xl mx-auto">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                     <h1 className="text-2xl font-bold text-slate-800">Examinations</h1>
                     <Link href="/dashboard/examinations/data-entry" className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-none w-full sm:w-auto text-center whitespace-nowrap">
                         Bulk Data Entry
                     </Link>
                 </div>
 
-                <div className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 mb-6">
-                    <h2 className="text-lg font-semibold text-slate-700 mb-4">Search Students</h2>
+                {/* Tabs */}
+                <div className="flex p-1 bg-slate-100 rounded-xl mb-6 w-fit shadow-inner border border-slate-200/60">
+                    <button
+                        onClick={() => setActiveTab("results")}
+                        className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                            activeTab === "results"
+                                ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                        }`}
+                    >
+                        <ClipboardList className="w-4 h-4" />
+                        Results & Marks
+                    </button>
+                    <button
+                        onClick={() => {
+                            setActiveTab("schedule");
+                            if (!hasScheduleTabMounted) setHasScheduleTabMounted(true);
+                        }}
+                        className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                            activeTab === "schedule"
+                                ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                        }`}
+                    >
+                        <Calendar className="w-4 h-4" />
+                        Exam Schedule
+                    </button>
+                </div>
+
+                <div className={activeTab === "results" ? "block" : "hidden"}>
+                    <div className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 mb-6">
+                        <h2 className="text-lg font-semibold text-slate-700 mb-4">Search Students</h2>
                     <form onSubmit={handleSearch}>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
                             <div>
@@ -276,8 +311,11 @@ export default function ExaminationsPage() {
                             )}
                         </>
                     )}
-                </div>
-            </div>
+                </div>                </div>
+
+                <div className={activeTab === "schedule" ? "block" : "hidden"}>
+                    {hasScheduleTabMounted && <ExamScheduleTab />}
+                </div>            </div>
 
             {isModalOpen && searchSessionId && selectedStudentId && (
                 <StudentResultModal

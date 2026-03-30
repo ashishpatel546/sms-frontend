@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useRbac } from "@/lib/rbac";
 import { authFetch, getUser } from "@/lib/auth";
 import ReceiptModal from "@/components/ReceiptModal";
+import { Settings, Layers, Wallet, BadgePercent } from "lucide-react";
 
 export default function FeesDashboardPage() {
     const router = useRouter();
@@ -1033,47 +1034,59 @@ export default function FeesDashboardPage() {
                 </div>
             )}
 
-            <div className="mb-6 flex flex-col md:flex-row md:justify-between md:items-center border-b border-gray-200 no-print gap-4">
-                <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
+            <div className="mb-6 flex flex-col lg:flex-row lg:justify-between lg:items-center no-print gap-4">
+                <div className="flex p-1 bg-slate-100 rounded-xl w-fit shadow-inner border border-slate-200/60 overflow-x-auto">
                     {/* Fee Setup tab — ADMIN+ only */}
                     {rbac.canConfigureFees && (
-                        <li className="mr-2">
-                            <button
-                                onClick={() => setActiveTab('SETUP')}
-                                className={`inline-block p-4 border-b-2 rounded-t-lg transition-colors ${activeTab === 'SETUP' ? 'text-blue-600 border-blue-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}
-                            >
-                                Fee Setup (Admin)
-                            </button>
-                        </li>
+                        <button
+                            onClick={() => setActiveTab('SETUP')}
+                            className={`flex items-center whitespace-nowrap gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                                activeTab === 'SETUP'
+                                    ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                            }`}
+                        >
+                            <Settings className="w-4 h-4" />
+                            Fee Setup (Admin)
+                        </button>
                     )}
                     {rbac.canConfigureFees && (
-                        <li className="mr-2">
-                            <button
-                                onClick={() => setActiveTab('STRUCTURES')}
-                                className={`inline-block p-4 border-b-2 rounded-t-lg transition-colors ${activeTab === 'STRUCTURES' ? 'text-blue-600 border-blue-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}
-                            >
-                                Manage Structures
-                            </button>
-                        </li>
+                        <button
+                            onClick={() => setActiveTab('STRUCTURES')}
+                            className={`flex items-center whitespace-nowrap gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                                activeTab === 'STRUCTURES'
+                                    ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                            }`}
+                        >
+                            <Layers className="w-4 h-4" />
+                            Manage Structures
+                        </button>
                     )}
-                    <li className="mr-2">
-                        <button
-                            onClick={() => setActiveTab('COLLECTION')}
-                            className={`inline-block p-4 border-b-2 rounded-t-lg transition-colors ${activeTab === 'COLLECTION' ? 'text-blue-600 border-blue-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}
-                        >
-                            Fee Collection
-                        </button>
-                    </li>
-                    <li className="mr-2">
-                        <button
-                            onClick={() => setActiveTab('APPLY_DISCOUNTS')}
-                            className={`inline-block p-4 border-b-2 rounded-t-lg transition-colors ${activeTab === 'APPLY_DISCOUNTS' ? 'text-blue-600 border-blue-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}
-                        >
-                            Apply Fee Discounts
-                        </button>
-                    </li>
-                </ul>
-                <div className="pb-2 w-full md:w-auto">
+                    <button
+                        onClick={() => setActiveTab('COLLECTION')}
+                        className={`flex items-center whitespace-nowrap gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                            activeTab === 'COLLECTION'
+                                ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                        }`}
+                    >
+                        <Wallet className="w-4 h-4" />
+                        Fee Collection
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('APPLY_DISCOUNTS')}
+                        className={`flex items-center whitespace-nowrap gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                            activeTab === 'APPLY_DISCOUNTS'
+                                ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                        }`}
+                    >
+                        <BadgePercent className="w-4 h-4" />
+                        Apply Fee Discounts
+                    </button>
+                </div>
+                <div className="w-full md:w-auto">
                     <Link href="/dashboard/fees/reports" className="w-full md:w-auto px-4 py-2 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors shadow-sm inline-flex items-center justify-center gap-2">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                         View Fee Reports

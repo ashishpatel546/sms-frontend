@@ -155,7 +155,7 @@ export default function StudentResultModal({ studentId, sessionId, onClose, onSa
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/50 backdrop-blur-sm">
             <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden">
                 <div className="px-4 sm:px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 bg-slate-50">
-                    <h3 className="text-lg sm:text-xl font-bold text-slate-800 break-words w-full sm:w-auto">
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-800 wrap-break-word w-full sm:w-auto">
                         Exam Results {student ? ` - ${student.firstName} ${student.lastName}` : ''}
                     </h3>
                     <div className="flex items-center gap-2 sm:gap-3 self-end sm:self-auto">
