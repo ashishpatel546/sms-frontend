@@ -174,7 +174,7 @@ export default function StudentDashboardPage() {
         setPayProcessing(true);
         try {
             const amount = selectedMonths2Pay.reduce((sum, key) => {
-                const m = dueMonths.find((x: any) => x.key === key);
+                const m = allDueItems.find((x: any) => x.key === key);
                 return sum + (m ? m.amount : 0);
             }, 0);
 
@@ -185,7 +185,7 @@ export default function StudentDashboardPage() {
             const discountNames: string[] = [];
 
             selectedMonths2Pay.forEach(key => {
-                const m = dueMonths.find((x: any) => x.key === key);
+                const m = allDueItems.find((x: any) => x.key === key);
                 if (m) {
                     baseFeeAmount += m.baseFee || 0;
                     discountAmount += m.discount || 0;
@@ -311,8 +311,16 @@ export default function StudentDashboardPage() {
     const dueMonths = fees?.months?.filter((m: any) => !m.paid && m.amount > 0) || [];
     const paidMonths = fees?.months?.filter((m: any) => m.paid && m.amount > 0) || [];
 
+    // Include oneTimeFees in due/paid lists
+    const otFee = fees?.oneTimeFees ?? null;
+    const dueOneTimeFee = otFee && !otFee.paid && otFee.amount > 0 ? otFee : null;
+    const paidOneTimeFee = otFee && otFee.paid && otFee.amount > 0 ? otFee : null;
+
+    // All selectable due items (monthly + one-time)
+    const allDueItems = [...(dueOneTimeFee ? [dueOneTimeFee] : []), ...dueMonths];
+
     const selectedAmountTotal = selectedMonths2Pay.reduce((sum, key) => {
-        const m = dueMonths.find((x: any) => x.key === key);
+        const m = allDueItems.find((x: any) => x.key === key);
         return sum + (m ? m.amount : 0);
     }, 0);
 
@@ -397,16 +405,16 @@ export default function StudentDashboardPage() {
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="text-white font-bold flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-red-400 inline-block"></span>
-                                    Pending Dues ({dueMonths.length})
+                                    Pending Dues ({allDueItems.length})
                                 </h2>
-                                {dueMonths.length > 0 && (
-                                    <button onClick={() => setSelectedMonths2Pay(dueMonths.map((m: any) => m.key))} className="text-xs text-indigo-400 hover:text-indigo-300">
+                                {allDueItems.length > 0 && (
+                                    <button onClick={() => setSelectedMonths2Pay(allDueItems.map((m: any) => m.key))} className="text-xs text-indigo-400 hover:text-indigo-300">
                                         Select All
                                     </button>
                                 )}
                             </div>
 
-                            {dueMonths.length === 0 ? (
+                            {allDueItems.length === 0 ? (
                                 <div className="text-center py-12 flex-1 flex flex-col justify-center">
                                     <div className="text-4xl mb-3">🎉</div>
                                     <p className="text-emerald-400 font-semibold text-base">All fees cleared!</p>
@@ -414,6 +422,98 @@ export default function StudentDashboardPage() {
                                 </div>
                             ) : (
                                 <div className="space-y-2 overflow-y-auto max-h-[350px] pr-2 custom-scrollbar">
+                                    {/* One-Time & Annual Fees — shown at the top if due */}
+                                    {dueOneTimeFee && (() => {
+                                        const m = dueOneTimeFee;
+                                        return (
+                                            <div key={m.key} className={`flex flex-col p-3 rounded-xl transition-all border ${selectedMonths2Pay.includes(m.key) ? "bg-indigo-600/20 border-indigo-500/50 cursor-pointer" : m.status === 'PARTIAL' ? "bg-yellow-500/5 border-yellow-500/30 hover:border-yellow-500/50 cursor-pointer" : "bg-amber-500/5 border-amber-500/30 hover:border-amber-500/50 cursor-pointer"}`}>
+                                                <label className="flex justify-between items-center cursor-pointer w-full">
+                                                    <div className="flex items-center gap-3">
+                                                        <input type="checkbox"
+                                                            checked={selectedMonths2Pay.includes(m.key)}
+                                                            onChange={() => toggleMonthPay(m.key)}
+                                                            className="w-4 h-4 rounded border-slate-600 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-900 bg-slate-800" />
+                                                        <div>
+                                                            <span className="text-amber-300 text-sm font-semibold">{m.label}</span>
+                                                            <span className="ml-2 text-[9px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-full font-bold uppercase tracking-wider">Annual</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="text-right">
+                                                            <div className="text-white font-bold text-sm">₹{Number(m.amount).toLocaleString()}</div>
+                                                            {m.status === 'PARTIAL' && m.totalPaid > 0 && (
+                                                                <div className="text-yellow-400 text-[10px]">₹{Number(m.totalPaid).toLocaleString()} paid of ₹{Number(m.totalDue).toLocaleString()}</div>
+                                                            )}
+                                                        </div>
+                                                        {m.status === 'PARTIAL' ? (
+                                                            <span className="text-yellow-400 text-[10px] px-2 py-0.5 bg-yellow-500/10 rounded-full font-bold uppercase tracking-wider">Partial</span>
+                                                        ) : (
+                                                            <span className="text-red-400 text-[10px] px-2 py-0.5 bg-red-500/10 rounded-full font-bold uppercase tracking-wider">Due</span>
+                                                        )}
+                                                    </div>
+                                                </label>
+                                                {(m.categoryBreakdown?.length > 0 || m.discount > 0 || m.lateFee > 0) && (
+                                                    <div className="mt-2 ml-7 pl-3 border-l-2 border-amber-500/30 space-y-1">
+                                                        {m.categoryBreakdown?.map((cat: any, i: number) => (
+                                                            <div key={i} className="flex justify-between text-xs text-slate-400">
+                                                                <span>{cat.categoryName}</span>
+                                                                <span>₹{cat.amount}</span>
+                                                            </div>
+                                                        ))}
+                                                        {m.discount > 0 && (
+                                                            <div className="flex justify-between text-xs text-emerald-400/80">
+                                                                <span>Discount</span>
+                                                                <span>-₹{m.discount}</span>
+                                                            </div>
+                                                        )}
+                                                        {m.lateFee > 0 && (
+                                                            <div className="flex justify-between text-xs text-red-400/80">
+                                                                <span>Late Fee</span>
+                                                                <span>+₹{m.lateFee}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {m.status === 'PARTIAL' && m.payments && m.payments.length > 0 && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            if (m.payments && m.payments.length > 1) {
+                                                                setShowReceiptsListModal({
+                                                                    feeMonth: m.label,
+                                                                    payments: m.payments,
+                                                                    adjustments: m.adjustments ?? [],
+                                                                    balanceRemaining: m.outstanding ?? 0,
+                                                                    totalDue: m.totalDue,
+                                                                    studentName: info ? `${info.firstName} ${info.lastName}` : undefined,
+                                                                    studentClass: info?.className,
+                                                                    studentSection: info?.sectionName,
+                                                                });
+                                                            } else {
+                                                                const paymentToView = m.payments?.[0] || m.payment;
+                                                                setShowReceipt({
+                                                                    ...paymentToView,
+                                                                    components: paymentToView?.components ?? [],
+                                                                    feeMonth: m.label,
+                                                                    studentName: info ? `${info.firstName} ${info.lastName}` : undefined,
+                                                                    studentClass: info?.className,
+                                                                    studentSection: info?.sectionName,
+                                                                    adjustments: m.adjustments ?? [],
+                                                                    balanceRemaining: m.outstanding ?? 0,
+                                                                    totalPayable: m.totalDue ?? null,
+                                                                });
+                                                            }
+                                                        }}
+                                                        className="mt-2 ml-7 text-xs px-2.5 py-1 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 rounded-lg transition-colors border border-yellow-500/20 hover:border-yellow-500/40"
+                                                    >
+                                                        View Partial Receipt
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* Monthly dues */}
                                     {dueMonths.map((m: any) => (
                                         <div key={m.key} className={`flex flex-col p-3 rounded-xl transition-all border ${selectedMonths2Pay.includes(m.key) ? "bg-indigo-600/20 border-indigo-500/50 cursor-pointer" : m.status === 'PARTIAL' ? "bg-yellow-500/5 border-yellow-500/30 hover:border-yellow-500/50 cursor-pointer" : "bg-slate-800/50 border-slate-700/50 hover:border-slate-600 cursor-pointer"}`}>
                                             <label className="flex justify-between items-center cursor-pointer w-full">
@@ -509,7 +609,7 @@ export default function StudentDashboardPage() {
                             {selectedMonths2Pay.length > 0 && (
                                 <div className="mt-4 pt-4 border-t border-slate-800">
                                     <div className="flex items-center justify-between mb-3 text-sm">
-                                        <span className="text-slate-400">Selected ({selectedMonths2Pay.length} months)</span>
+                                        <span className="text-slate-400">Selected ({selectedMonths2Pay.length} item{selectedMonths2Pay.length !== 1 ? 's' : ''})</span>
                                         <span className="text-white font-bold text-xl">₹{selectedAmountTotal.toLocaleString()}</span>
                                     </div>
                                     <button onClick={handleConfirmPay}
@@ -524,12 +624,58 @@ export default function StudentDashboardPage() {
                         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col h-full">
                             <h2 className="text-white font-bold mb-4 flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
-                                Payment History ({paidMonths.length})
+                                Payment History ({paidMonths.length + (paidOneTimeFee ? 1 : 0)})
                             </h2>
-                            {paidMonths.length === 0 ? (
+                            {paidMonths.length === 0 && !paidOneTimeFee ? (
                                 <p className="text-slate-500 text-sm text-center py-12 flex-1 flex flex-col justify-center">No payment history found for {academicYearString}</p>
                             ) : (
                                 <div className="space-y-2 overflow-y-auto max-h-[350px] pr-2 custom-scrollbar">
+                                    {/* Paid One-Time & Annual Fees at top */}
+                                    {paidOneTimeFee && (() => {
+                                        const m = paidOneTimeFee;
+                                        return (
+                                            <div key={m.key} className="flex items-center gap-3 p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl">
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-amber-300 text-sm font-semibold">{m.label}</p>
+                                                    <span className="text-[9px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-full font-bold uppercase tracking-wider">Annual</span>
+                                                </div>
+                                                <div className="text-right whitespace-nowrap">
+                                                    <div className="text-emerald-400 text-sm font-bold block mb-1">₹{(m.payments && m.payments.length > 1 ? m.payments.reduce((sum: number, p: any) => sum + Number(p.amountPaid || 0), 0) : Number(m.payment?.amountPaid || 0)).toLocaleString()}</div>
+                                                    <button onClick={() => {
+                                                        if (m.payments && m.payments.length > 1) {
+                                                            setShowReceiptsListModal({
+                                                                feeMonth: m.label,
+                                                                payments: m.payments,
+                                                                adjustments: m.adjustments ?? [],
+                                                                balanceRemaining: m.outstanding ?? 0,
+                                                                totalDue: m.totalDue,
+                                                                studentName: info ? `${info.firstName} ${info.lastName}` : undefined,
+                                                                studentClass: info?.className,
+                                                                studentSection: info?.sectionName,
+                                                            });
+                                                        } else {
+                                                            const paymentToView = m.payment;
+                                                            setShowReceipt({
+                                                                ...paymentToView,
+                                                                components: paymentToView?.components ?? [],
+                                                                feeMonth: m.label,
+                                                                studentName: info ? `${info.firstName} ${info.lastName}` : undefined,
+                                                                studentClass: info?.className,
+                                                                studentSection: info?.sectionName,
+                                                                adjustments: m.adjustments ?? [],
+                                                                balanceRemaining: m.outstanding ?? 0,
+                                                                totalPayable: m.totalDue ?? null,
+                                                            });
+                                                        }
+                                                    }}
+                                                        className="text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors border border-slate-700 hover:border-slate-500">
+                                                        Receipt
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+
                                     {paidMonths.map((m: any) => (
                                         <div key={m.key} className="flex items-center gap-3 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
                                             <div className="flex-1 min-w-0">
