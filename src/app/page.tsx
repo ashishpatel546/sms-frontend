@@ -114,8 +114,8 @@ export default function LoginPage() {
               <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="text-white font-extrabold text-4xl tracking-tight drop-shadow-md hover:text-indigo-200 transition-colors">
                 Colegios
               </a>
-              <a href="https://appme.in" target="_blank" rel="noopener noreferrer" className="text-indigo-100 text-sm font-bold tracking-widest uppercase drop-shadow-md mt-1 hover:text-white transition-colors">
-                A Flagship Product of AppMe Pvt Ltd.
+              <a href="https://appme.in" target="_blank" rel="noopener noreferrer" className="text-indigo-100 text-sm font-bold tracking-widest drop-shadow-md mt-1 hover:text-white transition-colors">
+                A Flagship Product of AppMe Soft Pvt Ltd.
               </a>
             </div>
           </div>
@@ -373,7 +373,7 @@ export default function LoginPage() {
             <p>
               Developed by{" "}
               <a href="https://appme.in" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-400 font-medium transition-colors">
-                AppMe Pvt Ltd.
+                AppMe Soft Pvt Ltd.
               </a>
             </p>
           </div>

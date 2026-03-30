@@ -35,7 +35,9 @@ export default function NewNotificationPage() {
     handleSubmit,
     control,
     formState: { errors, isSubmitting }
-  } = useForm<{ title: string; message: string; targetAudience: NotificationAudience }>();
+  } = useForm<{ title: string; message: string; targetAudience: NotificationAudience }>({
+    defaultValues: { title: "", message: "", targetAudience: "" as unknown as NotificationAudience }
+  });
 
   const watchAudience = useWatch({ control, name: "targetAudience" });
 
@@ -212,7 +214,7 @@ export default function NewNotificationPage() {
               {...register("targetAudience", { required: "Please select an audience" })}
               className="w-full px-4 py-3 border border-slate-200 text-slate-700 bg-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
             >
-              <option value="" disabled selected>-- Select an Audience --</option>
+              <option value="" disabled>-- Select an Audience --</option>
               <option value="ALL">All Users (Parents & Staff)</option>
               <option value="PARENT">All Parents</option>
               <option value="STAFF">All Staff Members</option>

@@ -48,16 +48,27 @@ export default function ReportsDashboard() {
 
     // Pending Dues Filters
     const [pendingSessionId, setPendingSessionId] = useState('');
+    
+    // Pending Dues Notification State
+    const [showNotifModal, setShowNotifModal] = useState(false);
+    const [useCustomMessage, setUseCustomMessage] = useState(false);
+    const [customNotifMessage, setCustomNotifMessage] = useState('');
+    const [sendingNotif, setSendingNotif] = useState(false);
     const [pendingClassId, setPendingClassId] = useState('');
     const [pendingAvailableSections, setPendingAvailableSections] = useState<any[]>([]);
     const [pendingSectionId, setPendingSectionId] = useState('');
-    const [pendingStudentId, setPendingStudentId] = useState('');
+    const [pendingSearchQuery, setPendingSearchQuery] = useState('');
     const [pendingMobile, setPendingMobile] = useState('');
     const [pendingMonth, setPendingMonth] = useState('');
     const [pendingDuesData, setPendingDuesData] = useState<any[]>([]);
     const [pendingDuesLoading, setPendingDuesLoading] = useState(false);
     const [pendingSortColumn, setPendingSortColumn] = useState<string>('className');
     const [pendingSortDirection, setPendingSortDirection] = useState<'asc' | 'desc'>('asc');
+    const [selectedPendingStudents, setSelectedPendingStudents] = useState<number[]>([]);
+
+    // Pagination for pending dues
+    const [pendingDuesPage, setPendingDuesPage] = useState(1);
+    const PENDING_DUES_PER_PAGE = 20;
 
     // Pagination for adjustments
     const [feeAdjPage, setFeeAdjPage] = useState(1);
@@ -242,7 +253,6 @@ export default function ReportsDashboard() {
                 )}`;
                 if (pendingClassId) query += `&classId=${pendingClassId}`;
                 if (pendingSectionId) query += `&sectionId=${pendingSectionId}`;
-                if (pendingStudentId) query += `&studentId=${pendingStudentId}`;
                 if (pendingMobile) query += `&mobileNumber=${pendingMobile}`;
                 if (pendingMonth) query += `&month=${pendingMonth}`;
 
@@ -261,12 +271,22 @@ export default function ReportsDashboard() {
             }
         };
         
-        // Add a small debounce if typing Student ID or Mobile
+        // Add a small debounce if typing Mobile
         const timeoutId = setTimeout(() => {
             fetchData();
         }, 500);
         return () => clearTimeout(timeoutId);
-    }, [activeTab, pendingSessionId, pendingClassId, pendingSectionId, pendingStudentId, pendingMobile, pendingMonth, academicSessions]);
+    }, [activeTab, pendingSessionId, pendingClassId, pendingSectionId, pendingMobile, pendingMonth, academicSessions]);
+
+    // Reset pagination on filter change
+    useEffect(() => {
+        setPendingDuesPage(1);
+    }, [pendingSessionId, pendingClassId, pendingSectionId, pendingMobile, pendingMonth, pendingSearchQuery]);
+
+    // Reset pagination on filter change
+    useEffect(() => {
+        setPendingDuesPage(1);
+    }, [pendingSessionId, pendingClassId, pendingSectionId, pendingMobile, pendingMonth, pendingSearchQuery]);
 
     // Sorting Helper for Pending Dues
     const handlePendingSort = (column: string) => {
@@ -290,14 +310,29 @@ export default function ReportsDashboard() {
         return 0;
     });
 
+    // Client-side filtering for student name and ID
+    const displayedPendingDuesAll = sortedPendingDues.filter(row => {
+        if (!pendingSearchQuery) return true;
+        const q = pendingSearchQuery.toLowerCase();
+        const fullName = `${row.firstName || ''} ${row.lastName || ''}`.toLowerCase();
+        return fullName.includes(q) || row.studentId.toString().includes(q) || (row.rollNo && row.rollNo.toString().includes(q));
+    });
+    
+    // Pagination logic
+    const totalPendingPages = Math.ceil(displayedPendingDuesAll.length / PENDING_DUES_PER_PAGE);
+    const paginatedPendingDues = displayedPendingDuesAll.slice(
+        (pendingDuesPage - 1) * PENDING_DUES_PER_PAGE,
+        pendingDuesPage * PENDING_DUES_PER_PAGE
+    );
+
     const exportToCSV = () => {
-        if (sortedPendingDues.length === 0) {
+        if (displayedPendingDuesAll.length === 0) {
             toast.error('No data to export');
             return;
         }
 
         const headers = ['Student ID', 'Roll No', 'First Name', 'Last Name', 'Mobile', 'Class', 'Section', 'Pending Amount'];
-        const rows = sortedPendingDues.map(row => [
+        const rows = displayedPendingDuesAll.map(row => [
             row.studentId,
             row.rollNo || '',
             `"${row.firstName || ''}"`,
@@ -321,6 +356,45 @@ export default function ReportsDashboard() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    };
+
+    const handleSendNotification = async () => {
+        if (selectedPendingStudents.length === 0) return;
+        
+        setSendingNotif(true);
+        try {
+            const defaultMsg = "Dear Parent, this is a reminder that your ward has pending school fee dues. Kindly clear the outstanding amount at the earliest to avoid any inconvenience. Thank you.";
+            const message = useCustomMessage ? customNotifMessage : defaultMsg;
+            const targetUserIds = selectedPendingStudents.map(id => id.toString());
+            
+            const payload = {
+                title: "Fee Payment Reminder",
+                message,
+                targetAudience: "CUSTOM",
+                targetUserIds
+            };
+
+            const res = await authFetch(`${API_BASE_URL}/api/app-notifications`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                toast.success('Notification sent successfully!');
+                setShowNotifModal(false);
+                setUseCustomMessage(false);
+                setCustomNotifMessage('');
+            } else {
+                const errData = await res.json();
+                toast.error(errData.message || 'Failed to send notification');
+            }
+        } catch (e) {
+            console.error("Notification Error:", e);
+            toast.error('An error occurred while sending notification');
+        } finally {
+            setSendingNotif(false);
+        }
     };
 
     useEffect(() => {
@@ -588,17 +662,29 @@ export default function ReportsDashboard() {
                                 <h2 className="text-xl font-bold text-slate-800">Pending Dues Report</h2>
                                 <p className="text-sm text-gray-500">Filter and export pending fee dues.</p>
                             </div>
-                            <button
-                                onClick={exportToCSV}
-                                disabled={pendingDuesData.length === 0}
-                                className="bg-emerald-600 text-white px-4 py-2 rounded shadow hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                Download CSV
-                            </button>
+                            <div className="flex flex-col sm:flex-row gap-2">
+                                <button
+                                    onClick={() => setShowNotifModal(true)}
+                                    disabled={selectedPendingStudents.length === 0}
+                                    className="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                    </svg>
+                                    Notify Selected
+                                </button>
+                                <button
+                                    onClick={exportToCSV}
+                                    disabled={paginatedPendingDues.length === 0}
+                                    className="bg-emerald-600 text-white px-4 py-2 rounded shadow hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                    Download CSV
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-6">
                             <div>
                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Session</label>
                                 <select
@@ -644,14 +730,14 @@ export default function ReportsDashboard() {
                                     ))}
                                 </select>
                             </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Student ID</label>
+                            <div className="lg:col-span-2">
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Search Student</label>
                                 <input
                                     type="text"
-                                    placeholder="ID..."
+                                    placeholder="Search by ID, Roll No, or Name..."
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
-                                    value={pendingStudentId}
-                                    onChange={(e) => setPendingStudentId(e.target.value)}
+                                    value={pendingSearchQuery}
+                                    onChange={(e) => setPendingSearchQuery(e.target.value)}
                                 />
                             </div>
                             <div>
@@ -697,33 +783,96 @@ export default function ReportsDashboard() {
                                 <table className="w-full text-sm text-left text-gray-600">
                                     <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
                                         <tr>
-                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100" onClick={() => handlePendingSort('studentId')}>
-                                                Student ID {pendingSortColumn === 'studentId' && (pendingSortDirection === 'asc' ? '↑' : '↓')}
+                                            <th className="px-5 py-3 w-10">
+                                                <input 
+                                                    type="checkbox"
+                                                    checked={paginatedPendingDues.length > 0 && selectedPendingStudents.length === paginatedPendingDues.length}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedPendingStudents(paginatedPendingDues.map(r => r.studentId));
+                                                        } else {
+                                                            setSelectedPendingStudents([]);
+                                                        }
+                                                    }}
+                                                    className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 focus:ring-2"
+                                                />
                                             </th>
-                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100" onClick={() => handlePendingSort('rollNo')}>
-                                                Roll No {pendingSortColumn === 'rollNo' && (pendingSortDirection === 'asc' ? '↑' : '↓')}
+                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100 group select-none" onClick={() => handlePendingSort('studentId')}>
+                                                <div className="flex items-center gap-1">
+                                                    Student ID 
+                                                    <span className="text-gray-400 text-xs">
+                                                        {pendingSortColumn === 'studentId' ? (pendingSortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
+                                                    </span>
+                                                </div>
                                             </th>
-                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100" onClick={() => handlePendingSort('firstName')}>
-                                                Name {pendingSortColumn === 'firstName' && (pendingSortDirection === 'asc' ? '↑' : '↓')}
+                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100 group select-none" onClick={() => handlePendingSort('rollNo')}>
+                                                <div className="flex items-center gap-1">
+                                                    Roll No 
+                                                    <span className="text-gray-400 text-xs">
+                                                        {pendingSortColumn === 'rollNo' ? (pendingSortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
+                                                    </span>
+                                                </div>
                                             </th>
-                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100" onClick={() => handlePendingSort('className')}>
-                                                Class {pendingSortColumn === 'className' && (pendingSortDirection === 'asc' ? '↑' : '↓')}
+                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100 group select-none" onClick={() => handlePendingSort('firstName')}>
+                                                <div className="flex items-center gap-1">
+                                                    Name 
+                                                    <span className="text-gray-400 text-xs">
+                                                        {pendingSortColumn === 'firstName' ? (pendingSortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
+                                                    </span>
+                                                </div>
                                             </th>
-                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100" onClick={() => handlePendingSort('sectionName')}>
-                                                Section {pendingSortColumn === 'sectionName' && (pendingSortDirection === 'asc' ? '↑' : '↓')}
+                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100 group select-none" onClick={() => handlePendingSort('className')}>
+                                                <div className="flex items-center gap-1">
+                                                    Class 
+                                                    <span className="text-gray-400 text-xs">
+                                                        {pendingSortColumn === 'className' ? (pendingSortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
+                                                    </span>
+                                                </div>
                                             </th>
-                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100" onClick={() => handlePendingSort('mobile')}>
-                                                Mobile {pendingSortColumn === 'mobile' && (pendingSortDirection === 'asc' ? '↑' : '↓')}
+                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100 group select-none" onClick={() => handlePendingSort('sectionName')}>
+                                                <div className="flex items-center gap-1">
+                                                    Section 
+                                                    <span className="text-gray-400 text-xs">
+                                                        {pendingSortColumn === 'sectionName' ? (pendingSortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
+                                                    </span>
+                                                </div>
                                             </th>
-                                            <th className="px-5 py-3 font-semibold text-right cursor-pointer hover:bg-slate-100" onClick={() => handlePendingSort('pendingAmount')}>
-                                                Pending Amount {pendingSortColumn === 'pendingAmount' && (pendingSortDirection === 'asc' ? '↑' : '↓')}
+                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100 group select-none" onClick={() => handlePendingSort('mobile')}>
+                                                <div className="flex items-center gap-1">
+                                                    Mobile 
+                                                    <span className="text-gray-400 text-xs">
+                                                        {pendingSortColumn === 'mobile' ? (pendingSortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
+                                                    </span>
+                                                </div>
+                                            </th>
+                                            <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100 group select-none" onClick={() => handlePendingSort('pendingAmount')}>
+                                                <div className="flex items-center justify-end gap-1">
+                                                    Pending Amount 
+                                                    <span className="text-gray-400 text-xs">
+                                                        {pendingSortColumn === 'pendingAmount' ? (pendingSortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
+                                                    </span>
+                                                </div>
                                             </th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {sortedPendingDues.length > 0 ? (
-                                            sortedPendingDues.map((row, idx) => (
+                                        {paginatedPendingDues.length > 0 ? (
+                                            paginatedPendingDues.map((row, idx) => (
                                                 <tr key={idx} className="border-b border-gray-100 hover:bg-slate-50/50">
+                                                    <td className="px-5 py-3">
+                                                        <input 
+                                                            type="checkbox"
+                                                            checked={selectedPendingStudents.includes(row.studentId)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setSelectedPendingStudents(prev => [...prev, row.studentId]);
+                                                                } else {
+                                                                    setSelectedPendingStudents(prev => prev.filter(id => id !== row.studentId));
+                                                                }
+                                                            }}
+                                                            className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 focus:ring-2"
+                                                        />
+                                                    </td>
                                                     <td className="px-5 py-3 font-medium text-blue-600">{row.studentId}</td>
                                                     <td className="px-5 py-3">{row.rollNo || '-'}</td>
                                                     <td className="px-5 py-3 font-semibold text-slate-800">{row.firstName} {row.lastName}</td>
@@ -735,18 +884,18 @@ export default function ReportsDashboard() {
                                             ))
                                         ) : (
                                             <tr>
-                                                <td colSpan={7} className="p-8 text-center text-gray-500">
+                                                <td colSpan={8} className="p-8 text-center text-gray-500">
                                                     No pending dues found matching the selected filters.
                                                 </td>
                                             </tr>
                                         )}
                                     </tbody>
-                                    {sortedPendingDues.length > 0 && (
+                                    {paginatedPendingDues.length > 0 && (
                                         <tfoot className="bg-slate-50 border-t border-gray-200 font-bold text-slate-800 sticky bottom-0">
                                             <tr>
-                                                <td colSpan={6} className="px-5 py-3 text-right uppercase text-xs text-slate-500">Total Pending Dues</td>
+                                                <td colSpan={7} className="px-5 py-3 text-right uppercase text-xs text-slate-500">Total Pending Dues</td>
                                                 <td className="px-5 py-3 text-right text-red-600 text-lg">
-                                                    ₹{sortedPendingDues.reduce((sum, row) => sum + row.pendingAmount, 0).toLocaleString()}
+                                                    ₹{displayedPendingDuesAll.reduce((sum, row) => sum + row.pendingAmount, 0).toLocaleString()}
                                                 </td>
                                             </tr>
                                         </tfoot>
@@ -754,6 +903,34 @@ export default function ReportsDashboard() {
                                 </table>
                             )}
                         </div>
+
+                        {/* Pending Dues Pagination Controls */}
+                        {totalPendingPages > 1 && (
+                            <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50 mt-4 rounded-lg">
+                                <div className="text-sm text-slate-500">
+                                    Showing <span className="font-medium text-slate-900">{(pendingDuesPage - 1) * PENDING_DUES_PER_PAGE + 1}</span> to <span className="font-medium text-slate-900">{Math.min(pendingDuesPage * PENDING_DUES_PER_PAGE, displayedPendingDuesAll.length)}</span> of <span className="font-medium text-slate-900">{displayedPendingDuesAll.length}</span> students
+                                </div>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => setPendingDuesPage(p => Math.max(1, p - 1))}
+                                        disabled={pendingDuesPage === 1}
+                                        className="px-3 py-1 border border-slate-200 rounded text-sm disabled:opacity-50 bg-white hover:bg-slate-50 transition"
+                                    >
+                                        Previous
+                                    </button>
+                                    <span className="px-3 py-1 text-sm flex items-center">
+                                        Page {pendingDuesPage} of {totalPendingPages}
+                                    </span>
+                                    <button 
+                                        onClick={() => setPendingDuesPage(p => Math.min(totalPendingPages, p + 1))}
+                                        disabled={pendingDuesPage === totalPendingPages}
+                                        className="px-3 py-1 border border-slate-200 rounded text-sm disabled:opacity-50 bg-white hover:bg-slate-50 transition"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -1064,6 +1241,75 @@ export default function ReportsDashboard() {
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showNotifModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-scale-in">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                </svg>
+                                Send Fee Reminder Notification
+                            </h3>
+                            <button onClick={() => setShowNotifModal(false)} className="text-slate-400 hover:text-slate-600 transition">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-5">
+                            <div className="bg-indigo-50 text-indigo-700 p-3 rounded-lg text-sm border border-indigo-100 flex gap-3 items-center">
+                                <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <span>Will notify parents of <strong>{selectedPendingStudents.length}</strong> selected student(s).</span>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1">Notification Title</label>
+                                <input type="text" value="Fee Payment Reminder" disabled className="w-full border-slate-200 bg-slate-50 text-slate-500 rounded-lg p-2.5 text-sm" />
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm font-semibold text-slate-700">Message Content</label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" checked={useCustomMessage} onChange={(e) => setUseCustomMessage(e.target.checked)} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                                        <span className="text-xs text-slate-600 font-medium">Use custom message</span>
+                                    </label>
+                                </div>
+                                
+                                {useCustomMessage ? (
+                                    <textarea
+                                        value={customNotifMessage}
+                                        onChange={(e) => setCustomNotifMessage(e.target.value)}
+                                        placeholder="Write your custom reminder message here..."
+                                        className="w-full border-slate-300 rounded-lg p-3 text-sm focus:ring-indigo-500 focus:border-indigo-500 min-h-[120px]"
+                                    />
+                                ) : (
+                                    <div className="w-full border border-slate-200 bg-slate-50 rounded-lg p-4 text-sm text-slate-500 italic">
+                                        "Dear Parent, this is a reminder that your ward has pending school fee dues. Kindly clear the outstanding amount at the earliest to avoid any inconvenience. Thank you."
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="p-5 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowNotifModal(false)}
+                                disabled={sendingNotif}
+                                className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-200 bg-slate-100 rounded-lg transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSendNotification}
+                                disabled={sendingNotif || (useCustomMessage && !customNotifMessage.trim())}
+                                className="px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow transition flex items-center gap-2 disabled:opacity-50"
+                            >
+                                {sendingNotif && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                                {sendingNotif ? 'Sending...' : 'Send Notification'}
+                            </button>
                         </div>
                     </div>
                 </div>

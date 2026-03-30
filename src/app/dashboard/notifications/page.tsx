@@ -5,6 +5,7 @@ import { authFetch } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
 import { useRbac } from "@/lib/rbac";
 import Link from "next/link";
+import FeeRemindersTab from "./FeeRemindersTab";
 
 type NotificationAudience = "PARENT" | "STAFF" | "ALL" | "CUSTOM";
 
@@ -17,11 +18,16 @@ interface AppNotification {
 }
 
 export default function NotificationsPage() {
-  const { isSubAdmin, isAdmin, isSuperAdmin } = useRbac();
+  const { isSubAdmin, isAdmin, isSuperAdmin, isTeacher } = useRbac();
   const canSendNotifications = isSubAdmin || isAdmin || isSuperAdmin;
+  const canSendReminders = isTeacher || canSendNotifications;
 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const [activeTab, setActiveTab] = useState<'BROADCASTS' | 'FEE_REMINDERS'>(
+    canSendNotifications ? 'BROADCASTS' : 'FEE_REMINDERS'
+  );
 
   const fetchNotifications = async () => {
     try {
@@ -37,10 +43,12 @@ export default function NotificationsPage() {
   };
 
   useEffect(() => {
-    fetchNotifications();
-  }, []);
+    if (canSendNotifications) {
+      fetchNotifications();
+    }
+  }, [canSendNotifications]);
 
-  if (!canSendNotifications) {
+  if (!canSendNotifications && !canSendReminders) {
     return (
       <div className="p-4">
         <div className="bg-red-50 text-red-600 p-4 rounded-lg">You do not have permission to view or manage notifications.</div>
@@ -52,23 +60,53 @@ export default function NotificationsPage() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">Notifications</h1>
-          <p className="mt-1 text-sm text-slate-500">Manage and view previously broadcasted notifications.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">Notifications & Reminders</h1>
+          <p className="mt-1 text-sm text-slate-500">Manage broadcasts and send fee reminders.</p>
         </div>
-        <Link
-          href="/dashboard/notifications/new"
-          className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 hover:shadow-lg transition-all"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Send Notification
-        </Link>
+        {activeTab === 'BROADCASTS' && canSendNotifications && (
+          <Link
+            href="/dashboard/notifications/new"
+            className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 hover:shadow-lg transition-all"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Send Notification
+          </Link>
+        )}
       </div>
 
-      <div className="bg-white border text-card-foreground shadow-sm rounded-xl overflow-hidden">
-        <div className="p-6">
-          <h3 className="text-lg font-semibold leading-none tracking-tight mb-4">Recent Notifications</h3>
+      <div className="flex space-x-2 border-b border-slate-200">
+        {canSendNotifications && (
+          <button
+            onClick={() => setActiveTab('BROADCASTS')}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'BROADCASTS'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            General Broadcasts
+          </button>
+        )}
+        {canSendReminders && (
+          <button
+            onClick={() => setActiveTab('FEE_REMINDERS')}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'FEE_REMINDERS'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            Fee Reminders
+          </button>
+        )}
+      </div>
+
+      {activeTab === 'BROADCASTS' && canSendNotifications && (
+        <div className="bg-white border text-card-foreground shadow-sm rounded-xl overflow-hidden">
+          <div className="p-6">
+            <h3 className="text-lg font-semibold leading-none tracking-tight mb-4">Recent Notifications</h3>
           {loading ? (
             <div className="animate-pulse space-y-4">
               {[1, 2, 3].map((i) => (
@@ -107,6 +145,11 @@ export default function NotificationsPage() {
           )}
         </div>
       </div>
+      )}
+
+      {activeTab === 'FEE_REMINDERS' && canSendReminders && (
+        <FeeRemindersTab />
+      )}
     </div>
   );
 }

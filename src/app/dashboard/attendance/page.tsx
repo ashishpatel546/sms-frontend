@@ -6,7 +6,9 @@ import { getUser, authFetch } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
 import { Loader } from "@/components/ui/Loader";
 import { StudentDetailsModal } from "@/components/StudentDetailsModal";
+import StudentAttendanceModal from "@/components/StudentAttendanceModal";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { useMemo } from "react";
 
 interface Student {
     id: number;
@@ -46,16 +48,26 @@ export default function AttendancePage() {
     const [students, setStudents] = useState<Student[]>([]);
     const [loadingStudents, setLoadingStudents] = useState(false);
 
+    // Filters for displayed students
+    const [filterSearchQuery, setFilterSearchQuery] = useState("");
+    
+    // Sorting states
+    const [sortColumn, setSortColumn] = useState<keyof Student>('id');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
     const [attendanceRecords, setAttendanceRecords] = useState<Record<number, { status: string, remarks: string }>>({});
     const [existingAttendance, setExistingAttendance] = useState<any>(null);
 
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ text: "", type: "" });
 
-    // For Modal
+    // For Modals
     const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
     const [studentDetails, setStudentDetails] = useState<any>(null);
     const [loadingStudentDetails, setLoadingStudentDetails] = useState(false);
+
+    const [attendanceModalStudentId, setAttendanceModalStudentId] = useState<number | null>(null);
+    const [attendanceModalStudentName, setAttendanceModalStudentName] = useState<string>("");
 
     // Holiday State Check
     const [activeHolidayInfo, setActiveHolidayInfo] = useState<{ description: string } | null>(null);
@@ -386,6 +398,43 @@ export default function AttendancePage() {
 
     const availableSections = sections;
 
+    const handleSort = (column: keyof Student) => {
+        if (sortColumn === column) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortColumn(column);
+            setSortDirection('asc');
+        }
+    };
+
+    const displayedStudents = useMemo(() => {
+        const filtered = students.filter(student => {
+            if (!filterSearchQuery) return true;
+            const q = filterSearchQuery.toLowerCase();
+            const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
+            return student.id.toString().includes(q) || fullName.includes(q) || (student.rollNo && student.rollNo.toString().includes(q));
+        });
+
+        return filtered.sort((a, b) => {
+            let valA: any = a[sortColumn];
+            let valB: any = b[sortColumn];
+            
+            if (typeof valA === 'string') valA = valA.toLowerCase();
+            if (typeof valB === 'string') valB = valB.toLowerCase();
+            
+            if (valA == null) valA = '';
+            if (valB == null) valB = '';
+
+            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [students, filterSearchQuery, sortColumn, sortDirection]);
+
+    useEffect(() => {
+        setFilterSearchQuery("");
+    }, [selectedClassId, selectedSectionId, selectedDate]);
+
     if (loadingClasses) return <Loader fullScreen text="Loading attendance dashboard..." />;
 
     return (
@@ -465,6 +514,33 @@ export default function AttendancePage() {
                         </select>
                     </div>
                 </form>
+                
+                {/* Search Filters Row */}
+                {students.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-slate-100 flex gap-4">
+                        <div className="flex-1 max-w-md">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Search Student</label>
+                            <input 
+                                type="text" 
+                                placeholder="Search by ID, Roll No, or Name..." 
+                                value={filterSearchQuery}
+                                onChange={(e) => setFilterSearchQuery(e.target.value)}
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2"
+                            />
+                        </div>
+                        {filterSearchQuery && (
+                            <div className="flex items-end">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setFilterSearchQuery('')}
+                                    className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200"
+                                >
+                                    Clear Filter
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {loadingStudents && (
@@ -619,19 +695,45 @@ export default function AttendancePage() {
                                 <table className="w-full text-sm text-left text-gray-500">
                                     <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                                         <tr>
-                                            <th scope="col" className="px-6 py-3">Roll No.</th>
-                                            <th scope="col" className="px-6 py-3">Name</th>
+                                            <th scope="col" className="px-6 py-3 cursor-pointer hover:bg-gray-200 transition-colors group select-none" onClick={() => handleSort('id')}>
+                                                <div className="flex items-center gap-1">
+                                                    ID 
+                                                    <span className="text-gray-400 text-xs">
+                                                        {sortColumn === 'id' ? (sortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
+                                                    </span>
+                                                </div>
+                                            </th>
+                                            <th scope="col" className="px-6 py-3 cursor-pointer hover:bg-gray-200 transition-colors group select-none" onClick={() => handleSort('rollNo')}>
+                                                <div className="flex items-center gap-1">
+                                                    Roll No. 
+                                                    <span className="text-gray-400 text-xs">
+                                                        {sortColumn === 'rollNo' ? (sortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
+                                                    </span>
+                                                </div>
+                                            </th>
+                                            <th scope="col" className="px-6 py-3 cursor-pointer hover:bg-gray-200 transition-colors group select-none" onClick={() => handleSort('firstName')}>
+                                                <div className="flex items-center gap-1">
+                                                    Name 
+                                                    <span className="text-gray-400 text-xs">
+                                                        {sortColumn === 'firstName' ? (sortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
+                                                    </span>
+                                                </div>
+                                            </th>
                                             <th scope="col" className="px-6 py-3 text-center">Status</th>
                                             <th scope="col" className="px-6 py-3">Remarks</th>
+                                            <th scope="col" className="px-6 py-3 text-center">Attendance</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {students.map((student) => {
+                                        {displayedStudents.map((student) => {
                                             const record = attendanceRecords[student.id] || { status: 'PRESENT', remarks: '' };
                                             return (
                                                 <tr key={student.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
+                                                    <td className="px-6 py-4 font-medium text-blue-600 whitespace-nowrap">
+                                                        {student.id}
+                                                    </td>
                                                     <td className="px-6 py-4 font-bold text-gray-600 whitespace-nowrap">
-                                                        {student.rollNo || student.id}
+                                                        {student.rollNo || '-'}
                                                     </td>
                                                     <td className="px-6 py-4 font-medium text-gray-900">
                                                         <button
@@ -709,6 +811,20 @@ export default function AttendancePage() {
                                                             className={`bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 ${disableEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                         />
                                                     </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <button
+                                                            onClick={(e) => { 
+                                                                e.preventDefault(); 
+                                                                setAttendanceModalStudentId(student.id); 
+                                                                setAttendanceModalStudentName(`${student.firstName} ${student.lastName}`); 
+                                                            }}
+                                                            className="inline-flex items-center gap-1 font-medium text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200"
+                                                            title="View Attendance"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                            <span className="text-xs">View</span>
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             );
                                         })}
@@ -736,6 +852,17 @@ export default function AttendancePage() {
                     student={studentDetails}
                     isLoading={loadingStudentDetails}
                     onClose={closeStudentModal}
+                />
+            )}
+
+            {attendanceModalStudentId && (
+                <StudentAttendanceModal
+                    studentId={attendanceModalStudentId}
+                    studentName={attendanceModalStudentName}
+                    onClose={() => {
+                        setAttendanceModalStudentId(null);
+                        setAttendanceModalStudentName("");
+                    }}
                 />
             )}
         </main>
