@@ -24,6 +24,7 @@ export default function StudentsPage() {
     const [searchFirstName, setSearchFirstName] = useState("");
     const [searchLastName, setSearchLastName] = useState("");
     const [searchEmail, setSearchEmail] = useState("");
+    const [searchMobile, setSearchMobile] = useState("");
     const [searchParents, setSearchParents] = useState("");
     const [searchStatus, setSearchStatus] = useState("");
     const [searchClassId, setSearchClassId] = useState("");
@@ -54,6 +55,7 @@ export default function StudentsPage() {
         if (searchFirstName) params.append("firstName", searchFirstName);
         if (searchLastName) params.append("lastName", searchLastName);
         if (searchEmail) params.append("email", searchEmail);
+        if (searchMobile) params.append("mobile", searchMobile);
         if (searchParents) params.append("parentsName", searchParents);
         if (searchStatus !== "") params.append("enrollmentStatus", searchStatus);
         if (searchClassId) params.append("classId", searchClassId);
@@ -125,6 +127,7 @@ export default function StudentsPage() {
         setSearchFirstName("");
         setSearchLastName("");
         setSearchEmail("");
+        setSearchMobile("");
         setSearchParents("");
         setSearchStatus("");
         setSearchClassId("");
@@ -322,6 +325,10 @@ export default function StudentsPage() {
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
                                 <input type="text" value={searchEmail} onChange={e => setSearchEmail(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="Email Address" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Mobile Number</label>
+                                <input type="text" value={searchMobile} onChange={e => setSearchMobile(e.target.value.replace(/\D/g, ''))} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="Exact Mobile No." />
                             </div>
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Parent's Name</label>
