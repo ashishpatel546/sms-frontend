@@ -94,6 +94,9 @@ jobs:
             # Fetch variables from AWS SSM into .env
             node scripts/fetch-aws-ssm.mjs
             
+            # Export .env vars into shell so PM2 --update-env picks them up
+            set -a && source .env && set +a
+            
             # Restart or start PM2 with the dynamic name
             export PM2_NAME=$DIR_NAME
             pm2 start ecosystem.config.js --only $DIR_NAME --update-env || pm2 restart $DIR_NAME --update-env
