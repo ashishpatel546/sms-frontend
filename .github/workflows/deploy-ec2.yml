@@ -17,13 +17,13 @@ on:
         default: '3000'
 
 env:
-  APP_ENV: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/stage' && 'testing' || 'demo') }}
+  APP_ENV: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/stage' && 'edusphere' || 'demo') }}
   PORT: ${{ github.event.inputs.port || (github.ref == 'refs/heads/stage' && '3001' || '3000') }}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/stage' && 'testing' || 'demo') }}
+    environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/stage' && 'edusphere' || 'demo') }}
 
     steps:
       - name: Checkout code
