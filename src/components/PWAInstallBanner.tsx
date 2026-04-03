@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { X, Download, Share } from 'lucide-react';
+import { getEnv } from "@/lib/env";
 
-const schoolName = process.env.NEXT_PUBLIC_SCHOOL_NAME || 'School Management System';
+const schoolName = getEnv('SCHOOL_NAME') || 'School Management System';
 
 interface BeforeInstallPromptEvent extends Event {
     prompt: () => Promise<void>;
@@ -112,7 +113,7 @@ export default function PWAInstallBanner() {
 
             {/* App Icon */}
             <img
-                src={process.env.NEXT_PUBLIC_SCHOOL_LOGO || '/icons/icon-192x192.png'}
+                src={'/colegios/logo.png'}
                 alt={schoolName}
                 style={{ width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0 }}
             />

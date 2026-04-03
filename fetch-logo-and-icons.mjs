@@ -1,4 +1,9 @@
 /**
+ * DEPRECATED: We no longer fetch logos dynamically during the build step.
+ * The PWA now permanently uses the Colegios logo, and the school logo is
+ * fetched at runtime via the SplashScreen component. 
+ * This script is retained for historical reference and is no longer executed.
+ *
  * fetch-logo-and-icons.mjs
  *
  * Pre-build script — runs automatically via "prebuild" in package.json.

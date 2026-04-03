@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
 import { setToken, setTokens, getDashboardRoute, getUser, authFetch } from "@/lib/auth";
+import SplashScreen from "@/components/SplashScreen";
 
 type Tab = "parent" | "staff";
 
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showSplash, setShowSplash] = useState(false);
 
   // Parent form
   const [mobile, setMobile] = useState("");
@@ -24,11 +26,14 @@ export default function LoginPage() {
   useEffect(() => {
     const user = getUser();
     if (user) {
-      if (user.mustChangePassword) {
-        router.replace("/change-password");
-      } else {
-        router.replace(getDashboardRoute(user.role));
-      }
+      setShowSplash(true);
+      setTimeout(() => {
+        if (user.mustChangePassword) {
+          router.replace("/change-password");
+        } else {
+          router.replace(getDashboardRoute(user.role));
+        }
+      }, 1500);
     }
   }, [router]);
 
@@ -45,11 +50,14 @@ export default function LoginPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || "Invalid mobile number or password");
       setTokens(data.access_token, data.refresh_token);
-      if (data.user.mustChangePassword) {
-        router.push("/change-password");
-      } else {
-        router.push("/parent-dashboard");
-      }
+      setShowSplash(true);
+      setTimeout(() => {
+        if (data.user.mustChangePassword) {
+          router.push("/change-password");
+        } else {
+          router.push("/parent-dashboard");
+        }
+      }, 1500);
     } catch (err: any) {
       setError(err.message || "Invalid mobile number or password");
     } finally {
@@ -71,11 +79,14 @@ export default function LoginPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || "Invalid email or password");
       setTokens(data.access_token, data.refresh_token);
-      if (data.user.mustChangePassword) {
-        router.push("/change-password");
-      } else {
-        router.push("/dashboard");
-      }
+      setShowSplash(true);
+      setTimeout(() => {
+        if (data.user.mustChangePassword) {
+          router.push("/change-password");
+        } else {
+          router.push("/dashboard");
+        }
+      }, 1500);
     } catch (err: any) {
       setError(err.message || "Invalid email or password");
     } finally {
@@ -85,6 +96,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-slate-950 selection:bg-indigo-500/30">
+      {showSplash && <SplashScreen />}
       {/* Left — Branding Panel */}
       <div className="relative hidden md:flex md:w-1/2 flex-col justify-between p-12 overflow-hidden">
         {/* Background school image */}

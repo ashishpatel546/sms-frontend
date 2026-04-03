@@ -1,4 +1,5 @@
 // src/lib/push-notifications.ts
+import { getEnv } from './env';
 
 export type PushSubscribeResult =
   | { success: true; subscription: PushSubscription }
@@ -32,7 +33,7 @@ export async function subscribeToPushNotifications(): Promise<PushSubscribeResul
       return { success: true, subscription };
     }
 
-    const publicVapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    const publicVapidKey = getEnv('VAPID_PUBLIC_KEY');
     if (!publicVapidKey) {
       console.error('VAPID public key not found in environment');
       return {

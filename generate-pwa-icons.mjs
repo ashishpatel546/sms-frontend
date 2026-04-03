@@ -42,38 +42,13 @@ const envVars = {
   ...loadEnvFile(path.join(__dirname, '.env.local')),
 };
 
-const slug =
-  process.env.NEXT_PUBLIC_SCHOOL_SLUG ?? envVars['NEXT_PUBLIC_SCHOOL_SLUG'];
-const SCHOOL_ASSETS = path.join(__dirname, 'public/school-assets');
-const FALLBACK = path.join(SCHOOL_ASSETS, 'logo.png');
+const SOURCE = path.join(__dirname, 'public/colegios/logo.png');
 
-let SOURCE;
-if (slug) {
-  const slugLogo = path.join(SCHOOL_ASSETS, `${slug}_logo.png`);
-  if (existsSync(slugLogo)) {
-    SOURCE = slugLogo;
-    console.log(
-      `ℹ️   Using slug-specific logo: public/school-assets/${slug}_logo.png`
-    );
-  } else {
-    console.warn(
-      `⚠️   Slug logo not found (public/school-assets/${slug}_logo.png), falling back to logo.png`
-    );
-  }
+if (!existsSync(SOURCE)) {
+  console.error('❌  No logo found at public/colegios/logo.png');
+  process.exit(1);
 }
-
-if (!SOURCE) {
-  if (!existsSync(FALLBACK)) {
-    console.error('❌  No logo found. Provide either:');
-    console.error(
-      `    public/school-assets/${slug ? slug + '_logo.png or ' : ''}logo.png`
-    );
-    console.error('    (square PNG, min 512×512)');
-    process.exit(1);
-  }
-  SOURCE = FALLBACK;
-  console.log('ℹ️   Using default logo: public/school-assets/logo.png');
-}
+console.log('ℹ️   Using standard colegios logo: public/colegios/logo.png');
 
 const ICONS_DIR = path.join(__dirname, 'public/icons');
 

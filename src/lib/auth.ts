@@ -1,4 +1,5 @@
 'use client';
+import { getEnv } from './env';
 
 const TOKEN_KEY = 'auth_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
@@ -158,7 +159,7 @@ export async function authFetch(
 
     try {
       const API_BASE_URL =
-        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        getEnv('API_URL') || 'http://localhost:3001';
       const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

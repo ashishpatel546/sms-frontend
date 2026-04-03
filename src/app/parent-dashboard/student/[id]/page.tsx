@@ -8,6 +8,7 @@ import { API_BASE_URL } from "@/lib/api";
 import { getToken, authFetch } from "@/lib/auth";
 import toast, { Toaster } from "react-hot-toast";
 import ReceiptModal from "@/components/ReceiptModal";
+import { getEnv } from "@/lib/env";
 import ExamScheduleParentView from "./ExamScheduleParentView";
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -222,11 +223,11 @@ export default function StudentDashboardPage() {
             const scriptLoaded = await loadRazorpayScript();
             if (!scriptLoaded) throw new Error("Failed to load Razorpay SDK. Check your connection.");
 
-            const rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+            const rzpKey = getEnv('RAZORPAY_KEY_ID');
             if (!rzpKey) throw new Error("Razorpay public key missing from frontend environment");
 
             // 3. Configure the checkout popup
-            const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin;
+            const baseUrl = getEnv('FRONTEND_URL') || window.location.origin;
             const options = {
                 key: rzpKey,
                 amount: order.amount,

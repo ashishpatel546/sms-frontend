@@ -7,6 +7,7 @@ import { getUser, logout, isAuthenticated, getDashboardRoute, getToken, setToken
 import { useRbac } from "@/lib/rbac";
 import { API_BASE_URL } from "@/lib/api";
 import { NotificationBell } from "@/components/NotificationBell";
+import { getEnv } from "@/lib/env";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -72,7 +73,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             </svg>
                         </button>
                         <span className="self-center text-lg sm:text-xl font-semibold whitespace-nowrap text-slate-900 truncate max-w-[140px] xs:max-w-xs sm:max-w-none">
-                            {process.env.NEXT_PUBLIC_SCHOOL_NAME || 'EduSphere'} <span className="hidden sm:inline">Dashboard</span>
+                            {getEnv('SCHOOL_NAME') || 'EduSphere'} <span className="hidden sm:inline">Dashboard</span>
                         </span>
                     </div>
                     <div className="flex items-center gap-3 lg:order-2">

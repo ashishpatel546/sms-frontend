@@ -22,7 +22,7 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-const schoolName = process.env.NEXT_PUBLIC_SCHOOL_NAME || 'School Management System';
+const schoolName = process.env.SCHOOL_NAME || 'School Management System';
 
 export const metadata: Metadata = {
   title: {
@@ -55,8 +55,24 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const envConfig = {
+    SCHOOL_NAME: process.env.SCHOOL_NAME,
+    SCHOOL_LOGO_URL: process.env.SCHOOL_LOGO_URL,
+    API_URL: process.env.API_URL,
+    RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
+    FRONTEND_URL: process.env.FRONTEND_URL,
+    VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY,
+  };
+
   return (
     <html lang="en">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__ENV__ = ${JSON.stringify(envConfig)};`,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

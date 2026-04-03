@@ -11,9 +11,14 @@ on:
         description: 'Target Environment (e.g., demo, school-xyz)'
         required: true
         default: 'demo'
+      port:
+        description: 'Application Port to bind PM2 process'
+        required: false
+        default: '3000'
 
 env:
   APP_ENV: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/stage' && 'testing' || 'demo') }}
+  PORT: ${{ github.event.inputs.port || (github.ref == 'refs/heads/stage' && '3001' || '3000') }}
 
 jobs:
   deploy:
@@ -34,15 +39,7 @@ jobs:
         run: npm ci
 
       - name: Build Next.js project
-        # This requires the .env variables to be present during build time if they are used
-        env:
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-          NEXT_PUBLIC_SCHOOL_NAME: ${{ secrets.NEXT_PUBLIC_SCHOOL_NAME }}
-          NEXT_PUBLIC_SCHOOL_LOGO: ${{ secrets.NEXT_PUBLIC_SCHOOL_LOGO }}
-          NEXT_PUBLIC_RAZORPAY_KEY_ID: ${{ secrets.NEXT_PUBLIC_RAZORPAY_KEY_ID }}
-          NEXT_PUBLIC_FRONTEND_URL: ${{ secrets.NEXT_PUBLIC_FRONTEND_URL }}
-          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
-          NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+        # We no longer need secrets injected here. Variables are loaded from AWS SSM at runtime.
         run: npm run build
 
       - name: Deploy to EC2 - Prepare Environment
@@ -59,32 +56,17 @@ jobs:
             # Clean up old build artifacts to prevent ghost files
             rm -rf .next
 
-            # Create/Update .env file from GitHub Secrets for runtime (if needed)
-            if [ "${{ env.APP_ENV }}" = "testing" ]; then
-              echo "PORT=3001" > .env
-            else
-              echo "PORT=3002" > .env
-            fi
-            echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" >> .env
-            echo "NEXT_PUBLIC_SCHOOL_NAME=${{ secrets.NEXT_PUBLIC_SCHOOL_NAME }}" >> .env
-            echo "NEXT_PUBLIC_SCHOOL_LOGO=${{ secrets.NEXT_PUBLIC_SCHOOL_LOGO }}" >> .env
-            echo "NEXT_PUBLIC_RAZORPAY_KEY_ID=${{ secrets.NEXT_PUBLIC_RAZORPAY_KEY_ID }}" >> .env
-            echo "NEXT_PUBLIC_FRONTEND_URL=${{ secrets.NEXT_PUBLIC_FRONTEND_URL }}" >> .env
-            echo "AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}" >> .env
-            echo "NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}" >> .env
-            # Add any other required environment variables here
-
       - name: Copy files via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          # Next.js standalone output or regular build needs .next, public, package files
-          source: ".next/,public/,package.json,package-lock.json,ecosystem.config.js"
+          # Need scripts/ for the runtime AWS SSM config fetcher
+          source: ".next/,public/,scripts/,package.json,package-lock.json,ecosystem.config.js"
           target: "/home/${{ secrets.EC2_USERNAME }}/sms-frontend-${{ env.APP_ENV }}"
 
-      - name: Install Prod Dependencies and Restart PM2
+      - name: Fetch AWS SSM Params, Install Prod Dependencies and Restart PM2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -101,6 +83,16 @@ jobs:
             
             # Install production dependencies
             npm ci --omit=dev
+            
+            # Provide environment variables to the fetch script
+            export NODE_ENV=production
+            export SCHOOL_SLUG="${{ env.APP_ENV }}"
+            export PORT="${{ env.PORT }}"
+            # We assume stage for everything here except if you have a prod branch logic
+            export SSM_ENV="stage"
+            
+            # Fetch variables from AWS SSM into .env
+            node scripts/fetch-aws-ssm.mjs
             
             # Restart or start PM2 with the dynamic name
             export PM2_NAME=$DIR_NAME

@@ -1,6 +1,7 @@
 import { getToken, getRefreshToken, setTokens, logout } from "./auth";
+import { getEnv } from "./env";
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+export const API_BASE_URL = getEnv('API_URL') || "http://localhost:3000";
 
 export const fetcher = async (url: string) => {
     const fullUrl = url.startsWith("http") ? url : `${API_BASE_URL}${url.startsWith("/") ? url : `/${url}`}`;

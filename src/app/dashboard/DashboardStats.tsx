@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Users, GraduationCap, Presentation, IndianRupee, UserCheck } from 'lucide-react';
 import { authFetch } from '@/lib/auth';
 import { useRbac } from '@/lib/rbac';
+import { getEnv } from '@/lib/env';
 
 interface Stats {
     students: number;
@@ -30,7 +31,7 @@ export default function DashboardStats({ selectedDate }: { selectedDate: string 
         setIsAdminUser(useRbac().isAdmin);
         async function fetchStats() {
             try {
-                const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+                const url = getEnv('API_URL') || 'http://localhost:3000';
                 const queryParams = selectedDate ? `?date=${selectedDate}` : '';
                 const res = await authFetch(`${url}/dashboard/stats${queryParams}`);
                 if (!res.ok) {

@@ -12,6 +12,7 @@ import React, { useRef, useState } from "react";
 import { CheckCircle2, School, CreditCard, CalendarDays, User, Hash } from "lucide-react";
 import { jsPDF } from "jspdf";
 import { toPng } from "html-to-image";
+import { getEnv } from "@/lib/env";
 
 export interface ReceiptData {
     receiptNumber?: string;
@@ -94,7 +95,7 @@ export default function ReceiptModal({
     onWaiveOff,
     onIssueRefund,
 }: ReceiptModalProps) {
-    const schoolName = process.env.NEXT_PUBLIC_SCHOOL_NAME || "EduSphere";
+    const schoolName = getEnv('SCHOOL_NAME') || "EduSphere";
 
     const monthLabel =
         receiptData.monthsPaid || receiptData.feeMonth || "—";

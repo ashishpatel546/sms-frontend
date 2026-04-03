@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import useSWR from "swr";
 import { authFetch } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
+import { getEnv } from "@/lib/env";
 
 const fetcher = (url: string) => authFetch(url).then((res) => res.json());
 
@@ -63,7 +64,7 @@ export function NotificationBell({ variant = 'light' }: { variant?: 'light' | 'd
   const [pollInterval, setPollInterval] = useState(600000); // default 10min
 
   useEffect(() => {
-    const baseInterval = Number(process.env.NEXT_PUBLIC_NOTIFICATION_POLL_INTERVAL) || 60000;
+    const baseInterval = Number(getEnv('NOTIFICATION_POLL_INTERVAL')) || 60000;
     const jitter = Math.floor(Math.random() * 5000);
     setPollInterval(baseInterval + jitter);
     if (typeof window !== 'undefined' && 'Notification' in window) {

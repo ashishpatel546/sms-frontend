@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
-    const schoolName = process.env.NEXT_PUBLIC_SCHOOL_NAME || 'School Management System';
+    const schoolName = process.env.SCHOOL_NAME || 'School Management System';
     // Create a short name (max ~12 chars for home screen label)
     const shortName = schoolName.length > 12 ? schoolName.split(' ').slice(0, 2).join(' ') : schoolName;
 
