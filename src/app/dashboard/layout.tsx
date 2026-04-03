@@ -78,7 +78,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
                     <div className="flex items-center gap-3 lg:order-2">
                         <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg">
-                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+                            <div className="w-6 h-6 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
                                 {user.firstName?.[0]}{user.lastName?.[0]}
                             </div>
                             <span className="text-slate-700 text-sm font-medium">{user.firstName} {user.lastName}</span>
