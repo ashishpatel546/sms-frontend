@@ -4,6 +4,10 @@ import "./globals.css";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 
+// Force dynamic rendering so process.env is read at request time (from SSM-loaded runtime env),
+// not baked in at build time when env vars are not available.
+export const dynamic = 'force-dynamic';
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
