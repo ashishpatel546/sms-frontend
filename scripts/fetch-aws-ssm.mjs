@@ -64,7 +64,8 @@ const run = async () => {
       const processParam = (param, prefix) => {
          if (!param.Name || !param.Value) return;
          const key = param.Name.replace(prefix, '');
-         envContent += `${key}=${param.Value}\n`;
+         // Wrap value in quotes to handle spaces (e.g. SCHOOL_NAME="EduSphere Academy")
+         envContent += `${key}="${param.Value}"\n`;
       };
       
       sharedParams.forEach(p => processParam(p, sharedPath));
