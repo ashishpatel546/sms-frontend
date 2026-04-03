@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
-import { getToken, setToken, setTokens, getUser, removeToken, authFetch } from "@/lib/auth";
+import { getToken, setToken, setTokens, getUser, removeToken, authFetch, isMustChangePasswordFlow } from "@/lib/auth";
 
 export default function ChangePasswordPage() {
     const router = useRouter();
@@ -27,8 +27,18 @@ export default function ChangePasswordPage() {
             router.replace(u.role === 'PARENT' ? '/parent-dashboard' : '/dashboard');
             return;
         }
+        // isMustChangePasswordFlow() is true only when the login page set the in-memory
+        // flag just before navigating here (same SPA session). On a full page refresh the
+        // JS module reloads and the flag is false, so we clear the token and send the user
+        // back to login to re-enter credentials.
+        if (!isMustChangePasswordFlow()) {
+            removeToken();
+            router.replace("/");
+            return;
+        }
         setUser(u);
-    }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // intentionally run once on mount only
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

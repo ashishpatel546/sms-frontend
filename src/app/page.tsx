@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
-import { setToken, setTokens, getDashboardRoute, getUser, authFetch } from "@/lib/auth";
+import { setToken, setTokens, getDashboardRoute, getUser, authFetch, markMustChangePasswordFlow } from "@/lib/auth";
 import SplashScreen from "@/components/SplashScreen";
 
 type Tab = "parent" | "staff";
@@ -29,6 +29,7 @@ export default function LoginPage() {
       setShowSplash(true);
       setTimeout(() => {
         if (user.mustChangePassword) {
+          markMustChangePasswordFlow();
           router.replace("/change-password");
         } else {
           router.replace(getDashboardRoute(user.role));
@@ -53,6 +54,7 @@ export default function LoginPage() {
       setShowSplash(true);
       setTimeout(() => {
         if (data.user.mustChangePassword) {
+          markMustChangePasswordFlow();
           router.push("/change-password");
         } else {
           router.push("/parent-dashboard");
@@ -82,6 +84,7 @@ export default function LoginPage() {
       setShowSplash(true);
       setTimeout(() => {
         if (data.user.mustChangePassword) {
+          markMustChangePasswordFlow();
           router.push("/change-password");
         } else {
           router.push("/dashboard");

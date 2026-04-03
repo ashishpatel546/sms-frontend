@@ -63,6 +63,21 @@ export function isAuthenticated(): boolean {
   return getUser() !== null;
 }
 
+/**
+ * Transient in-memory flag set by the login page when redirecting to /change-password
+ * because mustChangePassword is true. Resets automatically on any full page refresh
+ * (module re-executes). Survives client-side SPA navigation within the same tab.
+ */
+let _mustChangePasswordFlow = false;
+
+export function markMustChangePasswordFlow(): void {
+  _mustChangePasswordFlow = true;
+}
+
+export function isMustChangePasswordFlow(): boolean {
+  return _mustChangePasswordFlow;
+}
+
 export function logout(): void {
   removeToken();
   window.location.href = '/';
@@ -111,7 +126,7 @@ export function resetRefreshState(): void {
 
 export async function authFetch(
   url: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<Response> {
   let headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -158,8 +173,7 @@ export async function authFetch(
     const timeoutId = setTimeout(() => refreshAbortController?.abort(), 15_000);
 
     try {
-      const API_BASE_URL =
-        getEnv('API_URL') || 'http://localhost:3001';
+      const API_BASE_URL = getEnv('API_URL') || 'http://localhost:3001';
       const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
