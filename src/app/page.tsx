@@ -120,7 +120,7 @@ export default function LoginPage() {
           {/* Logo */}
           <div className="flex items-center gap-4 mb-14">
             <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-xl border border-white/20 p-2 hover:scale-105 transition-transform">
-              <img src="/colegios/colegios-logo.png" alt="Colegios Logo" className="w-full h-full object-contain drop-shadow-md" />
+              <img src="/colegios/logo.png" alt="Colegios Logo" className="w-full h-full object-contain drop-shadow-md" />
             </a>
             <div className="flex flex-col">
               <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="text-white font-extrabold text-4xl tracking-tight drop-shadow-md hover:text-indigo-200 transition-colors">
@@ -171,10 +171,25 @@ export default function LoginPage() {
       {/* Right — Login Panel */}
       <div className="flex-1 flex items-center justify-center p-6 sm:p-10 min-h-screen md:min-h-0">
         <div className="w-full max-w-md">
-          {/* Mobile logo */}
+          {/* Mobile hero banner — visible only on mobile/PWA (branding panel is desktop-only) */}
+          <div className="flex md:hidden relative w-full h-44 rounded-2xl overflow-hidden mb-7 shadow-2xl">
+            <img
+              src="/colegios/colegios.png"
+              alt="Colegios"
+              className="absolute inset-0 w-full h-full object-cover object-center"
+            />
+            {/* Gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-4">
+              <p className="text-white font-extrabold text-xl tracking-tight drop-shadow-md">Colegios</p>
+              <p className="text-indigo-200 text-xs font-medium tracking-wide">Smart Operating System for Modern Schools</p>
+            </div>
+          </div>
+
+          {/* Mobile logo (icon + name) */}
           <div className="flex md:hidden items-center gap-3 mb-8 justify-center">
             <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center p-2 border border-slate-700 shadow-lg">
-              <img src="/colegios/colegios-logo.png" alt="Colegios Logo" className="w-full h-full object-contain" />
+              <img src="/colegios/logo.png" alt="Colegios Logo" className="w-full h-full object-contain" />
             </div>
             <span className="text-white font-extrabold text-2xl tracking-tight">
               Colegios
