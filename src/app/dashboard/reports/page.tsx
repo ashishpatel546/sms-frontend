@@ -18,7 +18,7 @@ export default function ReportsDashboard() {
     const router = useRouter();
     const rbac = useRbac();
     const [mounted, setMounted] = useState(false);
-    const [activeTab, setActiveTab] = useState<'FEES' | 'PENDING_DUES' | 'EXAMINATIONS' | 'ATTENDANCE' | 'STUDENTS' | 'STAFF'>('FEES');
+    const [activeTab, setActiveTab] = useState<'FEES' | 'PENDING_DUES' | 'FEE_RECEIVED' | 'EXAMINATIONS' | 'ATTENDANCE' | 'STUDENTS' | 'STAFF'>('FEES');
 
     // FILTERS
     const [academicSessions, setAcademicSessions] = useState<any[]>([]);
@@ -75,6 +75,23 @@ export default function ReportsDashboard() {
     const [feeAdjPage, setFeeAdjPage] = useState(1);
     const FEE_ADJ_PER_PAGE = 10;
 
+    // Fee Received Filters
+    const [receivedSessionId, setReceivedSessionId] = useState('');
+    const [receivedFromDate, setReceivedFromDate] = useState('');
+    const [receivedToDate, setReceivedToDate] = useState('');
+    const [receivedClassId, setReceivedClassId] = useState('');
+    const [receivedAvailableSections, setReceivedAvailableSections] = useState<any[]>([]);
+    const [receivedSectionId, setReceivedSectionId] = useState('');
+    const [receivedSearchQuery, setReceivedSearchQuery] = useState('');
+    const [receivedMobile, setReceivedMobile] = useState('');
+    const [receivedData, setReceivedData] = useState<any[]>([]);
+    const [receivedLoading, setReceivedLoading] = useState(false);
+    
+    // Pagination for fee received
+    const [receivedPage, setReceivedPage] = useState(1);
+    const [receivedTotalCount, setReceivedTotalCount] = useState(0);
+    const RECEIVED_PER_PAGE = 20;
+
     // DATA STATES
     const [monthlyCollection, setMonthlyCollection] = useState<any[]>([]);
     const [collectionStatus, setCollectionStatus] = useState<any[]>([]);
@@ -115,6 +132,7 @@ export default function ReportsDashboard() {
                         setAttendanceSession(sid);
                         setEnrollmentFromSession(sid);
                         setPendingSessionId(sid);
+                        setReceivedSessionId(sid);
                         setAdmissionsToSession(sid);
                         if (data.length > 3) setAdmissionsFromSession(data[3].id.toString());
                         else if (data.length > 0) setAdmissionsFromSession(data[data.length - 1].id.toString());
@@ -289,6 +307,53 @@ export default function ReportsDashboard() {
         setPendingDuesPage(1);
     }, [pendingSessionId, pendingClassId, pendingSectionId, pendingMobile, pendingMonth, pendingSearchQuery]);
 
+    // FEE RECEIVED DATA FETCH
+    useEffect(() => {
+        if (activeTab !== 'FEE_RECEIVED') return;
+        if (!receivedSessionId) return;
+
+        const fetchData = async () => {
+            setReceivedLoading(true);
+            try {
+                let query = `?academicYear=${encodeURIComponent(
+                    academicSessions.find(s => s.id.toString() === receivedSessionId)?.name || ''
+                )}`;
+                if (receivedClassId) query += `&classId=${receivedClassId}`;
+                if (receivedSectionId) query += `&sectionId=${receivedSectionId}`;
+                if (receivedMobile) query += `&mobileNumber=${receivedMobile}`;
+                if (receivedFromDate) query += `&fromDate=${receivedFromDate}`;
+                if (receivedToDate) query += `&toDate=${receivedToDate}`;
+                if (receivedSearchQuery && !isNaN(Number(receivedSearchQuery))) query += `&studentId=${receivedSearchQuery}`;
+                
+                query += `&page=${receivedPage}&limit=${RECEIVED_PER_PAGE}`;
+
+                const res = await authFetch(`${API_BASE_URL}/fees/reports/fee-received${query}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setReceivedData(data.data || []);
+                    setReceivedTotalCount(data.totalCount || 0);
+                } else {
+                    toast.error('Failed to fetch fee received data');
+                }
+            } catch (e) {
+                console.error(e);
+                toast.error('An error occurred while fetching fee received data');
+            } finally {
+                setReceivedLoading(false);
+            }
+        };
+
+        const timeoutId = setTimeout(() => {
+            fetchData();
+        }, 500);
+        return () => clearTimeout(timeoutId);
+    }, [activeTab, receivedSessionId, receivedClassId, receivedSectionId, receivedMobile, receivedFromDate, receivedToDate, receivedSearchQuery, receivedPage, academicSessions]);
+
+    // Reset received pagination on filter change
+    useEffect(() => {
+        setReceivedPage(1);
+    }, [receivedSessionId, receivedClassId, receivedSectionId, receivedMobile, receivedFromDate, receivedToDate, receivedSearchQuery]);
+
     // Sorting Helper for Pending Dues
     const handlePendingSort = (column: string) => {
         if (pendingSortColumn === column) {
@@ -357,6 +422,69 @@ export default function ReportsDashboard() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    };
+
+    const exportFeeReceivedCSV = async () => {
+        if (!receivedSessionId) return;
+        setReceivedLoading(true);
+        try {
+            let query = `?academicYear=${encodeURIComponent(
+                academicSessions.find(s => s.id.toString() === receivedSessionId)?.name || ''
+            )}`;
+            if (receivedClassId) query += `&classId=${receivedClassId}`;
+            if (receivedSectionId) query += `&sectionId=${receivedSectionId}`;
+            if (receivedMobile) query += `&mobileNumber=${receivedMobile}`;
+            if (receivedFromDate) query += `&fromDate=${receivedFromDate}`;
+            if (receivedToDate) query += `&toDate=${receivedToDate}`;
+            if (receivedSearchQuery && !isNaN(Number(receivedSearchQuery))) query += `&studentId=${receivedSearchQuery}`;
+            
+            // Limit 0 indicates we want to fetch the whole set matching filters
+            query += `&page=1&limit=0`;
+
+            const res = await authFetch(`${API_BASE_URL}/fees/reports/fee-received${query}`);
+            if (res.ok) {
+                const json = await res.json();
+                const bulkData = json.data || [];
+                
+                if (bulkData.length === 0) {
+                    toast.error('No data to export');
+                    return;
+                }
+
+                const headers = ['Receipt No', 'Payment Date', 'Student ID', 'First Name', 'Last Name', 'Mobile', 'Class', 'Section', 'Payment Method', 'Fee Month(s)', 'Amount Paid', 'Collected By'];
+                const rows = bulkData.map((row: any) => [
+                    `"${row.receiptNumber || ''}"`,
+                    row.paymentDate,
+                    row.studentId,
+                    `"${row.firstName || ''}"`,
+                    `"${row.lastName || ''}"`,
+                    `"${row.mobile || ''}"`,
+                    `"${row.className || ''}"`,
+                    `"${row.sectionName || ''}"`,
+                    row.paymentMethod || '',
+                    `"${row.feeMonth || ''}"`,
+                    row.amountPaid,
+                    `"${row.collectedBy || ''}"`
+                ]);
+
+                const csvContent = [headers.join(','), ...rows.map((e: any[]) => e.join(','))].join('\n');
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", `Fee_Received_Report_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                toast.error('Failed to export bulk fee received data');
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error('Failed to export fee received data');
+        } finally {
+            setReceivedLoading(false);
+        }
     };
 
     const handleSendNotification = async () => {
@@ -436,6 +564,17 @@ export default function ReportsDashboard() {
                 >
                     <Wallet className="w-4 h-4" />
                     Fees & Revenue
+                </button>
+                <button
+                    onClick={() => setActiveTab('FEE_RECEIVED')}
+                    className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${
+                        activeTab === 'FEE_RECEIVED'
+                            ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                            : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                    }`}
+                >
+                    <ClipboardList className="w-4 h-4" />
+                    Fee Received
                 </button>
                 <button
                     onClick={() => setActiveTab('PENDING_DUES')}
@@ -955,6 +1094,193 @@ export default function ReportsDashboard() {
                                     <button 
                                         onClick={() => setPendingDuesPage(p => Math.min(totalPendingPages, p + 1))}
                                         disabled={pendingDuesPage === totalPendingPages}
+                                        className="px-3 py-1 border border-slate-200 rounded text-sm disabled:opacity-50 bg-white hover:bg-slate-50 transition"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* TAB CONTENT: FEE RECEIVED */}
+            {activeTab === 'FEE_RECEIVED' && (
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 mb-6">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800">Fee Received Report</h2>
+                                <p className="text-sm text-gray-500">View and export all fee collections.</p>
+                            </div>
+                            <div className="flex flex-col sm:flex-row gap-2">
+                                <button
+                                    onClick={exportFeeReceivedCSV}
+                                    className="bg-emerald-600 text-white px-4 py-2 rounded shadow hover:bg-emerald-700 transition flex items-center gap-2 justify-center"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0l-4-4m4 4V4"></path></svg>
+                                    Download CSV
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4 mb-6">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Session</label>
+                                <select
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    value={receivedSessionId}
+                                    onChange={(e) => setReceivedSessionId(e.target.value)}
+                                >
+                                    <option value="">Select Session</option>
+                                    {academicSessions.map(session => (
+                                        <option key={session.id} value={session.id.toString()}>{session.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Class</label>
+                                <select
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    value={receivedClassId}
+                                    onChange={(e) => {
+                                        setReceivedClassId(e.target.value);
+                                        setReceivedSectionId('');
+                                        const cls = classes.find(c => c.id.toString() === e.target.value);
+                                        setReceivedAvailableSections(cls ? cls.sections : []);
+                                    }}
+                                >
+                                    <option value="">All Classes</option>
+                                    {classes.map((cls: any) => (
+                                        <option key={cls.id} value={cls.id.toString()}>{cls.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Section</label>
+                                <select
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50 disabled:opacity-50"
+                                    value={receivedSectionId}
+                                    onChange={(e) => setReceivedSectionId(e.target.value)}
+                                    disabled={!receivedClassId}
+                                >
+                                    <option value="">All Sections</option>
+                                    {receivedAvailableSections.map((sec: any) => (
+                                        <option key={sec.id} value={sec.id.toString()}>{sec.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="lg:col-span-2">
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Student ID</label>
+                                <input
+                                    type="text"
+                                    placeholder="Search by ID..."
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    value={receivedSearchQuery}
+                                    onChange={(e) => setReceivedSearchQuery(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Mobile No.</label>
+                                <input
+                                    type="text"
+                                    placeholder="Mobile..."
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    value={receivedMobile}
+                                    onChange={(e) => setReceivedMobile(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex gap-2 lg:col-span-1">
+                                <div className="w-1/2">
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">From</label>
+                                    <input
+                                        type="date"
+                                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-[11px] p-2 bg-gray-50"
+                                        value={receivedFromDate}
+                                        onChange={(e) => setReceivedFromDate(e.target.value)}
+                                    />
+                                </div>
+                                <div className="w-1/2">
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">To</label>
+                                    <input
+                                        type="date"
+                                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-[11px] p-2 bg-gray-50"
+                                        value={receivedToDate}
+                                        onChange={(e) => setReceivedToDate(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-[600px] overflow-y-auto">
+                            {receivedLoading ? (
+                                <div className="p-12 flex justify-center">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                                </div>
+                            ) : (
+                                <table className="w-full text-sm text-left text-gray-600">
+                                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+                                        <tr>
+                                            <th className="px-5 py-3 font-semibold">Payment Date</th>
+                                            <th className="px-5 py-3 font-semibold">Receipt No</th>
+                                            <th className="px-5 py-3 font-semibold">Student Name</th>
+                                            <th className="px-5 py-3 font-semibold">Class</th>
+                                            <th className="px-5 py-3 font-semibold">Method</th>
+                                            <th className="px-5 py-3 font-semibold">Fee Month</th>
+                                            <th className="px-5 py-3 font-semibold">Collected By</th>
+                                            <th className="px-5 py-3 font-semibold text-right">Amount Paid</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {receivedData.length > 0 ? (
+                                            receivedData.map((row, idx) => (
+                                                <tr key={idx} className="border-b border-gray-100 hover:bg-slate-50/50">
+                                                    <td className="px-5 py-3">{new Date(row.paymentDate).toLocaleDateString()}</td>
+                                                    <td className="px-5 py-3 font-medium text-slate-800">{row.receiptNumber}</td>
+                                                    <td className="px-5 py-3">
+                                                        {row.firstName} {row.lastName}
+                                                        <div className="text-xs text-gray-400">ID: {row.studentId}</div>
+                                                    </td>
+                                                    <td className="px-5 py-3">{row.className} {row.sectionName}</td>
+                                                    <td className="px-5 py-3">{row.paymentMethod}</td>
+                                                    <td className="px-5 py-3">{row.feeMonth || '-'}</td>
+                                                    <td className="px-5 py-3">{row.collectedBy}</td>
+                                                    <td className="px-5 py-3 text-right font-bold text-green-600">₹{row.amountPaid?.toLocaleString()}</td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={8} className="p-8 text-center text-gray-500">
+                                                    No fee received records matching the selected filters.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+
+                        {/* Pagination */}
+                        {receivedTotalCount > 0 && Math.ceil(receivedTotalCount / RECEIVED_PER_PAGE) > 1 && (
+                            <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50 mt-4 rounded-lg">
+                                <div className="text-sm text-slate-500">
+                                    Showing <span className="font-medium text-slate-900">{(receivedPage - 1) * RECEIVED_PER_PAGE + 1}</span> to <span className="font-medium text-slate-900">{Math.min(receivedPage * RECEIVED_PER_PAGE, receivedTotalCount)}</span> of <span className="font-medium text-slate-900">{receivedTotalCount}</span> records
+                                </div>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => setReceivedPage(p => Math.max(1, p - 1))}
+                                        disabled={receivedPage === 1}
+                                        className="px-3 py-1 border border-slate-200 rounded text-sm disabled:opacity-50 bg-white hover:bg-slate-50 transition"
+                                    >
+                                        Previous
+                                    </button>
+                                    <span className="px-3 py-1 text-sm flex items-center">
+                                        Page {receivedPage} of {Math.ceil(receivedTotalCount / RECEIVED_PER_PAGE)}
+                                    </span>
+                                    <button 
+                                        onClick={() => setReceivedPage(p => Math.min(Math.ceil(receivedTotalCount / RECEIVED_PER_PAGE), p + 1))}
+                                        disabled={receivedPage === Math.ceil(receivedTotalCount / RECEIVED_PER_PAGE)}
                                         className="px-3 py-1 border border-slate-200 rounded text-sm disabled:opacity-50 bg-white hover:bg-slate-50 transition"
                                     >
                                         Next

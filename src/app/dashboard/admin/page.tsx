@@ -8,7 +8,7 @@ import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
 import AddStaffForm from "@/components/AddStaffForm";
 
-type Tab = "users" | "add-staff";
+type Tab = "users" | "add-staff" | "school-setup";
 
 const ROLE_LABELS: Record<string, { label: string; color: string }> = {
     SUPER_ADMIN: { label: "Super Admin", color: "bg-purple-500/20 text-purple-300 border-purple-500/30" },
@@ -42,6 +42,51 @@ export default function AdminPanel() {
     const [viewModalUser, setViewModalUser] = useState<any | null>(null);
     const [viewModalStaff, setViewModalStaff] = useState<any | null>(null);
     const [viewModalLoading, setViewModalLoading] = useState(false);
+
+    // School Setup state
+    const [setupFile, setSetupFile] = useState<File | null>(null);
+    const [setupTimer, setSetupTimer] = useState(0);
+    const [isConfirmingSetup, setIsConfirmingSetup] = useState(false);
+    const [setupLoading, setSetupLoading] = useState(false);
+
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (isConfirmingSetup && setupTimer > 0) {
+            interval = setInterval(() => {
+                setSetupTimer((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [isConfirmingSetup, setupTimer]);
+
+    const executeSchoolSetup = async () => {
+        if (!setupFile) return;
+        setSetupLoading(true);
+        try {
+            const formData = new FormData();
+            formData.append("file", setupFile);
+
+            const res = await authFetch(`${API_BASE_URL}/school-setup/execute`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${getToken()}` },
+                body: formData,
+            });
+
+            if (res.ok) {
+                toast.success("School setup executed successfully!");
+                setSetupFile(null);
+                setIsConfirmingSetup(false);
+                setSetupTimer(0);
+            } else {
+                const d = await res.json();
+                toast.error(d.message || "Failed to execute setup.");
+            }
+        } catch (error) {
+            toast.error("An error occurred during setup execution.");
+        } finally {
+            setSetupLoading(false);
+        }
+    };
 
     const authHeaders = { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" };
 
@@ -161,8 +206,11 @@ export default function AdminPanel() {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-6 w-fit">
-                {([["users", "👥 Users & Roles"], ["add-staff", "➕ Add Staff"]] as const).map(([tab, label]) => (
+            <div className="flex flex-wrap gap-1 bg-slate-100 rounded-xl p-1 mb-6 w-fit">
+                {(isSuperAdmin 
+                    ? [["users", "👥 Users & Roles"], ["add-staff", "➕ Add Staff"], ["school-setup", "🏫 School Setup"]] as const 
+                    : [["users", "👥 Users & Roles"], ["add-staff", "➕ Add Staff"]] as const
+                ).map(([tab, label]) => (
                     <button key={tab} onClick={() => setActiveTab(tab)}
                         className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === tab ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
                         {label}
@@ -370,6 +418,57 @@ export default function AdminPanel() {
                         onSuccess={() => { fetchUsers(); setActiveTab("users"); }}
                         onCancel={() => setActiveTab("users")}
                     />
+                </div>
+            )}
+
+            {/* ─── SCHOOL SETUP TAB ─── */}
+            {activeTab === "school-setup" && isSuperAdmin && (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 max-w-4xl">
+                    <h2 className="font-bold text-rose-600 flex items-center gap-2 text-lg mb-1">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        School Setup Automation
+                    </h2>
+                    <p className="text-slate-500 text-sm mb-6">
+                        Upload a <code className="bg-slate-100 px-1 py-0.5 rounded text-rose-500">school-setup.json</code> file to automatically initialize the academic session, fee categories, designations, grades, and classes. 
+                        <strong> This action should only be performed once on a fresh setup.</strong>
+                    </p>
+                    
+                    <div className="space-y-6">
+                        <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 hover:bg-slate-50 transition-colors">
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Select Setup File</label>
+                            <input 
+                                type="file" 
+                                accept=".json"
+                                onChange={(e) => setSetupFile(e.target.files?.[0] || null)}
+                                className="block w-full text-sm text-slate-500
+                                    file:mr-4 file:py-2.5 file:px-4
+                                    file:rounded-xl file:border-0
+                                    file:text-sm file:font-semibold
+                                    file:bg-indigo-50 file:text-indigo-700
+                                    hover:file:bg-indigo-100
+                                    cursor-pointer"
+                            />
+                        </div>
+
+                        {setupTimer > 0 ? (
+                            <button disabled className="w-full sm:w-auto px-6 py-3 bg-rose-400 text-white rounded-xl font-bold shadow-sm opacity-50 cursor-not-allowed">
+                                Proceeding in {setupTimer}s...
+                            </button>
+                        ) : isConfirmingSetup ? (
+                            <div className="flex flex-wrap items-center gap-3">
+                                <button onClick={executeSchoolSetup} disabled={!setupFile || setupLoading} className="w-full sm:w-auto px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all shadow-sm disabled:opacity-50 flex justify-center items-center gap-2">
+                                    {setupLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "⚠️ Confirm Execution"}
+                                </button>
+                                <button onClick={() => { setIsConfirmingSetup(false); setSetupTimer(0); }} className="w-full sm:w-auto px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all disabled:opacity-50">
+                                    Cancel
+                                </button>
+                            </div>
+                        ) : (
+                            <button onClick={() => { setIsConfirmingSetup(true); setSetupTimer(5); }} disabled={!setupFile} className="w-full sm:w-auto px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all shadow-sm disabled:opacity-50 focus:ring-4 focus:ring-rose-100">
+                                Execute Setup
+                            </button>
+                        )}
+                    </div>
                 </div>
             )}
 

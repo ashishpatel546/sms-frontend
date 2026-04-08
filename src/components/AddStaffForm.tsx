@@ -512,7 +512,7 @@ export default function AddStaffForm({
                                 <option value="CREATE_NEW" className="font-bold text-blue-600">+ Create New Designation</option>
                             </select>
                         </div>
-                        {allowRoleSelect && (
+                        {allowRoleSelect ? (
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">System Role <span className="text-red-500">*</span></label>
                                 <select name="role" value={formData.role} onChange={handleChange} required
@@ -521,6 +521,15 @@ export default function AddStaffForm({
                                         <option key={r} value={r}>{ROLE_LABELS[r] || r}</option>
                                     ))}
                                 </select>
+                            </div>
+                        ) : (
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">System Role</label>
+                                <div className="bg-gray-100 border border-gray-300 text-gray-500 font-medium text-sm rounded-lg block w-full p-2.5 cursor-not-allowed flex items-center justify-between">
+                                    <span>Teacher</span>
+                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                </div>
+                                <p className="text-[11px] text-gray-500 mt-1">Roles can be changed later from the Admin panel.</p>
                             </div>
                         )}
                     </div>

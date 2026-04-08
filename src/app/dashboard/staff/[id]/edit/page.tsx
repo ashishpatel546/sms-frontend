@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { API_BASE_URL } from "@/lib/api";
+import { Country, State, City } from "country-state-city";
 import { authFetch, getUser } from "@/lib/auth";
 import toast from "react-hot-toast";
 
@@ -26,9 +27,20 @@ export default function EditStaffPage() {
         aadhaarNumber: "",
         category: "",
         religion: "",
+        fathersName: "",
+        mothersName: "",
         staffCategory: "",
         designationId: "",
         isActive: true,
+        address: {
+            addressLine1: "",
+            addressLine2: "",
+            landmark: "",
+            city: "",
+            state: "",
+            postalCode: "",
+            country: "IN",
+        },
     });
     const [assignments, setAssignments] = useState<any[]>([]);
 
@@ -44,6 +56,25 @@ export default function EditStaffPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
+
+    // Address cascading
+    const countries = Country.getAllCountries();
+    const [states, setStates] = useState<any[]>(State.getStatesOfCountry("IN"));
+    const [cities, setCities] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (formData.address.country) {
+            setStates(State.getStatesOfCountry(formData.address.country));
+        }
+    }, [formData.address.country]);
+
+    useEffect(() => {
+        if (formData.address.country && formData.address.state) {
+            setCities(City.getCitiesOfState(formData.address.country, formData.address.state));
+        } else {
+            setCities([]);
+        }
+    }, [formData.address.country, formData.address.state]);
 
     // Inline designation creation state
     const [showDesModal, setShowDesModal] = useState(false);
@@ -78,9 +109,20 @@ export default function EditStaffPage() {
                     aadhaarNumber: teacher.aadhaarNumber || "",
                     category: teacher.category || "",
                     religion: teacher.religion || "",
+                    fathersName: teacher.fathersName || "",
+                    mothersName: teacher.mothersName || "",
                     staffCategory: teacher.staffCategory || "",
                     designationId: teacher.designation?.id || "",
                     isActive: teacher.isActive ?? true,
+                    address: {
+                        addressLine1: teacher.address?.addressLine1 || "",
+                        addressLine2: teacher.address?.addressLine2 || "",
+                        landmark: teacher.address?.landmark || "",
+                        city: teacher.address?.city || "",
+                        state: teacher.address?.state || "",
+                        postalCode: teacher.address?.postalCode || "",
+                        country: teacher.address?.country || "IN",
+                    },
                 });
                 const activeAssignments = teacher.subjectAssignments?.filter((a: any) => a.isActive) || [];
                 setAssignments(activeAssignments);
@@ -113,6 +155,17 @@ export default function EditStaffPage() {
         }
 
         setFormData({ ...formData, [target.name]: value });
+    };
+
+    const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        if (name === "country") {
+            setFormData(prev => ({ ...prev, address: { ...prev.address, country: value, state: "", city: "" } }));
+        } else if (name === "state") {
+            setFormData(prev => ({ ...prev, address: { ...prev.address, state: value, city: "" } }));
+        } else {
+            setFormData(prev => ({ ...prev, address: { ...prev.address, [name]: value } }));
+        }
     };
 
     const handleCreateDesignation = async (e: React.FormEvent) => {
@@ -148,6 +201,22 @@ export default function EditStaffPage() {
 
         try {
             const payload = { ...formData };
+            
+            // Resolve country/state ISO codes → full names
+            if (
+                payload.address.addressLine1 &&
+                payload.address.city &&
+                payload.address.state &&
+                payload.address.postalCode
+            ) {
+                const countryObj = Country.getCountryByCode(payload.address.country);
+                const stateObj = State.getStateByCodeAndCountry(payload.address.state, payload.address.country);
+                payload.address.country = countryObj ? countryObj.name : payload.address.country;
+                payload.address.state = stateObj ? stateObj.name : payload.address.state;
+            } else {
+                delete (payload as any).address;
+            }
+
             if (payload.designationId) {
                 payload.designationId = parseInt(payload.designationId as any) as any;
             } else {
@@ -243,41 +312,24 @@ export default function EditStaffPage() {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-8">
-                    {/* Basic Info */}
+                    {/* ── BASIC INFORMATION ── */}
                     <div>
-                        <h3 className="text-lg font-bold mb-4 text-slate-700 border-b pb-2">Basic Information</h3>
-                        <div className="grid gap-6 md:grid-cols-3">
+                        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">Basic Information</h3>
+                        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
                             <div>
-                                <label htmlFor="firstName" className="block mb-2 text-sm font-medium text-gray-900">First name <span className="text-red-500">*</span></label>
-                                <input type="text" id="firstName" name="firstName" value={formData.firstName} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required />
+                                <label className="block mb-1 text-sm font-medium text-gray-900">First Name <span className="text-red-500">*</span></label>
+                                <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} required
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
                             </div>
                             <div>
-                                <label htmlFor="lastName" className="block mb-2 text-sm font-medium text-gray-900">Last name <span className="text-red-500">*</span></label>
-                                <input type="text" id="lastName" name="lastName" value={formData.lastName} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required />
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Last Name <span className="text-red-500">*</span></label>
+                                <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} required
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
                             </div>
                             <div>
-                                <label htmlFor="staffCategory" className="block mb-2 text-sm font-medium text-gray-900">Staff Category <span className="text-red-500">*</span></label>
-                                <select id="staffCategory" name="staffCategory" value={formData.staffCategory} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>
-                                    <option value="">Select Category</option>
-                                    <option value="Teaching Staff">Teaching Staff</option>
-                                    <option value="Management">Management</option>
-                                    <option value="Support Staff">Support Staff</option>
-                                    <option value="Admin Staff">Admin Staff</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label htmlFor="designationId" className="block mb-2 text-sm font-medium text-gray-900">Designation <span className="text-red-500">*</span></label>
-                                <select id="designationId" name="designationId" value={formData.designationId} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>
-                                    <option value="">Select Designation</option>
-                                    {designations.map(d => (
-                                        <option key={d.id} value={d.id}>{d.title}</option>
-                                    ))}
-                                    {isAdmin && <option value="CREATE_NEW" className="font-bold text-blue-600">+ Create New Designation</option>}
-                                </select>
-                            </div>
-                            <div>
-                                <label htmlFor="gender" className="block mb-2 text-sm font-medium text-gray-900">Gender</label>
-                                <select id="gender" name="gender" value={formData.gender} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Gender</label>
+                                <select name="gender" value={formData.gender} onChange={handleChange} required
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                                     <option value="">Select Gender</option>
                                     <option value="Male">Male</option>
                                     <option value="Female">Female</option>
@@ -285,12 +337,14 @@ export default function EditStaffPage() {
                                 </select>
                             </div>
                             <div>
-                                <label htmlFor="dateOfBirth" className="block mb-2 text-sm font-medium text-gray-900">Date of Birth</label>
-                                <input type="date" id="dateOfBirth" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Date of Birth</label>
+                                <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} required
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
                             </div>
                             <div>
-                                <label htmlFor="bloodGroup" className="block mb-2 text-sm font-medium text-gray-900">Blood Group</label>
-                                <select id="bloodGroup" name="bloodGroup" value={formData.bloodGroup} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Blood Group</label>
+                                <select name="bloodGroup" value={formData.bloodGroup} onChange={handleChange}
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                                     <option value="">Select Group</option>
                                     <option value="A+">A+</option><option value="A-">A-</option>
                                     <option value="B+">B+</option><option value="B-">B-</option>
@@ -299,64 +353,158 @@ export default function EditStaffPage() {
                                 </select>
                             </div>
                             <div>
-                                <label htmlFor="aadhaarNumber" className="block mb-2 text-sm font-medium text-gray-900">Aadhaar Number <span className="text-gray-400 font-normal">(Optional)</span></label>
-                                <input type="text" id="aadhaarNumber" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Aadhaar Number <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} maxLength={14}
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
                             </div>
                         </div>
                     </div>
 
-                    {/* Contact Info */}
+                    {/* ── CONTACT INFORMATION ── */}
                     <div>
-                        <h3 className="text-lg font-bold mb-4 text-slate-700 border-b pb-2">Contact Information</h3>
-                        <div className="grid gap-6 md:grid-cols-3">
+                        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">Contact Information</h3>
+                        <div className="grid gap-4 sm:grid-cols-3">
                             <div>
-                                <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900">Email address <span className="text-red-500">*</span></label>
-                                <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required />
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Email Address <span className="text-red-500">*</span></label>
+                                <input type="email" name="email" value={formData.email} onChange={handleChange} required readOnly
+                                    className="bg-gray-100 border border-gray-300 text-gray-600 text-sm rounded-lg block w-full p-2.5 cursor-not-allowed" title="Email cannot be changed" />
                             </div>
                             <div>
-                                <label htmlFor="mobile" className="block mb-2 text-sm font-medium text-gray-900">Mobile Number <span className="text-gray-400 font-normal">(Optional)</span></label>
-                                <input type="tel" id="mobile" name="mobile" value={formData.mobile} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Mobile <span className="text-red-500">*</span></label>
+                                <input type="tel" name="mobile" value={formData.mobile} onChange={handleChange} required
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
                             </div>
                             <div>
-                                <label htmlFor="alternateMobile" className="block mb-2 text-sm font-medium text-gray-900">Alternate Mobile <span className="text-gray-400 font-normal">(Optional)</span></label>
-                                <input type="tel" id="alternateMobile" name="alternateMobile" value={formData.alternateMobile} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Alternate Mobile <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="tel" name="alternateMobile" value={formData.alternateMobile} onChange={handleChange}
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
                             </div>
                         </div>
                     </div>
 
-                    {/* Demographics */}
+                    {/* ── ADDRESS INFORMATION ── */}
                     <div>
-                        <h3 className="text-lg font-bold mb-4 text-slate-700 border-b pb-2">Demographics</h3>
-                        <div className="grid gap-6 md:grid-cols-2">
+                        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">Address Information</h3>
+                        <div className="grid gap-4 sm:grid-cols-2">
                             <div>
-                                <label htmlFor="category" className="block mb-2 text-sm font-medium text-gray-900">Category</label>
-                                <select id="category" name="category" value={formData.category} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Country <span className="text-red-500">*</span></label>
+                                <select name="country" value={formData.address.country} onChange={handleAddressChange}
+                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
+                                    <option value="">Select Country</option>
+                                    {countries.map(c => <option key={c.isoCode} value={c.isoCode}>{c.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">State <span className="text-red-500">*</span></label>
+                                <select name="state" value={formData.address.state} onChange={handleAddressChange} disabled={!states.length}
+                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:opacity-50">
+                                    <option value="">Select State</option>
+                                    {states.map(s => <option key={s.isoCode} value={s.isoCode}>{s.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">City <span className="text-red-500">*</span></label>
+                                {cities.length > 0 ? (
+                                    <select name="city" value={formData.address.city} onChange={handleAddressChange}
+                                        className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
+                                        <option value="">Select City</option>
+                                        {cities.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                                    </select>
+                                ) : (
+                                    <input type="text" name="city" value={formData.address.city} onChange={handleAddressChange}
+                                        placeholder="City name" disabled={!formData.address.state}
+                                        className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:opacity-50" />
+                                )}
+                            </div>
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Postal Code <span className="text-red-500">*</span></label>
+                                <input type="text" name="postalCode" value={formData.address.postalCode} onChange={handleAddressChange}
+                                    placeholder="PIN code" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                            </div>
+                            <div className="sm:col-span-2">
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Address Line 1 <span className="text-red-500">*</span></label>
+                                <input type="text" name="addressLine1" value={formData.address.addressLine1} onChange={handleAddressChange}
+                                    placeholder="Street address, Flat no, etc." className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                            </div>
+                            <div className="sm:col-span-2">
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Address Line 2 <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" name="addressLine2" value={formData.address.addressLine2} onChange={handleAddressChange}
+                                    placeholder="Apartment, suite, unit, etc." className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                            </div>
+                            <div className="sm:col-span-2">
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Landmark <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" name="landmark" value={formData.address.landmark} onChange={handleAddressChange}
+                                    placeholder="Near..." className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ── DEMOGRAPHICS ── */}
+                    <div>
+                        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">Demographics</h3>
+                        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Category</label>
+                                <select name="category" value={formData.category} onChange={handleChange} required
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                                     <option value="">Select Category</option>
-                                    <option value="General">General</option>
-                                    <option value="SC">SC</option>
-                                    <option value="ST">ST</option>
-                                    <option value="OBC">OBC</option>
-                                    <option value="EWS">EWS</option>
+                                    {["General", "SC", "ST", "OBC", "EWS"].map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label htmlFor="religion" className="block mb-2 text-sm font-medium text-gray-900">Religion</label>
-                                <select id="religion" name="religion" value={formData.religion} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Religion</label>
+                                <select name="religion" value={formData.religion} onChange={handleChange} required
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                                     <option value="">Select Religion</option>
-                                    <option value="HINDU">HINDU</option>
-                                    <option value="MUSLIM">MUSLIM</option>
-                                    <option value="SIKH">SIKH</option>
-                                    <option value="CHRISTIAN">CHRISTIAN</option>
-                                    <option value="PARSI">PARSI</option>
-                                    <option value="OTHERS">OTHERS</option>
+                                    {["HINDU", "MUSLIM", "SIKH", "CHRISTIAN", "PARSI", "OTHERS"].map(r => (
+                                        <option key={r} value={r}>{r[0] + r.slice(1).toLowerCase()}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Father&apos;s Name <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" name="fathersName" value={formData.fathersName} onChange={handleChange}
+                                    placeholder="Father's name" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                            </div>
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Mother&apos;s Name <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" name="mothersName" value={formData.mothersName} onChange={handleChange}
+                                    placeholder="Mother's name" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ── EMPLOYMENT DETAILS ── */}
+                    <div>
+                        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">Employment Details</h3>
+                        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Staff Category <span className="text-red-500">*</span></label>
+                                <select name="staffCategory" value={formData.staffCategory} onChange={handleChange} required
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                    <option value="">Select Category</option>
+                                    <option value="Teaching Staff">Teaching Staff</option>
+                                    <option value="Management">Management</option>
+                                    <option value="Support Staff">Support Staff</option>
+                                    <option value="Admin Staff">Admin Staff</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Designation <span className="text-red-500">*</span></label>
+                                <select name="designationId" value={String(formData.designationId)} onChange={handleChange} required
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                    <option value="">Select Designation</option>
+                                    {designations.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
+                                    {isAdmin && <option value="CREATE_NEW" className="font-bold text-blue-600">+ Create New Designation</option>}
                                 </select>
                             </div>
                         </div>
                     </div>
 
-                    {/* Status */}
+                    {/* ── ACCOUNT STATUS ── */}
                     <div className="flex items-center">
-                        <input id="isActive" name="isActive" type="checkbox" checked={formData.isActive} onChange={handleChange} className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
+                        <input id="isActive" name="isActive" type="checkbox" checked={formData.isActive} onChange={handleChange}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
                         <label htmlFor="isActive" className="ml-2 text-sm font-medium text-gray-900">Account Active</label>
                     </div>
 
