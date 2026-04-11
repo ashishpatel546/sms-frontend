@@ -44,6 +44,9 @@ export function removeToken(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
+    // Clear user-specific UI state so it doesn't bleed into the next account
+    localStorage.removeItem('examPrefStartTime');
+    localStorage.removeItem('examPrefEndTime');
   }
 }
 

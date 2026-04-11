@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import useSWR from "swr";
-import { authFetch } from "@/lib/auth";
+import { authFetch, getUser, getToken } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
 import { getEnv } from "@/lib/env";
 
@@ -15,8 +15,21 @@ interface AppNotification {
   createdAt: string;
 }
 
-// Helper to fetch from IndexedDB
-async function getLocalNotifications(): Promise<AppNotification[]> {
+// Helper to get the current user's login time from the JWT iat claim (ms)
+function getUserLoginTime(): number | null {
+  try {
+    const token = getToken();
+    if (!token) return null;
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    // iat is in seconds; convert to ms
+    return typeof payload.iat === 'number' ? payload.iat * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+// Helper to fetch from IndexedDB, scoped to notifications received after the current user's login
+async function getLocalNotifications(loginTime: number | null): Promise<AppNotification[]> {
   return new Promise((resolve) => {
     if (typeof window === "undefined" || !("indexedDB" in window)) {
       return resolve([]);
@@ -33,14 +46,17 @@ async function getLocalNotifications(): Promise<AppNotification[]> {
         const getReq = store.getAll();
         getReq.onsuccess = () => {
           const result = getReq.result || [];
-          resolve(
-            result.map((n: any) => ({
-              id: n.timestamp,
-              title: n.title,
-              message: n.message,
-              createdAt: n.timestamp,
-            }))
-          );
+          const mapped: AppNotification[] = result.map((n: any) => ({
+            id: n.timestamp,
+            title: n.title,
+            message: n.message,
+            createdAt: n.timestamp,
+          }));
+          // Only show push notifications received after this user logged in
+          const filtered = loginTime
+            ? mapped.filter(n => new Date(n.createdAt).getTime() >= loginTime)
+            : mapped;
+          resolve(filtered);
         };
         getReq.onerror = () => resolve([]);
       } catch {
@@ -48,7 +64,7 @@ async function getLocalNotifications(): Promise<AppNotification[]> {
       }
     };
     request.onerror = () => resolve([]);
-    request.onupgradeneeded = (e: any) => resolve([]);
+    request.onupgradeneeded = () => resolve([]);
   });
 }
 
@@ -108,7 +124,8 @@ export function NotificationBell({ variant = 'light' }: { variant?: 'light' | 'd
 
   useEffect(() => {
     async function loadMerged() {
-      const local = await getLocalNotifications();
+      const loginTime = getUserLoginTime();
+      const local = await getLocalNotifications(loginTime);
       const remote = notifications || [];
       
       const combined = [...remote, ...local];
@@ -125,8 +142,10 @@ export function NotificationBell({ variant = 'light' }: { variant?: 'light' | 'd
       const finalSet = sorted.slice(0, 10);
       setMergedNotifications(finalSet);
 
-      // Calculate unread count
-      const lastRead = localStorage.getItem("notifications_last_read");
+      // Calculate unread count using a user-scoped key so accounts don't share read state
+      const userId = getUser()?.sub;
+      const lastReadKey = userId ? `notifications_last_read_${userId}` : "notifications_last_read";
+      const lastRead = localStorage.getItem(lastReadKey);
       if (!lastRead) {
         setUnreadCount(finalSet.length);
       } else {
@@ -146,7 +165,9 @@ export function NotificationBell({ variant = 'light' }: { variant?: 'light' | 'd
     setIsOpen(!isOpen);
     if (!isOpen) {
       setUnreadCount(0);
-      localStorage.setItem("notifications_last_read", new Date().toISOString());
+      const userId = getUser()?.sub;
+      const lastReadKey = userId ? `notifications_last_read_${userId}` : "notifications_last_read";
+      localStorage.setItem(lastReadKey, new Date().toISOString());
     }
   };
 

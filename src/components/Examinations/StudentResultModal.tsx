@@ -120,7 +120,7 @@ export default function StudentResultModal({ studentId, sessionId, onClose, onSa
             }
 
             for (const mark of editedMarks) {
-                if (mark.totalMarks !== '' || mark.obtainedMarks !== '' || mark.theoryTotalMarks !== '' || mark.theoryObtainedMarks !== '' || mark.practicalTotalMarks !== '' || mark.practicalObtainedMarks !== '' || mark.grade !== '' || mark.isPass !== null) {
+                if ((mark.totalMarks ?? '') !== '' || (mark.obtainedMarks ?? '') !== '' || (mark.theoryTotalMarks ?? '') !== '' || (mark.theoryObtainedMarks ?? '') !== '' || (mark.practicalTotalMarks ?? '') !== '' || (mark.practicalObtainedMarks ?? '') !== '' || (mark.grade ?? '') !== '' || mark.isPass !== null) {
                     await authFetch(`${API_BASE_URL}/exams/marks/student/${studentId}`, {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },

@@ -85,18 +85,41 @@ export default function EditStaffPage() {
 
     const fetchTeacherDetails = async () => {
         try {
-            const [teachersRes, classesRes, subjectsRes, desigRes] = await Promise.all([
-                authFetch(`${API_BASE_URL}/staff`),
+            const [teacherRes, classesRes, subjectsRes, desigRes] = await Promise.all([
+                authFetch(`${API_BASE_URL}/staff/${id}`),
                 authFetch(`${API_BASE_URL}/classes`),
                 authFetch(`${API_BASE_URL}/subjects`),
                 authFetch(`${API_BASE_URL}/designations`)
             ]);
 
-            if (!teachersRes.ok) throw new Error("Failed to fetch staff");
-            const teachers = await teachersRes.json();
-            const teacher = teachers.data ? teachers.data.find((t: any) => t.id === parseInt(id)) : teachers.find((t: any) => t.id === parseInt(id));
+            if (!teacherRes.ok) throw new Error("Failed to fetch staff details");
+            const teacher = await teacherRes.json();
 
             if (teacher) {
+                // Map names to ISO codes for dropdowns
+                const countryCode = teacher.address?.country 
+                    ? Country.getAllCountries().find(c => 
+                        c.name.toLowerCase() === teacher.address.country.toLowerCase() ||
+                        c.isoCode === teacher.address.country
+                      )?.isoCode || "IN" 
+                    : "IN";
+                
+                const stateCode = teacher.address?.state
+                    ? State.getStatesOfCountry(countryCode).find(s => 
+                        s.name.toLowerCase() === teacher.address.state.toLowerCase() ||
+                        s.isoCode === teacher.address.state
+                      )?.isoCode || ""
+                    : "";
+                
+                // Also try to match city name case-insensitively if stateCode is available
+                let cityName = teacher.address?.city || "";
+                if (stateCode && cityName) {
+                    const matchedCity = City.getCitiesOfState(countryCode, stateCode).find(c => 
+                        c.name.toLowerCase() === cityName.toLowerCase()
+                    );
+                    if (matchedCity) cityName = matchedCity.name;
+                }
+
                 setFormData({
                     firstName: teacher.firstName || "",
                     lastName: teacher.lastName || "",
@@ -118,10 +141,10 @@ export default function EditStaffPage() {
                         addressLine1: teacher.address?.addressLine1 || "",
                         addressLine2: teacher.address?.addressLine2 || "",
                         landmark: teacher.address?.landmark || "",
-                        city: teacher.address?.city || "",
-                        state: teacher.address?.state || "",
+                        city: cityName,
+                        state: stateCode,
                         postalCode: teacher.address?.postalCode || "",
-                        country: teacher.address?.country || "IN",
+                        country: countryCode,
                     },
                 });
                 const activeAssignments = teacher.subjectAssignments?.filter((a: any) => a.isActive) || [];

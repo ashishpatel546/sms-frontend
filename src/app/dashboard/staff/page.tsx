@@ -118,11 +118,12 @@ export default function TeachersPage() {
 
     const handleDownloadTemplate = () => {
         const headers = [
-            "firstName", "lastName", "email", "mobile", "gender", "dateOfBirth", "bloodGroup", "aadhaarNumber", 
-            "category", "religion", "fathersName", "mothersName", "department", "joiningDate", 
-            "qualification", "staffCategory", "designationId"
+            "firstName", "lastName", "email", "mobile", "alternateMobile", "gender", "dateOfBirth", "bloodGroup", "aadhaarNumber", 
+            "category", "religion", "fathersName", "mothersName", "staffCategory", "designationId", "isActive", "role",
+            "department", "joiningDate", "qualification",
+            "addressLine1", "addressLine2", "landmark", "city", "state", "postalCode", "country"
         ].join(",");
-        const dummyRow = "\nJohn,Doe,john@example.com,9876543210,Male,1990-01-01,O+,123412341234,General,HINDU,,,Science,2023-05-01,M.Sc,Teaching Staff,1";
+        const dummyRow = "\nJohn,Doe,john.doe@colegios.in,9876543210,,Male,1990-01-01,O+,123412341234,General,HINDU,,,Teaching Staff,4,true,TEACHER,Science,2023-05-01,M.Sc,Street 1,,Near Park,New Delhi,Delhi,110001,INDIA";
         
         const blob = new Blob([headers + dummyRow], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
@@ -150,6 +151,17 @@ export default function TeachersPage() {
                          category: row.category || undefined,
                          religion: row.religion || undefined,
                          gender: row.gender || undefined,
+                         isActive: row.isActive === 'false' ? false : true,
+                         role: row.role || 'TEACHER',
+                         address: {
+                             addressLine1: row.addressLine1 || undefined,
+                             addressLine2: row.addressLine2 || undefined,
+                             landmark: row.landmark || undefined,
+                             city: row.city || undefined,
+                             state: row.state || undefined,
+                             postalCode: row.postalCode || undefined,
+                             country: row.country || 'INDIA'
+                         }
                     }));
 
                     const res = await authFetch(`${API_BASE_URL}/staff/bulk-import`, {
