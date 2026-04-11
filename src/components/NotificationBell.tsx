@@ -74,6 +74,7 @@ export function NotificationBell({ variant = 'light' }: { variant?: 'light' | 'd
   const [mergedNotifications, setMergedNotifications] = useState<AppNotification[]>([]);
   const [pushStatus, setPushStatus] = useState<string>('default');
   const [isSubscribing, setIsSubscribing] = useState(false);
+  const [pushTick, setPushTick] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
   // Polling interval logic with jitter to prevent server overload
@@ -155,11 +156,11 @@ export function NotificationBell({ variant = 'light' }: { variant?: 'light' | 'd
       }
     }
     
-    // Always load merged data when SWR changes OR when modal is opened
-    if (notifications || isOpen) {
+    // Always load merged data when SWR changes, modal is opened, or a push notification arrives
+    if (notifications !== undefined || isOpen || pushTick > 0) {
       loadMerged();
     }
-  }, [notifications, isOpen]);
+  }, [notifications, isOpen, pushTick]);
 
   const handleOpen = () => {
     setIsOpen(!isOpen);
@@ -170,6 +171,18 @@ export function NotificationBell({ variant = 'light' }: { variant?: 'light' | 'd
       localStorage.setItem(lastReadKey, new Date().toISOString());
     }
   };
+
+  // Listen for push notifications from the service worker and refresh immediately
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
+    const bc = new BroadcastChannel('push-notifications');
+    bc.onmessage = (event: MessageEvent) => {
+      if (event.data?.type === 'NEW_PUSH_NOTIFICATION') {
+        setPushTick((t) => t + 1);
+      }
+    };
+    return () => bc.close();
+  }, []);
 
   // Close when clicking outside
   useEffect(() => {

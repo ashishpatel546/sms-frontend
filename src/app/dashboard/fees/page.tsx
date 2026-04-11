@@ -26,6 +26,8 @@ export default function FeesDashboardPage() {
 
     // --- Setup State ---
     const [categories, setCategories] = useState<any[]>([]);
+    const [regularCategories, setRegularCategories] = useState<any[]>([]);
+    const [addOnCategories, setAddOnCategories] = useState<any[]>([]);
     const [structures, setStructures] = useState<any[]>([]);
     const [classes, setClasses] = useState<any[]>([]);
     const [sessions, setSessions] = useState<any[]>([]);
@@ -36,9 +38,11 @@ export default function FeesDashboardPage() {
     // New Category Form
     const [newCategoryName, setNewCategoryName] = useState("");
     const [newCategoryDesc, setNewCategoryDesc] = useState("");
+    const [newCategoryType, setNewCategoryType] = useState("REGULAR");
     const [editingCategory, setEditingCategory] = useState<any>(null);
     const [editCategoryName, setEditCategoryName] = useState("");
     const [editCategoryDesc, setEditCategoryDesc] = useState("");
+    const [editCategoryType, setEditCategoryType] = useState("REGULAR");
 
     // New Structure Form
     const [formClassId, setFormClassId] = useState("");
@@ -222,14 +226,16 @@ export default function FeesDashboardPage() {
     useEffect(() => {
         const fetchSetupData = async () => {
             try {
-                const [catRes, structRes, classRes, studentRes, settingsRes, discountRes, sessionRes] = await Promise.all([
+                const [catRes, structRes, classRes, studentRes, settingsRes, discountRes, sessionRes, regularCatRes, addOnCatRes] = await Promise.all([
                     authFetch(`${API_BASE_URL}/fees/categories`),
                     authFetch(`${API_BASE_URL}/fees/structures`),
                     authFetch(`${API_BASE_URL}/classes`),
                     authFetch(`${API_BASE_URL}/students`),
                     authFetch(`${API_BASE_URL}/fees/settings`),
                     authFetch(`${API_BASE_URL}/fees/discounts`),
-                    authFetch(`${API_BASE_URL}/academic-sessions`)
+                    authFetch(`${API_BASE_URL}/academic-sessions`),
+                    authFetch(`${API_BASE_URL}/fees/categories?type=REGULAR`),
+                    authFetch(`${API_BASE_URL}/fees/categories?type=ADD_ON`),
                 ]);
                 if (catRes.ok) setCategories(await catRes.json());
                 if (structRes.ok) setStructures(await structRes.json());
@@ -237,6 +243,8 @@ export default function FeesDashboardPage() {
                 if (studentRes.ok) setStudents(await studentRes.json());
                 if (settingsRes.ok) setGlobalSettings(await settingsRes.json());
                 if (discountRes.ok) setDiscounts(await discountRes.json());
+                if (regularCatRes.ok) setRegularCategories(await regularCatRes.json());
+                if (addOnCatRes.ok) setAddOnCategories(await addOnCatRes.json());
 
                 if (sessionRes.ok) {
                     const sessList = await sessionRes.json();
@@ -257,12 +265,16 @@ export default function FeesDashboardPage() {
 
     // Refresh Setup Data helper
     const refreshSetupData = async () => {
-        const [catRes, structRes] = await Promise.all([
+        const [catRes, structRes, regularCatRes, addOnCatRes] = await Promise.all([
             authFetch(`${API_BASE_URL}/fees/categories`),
-            authFetch(`${API_BASE_URL}/fees/structures`)
+            authFetch(`${API_BASE_URL}/fees/structures`),
+            authFetch(`${API_BASE_URL}/fees/categories?type=REGULAR`),
+            authFetch(`${API_BASE_URL}/fees/categories?type=ADD_ON`),
         ]);
         if (catRes.ok) setCategories(await catRes.json());
         if (structRes.ok) setStructures(await structRes.json());
+        if (regularCatRes.ok) setRegularCategories(await regularCatRes.json());
+        if (addOnCatRes.ok) setAddOnCategories(await addOnCatRes.json());
     };
 
     const handleSaveSettings = async (e: React.FormEvent) => {
@@ -383,12 +395,13 @@ export default function FeesDashboardPage() {
             const res = await authFetch(`${API_BASE_URL}/fees/categories`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: newCategoryName, description: newCategoryDesc })
+                body: JSON.stringify({ name: newCategoryName, description: newCategoryDesc, type: newCategoryType })
             });
             if (res.ok) {
                 toast.success("Fee Category Created!");
                 setNewCategoryName("");
                 setNewCategoryDesc("");
+                setNewCategoryType("REGULAR");
                 refreshSetupData();
             } else throw new Error("Creation failed");
         } catch (err) {
@@ -403,7 +416,7 @@ export default function FeesDashboardPage() {
             const res = await authFetch(`${API_BASE_URL}/fees/categories/${editingCategory.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: editCategoryName, description: editCategoryDesc })
+                body: JSON.stringify({ name: editCategoryName, description: editCategoryDesc, type: editCategoryType })
             });
             if (res.ok) {
                 toast.success("Fee Category Updated!");
@@ -1356,6 +1369,13 @@ export default function FeesDashboardPage() {
                                     <label className="block mb-2 text-sm font-medium text-gray-900">Description</label>
                                     <input type="text" value={newCategoryDesc} onChange={(e) => setNewCategoryDesc(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" />
                                 </div>
+                                <div className="mb-4">
+                                    <label className="block mb-2 text-sm font-medium text-gray-900">Type</label>
+                                    <select value={newCategoryType} onChange={(e) => setNewCategoryType(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required>
+                                        <option value="REGULAR">Regular (class-wide fee)</option>
+                                        <option value="ADD_ON">Add-On (individual student fee)</option>
+                                    </select>
+                                </div>
                                 <button type="submit" className="text-white bg-indigo-600 hover:bg-indigo-700 transition-colors py-2 px-4 rounded text-sm w-full font-medium">Create Category</button>
                             </form>
 
@@ -1375,7 +1395,7 @@ export default function FeesDashboardPage() {
                                                     required
                                                 />
                                             </div>
-                                            <div className="mb-6">
+                                            <div className="mb-4">
                                                 <label className="block mb-2 text-sm font-medium text-gray-900">Description</label>
                                                 <input
                                                     type="text"
@@ -1383,6 +1403,18 @@ export default function FeesDashboardPage() {
                                                     onChange={(e) => setEditCategoryDesc(e.target.value)}
                                                     className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500"
                                                 />
+                                            </div>
+                                            <div className="mb-6">
+                                                <label className="block mb-2 text-sm font-medium text-gray-900">Type</label>
+                                                <select
+                                                    value={editCategoryType}
+                                                    onChange={(e) => setEditCategoryType(e.target.value)}
+                                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500"
+                                                    required
+                                                >
+                                                    <option value="REGULAR">Regular (class-wide fee)</option>
+                                                    <option value="ADD_ON">Add-On (individual student fee)</option>
+                                                </select>
                                             </div>
                                             <div className="flex gap-3 justify-end">
                                                 <button
@@ -1410,6 +1442,7 @@ export default function FeesDashboardPage() {
                                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10">
                                         <tr>
                                             <th className="px-4 py-2">Name</th>
+                                            <th className="px-4 py-2">Type</th>
                                             <th className="px-4 py-2">Status</th>
                                             <th className="px-4 py-2 text-right">Actions</th>
                                         </tr>
@@ -1420,6 +1453,11 @@ export default function FeesDashboardPage() {
                                                 <td className="px-4 py-3 font-medium text-gray-900">
                                                     {c.name}
                                                     {c.description && <p className="text-xs text-gray-500 font-normal mt-0.5">{c.description}</p>}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`px-2 py-1 rounded text-xs font-semibold ${c.type === 'ADD_ON' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
+                                                        {c.type === 'ADD_ON' ? 'Add-On' : 'Regular'}
+                                                    </span>
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className={`px-2 py-1 rounded text-xs font-semibold ${c.isActive !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
@@ -1441,7 +1479,7 @@ export default function FeesDashboardPage() {
                                                                 style={{ top: dropdownPosition.top, left: dropdownPosition.left }}
                                                             >
                                                                 <div className="py-1">
-                                                                    <button type="button" onClick={(e) => { e.stopPropagation(); setEditingCategory(c); setEditCategoryName(c.name); setEditCategoryDesc(c.description || ""); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Edit</button>
+                                                                    <button type="button" onClick={(e) => { e.stopPropagation(); setEditingCategory(c); setEditCategoryName(c.name); setEditCategoryDesc(c.description || ""); setEditCategoryType(c.type || "REGULAR"); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Edit</button>
                                                                     <button type="button" onClick={(e) => { e.stopPropagation(); handleToggleCategoryStatus(c.id, c.isActive !== false); setOpenDropdownId(null); }} className={`block w-full text-left px-4 py-2 text-sm ${c.isActive !== false ? 'text-orange-600' : 'text-green-600'} hover:bg-gray-100`}>
                                                                         {c.isActive !== false ? 'Deactivate' : 'Activate'}
                                                                     </button>
@@ -1453,7 +1491,7 @@ export default function FeesDashboardPage() {
                                                 </td>
                                             </tr>
                                         ))}
-                                        {categories.length === 0 && <tr><td colSpan={3} className="px-4 py-4 text-center">No categories found.</td></tr>}
+                                        {categories.length === 0 && <tr><td colSpan={4} className="px-4 py-4 text-center">No categories found.</td></tr>}
                                     </tbody>
                                 </table>
                             </div>
@@ -1475,7 +1513,7 @@ export default function FeesDashboardPage() {
                                         <label className="block mb-2 text-sm font-medium text-gray-900">Category</label>
                                         <select value={formCategoryId} onChange={(e) => setFormCategoryId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required>
                                             <option value="">Select</option>
-                                            {categories.filter(c => c.isActive !== false).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                            {regularCategories.filter(c => c.isActive !== false).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                         </select>
                                     </div>
                                 </div>
@@ -2779,7 +2817,7 @@ export default function FeesDashboardPage() {
                                             className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500"
                                         >
                                             <option value="">Select Category...</option>
-                                            {categories.filter(c => c.isActive !== false).map(c => (
+                                            {addOnCategories.filter(c => c.isActive !== false).map(c => (
                                                 <option key={c.id} value={c.id}>{c.name}</option>
                                             ))}
                                         </select>

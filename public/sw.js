@@ -18,7 +18,7 @@ self.addEventListener('install', (event) => {
       .then((cache) => {
         return cache.addAll(APP_SHELL);
       })
-      .then(() => self.skipWaiting())
+      .then(() => self.skipWaiting()),
   );
 });
 
@@ -38,10 +38,10 @@ self.addEventListener('activate', (event) => {
         return Promise.all(
           cacheNames
             .filter((name) => name !== CACHE_NAME)
-            .map((name) => caches.delete(name))
+            .map((name) => caches.delete(name)),
         );
       })
-      .then(() => self.clients.claim())
+      .then(() => self.clients.claim()),
   );
 });
 
@@ -63,7 +63,7 @@ self.addEventListener('fetch', (event) => {
           return caches.match('/');
         }
         return new Response('Offline', { status: 503 });
-      })
+      }),
     );
     return;
   }
@@ -94,7 +94,7 @@ self.addEventListener('fetch', (event) => {
             .then((cache) => cache.put(event.request, cloned));
           return response;
         });
-      })
+      }),
     );
     return;
   }
@@ -114,8 +114,8 @@ self.addEventListener('fetch', (event) => {
           if (cached) return cached;
           // Serve offline page fallback
           return caches.match('/');
-        })
-      )
+        }),
+      ),
   );
 });
 
@@ -146,7 +146,8 @@ self.addEventListener('push', (event) => {
 
     // Show native push popup
     event.waitUntil(
-      self.registration.showNotification(notificationTitle, notificationOptions)
+      self.registration
+        .showNotification(notificationTitle, notificationOptions)
         .then(() => dbPromise)
         .then(async (db) => {
           // Save to IndexedDB
@@ -166,16 +167,20 @@ self.addEventListener('push', (event) => {
               const all = getReq.result;
               if (all.length > 10) {
                 // Sort by timestamp asc (oldest first)
-                all.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                all.sort(
+                  (a, b) => new Date(a.timestamp) - new Date(b.timestamp),
+                );
                 // Delete oldest elements until length is 10
                 let deleteTx = db.transaction('notifications', 'readwrite');
                 let deleteStore = deleteTx.objectStore('notifications');
                 let deletePromises = [];
                 for (let i = 0; i < all.length - 10; i++) {
-                  deletePromises.push(new Promise((res) => {
-                    const req = deleteStore.delete(all[i].timestamp);
-                    req.onsuccess = res;
-                  }));
+                  deletePromises.push(
+                    new Promise((res) => {
+                      const req = deleteStore.delete(all[i].timestamp);
+                      req.onsuccess = res;
+                    }),
+                  );
                 }
                 Promise.all(deletePromises).then(resolve);
               } else {
@@ -185,6 +190,11 @@ self.addEventListener('push', (event) => {
             getReq.onerror = reject;
           });
         })
+        .then(() => {
+          const bc = new BroadcastChannel('push-notifications');
+          bc.postMessage({ type: 'NEW_PUSH_NOTIFICATION' });
+          bc.close();
+        }),
     );
   }
 });
@@ -197,23 +207,25 @@ self.addEventListener('notificationclick', (event) => {
   // If there's already a window open for this origin, focus it; otherwise open a new one.
   const targetUrl = '/parent-dashboard';
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Check if there's already a window open with this app
-      for (let i = 0; i < windowClients.length; i++) {
-        const client = windowClients[i];
-        if ('focus' in client) {
-          client.focus();
-          // Navigate the existing window to the parent dashboard
-          if (client.navigate) {
-            return client.navigate(targetUrl);
+    clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((windowClients) => {
+        // Check if there's already a window open with this app
+        for (let i = 0; i < windowClients.length; i++) {
+          const client = windowClients[i];
+          if ('focus' in client) {
+            client.focus();
+            // Navigate the existing window to the parent dashboard
+            if (client.navigate) {
+              return client.navigate(targetUrl);
+            }
+            return;
           }
-          return;
         }
-      }
-      // No window open — open a new one
-      if (clients.openWindow) {
-        return clients.openWindow(targetUrl);
-      }
-    })
+        // No window open — open a new one
+        if (clients.openWindow) {
+          return clients.openWindow(targetUrl);
+        }
+      }),
   );
 });
