@@ -2904,7 +2904,7 @@ export default function FeesDashboardPage() {
                                         <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-600/10 rounded-full blur-3xl -ml-20 -mb-20"></div>
                                         
                                         <div className="relative flex flex-col md:flex-row items-center gap-6">
-                                            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg border border-blue-400/30">
+                                            <div className="w-24 h-24 rounded-2xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg border border-blue-400/30">
                                                 {feeDetailsStudentName.split(' ').map(n => n[0]).join('')}
                                             </div>
                                             <div className="text-center md:text-left flex-1">
@@ -3042,7 +3042,7 @@ export default function FeesDashboardPage() {
                                                                     <button
                                                                         onClick={() => handleRemoveOptionalFee(fee.id)}
                                                                         disabled={removingFeeId === fee.id}
-                                                                        className="flex-shrink-0 text-[10px] px-3 py-1.5 text-red-600 border border-red-200 bg-white rounded-lg hover:bg-red-50 transition-all font-black uppercase tracking-tighter shadow-sm"
+                                                                        className="shrink-0 text-[10px] px-3 py-1.5 text-red-600 border border-red-200 bg-white rounded-lg hover:bg-red-50 transition-all font-black uppercase tracking-tighter shadow-sm"
                                                                     >
                                                                         {removingFeeId === fee.id ? 'Wait...' : 'Unlink'}
                                                                     </button>
