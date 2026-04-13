@@ -151,7 +151,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
                 </aside>
 
-                <div id="main-content" className="relative w-full h-full overflow-y-auto bg-gray-50 lg:ml-64">
+                <div id="main-content" className="relative w-full h-full overflow-y-auto bg-gray-50 sm:ml-64">
                     {children}
                 </div>
             </div>

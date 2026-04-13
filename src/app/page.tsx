@@ -174,32 +174,28 @@ export default function LoginPage() {
       {/* Right — Login Panel */}
       <div className="flex-1 flex items-center justify-center p-6 sm:p-10 min-h-screen md:min-h-0">
         <div className="w-full max-w-md">
-          {/* Mobile hero banner — visible only on mobile/PWA (branding panel is desktop-only) */}
-          <div className="flex md:hidden relative w-full h-44 rounded-2xl overflow-hidden mb-7 shadow-2xl">
-            <img
-              src="/colegios/colegios.png"
-              alt="Colegios"
-              className="absolute inset-0 w-full h-full object-cover object-center"
-            />
-            {/* Gradient overlay */}
-            <div className="absolute inset-0 bg-linear-to-t from-slate-950/80 via-slate-950/30 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-4">
-              <p className="text-white font-extrabold text-xl tracking-tight drop-shadow-md">Colegios</p>
-              <p className="text-indigo-200 text-xs font-medium tracking-wide">Smart Operating System for Modern Schools</p>
+          {/* Mobile/tablet branding card — visible up to large screens (desktop uses left panel) */}
+          <div className="lg:hidden relative w-full rounded-2xl overflow-hidden mb-7 shadow-2xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-white/10 p-5"
+            style={{ animation: 'fade-in 0.55s ease-out forwards' }}
+          >
+            <div className="absolute inset-0 opacity-30 bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-transparent" />
+            <div className="relative flex items-center gap-3 mb-4">
+              <div className="w-14 h-14 rounded-3xl bg-white/10 border border-white/10 backdrop-blur-md flex items-center justify-center shadow-lg">
+                <img src="/colegios/logo.png" alt="Colegios Logo" className="w-10 h-10 object-contain" />
+              </div>
+              <div>
+                <p className="text-white font-extrabold text-xl tracking-tight">Colegios</p>
+                <p className="text-slate-300 text-xs uppercase tracking-[0.24em]">Smart Operating System For School</p>
+              </div>
+            </div>
+            <div className="relative rounded-2xl bg-slate-950/60 border border-white/10 p-4 shadow-inner shadow-indigo-950/40 animate-[slide-up_0.75s_cubic-bezier(0.16,1,0.3,1)_0.1s_forwards]">
+              <p className="text-slate-200 text-sm leading-relaxed">
+                A smarter digital campus for modern schools.
+              </p>
             </div>
           </div>
 
-          {/* Mobile logo (icon + name) */}
-          <div className="flex md:hidden items-center gap-3 mb-8 justify-center">
-            <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center p-2 border border-slate-700 shadow-lg">
-              <img src="/colegios/logo.png" alt="Colegios Logo" className="w-full h-full object-contain" />
-            </div>
-            <span className="text-white font-extrabold text-2xl tracking-tight">
-              Colegios
-            </span>
-          </div>
-
-          <h2 className="text-white text-3xl font-bold mb-2">Welcome back</h2>
+          <h2 className="text-white text-3xl font-bold mb-2">Welcome Back</h2>
           <p className="text-slate-500 mb-8">Sign in to your account to continue</p>
 
           {/* Tab Switcher */}
@@ -402,7 +398,7 @@ export default function LoginPage() {
             </p>
             <p>
               Developed by{" "}
-              <a href="https://appme.in" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-400 font-medium transition-colors">
+              <a href="https://appme.in" target="_blank" rel="noopener noreferrer" className="text-indigo-300 underline decoration-indigo-500/70 decoration-1 underline-offset-2 font-medium transition-colors hover:text-indigo-100 hover:decoration-indigo-300">
                 AppMe Soft Pvt Ltd.
               </a>
             </p>

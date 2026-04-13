@@ -66,6 +66,7 @@ export default function ReportsDashboard() {
     const [pendingSortColumn, setPendingSortColumn] = useState<string>('className');
     const [pendingSortDirection, setPendingSortDirection] = useState<'asc' | 'desc'>('asc');
     const [selectedPendingStudents, setSelectedPendingStudents] = useState<number[]>([]);
+    const [pendingHasSearched, setPendingHasSearched] = useState(false);
 
     // Pagination for pending dues
     const [pendingDuesPage, setPendingDuesPage] = useState(1);
@@ -87,6 +88,8 @@ export default function ReportsDashboard() {
     const [receivedData, setReceivedData] = useState<any[]>([]);
     const [receivedLoading, setReceivedLoading] = useState(false);
     
+    const [receivedHasSearched, setReceivedHasSearched] = useState(false);
+
     // Pagination for fee received
     const [receivedPage, setReceivedPage] = useState(1);
     const [receivedTotalCount, setReceivedTotalCount] = useState(0);
@@ -259,100 +262,81 @@ export default function ReportsDashboard() {
         fetchData();
     }, [activeTab]);
 
-    // PENDING DUES
-    useEffect(() => {
-        if (activeTab !== 'PENDING_DUES') return;
-        if (!pendingSessionId) return;
-
-        const fetchData = async () => {
-            setPendingDuesLoading(true);
-            try {
-                let query = `?academicYear=${encodeURIComponent(
-                    academicSessions.find(s => s.id.toString() === pendingSessionId)?.name || ''
-                )}`;
-                if (pendingClassId) query += `&classId=${pendingClassId}`;
-                if (pendingSectionId) query += `&sectionId=${pendingSectionId}`;
-                if (pendingMobile) query += `&mobileNumber=${pendingMobile}`;
-                if (pendingMonth) query += `&month=${pendingMonth}`;
-
-                const res = await authFetch(`${API_BASE_URL}/fees/reports/pending-dues${query}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setPendingDuesData(data);
-                } else {
-                    toast.error('Failed to fetch pending dues data');
-                }
-            } catch (e) { 
-                console.error(e); 
-                toast.error('An error occurred while fetching pending dues data');
-            } finally {
-                setPendingDuesLoading(false);
-            }
-        };
-        
-        // Add a small debounce if typing Mobile
-        const timeoutId = setTimeout(() => {
-            fetchData();
-        }, 500);
-        return () => clearTimeout(timeoutId);
-    }, [activeTab, pendingSessionId, pendingClassId, pendingSectionId, pendingMobile, pendingMonth, academicSessions]);
-
-    // Reset pagination on filter change
-    useEffect(() => {
+    // PENDING DUES - manual fetch (triggered by Apply Filters button)
+    const fetchPendingDues = async () => {
+        if (!pendingSessionId) {
+            toast.error('Please select an academic session');
+            return;
+        }
+        setPendingDuesLoading(true);
+        setPendingHasSearched(true);
         setPendingDuesPage(1);
-    }, [pendingSessionId, pendingClassId, pendingSectionId, pendingMobile, pendingMonth, pendingSearchQuery]);
+        setSelectedPendingStudents([]);
+        try {
+            let query = `?academicYear=${encodeURIComponent(
+                academicSessions.find(s => s.id.toString() === pendingSessionId)?.name || ''
+            )}`;
+            if (pendingClassId) query += `&classId=${pendingClassId}`;
+            if (pendingSectionId) query += `&sectionId=${pendingSectionId}`;
+            if (pendingMobile) query += `&mobileNumber=${pendingMobile}`;
+            if (pendingMonth) query += `&month=${pendingMonth}`;
 
-    // Reset pagination on filter change
-    useEffect(() => {
-        setPendingDuesPage(1);
-    }, [pendingSessionId, pendingClassId, pendingSectionId, pendingMobile, pendingMonth, pendingSearchQuery]);
-
-    // FEE RECEIVED DATA FETCH
-    useEffect(() => {
-        if (activeTab !== 'FEE_RECEIVED') return;
-        if (!receivedSessionId) return;
-
-        const fetchData = async () => {
-            setReceivedLoading(true);
-            try {
-                let query = `?academicYear=${encodeURIComponent(
-                    academicSessions.find(s => s.id.toString() === receivedSessionId)?.name || ''
-                )}`;
-                if (receivedClassId) query += `&classId=${receivedClassId}`;
-                if (receivedSectionId) query += `&sectionId=${receivedSectionId}`;
-                if (receivedMobile) query += `&mobileNumber=${receivedMobile}`;
-                if (receivedFromDate) query += `&fromDate=${receivedFromDate}`;
-                if (receivedToDate) query += `&toDate=${receivedToDate}`;
-                if (receivedSearchQuery && !isNaN(Number(receivedSearchQuery))) query += `&studentId=${receivedSearchQuery}`;
-                
-                query += `&page=${receivedPage}&limit=${RECEIVED_PER_PAGE}`;
-
-                const res = await authFetch(`${API_BASE_URL}/fees/reports/fee-received${query}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setReceivedData(data.data || []);
-                    setReceivedTotalCount(data.totalCount || 0);
-                } else {
-                    toast.error('Failed to fetch fee received data');
-                }
-            } catch (e) {
-                console.error(e);
-                toast.error('An error occurred while fetching fee received data');
-            } finally {
-                setReceivedLoading(false);
+            const res = await authFetch(`${API_BASE_URL}/fees/reports/pending-dues${query}`);
+            if (res.ok) {
+                const data = await res.json();
+                setPendingDuesData(data);
+            } else {
+                toast.error('Failed to fetch pending dues data');
             }
-        };
+        } catch (e) {
+            console.error(e);
+            toast.error('An error occurred while fetching pending dues data');
+        } finally {
+            setPendingDuesLoading(false);
+        }
+    };
 
-        const timeoutId = setTimeout(() => {
-            fetchData();
-        }, 500);
-        return () => clearTimeout(timeoutId);
-    }, [activeTab, receivedSessionId, receivedClassId, receivedSectionId, receivedMobile, receivedFromDate, receivedToDate, receivedSearchQuery, receivedPage, academicSessions]);
+    // FEE RECEIVED - manual fetch (triggered by Apply Filters button)
+    const fetchFeeReceived = async (pageOverride?: number) => {
+        if (!receivedSessionId) {
+            toast.error('Please select an academic session');
+            return;
+        }
+        const page = pageOverride ?? receivedPage;
+        setReceivedLoading(true);
+        if (!pageOverride) {
+            setReceivedHasSearched(true);
+            setReceivedPage(1);
+        }
+        try {
+            let query = `?academicYear=${encodeURIComponent(
+                academicSessions.find(s => s.id.toString() === receivedSessionId)?.name || ''
+            )}`;
+            if (receivedClassId) query += `&classId=${receivedClassId}`;
+            if (receivedSectionId) query += `&sectionId=${receivedSectionId}`;
+            if (receivedMobile) query += `&mobileNumber=${receivedMobile}`;
+            if (receivedFromDate) query += `&fromDate=${receivedFromDate}`;
+            if (receivedToDate) query += `&toDate=${receivedToDate}`;
+            if (receivedSearchQuery && !isNaN(Number(receivedSearchQuery))) query += `&studentId=${receivedSearchQuery}`;
 
-    // Reset received pagination on filter change
-    useEffect(() => {
-        setReceivedPage(1);
-    }, [receivedSessionId, receivedClassId, receivedSectionId, receivedMobile, receivedFromDate, receivedToDate, receivedSearchQuery]);
+            query += `&page=${pageOverride ?? 1}&limit=${RECEIVED_PER_PAGE}`;
+
+            const res = await authFetch(`${API_BASE_URL}/fees/reports/fee-received${query}`);
+            if (res.ok) {
+                const data = await res.json();
+                setReceivedData(data.data || []);
+                setReceivedTotalCount(data.totalCount || 0);
+                if (!pageOverride) setReceivedPage(1);
+            } else {
+                toast.error('Failed to fetch fee received data');
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error('An error occurred while fetching fee received data');
+        } finally {
+            setReceivedLoading(false);
+        }
+    };
 
     // Sorting Helper for Pending Dues
     const handlePendingSort = (column: string) => {
@@ -845,7 +829,7 @@ export default function ReportsDashboard() {
                                 </button>
                                 <button
                                     onClick={exportToCSV}
-                                    disabled={paginatedPendingDues.length === 0}
+                                    disabled={displayedPendingDuesAll.length === 0}
                                     className="bg-emerald-600 text-white px-4 py-2 rounded shadow hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center"
                                 >
                                     <Download className="w-4 h-4" />
@@ -944,6 +928,23 @@ export default function ReportsDashboard() {
                             </div>
                         </div>
 
+                        <div className="flex justify-end mb-4">
+                            <button
+                                onClick={fetchPendingDues}
+                                disabled={!pendingSessionId}
+                                className="bg-blue-600 text-white px-6 py-2 rounded-lg shadow hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                            >
+                                Apply Filters
+                            </button>
+                        </div>
+
+                        {!pendingHasSearched ? (
+                            <div className="border border-dashed border-slate-300 rounded-lg p-12 text-center text-slate-400">
+                                <svg className="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/></svg>
+                                <p className="text-sm font-medium">Select filters above and click <span className="text-blue-600 font-semibold">Apply Filters</span> to view pending dues.</p>
+                            </div>
+                        ) : (
+                        <>
                         <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-[600px] overflow-y-auto">
                             {pendingDuesLoading ? (
                                 <div className="p-12 flex justify-center">
@@ -1075,7 +1076,7 @@ export default function ReportsDashboard() {
                         </div>
 
                         {/* Pending Dues Pagination Controls */}
-                        {totalPendingPages > 1 && (
+                        {displayedPendingDuesAll.length > 0 && (
                             <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50 mt-4 rounded-lg">
                                 <div className="text-sm text-slate-500">
                                     Showing <span className="font-medium text-slate-900">{(pendingDuesPage - 1) * PENDING_DUES_PER_PAGE + 1}</span> to <span className="font-medium text-slate-900">{Math.min(pendingDuesPage * PENDING_DUES_PER_PAGE, displayedPendingDuesAll.length)}</span> of <span className="font-medium text-slate-900">{displayedPendingDuesAll.length}</span> students
@@ -1089,17 +1090,19 @@ export default function ReportsDashboard() {
                                         Previous
                                     </button>
                                     <span className="px-3 py-1 text-sm flex items-center">
-                                        Page {pendingDuesPage} of {totalPendingPages}
+                                        Page {pendingDuesPage} of {totalPendingPages || 1}
                                     </span>
                                     <button 
                                         onClick={() => setPendingDuesPage(p => Math.min(totalPendingPages, p + 1))}
-                                        disabled={pendingDuesPage === totalPendingPages}
+                                        disabled={pendingDuesPage === totalPendingPages || totalPendingPages === 0}
                                         className="px-3 py-1 border border-slate-200 rounded text-sm disabled:opacity-50 bg-white hover:bg-slate-50 transition"
                                     >
                                         Next
                                     </button>
                                 </div>
                             </div>
+                        )}
+                        </>
                         )}
                     </div>
                 </div>
@@ -1117,7 +1120,8 @@ export default function ReportsDashboard() {
                             <div className="flex flex-col sm:flex-row gap-2">
                                 <button
                                     onClick={exportFeeReceivedCSV}
-                                    className="bg-emerald-600 text-white px-4 py-2 rounded shadow hover:bg-emerald-700 transition flex items-center gap-2 justify-center"
+                                    disabled={!receivedHasSearched || receivedData.length === 0}
+                                    className="bg-emerald-600 text-white px-4 py-2 rounded shadow hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center"
                                 >
                                     <Download className="w-4 h-4" />
                                     Download CSV
@@ -1213,6 +1217,23 @@ export default function ReportsDashboard() {
                             </div>
                         </div>
 
+                        <div className="flex justify-end mb-4">
+                            <button
+                                onClick={() => fetchFeeReceived()}
+                                disabled={!receivedSessionId}
+                                className="bg-blue-600 text-white px-6 py-2 rounded-lg shadow hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                            >
+                                Apply Filters
+                            </button>
+                        </div>
+
+                        {!receivedHasSearched ? (
+                            <div className="border border-dashed border-slate-300 rounded-lg p-12 text-center text-slate-400">
+                                <svg className="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/></svg>
+                                <p className="text-sm font-medium">Select filters above and click <span className="text-blue-600 font-semibold">Apply Filters</span> to view fee received records.</p>
+                            </div>
+                        ) : (
+                        <>
                         <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-[600px] overflow-y-auto">
                             {receivedLoading ? (
                                 <div className="p-12 flex justify-center">
@@ -1262,24 +1283,24 @@ export default function ReportsDashboard() {
                         </div>
 
                         {/* Pagination */}
-                        {receivedTotalCount > 0 && Math.ceil(receivedTotalCount / RECEIVED_PER_PAGE) > 1 && (
+                        {receivedHasSearched && receivedTotalCount > 0 && (
                             <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50 mt-4 rounded-lg">
                                 <div className="text-sm text-slate-500">
                                     Showing <span className="font-medium text-slate-900">{(receivedPage - 1) * RECEIVED_PER_PAGE + 1}</span> to <span className="font-medium text-slate-900">{Math.min(receivedPage * RECEIVED_PER_PAGE, receivedTotalCount)}</span> of <span className="font-medium text-slate-900">{receivedTotalCount}</span> records
                                 </div>
                                 <div className="flex gap-2">
                                     <button 
-                                        onClick={() => setReceivedPage(p => Math.max(1, p - 1))}
+                                        onClick={() => { const p = Math.max(1, receivedPage - 1); setReceivedPage(p); fetchFeeReceived(p); }}
                                         disabled={receivedPage === 1}
                                         className="px-3 py-1 border border-slate-200 rounded text-sm disabled:opacity-50 bg-white hover:bg-slate-50 transition"
                                     >
                                         Previous
                                     </button>
                                     <span className="px-3 py-1 text-sm flex items-center">
-                                        Page {receivedPage} of {Math.ceil(receivedTotalCount / RECEIVED_PER_PAGE)}
+                                        Page {receivedPage} of {Math.ceil(receivedTotalCount / RECEIVED_PER_PAGE) || 1}
                                     </span>
                                     <button 
-                                        onClick={() => setReceivedPage(p => Math.min(Math.ceil(receivedTotalCount / RECEIVED_PER_PAGE), p + 1))}
+                                        onClick={() => { const p = Math.min(Math.ceil(receivedTotalCount / RECEIVED_PER_PAGE), receivedPage + 1); setReceivedPage(p); fetchFeeReceived(p); }}
                                         disabled={receivedPage === Math.ceil(receivedTotalCount / RECEIVED_PER_PAGE)}
                                         className="px-3 py-1 border border-slate-200 rounded text-sm disabled:opacity-50 bg-white hover:bg-slate-50 transition"
                                     >
@@ -1287,6 +1308,8 @@ export default function ReportsDashboard() {
                                     </button>
                                 </div>
                             </div>
+                        )}
+                        </>
                         )}
                     </div>
                 </div>
