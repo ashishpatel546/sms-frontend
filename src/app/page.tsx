@@ -175,10 +175,10 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center p-6 sm:p-10 min-h-screen md:min-h-0">
         <div className="w-full max-w-md">
           {/* Mobile/tablet branding card — visible up to large screens (desktop uses left panel) */}
-          <div className="lg:hidden relative w-full rounded-2xl overflow-hidden mb-7 shadow-2xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-white/10 p-5"
+          <div className="lg:hidden relative w-full rounded-2xl overflow-hidden mb-7 shadow-2xl bg-linear-to-br from-slate-900 via-slate-950 to-slate-900 border border-white/10 p-5"
             style={{ animation: 'fade-in 0.55s ease-out forwards' }}
           >
-            <div className="absolute inset-0 opacity-30 bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-transparent" />
+            <div className="absolute inset-0 opacity-30 bg-linear-to-br from-indigo-500/20 via-purple-500/10 to-transparent" />
             <div className="relative flex items-center gap-3 mb-4">
               <div className="w-14 h-14 rounded-3xl bg-white/10 border border-white/10 backdrop-blur-md flex items-center justify-center shadow-lg">
                 <img src="/colegios/logo.png" alt="Colegios Logo" className="w-10 h-10 object-contain" />

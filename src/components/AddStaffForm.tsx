@@ -354,7 +354,7 @@ export default function AddStaffForm({
                 {/* ── CONTACT INFORMATION ── */}
                 <div>
                     <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">Contact Information</h3>
-                    <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Email Address <span className="text-red-500">*</span></label>
                             <div className="flex items-center">
@@ -456,7 +456,7 @@ export default function AddStaffForm({
                 {/* ── DEMOGRAPHICS ── */}
                 <div>
                     <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">Demographics</h3>
-                    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Category <span className="text-red-500">*</span></label>
                             <select name="category" value={formData.category} onChange={handleChange} required
@@ -491,7 +491,7 @@ export default function AddStaffForm({
                 {/* ── EMPLOYMENT DETAILS ── */}
                 <div>
                     <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">Employment Details</h3>
-                    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Staff Category <span className="text-red-500">*</span></label>
                             <select name="staffCategory" value={formData.staffCategory} onChange={handleChange} required
@@ -525,7 +525,7 @@ export default function AddStaffForm({
                         ) : (
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">System Role</label>
-                                <div className="bg-gray-100 border border-gray-300 text-gray-500 font-medium text-sm rounded-lg block w-full p-2.5 cursor-not-allowed flex items-center justify-between">
+                                <div className="bg-gray-100 border border-gray-300 text-gray-500 font-medium text-sm rounded-lg w-full p-2.5 cursor-not-allowed flex items-center justify-between">
                                     <span>Teacher</span>
                                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                                 </div>

@@ -1356,7 +1356,7 @@ export default function FeesDashboardPage() {
                         </form>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Create Category */}
                         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                             <h2 className="text-xl font-bold mb-4 text-slate-800">1. Add Fee Category</h2>
@@ -1501,7 +1501,7 @@ export default function FeesDashboardPage() {
                         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                             <h2 className="text-xl font-bold mb-4 text-slate-800">2. Assign Fee Structure to Class</h2>
                             <form onSubmit={handleCreateStructure}>
-                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                     <div>
                                         <label className="block mb-2 text-sm font-medium text-gray-900">Class</label>
                                         <select value={formClassId} onChange={(e) => setFormClassId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required>
@@ -1517,7 +1517,7 @@ export default function FeesDashboardPage() {
                                         </select>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                                     <div>
                                         <label className="block mb-2 text-sm font-medium text-gray-900">Amount (₹)</label>
                                         <input type="number" step="0.01" value={formAmount} onChange={(e) => setFormAmount(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required />
@@ -1548,7 +1548,7 @@ export default function FeesDashboardPage() {
                                             Applicable Discounts
                                             <span className="ml-2 text-xs font-normal text-gray-500">(Only checked discounts will apply to this fee)</span>
                                         </label>
-                                        <div className="border border-gray-200 rounded-lg p-3 grid grid-cols-2 gap-2">
+                                        <div className="border border-gray-200 rounded-lg p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                                             {discounts.filter(d => d.isActive !== false).map(d => (
                                                 <label key={d.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
                                                     <input
@@ -1591,7 +1591,7 @@ export default function FeesDashboardPage() {
                     {/* Manage Discounts */}
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                         <h2 className="text-xl font-bold mb-4 text-slate-800">3. Manage Discount Categories</h2>
-                        <form onSubmit={handleCreateDiscount} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end mb-6">
+                        <form onSubmit={handleCreateDiscount} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-end mb-6">
                             <div className="col-span-2">
                                 <label className="block mb-2 text-sm font-medium text-gray-900">Discount Name</label>
                                 <input type="text" value={newDiscountName} onChange={(e) => setNewDiscountName(e.target.value)} placeholder="e.g. Sibling Discount" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required />
@@ -2607,7 +2607,7 @@ export default function FeesDashboardPage() {
                                 : activeTab === 'APPLY_OTHER_FEE' ? 'Find Students to Apply Special Fee'
                                 : 'Find Student to View Fee Details'}
                         </h2>
-                        <form onSubmit={handleSearchFormStudents} className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-4">
+                        <form onSubmit={handleSearchFormStudents} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-4">
                             <input type="text" placeholder="Student ID" value={searchFormId} onChange={e => setSearchFormId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-blue-500 focus:border-blue-500" />
                             <input type="text" placeholder="First Name" value={searchFormFirstName} onChange={e => setSearchFormFirstName(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-blue-500 focus:border-blue-500" />
                             <input type="text" placeholder="Last Name" value={searchFormLastName} onChange={e => setSearchFormLastName(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-blue-500 focus:border-blue-500" />
@@ -2802,7 +2802,7 @@ export default function FeesDashboardPage() {
 
                     {/* APPLY_OTHER_FEE specific content */}
                     {activeTab === 'APPLY_OTHER_FEE' && applyOtherFeeStudentId && (
-                        <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 animate-in slide-in-from-bottom-2 duration-300 relative z-10 w-full md:w-2/3">
+                        <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 animate-in slide-in-from-bottom-2 duration-300 relative z-10 w-full">
                             <h2 className="text-xl font-bold mb-4 text-slate-800">Assign Special & Optional Fee</h2>
                             <p className="text-sm text-gray-600 mb-6">Assign a custom fee amount and frequency distinctively to <span className="font-semibold text-blue-700">{applyOtherFeeStudentName}</span> (ID: {applyOtherFeeStudentId}). Note: Optional fees do not undergo discounts automatically unless specified directly.</p>
 

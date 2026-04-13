@@ -342,7 +342,7 @@ export default function EnrollmentPage() {
 
                     {/* Filter Controls */}
                     <div className="mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
                             <div>
                                 <label className="block mb-2 text-sm font-medium text-gray-900">Class</label>
                                 <select

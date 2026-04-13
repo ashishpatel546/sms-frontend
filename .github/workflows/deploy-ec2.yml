@@ -17,20 +17,22 @@ on:
         default: '3000'
 
 env:
-  APP_ENV: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/stage' && 'edusphere' || 'demo') }}
-  PORT: ${{ github.event.inputs.port || (github.ref == 'refs/heads/stage' && '3001' || '3000') }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/stage' && 'edusphere' || 'demo') }}
+    env:
+      APP_ENV: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/stage' && 'edusphere' || 'demo') }}
+      PORT: ${{ github.event.inputs.port || (github.ref == 'refs/heads/stage' && '3001' || '3000') }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20' # Match your local Node.js version
           cache: 'npm'

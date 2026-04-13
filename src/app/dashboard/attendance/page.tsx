@@ -462,7 +462,7 @@ export default function AttendancePage() {
 
             {/* Filters Form */}
             <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 mb-6 relative z-10">
-                <form className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <form className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div>
                         <label className="block mb-2 text-sm font-medium text-gray-900">Date</label>
                         <input
@@ -555,8 +555,8 @@ export default function AttendancePage() {
                     {existingAttendance && students.length > 0 && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             {/* Consolidated Report & Chart */}
-                            <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 lg:col-span-2 flex flex-col md:flex-row items-center gap-8">
-                                <div className="flex-1 w-full">
+                            <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 lg:col-span-2 flex flex-col md:flex-row items-center gap-8 min-w-0">
+                                <div className="flex-1 w-full min-w-0">
                                     <h3 className="text-lg font-bold text-slate-800 mb-4">Consolidated Report</h3>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                         <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-center">
