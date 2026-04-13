@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { PieChart, Pie, Tooltip, ResponsiveContainer } from "recharts";
 import { API_BASE_URL } from "@/lib/api";
 import { getToken, authFetch } from "@/lib/auth";
 import toast, { Toaster } from "react-hot-toast";
@@ -273,12 +273,12 @@ export default function StudentDashboardPage() {
     );
 
     const pieData = attendance ? [
-        { name: "Present", value: attendance.present || 0, color: "#22c55e" },
-        { name: "Late", value: attendance.late || 0, color: "#facc15" },
-        { name: "Half Day", value: attendance.halfDay || 0, color: "#a855f7" },
-        { name: "Leave", value: attendance.leave || 0, color: "#3b82f6" },
-        { name: "Absent", value: attendance.absent || 0, color: "#ef4444" },
-        { name: "Holiday", value: attendance.holiday || 0, color: "#0ea5e9" },
+        { name: "Present", value: attendance.present || 0, color: "#22c55e", fill: "#22c55e" },
+        { name: "Late", value: attendance.late || 0, color: "#facc15", fill: "#facc15" },
+        { name: "Half Day", value: attendance.halfDay || 0, color: "#a855f7", fill: "#a855f7" },
+        { name: "Leave", value: attendance.leave || 0, color: "#3b82f6", fill: "#3b82f6" },
+        { name: "Absent", value: attendance.absent || 0, color: "#ef4444", fill: "#ef4444" },
+        { name: "Holiday", value: attendance.holiday || 0, color: "#0ea5e9", fill: "#0ea5e9" },
     ].filter(d => d.value > 0) : [];
 
     // Calendar logic
@@ -789,9 +789,7 @@ export default function StudentDashboardPage() {
                                     <div className="relative">
                                         <ResponsiveContainer width={220} height={220}>
                                             <PieChart>
-                                                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value">
-                                                    {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                                                </Pie>
+                                                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value" />
                                                 <Tooltip formatter={(val: any, name: any) => [`${val} days`, name]} contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }} />
                                             </PieChart>
                                         </ResponsiveContainer>

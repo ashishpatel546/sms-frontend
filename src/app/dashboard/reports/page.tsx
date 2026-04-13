@@ -8,7 +8,7 @@ import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { 
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
-    PieChart, Pie, Cell, LineChart, Line 
+    PieChart, Pie, LineChart, Line 
 } from 'recharts';
 import { Wallet, AlertCircle, ClipboardList, CalendarCheck, Users, UserCircle, Download } from "lucide-react";
 
@@ -106,6 +106,8 @@ export default function ReportsDashboard() {
     const [attendanceTrend, setAttendanceTrend] = useState([]);
     const [staffDistribution, setStaffDistribution] = useState([]);
     const [enrollmentClass, setEnrollmentClass] = useState([]);
+    const collectionStatusWithFill = collectionStatus.map((entry, index) => ({ ...entry, fill: COLORS[index % COLORS.length] }));
+    const staffDistributionWithFill = staffDistribution.map((entry: any, index: number) => ({ ...entry, fill: COLORS[index % COLORS.length] }));
     const [admissionsTrend, setAdmissionsTrend] = useState([]);
 
     useEffect(() => {
@@ -196,7 +198,7 @@ export default function ReportsDashboard() {
             } catch (e) { console.error(e); }
         };
         fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     }, [activeTab, feeCollectionSession, collectionStatusSession, feeAdjustmentsFromDate, feeAdjustmentsToDate, waivedOffTrendSession, academicSessions]);
 
     // EXAMS
@@ -671,15 +673,12 @@ export default function ReportsDashboard() {
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
                                             <Pie
-                                                data={collectionStatus}
+                                                data={collectionStatusWithFill}
                                                 innerRadius={70}
                                                 outerRadius={100}
                                                 paddingAngle={5}
                                                 dataKey="value"
-                                            >
-                                                <Cell fill="#10b981" />
-                                                <Cell fill="#f43f5e" />
-                                            </Pie>
+                                            />
                                             <Tooltip formatter={(val: any) => `₹${val.toLocaleString()}`} />
                                             <Legend verticalAlign="bottom" height={36}/>
                                         </PieChart>
@@ -1605,17 +1604,13 @@ export default function ReportsDashboard() {
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
-                                            data={staffDistribution}
+                                            data={staffDistributionWithFill}
                                             innerRadius={60}
                                             outerRadius={100}
                                             paddingAngle={2}
                                             dataKey="value"
                                             label
-                                        >
-                                            {staffDistribution.map((entry: any, index: number) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
+                                        />
                                         <Tooltip />
                                         <Legend verticalAlign="bottom" height={36}/>
                                     </PieChart>

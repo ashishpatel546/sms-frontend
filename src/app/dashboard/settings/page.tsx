@@ -187,7 +187,7 @@ export default function SettingsPage() {
                 const data = await res.json();
                 toast.error(data.message || "Failed to save holiday");
             }
-        } catch (err) {
+        } catch {
             toast.error("Network error");
         } finally {
             setIsSavingHoliday(false);
@@ -204,7 +204,7 @@ export default function SettingsPage() {
             } else {
                 toast.error("Failed to delete holiday");
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };
@@ -241,7 +241,7 @@ export default function SettingsPage() {
                 const data = await res.json();
                 toast.error(data.message || "Failed to create session");
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };
@@ -268,7 +268,7 @@ export default function SettingsPage() {
                 toast.success("Active session updated!");
                 mutate();
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };
@@ -290,7 +290,7 @@ export default function SettingsPage() {
                 const data = await res.json();
                 toast.error(data.message || "Failed to create designation");
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };
@@ -306,7 +306,7 @@ export default function SettingsPage() {
                 const data = await res.json();
                 toast.error(data.message || "Failed to delete designation");
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };
@@ -328,7 +328,7 @@ export default function SettingsPage() {
                 const data = await res.json();
                 toast.error(data.message || "Failed to update designation");
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };
@@ -357,7 +357,7 @@ export default function SettingsPage() {
                 const data = await res.json();
                 toast.error(data.message || "Failed to create category");
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };
@@ -373,7 +373,7 @@ export default function SettingsPage() {
                 toast.success("Category status updated!");
                 mutateCategories();
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };
@@ -414,7 +414,7 @@ export default function SettingsPage() {
                 toast.success("Exam settings updated!");
                 mutateSettings();
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };
@@ -454,7 +454,7 @@ export default function SettingsPage() {
                 const errMsg = Array.isArray(data.message) ? data.message[0] : (data.message || "Failed to create grading");
                 toast.error(errMsg);
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };
@@ -467,7 +467,7 @@ export default function SettingsPage() {
                 toast.success("Grading band deleted");
                 mutateGradingSystems();
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };

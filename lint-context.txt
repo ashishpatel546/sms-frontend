@@ -1,0 +1,1181 @@
+
+==== src\app\dashboard\staff\[id]\edit\page.tsx ====
+
+==== src\app\dashboard\staff\page.tsx ====
+"use client";
+
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import Table from "../../../components/Table";
+import { API_BASE_URL } from "@/lib/api";
+import { useRbac } from "@/lib/rbac";
+import { authFetch } from "@/lib/auth";
+import Papa from "papaparse";
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
+export default function TeachersPage() {
+    const [teachers, setTeachers] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const rbac = useRbac();
+
+    // Search Params
+    const [searchId, setSearchId] = useState("");
+    const [searchFirstName, setSearchFirstName] = useState("");
+    const [searchLastName, setSearchLastName] = useState("");
+    const [searchEmail, setSearchEmail] = useState("");
+    const [searchStatus, setSearchStatus] = useState("");
+    const [searchCategory, setSearchCategory] = useState("");
+    const [searchDesignation, setSearchDesignation] = useState("");
+
+    const [designations, setDesignations] = useState<any[]>([]);
+
+    // Pagination
+    // Pagination
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(25);
+    const [total, setTotal] = useState(0);
+
+    // Bulk Import State
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [importLoading, setImportLoading] = useState(false);
+    const [importSummary, setImportSummary] = useState<{ successful: number; failed: number; errors: string[] } | null>(null);
+
+    const totalPages = Math.ceil(total / pageSize);
+
+    const buildParams = (overridePage?: number, overrideSize?: number) => {
+        const params = new URLSearchParams();
+        if (searchId) params.append("id", searchId);
+        if (searchFirstName) params.append("firstName", searchFirstName);
+        if (searchLastName) params.append("lastName", searchLastName);
+        if (searchEmail) params.append("email", searchEmail);
+        if (searchStatus !== "") params.append("isActive", searchStatus);
+        if (searchCategory) params.append("staffCategory", searchCategory);
+        if (searchDesignation) params.append("designationId", searchDesignation);
+        params.append("page", String(overridePage ?? page));
+        params.append("limit", String(overrideSize ?? pageSize));
+        return params;
+    };
+
+    const fetchTeachers = async (overridePage?: number, overrideSize?: number) => {
+        setLoading(true);
+        try {
+            const params = buildParams(overridePage, overrideSize);
+            const res = await authFetch(`${API_BASE_URL}/staff?${params.toString()}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.data) {
+                    setTeachers(data.data);
+                    setTotal(data.total);
+                    setPage(data.page);
+                } else {
+                    setTeachers(Array.isArray(data) ? data : []);
+                    setTotal(Array.isArray(data) ? data.length : 0);
+                }
+            }
+        } catch (err) {
+            console.error("Failed to fetch teachers", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchTeachers(1, 25);
+        authFetch(`${API_BASE_URL}/designations`)
+            .then(res => res.ok ? res.json() : [])
+            .then(data => setDesignations(data))
+            .catch(() => setDesignations([]));
+    }, []);
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        setPage(1);
+        fetchTeachers(1);
+    };
+
+    const handleReset = () => {
+        setSearchId("");
+        setSearchFirstName("");
+        setSearchLastName("");
+        setSearchEmail("");
+        setSearchStatus("");
+        setSearchCategory("");
+        setSearchDesignation("");
+        setPage(1);
+        setTimeout(() => fetchTeachers(1), 0);
+    };
+
+    const handlePageChange = (newPage: number) => {
+        if (newPage < 1 || newPage > totalPages) return;
+        setPage(newPage);
+        fetchTeachers(newPage);
+    };
+
+    const handlePageSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newSize = parseInt(e.target.value);
+        setPageSize(newSize);
+        setPage(1);
+        fetchTeachers(1, newSize);
+    };
+
+    const handleDownloadTemplate = () => {
+        const headers = [
+            "firstName", "lastName", "email", "mobile", "alternateMobile", "gender", "dateOfBirth", "bloodGroup", "aadhaarNumber", 
+            "category", "religion", "fathersName", "mothersName", "staffCategory", "designationId", "isActive", "role",
+            "department", "joiningDate", "qualification",
+            "addressLine1", "addressLine2", "landmark", "city", "state", "postalCode", "country"
+        ].join(",");
+        const dummyRow = "\nJohn,Doe,john.doe@colegios.in,9876543210,,Male,1990-01-01,O+,123412341234,General,HINDU,,,Teaching Staff,4,true,TEACHER,Science,2023-05-01,M.Sc,Street 1,,Near Park,New Delhi,Delhi,110001,INDIA";
+        
+        const blob = new Blob([headers + dummyRow], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'staff_import_template.csv';
+        a.click();
+    };
+
+    const handleImportSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!importFile) return;
+
+        setImportLoading(true);
+        setImportSummary(null);
+
+        Papa.parse(importFile, {
+            header: true,
+            skipEmptyLines: true,
+            complete: async (results) => {
+                try {
+                    const staffData = results.data.map((row: any) => ({
+                         ...row,
+                         designationId: row.designationId ? parseInt(row.designationId) : undefined,
+                         category: row.category || undefined,
+                         religion: row.religion || undefined,
+                         gender: row.gender || undefined,
+                         isActive: row.isActive === 'false' ? false : true,
+                         role: row.role || 'TEACHER',
+                         address: {
+                             addressLine1: row.addressLine1 || undefined,
+                             addressLine2: row.addressLine2 || undefined,
+                             landmark: row.landmark || undefined,
+                             city: row.city || undefined,
+                             state: row.state || undefined,
+                             postalCode: row.postalCode || undefined,
+                             country: row.country || 'INDIA'
+                         }
+                    }));
+
+                    const res = await authFetch(`${API_BASE_URL}/staff/bulk-import`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ staffData })
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        setImportSummary(data);
+                        fetchTeachers(1);
+                    } else {
+                        const err = await res.json();
+                        alert("Import failed: " + (err.message || "Unknown error"));
+                    }
+                } catch (error) {
+                    console.error("Bulk import error", error);
+                    alert("An error occurred during import.");
+                } finally {
+                    setImportLoading(false);
+                }
+            },
+            error: (err: any) => {
+                alert("Failed to read CSV file: " + err.message);
+                setImportLoading(false);
+            }
+        });
+    };
+
+    const columns = [
+        { header: "ID", accessor: "id", sortable: true },
+        {
+            header: "Name",
+            sortable: true,
+            sortKey: "firstName",
+            render: (row: any) => `${row.firstName} ${row.lastName}`
+        },
+        { header: "Email", accessor: "email", sortable: true },
+        {
+            header: "Designation",
+            render: (row: any) => row.designation?.title || '-'
+        },
+        {
+            header: "Class Teacher Of",
+            render: (row: any) => row.classTeacherOf && row.classTeacherOf.length > 0
+                ? row.classTeacherOf.map((s: any) => `${s.class?.name || ''}-${s.name}`).filter(Boolean).join(', ')
+                : '-'
+        },
+        {
+            header: "Subjects",
+            render: (row: any) => row.subjectAssignments && row.subjectAssignments.length > 0
+                ? row.subjectAssignments.map((sa: any) => `${sa.subject?.name} (${sa.class?.name}-${sa.section?.name})`).join(', ')
+                : '-'
+        },
+        {
+
+==== src\app\parent-dashboard\student\[id]\page.tsx ====
+
+==== src\components\ReceiptModal.tsx ====
+"use client";
+
+/**
+ * ReceiptModal – shared across admin fee-collection and parent portal.
+ *
+ * Features:
+ *  • Responsive: scrollable body, always-visible header + footer buttons.
+ *  • Print: prints ONLY the receipt, formatted for A5 paper.
+ */
+
+import React, { useRef, useState } from "react";
+import { CheckCircle2, School, CreditCard, CalendarDays, User, Hash } from "lucide-react";
+import { jsPDF } from "jspdf";
+import { toPng } from "html-to-image";
+import { getEnv } from "@/lib/env";
+
+export interface ReceiptData {
+    receiptNumber?: string;
+    paymentDate?: string;
+    studentName?: string;
+    academicYear?: string;
+    studentClass?: string;
+    studentSection?: string;
+    /** Months label shown on the receipt */
+    monthsPaid?: string;
+    /** Used as fallback for monthsPaid on parent portal */
+    feeMonth?: string;
+    paymentMethod?: string;
+    /** Normalised component breakdown (new API) */
+    components?: Array<{
+        type: "FEE_CATEGORY" | "DISCOUNT" | "LATE_FEE";
+        feeCategoryName?: string;
+        discountName?: string;
+        amount: number;
+    }>;
+    /** Legacy category breakdown */
+    categoryBreakdown?: Array<{ name: string; amount: number }>;
+    /** Legacy applied-discounts breakdown */
+    appliedDiscounts?: Array<{ name: string; amount: number }>;
+    /** Legacy feeBreakdown object (parent portal older payments) */
+    feeBreakdown?: {
+        categories?: Array<{ name: string; amount: number }>;
+        discounts?: Array<{ name: string; amount: number }>;
+        lateFee?: number;
+    };
+    /** Fallback when no category rows exist */
+    feeCategory?: string;
+    totalBaseFee?: number;
+    totalLateFee?: number;
+    baseFeeAmount?: number;
+    discountAmount?: number;
+    otherFeeAmount?: number;
+    /** Total payable before payment (admin + parent portal) */
+    totalPayable?: number | null;
+    amountPaid: number;
+    /** Admin portal: balance still owed after this payment */
+    balanceAfterPayment?: number;
+    /** Parent portal: balance remaining for partial payments */
+    balanceRemaining?: number;
+    excess?: number;
+    adjustments?: Array<{
+        type: "REFUND" | "WAIVE_OFF";
+        amount: number;
+        paymentMethod?: string;
+        adjustedAt?: string;
+        reason?: string;
+        createdByName?: string;
+    }>;
+    collectedByName?: string;
+    gatewayPaymentId?: string;
+    gatewayOrderId?: string;
+    remarks?: string;
+    /** Admin portal: used to pass month key for collect-remaining / waive-off actions */
+    monthKey?: string;
+}
+
+interface AdminExtraProps {
+    /** Whether the logged-in user is an admin (for waive-off / refund actions) */
+    isAdmin?: boolean;
+    onCollectRemaining?: () => void;
+    onWaiveOff?: () => void;
+    onIssueRefund?: () => void;
+}
+
+interface ReceiptModalProps extends AdminExtraProps {
+    receiptData: ReceiptData;
+    onClose: () => void;
+}
+
+export default function ReceiptModal({
+    receiptData,
+    onClose,
+    isAdmin,
+    onCollectRemaining,
+    onWaiveOff,
+    onIssueRefund,
+}: ReceiptModalProps) {
+    const schoolName = getEnv('SCHOOL_NAME') || "EduSphere";
+
+    const monthLabel =
+        receiptData.monthsPaid || receiptData.feeMonth || "—";
+
+    // Ref to the receipt card — used by handlePrint to grab exact HTML without
+    // risk of querySelector matching another .receipt-print-area on the page.
+    const receiptRef = useRef<HTMLDivElement>(null);
+    const [isDownloading, setIsDownloading] = useState(false);
+    const [isPrinting, setIsPrinting] = useState(false);
+
+    // ── Print handler (A5)
+    // Uses html-to-image to capture the receipt as a PNG, then injects a single
+    // <img> into a print container and calls window.print().
+    //
+    // Why image-based instead of HTML injection?
+    // The previous HTML-injection approach relied on @media print CSS to hide
+    // siblings and let the receipt flow across pages. This is fragile on mobile
+    // PWA (Android/iOS standalone mode): the browser computes print page count
+    // from the live DOM height BEFORE the @media print rules are applied, which
+    // causes the receipt to repeat on every generated page (duplication bug).
+    //
+    // Injecting a single <img> instead means:
+    //   • One element → browser always produces exactly one page
+    //   • No CSS color/class parsing — just a flat image
+    //   • Works identically on desktop Chrome, Android PWA, and iOS standalone
+    const handlePrint = async () => {
+        if (!receiptRef.current) return;
+        setIsPrinting(true);
+
+        const element = receiptRef.current;
+        const originalMaxHeight = element.style.maxHeight;
+        element.style.maxHeight = 'none';
+
+        const scrollBody = element.querySelector('.receipt-scroll-body') as HTMLElement;
+        const sbOriginalMaxHeight = scrollBody ? scrollBody.style.maxHeight : '';
+        const sbOriginalOverflow = scrollBody ? scrollBody.style.overflow : '';
+        if (scrollBody) {
+            scrollBody.style.maxHeight = 'none';
+            scrollBody.style.overflow = 'visible';
+        }
+
+        try {
+            const imgData = await toPng(element, {
+                pixelRatio: 2,
+                filter: (node: Node) => {
+                    const el = node as HTMLElement;
+                    if (!el.classList) return true;
+                    return (
+                        !el.classList.contains('no-print') &&
+                        !el.hasAttribute('data-html2canvas-ignore')
+                    );
+                },
+            });
+
+            // Restore constraints before opening print dialog
+            element.style.maxHeight = originalMaxHeight;
+            if (scrollBody) {
+                scrollBody.style.maxHeight = sbOriginalMaxHeight;
+                scrollBody.style.overflow = sbOriginalOverflow;
+            }
+
+            // Inject a single <img> — one element = exactly one print page,
+            // no page-count computation issues on mobile.
+            // The container is locked to the exact A5 page dimensions and
+            // object-fit:contain scales the image to fit — so regardless of
+            // the receipt's aspect ratio it always renders on a single page.
+            const printContainer = document.createElement('div');
+            printContainer.id = '__receipt-print-root__';
+            printContainer.innerHTML = `<img src="${imgData}" style="display:block;width:148mm;height:210mm;object-fit:contain;object-position:top center;" />`;
+            document.body.appendChild(printContainer);
+
+            const printStyle = document.createElement('style');
+            printStyle.id = '__receipt-print-style__';
+            printStyle.textContent = `
+@media print {
+  @page { size: A5 portrait; margin: 0; }
+  html, body {
+    margin: 0 !important; padding: 0 !important; background: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body > *:not(#__receipt-print-root__) { display: none !important; }
+  #__receipt-print-root__ {
+    display: block !important;
+    width: 148mm !important;
+    height: 210mm !important;
+    overflow: hidden !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+  #__receipt-print-root__ img {
+    display: block !important;
+    width: 148mm !important;
+    height: 210mm !important;
+    object-fit: contain !important;
+    object-position: top center !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}`;
+            document.head.appendChild(printStyle);
+
+            setTimeout(() => {
+                setIsPrinting(false);
+                window.print();
+                setTimeout(() => {
+                    document.getElementById('__receipt-print-root__') && document.body.removeChild(printContainer);
+                    document.getElementById('__receipt-print-style__') && document.head.removeChild(printStyle);
+                }, 1500);
+            }, 150);
+
+        } catch {
+            element.style.maxHeight = originalMaxHeight;
+            if (scrollBody) {
+                scrollBody.style.maxHeight = sbOriginalMaxHeight;
+                scrollBody.style.overflow = sbOriginalOverflow;
+            }
+            setIsPrinting(false);
+        }
+    };
+
+    // ── PDF Download handler (A4, uses html-to-image + jsPDF)
+
+==== src\components\PWAInstallBanner.tsx ====
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { X, Download, Share } from 'lucide-react';
+import { getEnv } from "@/lib/env";
+
+const schoolName = getEnv('SCHOOL_NAME') || 'School Management System';
+
+interface BeforeInstallPromptEvent extends Event {
+    prompt: () => Promise<void>;
+    userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+}
+
+export default function PWAInstallBanner() {
+    const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+    const [showBanner, setShowBanner] = useState(false);
+    const [showMiniButton, setShowMiniButton] = useState(false);
+    const [isIOS] = useState(() => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as unknown as { MSStream: unknown }).MSStream);
+    const [isEdgeFallback, setIsEdgeFallback] = useState(false);
+    const [isInstalled] = useState(() => typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches);
+
+    // Ref so async callbacks always see the live "prompt received" state without stale closures
+    const installPromptReceived = useRef(false);
+
+    useEffect(() => {
+        // Suppress banner on desktop/laptop — the browser URL bar install icon is sufficient there
+        if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+            return;
+        }
+
+        // ── Dismissal check FIRST, before any timeout is scheduled ──────────────
+        // This prevents the async setTimeout from overriding a prior dismissal.
+        const dismissed = localStorage.getItem('pwa-banner-dismissed');
+        const sevenDays = 7 * 24 * 60 * 60 * 1000;
+        const recentlyDismissed = !!dismissed && (Date.now() - parseInt(dismissed, 10) < sevenDays);
+
+        // iOS: no beforeinstallprompt — show static "Add to Home Screen" instructions
+        if (isIOS) {
+            if (!recentlyDismissed) {
+                setTimeout(() => setShowBanner(true), 3000);
+            }
+            return; // no further event handlers needed for iOS
+        }
+
+        // ── beforeinstallprompt handler (Chrome, Edge, Samsung Internet, Firefox) ──
+        const handleBeforeInstallPrompt = (e: Event) => {
+            e.preventDefault();
+            installPromptReceived.current = true;
+            // Clear the Edge fallback timer if it hasn't fired yet
+            if (edgeTimeoutId) clearTimeout(edgeTimeoutId);
+            setInstallPrompt(e as BeforeInstallPromptEvent);
+            if (!recentlyDismissed) {
+                setTimeout(() => setShowBanner(true), 3000);
+            } else {
+                // Banner suppressed by recent dismissal, but keep prompt for mini-button
+                setShowMiniButton(true);
+            }
+        };
+
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+        // ── Edge / other Chromium-based browser fallback ─────────────────────────
+        //
+        // Edge on Android uses stricter engagement heuristics than Chrome and may
+        // never fire beforeinstallprompt on a first visit. After 5 seconds, if the
+        // event still hasn't arrived, we show manual install instructions specific
+        // to the detected browser so the user is never left without guidance.
+        let edgeTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+        if (!recentlyDismissed) {
+            const ua = navigator.userAgent;
+            const isEdge = /Edg\//.test(ua);
+            // Samsung Internet, Firefox for Android, etc. also may not fire the event
+            const isOtherBrowser = !isEdge && !/Chrome\//.test(ua);
+
+            if (isEdge || isOtherBrowser) {
+                edgeTimeoutId = setTimeout(() => {
+                    if (!installPromptReceived.current) {
+                        setIsEdgeFallback(true);
+                        setShowBanner(true);
+                    }
+                }, 5000);
+            }
+        }
+
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            if (edgeTimeoutId) clearTimeout(edgeTimeoutId);
+        };
+    }, []);
+
+    const handleInstallClick = async () => {
+        if (!installPrompt) return;
+        await installPrompt.prompt();
+        const { outcome } = await installPrompt.userChoice;
+        if (outcome === 'accepted') {
+            setShowBanner(false);
+            setShowMiniButton(false);
+            setInstallPrompt(null);
+        }
+    };
+
+    const handleDismiss = () => {
+        setShowBanner(false);
+        localStorage.setItem('pwa-banner-dismissed', Date.now().toString());
+        // If a native install prompt is still available, surface a persistent mini-button
+        // so the user can still install later without having to know about the address-bar icon.
+        if (installPrompt) {
+            setShowMiniButton(true);
+        }
+    };
+
+    if (isInstalled) return null;
+
+    // ── Mini install button — shown after the main banner is dismissed ──────────
+    if (!showBanner && showMiniButton && installPrompt) {
+        return (
+            <button
+                onClick={handleInstallClick}
+                title={`Install ${schoolName}`}
+                style={{
+                    position: 'fixed',
+                    bottom: '1.25rem',
+                    right: '1.25rem',
+                    zIndex: 9999,
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a8e 100%)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 16px rgba(30, 58, 95, 0.45)',
+                    color: 'white',
+                }}
+                aria-label={`Install ${schoolName}`}
+            >
+                <Download size={20} />
+            </button>
+        );
+    }
+
+    if (!showBanner) return null;
+
+    return (
+        <div
+            style={{
+                position: 'fixed',
+                bottom: '1rem',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 9999,
+                width: 'calc(100% - 2rem)',
+                maxWidth: '480px',
+                background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a8e 100%)',
+                borderRadius: '16px',
+                padding: '16px',
+                boxShadow: '0 8px 32px rgba(30, 58, 95, 0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                animation: 'slideUp 0.4s ease-out',
+                color: 'white',
+            }}
+        >
+            <style>{`
+        @keyframes slideUp {
+          from { transform: translateX(-50%) translateY(100px); opacity: 0; }
+          to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+      `}</style>
+
+            {/* App Icon */}
+            <img
+                src={'/colegios/logo.png'}
+                alt={schoolName}
+                style={{ width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0 }}
+            />
+
+            {/* Text */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: '14px', lineHeight: 1.3 }}>
+                    Install {schoolName}
+                </p>
+                {isIOS ? (
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', opacity: 0.85, lineHeight: 1.4 }}>
+                        Tap <Share size={12} style={{ display: 'inline', verticalAlign: 'middle' }} /> then &ldquo;Add to Home Screen&rdquo;
+                    </p>
+                ) : isEdgeFallback ? (
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', opacity: 0.85, lineHeight: 1.4 }}>
+                        Tap <span style={{ fontWeight: 700 }}>⋯</span> menu &rarr; &ldquo;Add to phone&rdquo; to install
+                    </p>
+                ) : (
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', opacity: 0.85 }}>
+                        Install app for quick access, offline support
+                    </p>
+                )}
+            </div>
+
+            {/* Install button (only on non-iOS where we have the prompt) */}
+            {!isIOS && installPrompt && (
+                <button
+                    onClick={handleInstallClick}
+                    style={{
+                        background: 'white',
+                        color: '#1e3a5f',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '8px 12px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        flexShrink: 0,
+                        whiteSpace: 'nowrap',
+                    }}
+
+==== src\app\page.tsx ====
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { API_BASE_URL } from "@/lib/api";
+import { setTokens, getDashboardRoute, getUser, markMustChangePasswordFlow } from "@/lib/auth";
+import SplashScreen from "@/components/SplashScreen";
+
+type Tab = "parent" | "staff";
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<Tab>("staff");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showSplash, setShowSplash] = useState(false);
+
+  // Parent form
+  const [mobile, setMobile] = useState("");
+  // Staff form
+  const [emailPrefix, setEmailPrefix] = useState("");
+  const [password, setPassword] = useState("");
+
+  // Redirect if already logged in
+  useEffect(() => {
+    const user = getUser();
+    if (user) {
+      setShowSplash(true);
+      setTimeout(() => {
+        if (user.mustChangePassword) {
+          markMustChangePasswordFlow();
+          router.replace("/change-password");
+        } else {
+          router.replace(getDashboardRoute(user.role));
+        }
+      }, 1500);
+    }
+  }, [router]);
+
+  const handleParentLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/login/parent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mobile, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Invalid mobile number or password");
+      setTokens(data.access_token, data.refresh_token);
+      setShowSplash(true);
+      setTimeout(() => {
+        if (data.user.mustChangePassword) {
+          markMustChangePasswordFlow();
+          router.push("/change-password");
+        } else {
+          router.push("/parent-dashboard");
+        }
+      }, 1500);
+    } catch (err: any) {
+      setError(err.message || "Invalid mobile number or password");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStaffLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+    try {
+      const fullEmail = `${emailPrefix}@colegios.in`;
+      const res = await fetch(`${API_BASE_URL}/auth/login/staff`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: fullEmail, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Invalid email or password");
+      setTokens(data.access_token, data.refresh_token);
+      setShowSplash(true);
+      setTimeout(() => {
+        if (data.user.mustChangePassword) {
+          markMustChangePasswordFlow();
+          router.push("/change-password");
+        } else {
+          router.push("/dashboard");
+        }
+      }, 1500);
+    } catch (err: any) {
+      setError(err.message || "Invalid email or password");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col md:flex-row bg-slate-950 selection:bg-indigo-500/30">
+      {showSplash && <SplashScreen />}
+      {/* Left — Branding Panel */}
+      <div className="relative hidden md:flex md:w-1/2 flex-col justify-between p-12 overflow-hidden">
+        {/* Background school image */}
+        <div className="absolute inset-0"
+          style={{ backgroundImage: 'url(/colegios-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}
+        />
+        {/* Gradient overlay on top of image - enhanced contrast for text */}
+        <div className="absolute inset-0 bg-slate-950/60" />
+        <div className="absolute inset-0 opacity-30"
+          style={{
+            backgroundImage: `radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.5) 0%, transparent 60%),
+                                          radial-gradient(ellipse at 80% 20%, rgba(168,85,247,0.4) 0%, transparent 50%)`
+          }}
+        />
+        {/* Floating orbs */}
+        <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 left-1/4 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-3/4 right-1/3 w-32 h-32 bg-violet-400/10 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '2s' }} />
+
+        <div className="relative z-10">
+          {/* Logo */}
+          <div className="flex items-center gap-4 mb-14">
+            <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-xl border border-white/20 p-2 hover:scale-105 transition-transform">
+              <img src="/colegios/logo.png" alt="Colegios Logo" className="w-full h-full object-contain drop-shadow-md" />
+            </a>
+            <div className="flex flex-col">
+              <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="text-white font-extrabold text-4xl tracking-tight drop-shadow-md hover:text-indigo-200 transition-colors">
+                Colegios
+              </a>
+              <a href="https://appme.in" target="_blank" rel="noopener noreferrer" className="text-indigo-100 text-sm font-bold tracking-widest drop-shadow-md mt-1 hover:text-white transition-colors">
+                A Flagship Product of AppMe Soft Pvt Ltd.
+              </a>
+            </div>
+          </div>
+
+          {/* Headline */}
+          <h1 className="text-white text-4xl lg:text-5xl font-extrabold leading-tight mb-8 drop-shadow-lg">
+            Digitizing Schools<br />
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-indigo-300 to-purple-300 drop-shadow-sm">
+              for the Future.
+            </span>
+          </h1>
+          
+          <div className="space-y-4 mb-8 p-6 rounded-2xl bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl">
+            <p className="text-white text-xl font-bold tracking-wide leading-relaxed">
+              Colegios - The Smart Operating System for Modern Schools.
+            </p>
+            <p className="text-slate-200 text-base leading-relaxed max-w-md font-medium">
+              Colegios is an all-in-one, feature-rich school management ecosystem. We are building a stronger, smarter future by bringing cutting-edge digital infrastructure straight to the roots of our education system.
+            </p>
+            <p className="text-white text-sm font-black flex items-center gap-2 uppercase tracking-wider pt-2">
+              <svg className="w-5 h-5 text-indigo-400 drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Igniting a Digital Revolution in Education.
+            </p>
+          </div>
+        </div>
+
+        <div className="relative z-10">
+          {/* Feature pills */}
+          <div className="flex flex-wrap gap-3">
+            {['📊 Report & Analytics', '📋 Attendance', '💰 Fee Management', '📝 Examinations', '👥 Parent Portal'].map(f => (
+              <span key={f} className="px-4 py-2 cursor-pointer bg-white/10 hover:bg-white/20 hover:scale-105 hover:-translate-y-1 transition-all duration-300 backdrop-blur-md text-white font-medium text-sm rounded-xl border border-indigo-500/30 shadow-lg hover:shadow-indigo-500/40">
+                {f}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Right — Login Panel */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 min-h-screen md:min-h-0">
+        <div className="w-full max-w-md">
+          {/* Mobile/tablet branding card — visible up to large screens (desktop uses left panel) */}
+          <div className="lg:hidden relative w-full rounded-2xl overflow-hidden mb-7 shadow-2xl bg-linear-to-br from-slate-900 via-slate-950 to-slate-900 border border-white/10 p-5"
+            style={{ animation: 'fade-in 0.55s ease-out forwards' }}
+          >
+            <div className="absolute inset-0 opacity-30 bg-linear-to-br from-indigo-500/20 via-purple-500/10 to-transparent" />
+            <div className="relative flex items-center gap-3 mb-4">
+              <div className="w-14 h-14 rounded-3xl bg-white/10 border border-white/10 backdrop-blur-md flex items-center justify-center shadow-lg">
+                <img src="/colegios/logo.png" alt="Colegios Logo" className="w-10 h-10 object-contain" />
+              </div>
+              <div>
+                <p className="text-white font-extrabold text-xl tracking-tight">Colegios</p>
+                <p className="text-slate-300 text-xs uppercase tracking-[0.24em]">Smart Operating System For School</p>
+              </div>
+            </div>
+            <div className="relative rounded-2xl bg-slate-950/60 border border-white/10 p-4 shadow-inner shadow-indigo-950/40 animate-[slide-up_0.75s_cubic-bezier(0.16,1,0.3,1)_0.1s_forwards]">
+              <p className="text-slate-200 text-sm leading-relaxed">
+                A smarter digital campus for modern schools.
+              </p>
+            </div>
+          </div>
+
+          <h2 className="text-white text-3xl font-bold mb-2">Welcome Back</h2>
+          <p className="text-slate-500 mb-8">Sign in to your account to continue</p>
+
+          {/* Tab Switcher */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-1.5 flex gap-1.5 mb-6">
+            <button
+              onClick={() => { setActiveTab("staff"); setError(""); }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === "staff"
+                ? "bg-linear-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/20"
+                : "text-slate-500 hover:text-slate-300"
+                }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              Staff / Admin
+            </button>
+            <button
+              onClick={() => { setActiveTab("parent"); setError(""); }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === "parent"
+                ? "bg-linear-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/20"
+                : "text-slate-500 hover:text-slate-300"
+                }`}
+
+==== src\components\SplashScreen.tsx ====
+"use client";
+import { getEnv } from "@/lib/env";
+
+import { useEffect, useState } from "react";
+
+export default function SplashScreen() {
+  const [show, setShow] = useState(true);
+  const [fade, setFade] = useState(false);
+  const [imgSrc, setImgSrc] = useState(
+    getEnv('SCHOOL_LOGO_URL') || "/colegios/Colegios.png"
+  );
+
+  useEffect(() => {
+    // Start fading out after 1.5s
+    const fadeTimer = setTimeout(() => {
+      setFade(true);
+    }, 1500);
+
+    // Remove from DOM after 2.0s
+    const hideTimer = setTimeout(() => {
+      setShow(false);
+    }, 2000);
+
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(hideTimer);
+    };
+  }, []);
+
+  if (!show) return null;
+
+  return (
+    <div
+      className={`fixed inset-0 z-9999 bg-slate-950 flex flex-col items-center justify-center transition-opacity duration-500 ease-in-out ${
+        fade ? "opacity-0" : "opacity-100"
+      }`}
+    >
+      <div className="absolute inset-0 bg-slate-950" />
+      <div 
+        className="absolute inset-0 opacity-30"
+        style={{
+          backgroundImage: `radial-gradient(ellipse at 50% 50%, rgba(99,102,241,0.5) 0%, transparent 60%)`
+        }}
+      />
+      
+      {/* Logo Container */}
+      <div className="relative --10 w-48 h-48 md:w-64 md:h-64 rounded-3xl bg-white/10 backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/20 p-6 animate-pulse">
+        <img
+          src={imgSrc}
+          alt="School"
+          className="w-full h-full object-contain drop-shadow-xl"
+          onError={() => setImgSrc("/colegios/Colegios.png")}
+        />
+      </div>
+
+      <div className="relative --10 mt-12 text-slate-400 text-sm font-semibold tracking-widest uppercase flex items-center gap-3">
+        <svg className="animate-spin w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4-" />
+        </svg>
+        Initiali-ing...
+      </div>
+    </div>
+  );
+}
+
+==== src\app\dashboard\reports\page.tsx ====
+"use client";
+
+import { useState, useEffect } from "react";
+import toast, { Toaster } from "react-hot-toast";
+import { useRbac } from "@/lib/rbac";
+import { useRouter } from "next/navigation";
+import { API_BASE_URL } from "@/lib/api";
+import { authFetch } from "@/lib/auth";
+import { 
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
+    PieChart, Pie, LineChart, Line 
+} from 'recharts';
+import { Wallet, AlertCircle, ClipboardList, CalendarCheck, Users, UserCircle, Download } from "lucide-react";
+
+const COLORS = ['#0ea5e9', '#f43f5e', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'];
+
+export default function ReportsDashboard() {
+    const router = useRouter();
+    const rbac = useRbac();
+    const [mounted, setMounted] = useState(false);
+    const [activeTab, setActiveTab] = useState<'FEES' | 'PENDING_DUES' | 'FEE_RECEIVED' | 'EXAMINATIONS' | 'ATTENDANCE' | 'STUDENTS' | 'STAFF'>('FEES');
+
+    // FILTERS
+    const [academicSessions, setAcademicSessions] = useState<any[]>([]);
+    const [examTerms, setExamTerms] = useState<any[]>([]);
+
+    const [feeCollectionSession, setFeeCollectionSession] = useState('');
+    const [collectionStatusSession, setCollectionStatusSession] = useState('');
+    const [collectionPendingMonth, setCollectionPendingMonth] = useState((new Date().getMonth() + 1).toString());
+    const [feeAdjustmentsFromDate, setFeeAdjustmentsFromDate] = useState(new Date().toISOString().split('T')[0]);
+    const [feeAdjustmentsToDate, setFeeAdjustmentsToDate] = useState(new Date().toISOString().split('T')[0]);
+    const [waivedOffTrendSession, setWaivedOffTrendSession] = useState('');
+
+    const [selectedExamYear, setSelectedExamYear] = useState('');
+    const [selectedExamTerm, setSelectedExamTerm] = useState('');
+    const [selectedExamClass, setSelectedExamClass] = useState('');
+    const [classes, setClasses] = useState<any[]>([]);
+    const [availableSections, setAvailableSections] = useState<any[]>([]);
+    const [selectedExamSection, setSelectedExamSection] = useState('');
+
+    const [attendanceSession, setAttendanceSession] = useState('');
+    const [attendanceMonth, setAttendanceMonth] = useState((new Date().getMonth() + 1).toString());
+    const [attendanceFromDate, setAttendanceFromDate] = useState(new Date().toISOString().split('T')[0]);
+    const [attendanceToDate, setAttendanceToDate] = useState(new Date().toISOString().split('T')[0]);
+
+    const [enrollmentFromSession, setEnrollmentFromSession] = useState('');
+    const [admissionsFromSession, setAdmissionsFromSession] = useState('');
+    const [admissionsToSession, setAdmissionsToSession] = useState('');
+
+    // Pending Dues Filters
+    const [pendingSessionId, setPendingSessionId] = useState('');
+    
+    // Pending Dues Notification State
+    const [showNotifModal, setShowNotifModal] = useState(false);
+    const [useCustomMessage, setUseCustomMessage] = useState(false);
+    const [customNotifMessage, setCustomNotifMessage] = useState('');
+    const [sendingNotif, setSendingNotif] = useState(false);
+    const [pendingClassId, setPendingClassId] = useState('');
+    const [pendingAvailableSections, setPendingAvailableSections] = useState<any[]>([]);
+    const [pendingSectionId, setPendingSectionId] = useState('');
+    const [pendingSearchQuery, setPendingSearchQuery] = useState('');
+    const [pendingMobile, setPendingMobile] = useState('');
+    const [pendingMonth, setPendingMonth] = useState('');
+    const [pendingDuesData, setPendingDuesData] = useState<any[]>([]);
+    const [pendingDuesLoading, setPendingDuesLoading] = useState(false);
+    const [pendingSortColumn, setPendingSortColumn] = useState<string>('className');
+    const [pendingSortDirection, setPendingSortDirection] = useState<'asc' | 'desc'>('asc');
+    const [selectedPendingStudents, setSelectedPendingStudents] = useState<number[]>([]);
+    const [pendingHasSearched, setPendingHasSearched] = useState(false);
+
+    // Pagination for pending dues
+    const [pendingDuesPage, setPendingDuesPage] = useState(1);
+    const PENDING_DUES_PER_PAGE = 20;
+
+    // Pagination for adjustments
+    const [feeAdjPage, setFeeAdjPage] = useState(1);
+    const FEE_ADJ_PER_PAGE = 10;
+
+    // Fee Received Filters
+    const [receivedSessionId, setReceivedSessionId] = useState('');
+    const [receivedFromDate, setReceivedFromDate] = useState('');
+    const [receivedToDate, setReceivedToDate] = useState('');
+    const [receivedClassId, setReceivedClassId] = useState('');
+    const [receivedAvailableSections, setReceivedAvailableSections] = useState<any[]>([]);
+    const [receivedSectionId, setReceivedSectionId] = useState('');
+    const [receivedSearchQuery, setReceivedSearchQuery] = useState('');
+    const [receivedMobile, setReceivedMobile] = useState('');
+    const [receivedData, setReceivedData] = useState<any[]>([]);
+    const [receivedLoading, setReceivedLoading] = useState(false);
+    
+    const [receivedHasSearched, setReceivedHasSearched] = useState(false);
+
+    // Pagination for fee received
+    const [receivedPage, setReceivedPage] = useState(1);
+    const [receivedTotalCount, setReceivedTotalCount] = useState(0);
+    const RECEIVED_PER_PAGE = 20;
+
+    // DATA STATES
+    const [monthlyCollection, setMonthlyCollection] = useState<any[]>([]);
+    const [collectionStatus, setCollectionStatus] = useState<any[]>([]);
+    const [feeAdjustments, setFeeAdjustments] = useState<any[]>([]);
+    const [waivedOffTrend, setWaivedOffTrend] = useState([]);
+    const [examClassAvg, setExamClassAvg] = useState([]);
+    const [topPerformers, setTopPerformers] = useState<any[]>([]);
+    const [attendanceByClass, setAttendanceByClass] = useState([]);
+    const [attendanceTrend, setAttendanceTrend] = useState([]);
+    const [staffDistribution, setStaffDistribution] = useState([]);
+    const [enrollmentClass, setEnrollmentClass] = useState([]);
+    const collectionStatusWithFill = collectionStatus.map((entry, index) => ({ ...entry, fill: COLORS[index % COLORS.length] }));
+    const staffDistributionWithFill = staffDistribution.map((entry: any, index: number) => ({ ...entry, fill: COLORS[index % COLORS.length] }));
+    const [admissionsTrend, setAdmissionsTrend] = useState([]);
+
+    useEffect(() => {
+        const fetchFiltersData = async () => {
+            try {
+                const [sessionsRes, examsRes, classesRes] = await Promise.all([
+                    authFetch(`${API_BASE_URL}/academic-sessions`),
+                    authFetch(`${API_BASE_URL}/exams/categories/active`),
+                    authFetch(`${API_BASE_URL}/classes`)
+                ]);
+
+                if (classesRes.ok) {
+                    const data = await classesRes.json();
+                    setClasses(data);
+                }
+
+                if (sessionsRes.ok) {
+                    const data = await sessionsRes.json();
+                    setAcademicSessions(data);
+                    const activeSession = data.find((s: any) => s.isActive);
+                    if (activeSession) {
+                        const sid = activeSession.id.toString();
+                        setFeeCollectionSession(sid);
+                        setCollectionStatusSession(sid);
+                        setWaivedOffTrendSession(sid);
+                        setSelectedExamYear(sid);
+                        setAttendanceSession(sid);
+                        setEnrollmentFromSession(sid);
+                        setPendingSessionId(sid);
+                        setReceivedSessionId(sid);
+                        setAdmissionsToSession(sid);
+                        if (data.length > 3) setAdmissionsFromSession(data[3].id.toString());
+                        else if (data.length > 0) setAdmissionsFromSession(data[data.length - 1].id.toString());
+                    }
+                }
+                if (examsRes.ok) {
+                    const data = await examsRes.json();
+                    setExamTerms(data);
+                    if (data.length > 0) setSelectedExamTerm(data[0].id.toString());
+                }
+            } catch (err) {
+                console.error("Failed to fetch filters data", err);
+            }
+        };
+        fetchFiltersData();
+    }, []);
+
+    // FEES
+    useEffect(() => {
+        if (activeTab !== 'FEES') return;
+        const fetchData = async () => {
+            try {
+                const currentMonth = new Date().getMonth() + 1;
+                const acYearName = academicSessions.find(s => s.id.toString() === collectionStatusSession)?.name || '';
+                
+                const [mcRes, csRes, faRes, wotRes, pdRes] = await Promise.all([
+                    authFetch(`${API_BASE_URL}/dashboard/reports/monthly-collection?sessionId=${feeCollectionSession}`),
+                    authFetch(`${API_BASE_URL}/dashboard/reports/collection-status?sessionId=${collectionStatusSession}&month=${currentMonth}`),
+                    authFetch(`${API_BASE_URL}/dashboard/reports/fee-adjustments?fromDate=${feeAdjustmentsFromDate}&toDate=${feeAdjustmentsToDate}`),
+                    authFetch(`${API_BASE_URL}/dashboard/reports/waived-off-trend?sessionId=${waivedOffTrendSession}`),
+                    // Only fetch pending dues if we have the academic year
+                    acYearName ? authFetch(`${API_BASE_URL}/fees/reports/pending-dues?academicYear=${encodeURIComponent(acYearName)}`) : Promise.resolve(null)
+                ]);
+                if (mcRes.ok) setMonthlyCollection(await mcRes.json());
+                
+                if (csRes.ok) {
+                    const statusData = await csRes.json();
+                    let totalPending = 0;
+                    
+                    if (pdRes && pdRes.ok) {
+                        const pendingData = await pdRes.json();
+                        totalPending = pendingData.reduce((sum: number, row: any) => sum + (Number(row.pendingAmount) || 0), 0);
+                    } else {
+                        // Fallback to the mocked pending dues if real calculation fails
+                        totalPending = statusData.find((d: any) => d.name === 'Pending Dues')?.value || 0;
+                    }
+                    
+                    const collectedAmount = statusData.find((d: any) => d.name === 'Collected')?.value || 0;
+                    
+                    setCollectionStatus([
+                        { name: 'Collected', value: collectedAmount },
+                        { name: 'Pending Dues', value: totalPending }
+                    ]);
+                }
+
+                if (faRes.ok) setFeeAdjustments(await faRes.json());
+                if (wotRes.ok) setWaivedOffTrend(await wotRes.json());
+            } catch (e) { console.error(e); }
+        };
+        fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab, feeCollectionSession, collectionStatusSession, feeAdjustmentsFromDate, feeAdjustmentsToDate, waivedOffTrendSession, academicSessions]);
+
+    // EXAMS
+    useEffect(() => {
+        if (activeTab !== 'EXAMINATIONS') return;
+        const fetchData = async () => {
+            try {
+                let query = `?sessionId=${selectedExamYear}&termId=${selectedExamTerm}`;
+                if (selectedExamClass) query += `&classId=${selectedExamClass}`;
+                if (selectedExamSection) query += `&sectionId=${selectedExamSection}`;
+                const [ecaRes, tpRes] = await Promise.all([
+                    authFetch(`${API_BASE_URL}/dashboard/reports/exam-class-average${query}`),
+                    authFetch(`${API_BASE_URL}/dashboard/reports/top-performers${query}`)
+                ]);
+                if (ecaRes.ok) setExamClassAvg(await ecaRes.json());
+                if (tpRes.ok) setTopPerformers(await tpRes.json());
+            } catch (e) { console.error(e); }
+        };
+        fetchData();

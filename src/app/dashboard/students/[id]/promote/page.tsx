@@ -41,7 +41,7 @@ export default function PromoteStudentPage() {
                     setError("Student not found");
                 }
                 setClasses(classesData);
-            } catch (err) {
+            } catch (_err) {
                 setError("Failed to load data");
             } finally {
                 setLoading(false);

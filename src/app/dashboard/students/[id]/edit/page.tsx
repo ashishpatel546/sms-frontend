@@ -100,7 +100,7 @@ export default function EditStudentPage() {
                 } else {
                     setError("Student not found");
                 }
-            } catch (err) {
+            } catch (_err) {
                 setError("Failed to load data");
             } finally {
                 setLoading(false);

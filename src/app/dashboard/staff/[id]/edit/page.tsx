@@ -156,7 +156,7 @@ export default function EditStaffPage() {
             if (classesRes.ok) setClasses(await classesRes.json());
             if (subjectsRes.ok) setSubjects(await subjectsRes.json());
             if (desigRes.ok) setDesignations(await desigRes.json());
-        } catch (err) {
+        } catch (_err) {
             setError("Failed to load data");
         } finally {
             setLoading(false);
@@ -211,7 +211,7 @@ export default function EditStaffPage() {
             } else {
                 toast.error("Failed to create designation");
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Failed to create designation");
         }
         setCreatingDes(false);

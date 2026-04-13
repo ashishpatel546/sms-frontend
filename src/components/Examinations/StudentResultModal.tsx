@@ -146,7 +146,7 @@ export default function StudentResultModal({ studentId, sessionId, onClose, onSa
             setIsEditMode(false);
             mutateMarks();
             onSave?.();
-        } catch (err) {
+        } catch (_err) {
             toast.error("Failed to update marks");
         }
     };

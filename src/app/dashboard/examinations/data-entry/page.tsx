@@ -94,7 +94,7 @@ export default function ExaminationsDataEntryPage() {
             } else {
                 toast.error("Failed to fetch students");
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         } finally {
             setLoading(false);
@@ -167,7 +167,7 @@ export default function ExaminationsDataEntryPage() {
             } else {
                 toast.error("Failed to save marks");
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };

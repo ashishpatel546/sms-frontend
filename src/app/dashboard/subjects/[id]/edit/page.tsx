@@ -48,7 +48,7 @@ export default function EditSubjectPage() {
                 } else {
                     setError("Subject not found");
                 }
-            } catch (err) {
+            } catch (_err) {
                 setError("Failed to load subject data");
             } finally {
                 setLoading(false);

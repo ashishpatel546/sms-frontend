@@ -233,7 +233,7 @@ export default function StudentsPage() {
                 const enrollment = row.enrollments?.find((e: any) => e.academicSession?.id === parseInt(committedSessionId))
                     ?? (committedStatus ? row.enrollments?.find((e: any) => e.status === committedStatus) : undefined)
                     ?? row.enrollments?.find((e: any) => e.status === 'ACTIVE');
-                let displayStatus = enrollment ? enrollment.status : (row.isActive ? 'ACTIVE' : 'INACTIVE');
+                const displayStatus = enrollment ? enrollment.status : (row.isActive ? 'ACTIVE' : 'INACTIVE');
 
                 let colorClass = 'bg-slate-100 text-slate-800';
                 if (displayStatus === 'ACTIVE') colorClass = 'bg-green-100 text-green-800';

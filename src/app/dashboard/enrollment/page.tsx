@@ -214,7 +214,7 @@ export default function EnrollmentPage() {
                 });
             }
 
-        } catch (err) {
+        } catch {
             setError("Failed to enroll student. Please try again.");
         } finally {
             setLoading(false);
@@ -253,7 +253,7 @@ export default function EnrollmentPage() {
                     return updated ? updated : fs;
                 }));
             }
-        } catch (err) {
+        } catch {
             toast.error("Failed to assign subjects in bulk.");
         } finally {
             setBulkLoading(false);

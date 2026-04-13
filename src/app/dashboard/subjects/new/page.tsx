@@ -57,7 +57,7 @@ export default function AddSubjectPage() {
 
             router.push("/dashboard/subjects");
             router.refresh();
-        } catch (err) {
+        } catch {
             setError("Failed to create subject. Please try again.");
         } finally {
             setLoading(false);
