@@ -116,8 +116,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <div className="fixed inset-0 z-30 bg-gray-900/50 sm:hidden" onClick={() => setIsSidebarOpen(false)} />
                 )}
 
-                <aside className={`fixed top-0 left-0 z-40 w-64 h-screen pt-20 transition-transform bg-white border-r border-gray-200 sm:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                    <div className="h-full px-3 pb-4 overflow-y-auto bg-white">
+                <aside className={`fixed top-0 left-0 z-40 w-64 h-[100dvh] pt-20 transition-transform bg-white border-r border-gray-200 sm:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                    <div className="h-full px-3 pb-6 overflow-y-auto bg-white">
                         <ul className="space-y-2 font-medium">
                             <li><Link href="/dashboard" className={getLinkClass("/dashboard")}><span className="ml-3">🏠 Dashboard</span></Link></li>
                             <li><Link href="/dashboard/notifications" className={getLinkClass("/dashboard/notifications")}><span className="ml-3">🔔 Notifications</span></Link></li>
