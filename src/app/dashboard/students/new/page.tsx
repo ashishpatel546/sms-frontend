@@ -105,6 +105,14 @@ export default function AddStudentPage() {
         );
     };
 
+    const renderSubjectComponents = (subject: any) => (
+        <div className="flex gap-1">
+            {subject.hasTheory && <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Th</span>}
+            {subject.hasPractical && <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Pr</span>}
+            {!subject.hasTheory && !subject.hasPractical && <span className="text-gray-400 text-[10px]">-</span>}
+        </div>
+    );
+
     // Sibling Modal State
     const [showSiblingModal, setShowSiblingModal] = useState(false);
     const [siblingModalError, setSiblingModalError] = useState("");
@@ -644,7 +652,13 @@ export default function AddStudentPage() {
                                                             onChange={() => handleSubjectToggle(sub.id.toString())}
                                                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                                         />
-                                                        <span>{sub.name} <span className="text-xs text-slate-400">({sub.code})</span></span>
+                                                        <span className="flex flex-col text-sm">
+                                                            <span>{sub.name}</span>
+                                                            <span className="flex items-center gap-2 mt-1">
+                                                                {renderSubjectComponents(sub)}
+                                                                {sub.code && <span className="text-xs text-slate-400">{sub.code}</span>}
+                                                            </span>
+                                                        </span>
                                                     </label>
                                                 ))}
                                             </div>
