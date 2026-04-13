@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import Table from "../../../components/Table";
 import { API_BASE_URL, fetcher } from "@/lib/api";
 import StudentResultModal from "@/components/Examinations/StudentResultModal";
 import { authFetch } from "@/lib/auth";
+import { useRbac } from "@/lib/rbac";
 import ExamScheduleTab from "./ExamScheduleTab";
-import { ClipboardList, Calendar } from "lucide-react";
+import { ClipboardList, Calendar, MoreVertical } from "lucide-react";
 
 export default function ExaminationsPage() {
     const [activeTab, setActiveTab] = useState<"results" | "schedule">("results");
@@ -22,6 +23,7 @@ export default function ExaminationsPage() {
     const [total, setTotal] = useState(0);
     const [classes, setClasses] = useState<any[]>([]);
     const [sections, setSections] = useState<any[]>([]);
+    const [loadingSections, setLoadingSections] = useState(false);
     const [sessions, setSessions] = useState<any[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
 
@@ -32,9 +34,19 @@ export default function ExaminationsPage() {
     const [searchClassId, setSearchClassId] = useState("");
     const [searchSectionId, setSearchSectionId] = useState("");
 
+    // Category filter
+    const [selectedCategoryId, setSelectedCategoryId] = useState("");
+
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
+    const [actionMode, setActionMode] = useState<'view' | 'enter' | 'admin-edit'>('view');
+
+    // Three-dot action menu
+    const [openActionRowId, setOpenActionRowId] = useState<number | null>(null);
+    const actionMenuRef = useRef<HTMLDivElement>(null);
+
+    const rbac = useRbac();
 
     const fetchStudents = async (overrideSessionId?: string, overridePage?: number) => {
         setLoading(true);
@@ -72,7 +84,7 @@ export default function ExaminationsPage() {
 
     useEffect(() => {
         Promise.all([
-            authFetch(`${API_BASE_URL}/classes`).then(r => r.json()),
+            authFetch(`${API_BASE_URL}/classes/names-only`).then(r => r.json()),
             authFetch(`${API_BASE_URL}/academic-sessions`).then(r => r.json()),
         ]).then(([classesData, sessionsData]) => {
             setClasses(Array.isArray(classesData) ? classesData : []);
@@ -88,15 +100,28 @@ export default function ExaminationsPage() {
     useEffect(() => {
         if (!searchSessionId) {
             setCategories([]);
+            setSelectedCategoryId("");
             return;
         }
         authFetch(`${API_BASE_URL}/exams/categories/active?sessionId=${searchSessionId}`)
             .then(r => r.json())
             .then(data => {
                 setCategories(Array.isArray(data) ? data : []);
+                setSelectedCategoryId("");
             })
             .catch(() => setCategories([]));
     }, [searchSessionId]);
+
+    // Close action menu on outside click
+    useEffect(() => {
+        const handleOutsideClick = (e: MouseEvent) => {
+            if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
+                setOpenActionRowId(null);
+            }
+        };
+        document.addEventListener('mousedown', handleOutsideClick);
+        return () => document.removeEventListener('mousedown', handleOutsideClick);
+    }, []);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -105,15 +130,20 @@ export default function ExaminationsPage() {
         fetchStudents(undefined, 1);
     };
 
-    const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const handleClassChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
         const val = e.target.value;
         setSearchClassId(val);
         setSearchSectionId("");
-        if (val) {
-            const cls = classes.find((c: any) => c.id === parseInt(val));
-            setSections(cls?.sections || []);
-        } else {
-            setSections([]);
+        setSections([]);
+        if (!val) return;
+        setLoadingSections(true);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/classes/${val}/sections`);
+            if (res.ok) setSections(await res.json());
+        } catch (_e) {
+            console.error('Failed to fetch sections');
+        } finally {
+            setLoadingSections(false);
         }
     };
 
@@ -134,8 +164,14 @@ export default function ExaminationsPage() {
 
     const totalPages = Math.ceil(total / limit);
 
+    const defaultCatId = selectedCategoryId ? parseInt(selectedCategoryId) : undefined;
+
+    const visibleCategories = selectedCategoryId
+        ? categories.filter(cat => cat.id === parseInt(selectedCategoryId))
+        : categories;
+
     let dynamicColumns: any[] = [];
-    categories.forEach(cat => {
+    visibleCategories.forEach(cat => {
         dynamicColumns.push({
             header: `${cat.name} %`,
             accessor: `category_${cat.id}_percentage`,
@@ -143,6 +179,13 @@ export default function ExaminationsPage() {
             render: (row: any) => row[`category_${cat.id}_percentage`] != null ? `${row[`category_${cat.id}_percentage`]}%` : '-'
         });
     });
+
+    const openModal = (studentId: number, mode: 'view' | 'enter' | 'admin-edit') => {
+        setSelectedStudentId(studentId);
+        setActionMode(mode);
+        setIsModalOpen(true);
+        setOpenActionRowId(null);
+    };
 
     const columns = [
         { header: "Roll No", accessor: "rollNo", sortable: true, render: (row: any) => (row.rollNo && row.rollNo !== 0) ? row.rollNo : 'N/A' },
@@ -154,10 +197,42 @@ export default function ExaminationsPage() {
         },
         ...dynamicColumns,
         {
+            header: "Action",
+            render: (row: any) => (
+                <div className="relative" ref={openActionRowId === row.id ? actionMenuRef : undefined}>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setOpenActionRowId(openActionRowId === row.id ? null : row.id); }}
+                        className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                        title="Actions"
+                    >
+                        <MoreVertical className="w-4 h-4 text-gray-500" />
+                    </button>
+                    {openActionRowId === row.id && (
+                        <div className="absolute right-0 z-20 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
+                            <button
+                                onClick={() => openModal(row.id, 'enter')}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            >
+                                Enter Marks
+                            </button>
+                            {rbac.isAdmin && (
+                                <button
+                                    onClick={() => openModal(row.id, 'admin-edit')}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                >
+                                    Edit Marks
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )
+        },
+        {
             header: "Results",
             render: (row: any) => (
                 <button
-                    onClick={() => { setSelectedStudentId(row.id); setIsModalOpen(true); }}
+                    onClick={() => openModal(row.id, 'view')}
                     className="flex items-center gap-1 font-medium text-blue-600 hover:text-blue-800 transition-colors"
                     title="View Result"
                 >
@@ -211,7 +286,7 @@ export default function ExaminationsPage() {
                     <div className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 mb-6">
                         <h2 className="text-lg font-semibold text-slate-700 mb-4">Search Students</h2>
                     <form onSubmit={handleSearch}>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Student ID</label>
                                 <input type="text" value={searchId} onChange={e => setSearchId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="e.g. 1" />
@@ -240,10 +315,19 @@ export default function ExaminationsPage() {
                             </div>
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Section</label>
-                                <select value={searchSectionId} onChange={e => setSearchSectionId(e.target.value)} disabled={!searchClassId} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    <option value="">All Sections</option>
+                                <select value={searchSectionId} onChange={e => setSearchSectionId(e.target.value)} disabled={!searchClassId || loadingSections} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <option value="">{loadingSections ? 'Loading sections...' : 'All Sections'}</option>
                                     {sections.map((s: any) => (
                                         <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Exam Category</label>
+                                <select value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} disabled={categories.length === 0} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <option value="">All Categories</option>
+                                    {categories.map((c: any) => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
                                     ))}
                                 </select>
                             </div>
@@ -321,7 +405,9 @@ export default function ExaminationsPage() {
                 <StudentResultModal
                     studentId={selectedStudentId}
                     sessionId={parseInt(searchSessionId)}
-                    onClose={() => setIsModalOpen(false)}
+                    mode={actionMode}
+                    defaultCategoryId={defaultCatId}
+                    onClose={() => { setIsModalOpen(false); setActionMode('view'); }}
                     onSave={() => fetchStudents()}
                 />
             )}

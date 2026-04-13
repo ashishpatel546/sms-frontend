@@ -23,6 +23,7 @@ export default function EnrollmentPage() {
     const [filterClass, setFilterClass] = useState("");
     const [filterSection, setFilterSection] = useState("");
     const [availableSections, setAvailableSections] = useState<any[]>([]);
+    const [loadingFilterSections, setLoadingFilterSections] = useState(false);
 
     const [selectedStudent, setSelectedStudent] = useState("");
     const [studentData, setStudentData] = useState<any>(null); // Full student object
@@ -30,6 +31,7 @@ export default function EnrollmentPage() {
     const [selectedSection, setSelectedSection] = useState("");
     const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
 
+    const [loadingModalSections, setLoadingModalSections] = useState(false);
     const [loading, setLoading] = useState(false);
     const [searchLoading, setSearchLoading] = useState(false);
     const [error, setError] = useState("");
@@ -50,7 +52,7 @@ export default function EnrollmentPage() {
                 const [studentsRes, subjectsRes, classesRes, sessionsRes] = await Promise.all([
                     authFetch(`${API_BASE_URL}/students`),
                     authFetch(`${API_BASE_URL}/subjects`),
-                    authFetch(`${API_BASE_URL}/classes`),
+                    authFetch(`${API_BASE_URL}/classes/names-only`),
                     authFetch(`${API_BASE_URL}/academic-sessions`)
                 ]);
 
@@ -76,14 +78,19 @@ export default function EnrollmentPage() {
 
     // Update sections for filter dropdown when class filter changes
     useEffect(() => {
-        if (filterClass) {
-            const cls = classes.find((c: any) => c.id === parseInt(filterClass));
-            setAvailableSections(cls ? cls.sections : []);
-        } else {
+        if (!filterClass) {
             setAvailableSections([]);
             setFilterSection("");
+            return;
         }
-    }, [filterClass, classes]);
+        setLoadingFilterSections(true);
+        setAvailableSections([]);
+        authFetch(`${API_BASE_URL}/classes/${filterClass}/sections`)
+            .then(r => r.json())
+            .then(data => setAvailableSections(Array.isArray(data) ? data : []))
+            .catch(() => setAvailableSections([]))
+            .finally(() => setLoadingFilterSections(false));
+    }, [filterClass]);
 
     const handleSearch = () => {
         setSearchLoading(true);
@@ -147,17 +154,18 @@ export default function EnrollmentPage() {
 
     // Filter sections when class changes (for the Enrollment Form)
     useEffect(() => {
-        if (selectedClass) {
-            const cls = classes.find((c: any) => c.id === parseInt(selectedClass));
-            if (cls) {
-                setSections(cls.sections || []);
-            } else {
-                setSections([]);
-            }
-        } else {
+        if (!selectedClass) {
             setSections([]);
+            return;
         }
-    }, [selectedClass, classes]);
+        setLoadingModalSections(true);
+        setSections([]);
+        authFetch(`${API_BASE_URL}/classes/${selectedClass}/sections`)
+            .then(r => r.json())
+            .then(data => setSections(Array.isArray(data) ? data : []))
+            .catch(() => setSections([]))
+            .finally(() => setLoadingModalSections(false));
+    }, [selectedClass]);
 
     const handleSubjectToggle = (subjectId: string) => {
         setSelectedSubjects(prev =>
@@ -362,9 +370,9 @@ export default function EnrollmentPage() {
                                     value={filterSection}
                                     onChange={(e) => setFilterSection(e.target.value)}
                                     className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                                    disabled={!filterClass}
+                                    disabled={!filterClass || loadingFilterSections}
                                 >
-                                    <option value="">All Sections</option>
+                                    <option value="">{loadingFilterSections ? "Loading sections..." : "All Sections"}</option>
                                     {availableSections.map((s: any) => (
                                         <option key={s.id} value={s.id}>{s.name}</option>
                                     ))}
@@ -457,9 +465,9 @@ export default function EnrollmentPage() {
                                                     onChange={(e) => setSelectedSection(e.target.value)}
                                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                                                     required
-                                                    disabled={!selectedClass}
+                                                    disabled={!selectedClass || loadingModalSections}
                                                 >
-                                                    <option value="">Choose a section</option>
+                                                    <option value="">{loadingModalSections ? "Loading sections..." : "Choose a section"}</option>
                                                     {sections.map((section: any) => (
                                                         <option key={section.id} value={section.id}>
                                                             {section.name}

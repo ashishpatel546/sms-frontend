@@ -59,8 +59,9 @@ export default function SettingsPage() {
 
     useEffect(() => {
         const handleClose = (e: Event) => {
-            if ((e.target as Element).closest('.action-dropdown-btn') || 
-                (e.target as Element).closest('.action-dropdown-menu')) {
+            if (e.target instanceof Element &&
+                (e.target.closest('.action-dropdown-btn') ||
+                e.target.closest('.action-dropdown-menu'))) {
                 return;
             }
             setOpenDropdownId(null);
@@ -614,7 +615,7 @@ export default function SettingsPage() {
 
                         {/* Edit Designation Modal */}
                         {editingDesig && (
-                            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50">
+                            <div className="fixed inset-0 z-60 flex items-center justify-center bg-black bg-opacity-50">
                                 <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md animate-in zoom-in-95 duration-200">
                                     <h3 className="text-lg font-bold mb-4 text-slate-800">Edit Designation</h3>
                                     <form onSubmit={handleUpdateDesignation}>
@@ -686,7 +687,7 @@ export default function SettingsPage() {
                                                             </button>
                                                             {openDropdownId === `desig-${d.id}` && (
                                                                 <div
-                                                                    className="action-dropdown-menu fixed w-32 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[9999] border border-gray-100"
+                                                                    className="action-dropdown-menu fixed w-32 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-9999 border border-gray-100"
                                                                     style={{ top: dropdownPosition.top, left: dropdownPosition.left }}
                                                                 >
                                                                     <div className="py-1">

@@ -15,6 +15,7 @@ export default function StudentsPage() {
     const [loading, setLoading] = useState(true);
     const [classes, setClasses] = useState<any[]>([]);
     const [sections, setSections] = useState<any[]>([]);
+    const [loadingSections, setLoadingSections] = useState(false);
     const [sessions, setSessions] = useState<any[]>([]);
     const rbac = useRbac();
 
@@ -94,7 +95,7 @@ export default function StudentsPage() {
 
     useEffect(() => {
         Promise.all([
-            authFetch(`${API_BASE_URL}/classes`).then(r => r.json()),
+            authFetch(`${API_BASE_URL}/classes/names-only`).then(r => r.json()),
             authFetch(`${API_BASE_URL}/academic-sessions`).then(r => r.json())
         ]).then(([classesData, sessionsData]) => {
             setClasses(Array.isArray(classesData) ? classesData : []);
@@ -114,11 +115,14 @@ export default function StudentsPage() {
         const val = e.target.value;
         setSearchClassId(val);
         setSearchSectionId("");
+        setSections([]);
         if (val) {
-            const cls = classes.find((c: any) => c.id === parseInt(val));
-            setSections(cls?.sections || []);
-        } else {
-            setSections([]);
+            setLoadingSections(true);
+            authFetch(`${API_BASE_URL}/classes/${val}/sections`)
+                .then(r => r.json())
+                .then(data => setSections(Array.isArray(data) ? data : []))
+                .catch(() => setSections([]))
+                .finally(() => setLoadingSections(false));
         }
     };
 
@@ -367,8 +371,8 @@ export default function StudentsPage() {
                             </div>
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Section</label>
-                                <select value={searchSectionId} onChange={e => setSearchSectionId(e.target.value)} disabled={!searchClassId} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    <option value="">All Sections</option>
+                                <select value={searchSectionId} onChange={e => setSearchSectionId(e.target.value)} disabled={!searchClassId || loadingSections} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <option value="">{loadingSections ? "Loading sections..." : "All Sections"}</option>
                                     {sections.map((s: any) => (
                                         <option key={s.id} value={s.id}>{s.name}</option>
                                     ))}

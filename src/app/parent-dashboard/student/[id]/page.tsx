@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { PieChart, Pie, Tooltip, ResponsiveContainer } from "recharts";
@@ -37,12 +37,33 @@ export default function StudentDashboardPage() {
     const [attendance, setAttendance] = useState<any>(null);
     const [fees, setFees] = useState<any>(null);
     const [examResults, setExamResults] = useState<any>(null);
+    const [selectedExamCats, setSelectedExamCats] = useState<Set<string>>(new Set());
+    const [showCatDropdown, setShowCatDropdown] = useState(false);
+    const catDropdownRef = useRef<HTMLDivElement>(null);
     const [holidays, setHolidays] = useState<any[]>([]);
     const [sessions, setSessions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [sectionLoading, setSectionLoading] = useState(false);
 
     // Fee payment selection state (multi-select checkboxes)
+    // Initialise category filter whenever exam results load
+    useEffect(() => {
+        if (examResults?.categories?.length) {
+            setSelectedExamCats(new Set(examResults.categories));
+        }
+    }, [examResults]);
+
+    // Close category dropdown on outside click
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (catDropdownRef.current && !catDropdownRef.current.contains(e.target as Node)) {
+                setShowCatDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
     const [selectedMonths2Pay, setSelectedMonths2Pay] = useState<string[]>([]);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [payProcessing, setPayProcessing] = useState(false);
@@ -843,6 +864,59 @@ export default function StudentDashboardPage() {
                                 {sessions.map(s => <option key={s.id} value={s.id}>{s.name} {s.isActive && "(Current)"}</option>)}
                             </select>
                         </div>
+                        {examResults?.categories?.length > 0 && (
+                            <div className="relative" ref={catDropdownRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCatDropdown(prev => !prev)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-700 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
+                                >
+                                    <span>Categories ({selectedExamCats.size}/{examResults.categories.length})</span>
+                                    <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                </button>
+                                {showCatDropdown && (
+                                    <div className="absolute right-0 z-30 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1.5 min-w-[190px]">
+                                        <label className="flex items-center gap-2 px-4 py-2 text-sm cursor-pointer hover:bg-slate-700 border-b border-slate-700">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedExamCats.size === examResults.categories.length}
+                                                onChange={() => {
+                                                    if (selectedExamCats.size === examResults.categories.length) {
+                                                        setSelectedExamCats(new Set([examResults.categories[0]]));
+                                                    } else {
+                                                        setSelectedExamCats(new Set(examResults.categories));
+                                                    }
+                                                }}
+                                                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-500"
+                                            />
+                                            <span className="font-medium text-slate-200">Show All</span>
+                                        </label>
+                                        {examResults.categories.map((cat: string) => (
+                                            <label key={cat} className="flex items-center gap-2 px-4 py-2 text-sm cursor-pointer hover:bg-slate-700">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedExamCats.has(cat)}
+                                                    onChange={() => {
+                                                        setSelectedExamCats(prev => {
+                                                            const next = new Set(prev);
+                                                            if (next.has(cat)) {
+                                                                if (next.size === 1) return prev;
+                                                                next.delete(cat);
+                                                            } else {
+                                                                next.add(cat);
+                                                            }
+                                                            return next;
+                                                        });
+                                                    }}
+                                                    className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-500"
+                                                />
+                                                <span className="text-slate-300">{cat}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
@@ -854,54 +928,144 @@ export default function StudentDashboardPage() {
                                 <p className="text-slate-400 text-sm font-medium">No results published for {academicYearString}</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto rounded-xl border border-slate-800">
-                                <table className="w-full text-sm text-left whitespace-nowrap">
-                                    <thead className="text-xs text-slate-400 bg-slate-800/50 uppercase">
+                            <div className="relative overflow-x-auto rounded-lg border border-slate-700 shadow-sm">
+                                {/* derive the visible (filtered) category list inline */}
+                                {(() => {
+                                    const visibleCats: string[] = examResults.categories.filter((c: string) => selectedExamCats.has(c));
+                                    return (
+                                <table className="w-full text-sm text-left text-slate-300 min-w-[500px]">
+                                    <thead className="text-xs text-slate-400 uppercase">
                                         <tr>
-                                            <th className="px-4 py-3 font-semibold">Subject</th>
-                                            {examResults.categories.map((cat: string) => (
-                                                <th key={cat} className="px-4 py-3 font-semibold text-center">{cat}</th>
+                                            <th className="px-4 py-3 bg-slate-800 sticky left-0 z-10 w-40 sm:w-48 align-bottom border-b border-slate-700" rowSpan={2}>Subject</th>
+                                            {visibleCats.map((cat: string) => (
+                                                <th key={cat} className="px-4 py-3 text-center border-l border-b border-slate-700 bg-slate-800" colSpan={6}>
+                                                    {cat}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                        <tr>
+                                            {visibleCats.map((cat: string) => (
+                                                <React.Fragment key={`sub-${cat}`}>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-700 bg-slate-800/80">Th. Marks</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-purple-400 border-l border-b border-slate-700 bg-purple-900/20">Pr. Marks</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-700 bg-slate-800/80">Total</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-700 bg-slate-800/80">Obtained</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-indigo-400 border-l border-b border-slate-700 bg-indigo-900/20">%</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-700 bg-slate-800/80">Grade</th>
+                                                </React.Fragment>
                                             ))}
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-800">
+                                    <tbody>
                                         {examResults.subjects.map((sub: any, idx: number) => (
-                                            <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
-                                                <td className="px-4 py-3 font-medium text-white">{sub.subjectName}</td>
-                                                {examResults.categories.map((cat: string) => {
-                                                    const mark = sub.marks[cat];
+                                            <tr key={idx} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
+                                                <td className="px-4 py-3 font-semibold text-white bg-slate-900 sticky left-0 z-10 text-xs sm:text-sm">{sub.subjectName}</td>
+                                                {visibleCats.map((cat: string) => {
+                                                    const m = sub.marks[cat];
+                                                    const isSplit = sub.hasTheory && sub.hasPractical;
+                                                    const calcTotal = isSplit
+                                                        ? (Number(m?.theoryTotalMarks || 0) + Number(m?.practicalTotalMarks || 0))
+                                                        : Number(m?.totalMarks || 0);
+                                                    const calcObtained = isSplit
+                                                        ? (Number(m?.theoryObtainedMarks || 0) + Number(m?.practicalObtainedMarks || 0))
+                                                        : Number(m?.obtainedMarks || 0);
                                                     return (
-                                                        <td key={cat} className="px-4 py-3 text-center">
-                                                            {mark ? (
-                                                                <div className="flex flex-col items-center">
-                                                                    <span className="text-white font-medium">{mark.obtainedMarks}/{mark.totalMarks}</span>
-                                                                    
-                                                                    {(mark.theoryTotalMarks || mark.practicalTotalMarks) && (
-                                                                        <div className="text-[10px] text-slate-400 mt-1 flex flex-col items-center leading-tight">
-                                                                            {mark.theoryTotalMarks && <span>Th: {mark.theoryObtainedMarks}/{mark.theoryTotalMarks}</span>}
-                                                                            {mark.practicalTotalMarks && <span className="text-purple-300">Pr: {mark.practicalObtainedMarks}/{mark.practicalTotalMarks}</span>}
-                                                                        </div>
-                                                                    )}
-
-                                                                    <div className="flex items-center gap-1.5 mt-1">
-                                                                        <span className="text-[10px] text-slate-400">{Math.round(mark.percentage)}%</span>
-                                                                        {mark.grade && (
-                                                                            <span className={`text-[10px] px-1.5 rounded font-bold ${mark.isPass ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}>
-                                                                                {mark.grade}
-                                                                            </span>
-                                                                        )}
+                                                        <React.Fragment key={`td-${cat}`}>
+                                                            {/* Theory Marks */}
+                                                            <td className="px-2 py-2 border-l border-slate-700 text-center">
+                                                                {isSplit && m?.theoryTotalMarks
+                                                                    ? <div className="text-[10px]">Obt: <span className="font-bold text-white">{m.theoryObtainedMarks ?? '-'}</span><br />Tot: {m.theoryTotalMarks}</div>
+                                                                    : <span className="text-slate-600">—</span>}
+                                                            </td>
+                                                            {/* Practical Marks */}
+                                                            <td className="px-2 py-2 border-l border-slate-700 text-center bg-purple-900/10">
+                                                                {isSplit && m?.practicalTotalMarks
+                                                                    ? <div className="text-[10px] text-purple-300">Obt: <span className="font-bold">{m.practicalObtainedMarks ?? '-'}</span><br />Tot: {m.practicalTotalMarks}</div>
+                                                                    : <span className="text-slate-600">—</span>}
+                                                            </td>
+                                                            {/* Total */}
+                                                            <td className="px-2 py-2 border-l border-slate-700 text-center">
+                                                                <span className="font-bold text-slate-300">{calcTotal > 0 ? calcTotal : (m?.totalMarks ?? '-')}</span>
+                                                            </td>
+                                                            {/* Obtained */}
+                                                            <td className="px-2 py-2 border-l border-slate-700 text-center">
+                                                                <span className="font-bold text-white">{m ? (calcTotal > 0 ? calcObtained : (m.obtainedMarks ?? '-')) : '-'}</span>
+                                                            </td>
+                                                            {/* Percentage */}
+                                                            <td className="px-2 py-2 border-l border-slate-700 text-center bg-indigo-900/10">
+                                                                <span className="font-bold text-indigo-300">
+                                                                    {m?.percentage != null ? `${Number(m.percentage).toFixed(1)}%` : '-'}
+                                                                </span>
+                                                            </td>
+                                                            {/* Grade / Status */}
+                                                            <td className="px-2 py-2 border-l border-slate-700 text-center">
+                                                                {m ? (
+                                                                    <div className="flex flex-col items-center gap-1">
+                                                                        <span className="font-bold text-slate-200">{m.grade || '-'}</span>
+                                                                        {m.isPass === true && <span className="px-1.5 py-0.5 text-[9px] font-bold rounded uppercase bg-emerald-500/20 text-emerald-400">Pass</span>}
+                                                                        {m.isPass === false && <span className="px-1.5 py-0.5 text-[9px] font-bold rounded uppercase bg-red-500/20 text-red-400">Fail</span>}
                                                                     </div>
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-slate-600">-</span>
-                                                            )}
-                                                        </td>
+                                                                ) : <span className="text-slate-600">-</span>}
+                                                            </td>
+                                                        </React.Fragment>
                                                     );
                                                 })}
                                             </tr>
                                         ))}
                                     </tbody>
+                                    <tfoot className="border-t-2 border-slate-700 bg-slate-800/70 font-bold">
+                                        <tr>
+                                            <td className="px-4 py-4 sticky left-0 z-10 bg-slate-800 text-slate-300 uppercase tracking-wider text-xs">Overall / Total</td>
+                                            {visibleCats.map((cat: string) => {
+                                                let sumTotal = 0;
+                                                let sumObtained = 0;
+                                                examResults.subjects.forEach((sub: any) => {
+                                                    const m = sub.marks[cat];
+                                                    if (m?.totalMarks) sumTotal += Number(m.totalMarks);
+                                                    if (m?.obtainedMarks) sumObtained += Number(m.obtainedMarks);
+                                                });
+                                                const percStr = sumTotal > 0 ? `${((sumObtained * 100) / sumTotal).toFixed(2)}%` : '-';
+
+                                                let overallGrade = '-';
+                                                let isPassText = '-';
+                                                let isPassColor = '';
+
+                                                if (sumTotal > 0 && examResults.gradingSystems?.length) {
+                                                    const perc = (sumObtained * 100) / sumTotal;
+                                                    const assigned = examResults.gradingSystems.find((g: any) =>
+                                                        perc >= g.minPercentage && (perc < g.maxPercentage || (g.maxPercentage === 100 && perc <= 100))
+                                                    );
+                                                    if (assigned) {
+                                                        overallGrade = assigned.gradeName;
+                                                        isPassText = assigned.isFailGrade ? 'FAIL' : 'PASS';
+                                                        isPassColor = assigned.isFailGrade
+                                                            ? 'bg-red-500/20 text-red-400'
+                                                            : 'bg-emerald-500/20 text-emerald-400';
+                                                    }
+                                                }
+
+                                                return (
+                                                    <React.Fragment key={`tfoot-${cat}`}>
+                                                        <td className="px-2 py-3 border-l border-slate-700 text-center text-slate-600" colSpan={2}>—</td>
+                                                        <td className="px-2 py-3 border-l border-slate-700 text-center text-slate-300">{sumTotal || '-'}</td>
+                                                        <td className="px-2 py-3 border-l border-slate-700 text-center text-slate-300">{sumObtained || '-'}</td>
+                                                        <td className="px-2 py-3 border-l border-slate-700 text-center font-bold text-indigo-300 bg-indigo-900/20">{percStr}</td>
+                                                        <td className="px-2 py-3 border-l border-slate-700 text-center">
+                                                            <div className="flex flex-col items-center gap-1">
+                                                                <span className="font-bold text-slate-200">{overallGrade}</span>
+                                                                {isPassText !== '-' && (
+                                                                    <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded uppercase ${isPassColor}`}>{isPassText}</span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </React.Fragment>
+                                                );
+                                            })}
+                                        </tr>
+                                    </tfoot>
                                 </table>
+                                    );
+                                })()}
                             </div>
                         )}
                     </div>

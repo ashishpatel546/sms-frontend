@@ -85,6 +85,7 @@ export default function ReportsDashboard() {
     const [receivedSectionId, setReceivedSectionId] = useState('');
     const [receivedSearchQuery, setReceivedSearchQuery] = useState('');
     const [receivedMobile, setReceivedMobile] = useState('');
+    const [receivedMethod, setReceivedMethod] = useState('');
     const [receivedData, setReceivedData] = useState<any[]>([]);
     const [receivedLoading, setReceivedLoading] = useState(false);
     
@@ -320,6 +321,7 @@ export default function ReportsDashboard() {
             if (receivedFromDate) query += `&fromDate=${receivedFromDate}`;
             if (receivedToDate) query += `&toDate=${receivedToDate}`;
             if (receivedSearchQuery && !isNaN(Number(receivedSearchQuery))) query += `&studentId=${receivedSearchQuery}`;
+            if (receivedMethod) query += `&paymentMethod=${receivedMethod}`;
 
             query += `&page=${pageOverride ?? 1}&limit=${RECEIVED_PER_PAGE}`;
 
@@ -423,6 +425,7 @@ export default function ReportsDashboard() {
             if (receivedFromDate) query += `&fromDate=${receivedFromDate}`;
             if (receivedToDate) query += `&toDate=${receivedToDate}`;
             if (receivedSearchQuery && !isNaN(Number(receivedSearchQuery))) query += `&studentId=${receivedSearchQuery}`;
+            if (receivedMethod) query += `&paymentMethod=${receivedMethod}`;
             
             // Limit 0 indicates we want to fetch the whole set matching filters
             query += `&page=1&limit=0`;
@@ -1128,7 +1131,7 @@ export default function ReportsDashboard() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4 mb-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                             <div>
                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Session</label>
                                 <select
@@ -1174,7 +1177,21 @@ export default function ReportsDashboard() {
                                     ))}
                                 </select>
                             </div>
-                            <div className="lg:col-span-2">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Method</label>
+                                <select
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    value={receivedMethod}
+                                    onChange={(e) => setReceivedMethod(e.target.value)}
+                                >
+                                    <option value="">All Methods</option>
+                                    <option value="CASH">Cash</option>
+                                    <option value="ONLINE">Online</option>
+                                    <option value="CARD">Card</option>
+                                    <option value="CHEQUE">Cheque</option>
+                                </select>
+                            </div>
+                            <div>
                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Student ID</label>
                                 <input
                                     type="text"
@@ -1194,25 +1211,23 @@ export default function ReportsDashboard() {
                                     onChange={(e) => setReceivedMobile(e.target.value)}
                                 />
                             </div>
-                            <div className="flex gap-2 lg:col-span-1">
-                                <div className="w-1/2">
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">From</label>
-                                    <input
-                                        type="date"
-                                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-[11px] p-2 bg-gray-50"
-                                        value={receivedFromDate}
-                                        onChange={(e) => setReceivedFromDate(e.target.value)}
-                                    />
-                                </div>
-                                <div className="w-1/2">
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">To</label>
-                                    <input
-                                        type="date"
-                                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-[11px] p-2 bg-gray-50"
-                                        value={receivedToDate}
-                                        onChange={(e) => setReceivedToDate(e.target.value)}
-                                    />
-                                </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">From Date</label>
+                                <input
+                                    type="date"
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    value={receivedFromDate}
+                                    onChange={(e) => setReceivedFromDate(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">To Date</label>
+                                <input
+                                    type="date"
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    value={receivedToDate}
+                                    onChange={(e) => setReceivedToDate(e.target.value)}
+                                />
                             </div>
                         </div>
 
