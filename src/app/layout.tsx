@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
+import ServiceUnavailableBanner from "@/components/ServiceUnavailableBanner";
 
 // Force dynamic rendering so process.env is read at request time (from SSM-loaded runtime env),
 // not baked in at build time when env vars are not available.
@@ -82,6 +83,7 @@ export default function RootLayout({
         {children}
         <PWAInstallBanner />
         <ServiceWorkerRegistrar />
+        <ServiceUnavailableBanner />
       </body>
     </html>
   );

@@ -219,6 +219,10 @@ export async function authFetch(
     }
   }
 
+  if (res.status === 503 && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('service-unavailable'));
+  }
+
   return res;
 }
 

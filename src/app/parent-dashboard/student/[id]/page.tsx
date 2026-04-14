@@ -13,7 +13,7 @@ import ExamScheduleParentView from "./ExamScheduleParentView";
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-type ActiveSection = "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule";
+type ActiveSection = "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework";
 
 declare global {
     interface Window {
@@ -41,6 +41,12 @@ export default function StudentDashboardPage() {
     const [showCatDropdown, setShowCatDropdown] = useState(false);
     const catDropdownRef = useRef<HTMLDivElement>(null);
     const [holidays, setHolidays] = useState<any[]>([]);
+    const [homework, setHomework] = useState<any[]>([]);
+    const homeworkDateInputRef = useRef<HTMLInputElement>(null);
+    const [homeworkDate, setHomeworkDate] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    });
     const [sessions, setSessions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [sectionLoading, setSectionLoading] = useState(false);
@@ -150,13 +156,24 @@ export default function StudentDashboardPage() {
         finally { setSectionLoading(false); }
     }, [studentId]);
 
+    const fetchHomework = useCallback(async () => {
+        setSectionLoading(true);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/homework?date=${homeworkDate}`, { headers: authHeaders });
+            if (res.ok) setHomework(await res.json());
+            else setHomework([]);
+        } catch (err) { console.error(err); setHomework([]); }
+        finally { setSectionLoading(false); }
+    }, [studentId, homeworkDate]);
+
     // Unconditionally refetch data whenever tab changes or prerequisites change
     useEffect(() => {
         if (activeSection === "fees") fetchFees();
         else if (activeSection === "attendance") fetchAttendance();
         else if (activeSection === "results") fetchExamResults();
         else if (activeSection === "holidays") fetchHolidays();
-    }, [activeSection, fetchFees, fetchAttendance, fetchExamResults, fetchHolidays]);
+        else if (activeSection === "homework") fetchHomework();
+    }, [activeSection, fetchFees, fetchAttendance, fetchExamResults, fetchHolidays, fetchHomework]);
 
     const toggleMonthPay = (monthKey: string) => {
         setSelectedMonths2Pay(prev =>
@@ -377,11 +394,12 @@ export default function StudentDashboardPage() {
 
             {/* ── Section Nav Tabs ── */}
             <div className="flex gap-1 bg-slate-900/80 border border-slate-800 rounded-xl p-1 overflow-x-auto no-scrollbar animate-slide-up" style={{ animationDelay: '50ms' }}>
-                {([
+                {([  
                     ["fees", "💰 Fee & Dues"],
                     ["attendance", "📊 Attendance"],
                     ["results", "📝 Exam Results"],
                     ["exam-schedule", "📅 Exam Schedule"],
+                    ["homework", "📚 Homework"],
                     ["holidays", "🏝️ Holidays"],
                     ["info", "👤 Personal Info"],
                 ] as const).map(([key, label]) => (
@@ -1188,6 +1206,154 @@ export default function StudentDashboardPage() {
             {activeSection === "exam-schedule" && info?.classId && academicSessionId && (
                 <div className="animate-scale-in">
                     <ExamScheduleParentView classId={info.classId} sessionId={academicSessionId} />
+                </div>
+            )}
+
+            {/* ════════════════════════════════
+                HOMEWORK TAB
+            ════════════════════════════════ */}
+            {activeSection === "homework" && (
+                <div className="space-y-4 animate-scale-in">
+                    {(() => {
+                        // ── Homework helpers ──────────────────────────────────────────
+                        const subjectPalette = [
+                            { border: 'border-l-violet-500',  bg: 'bg-violet-500/10',  text: 'text-violet-300',  dot: 'bg-violet-400' },
+                            { border: 'border-l-sky-500',     bg: 'bg-sky-500/10',     text: 'text-sky-300',     dot: 'bg-sky-400' },
+                            { border: 'border-l-emerald-500', bg: 'bg-emerald-500/10', text: 'text-emerald-300', dot: 'bg-emerald-400' },
+                            { border: 'border-l-amber-500',   bg: 'bg-amber-500/10',   text: 'text-amber-300',   dot: 'bg-amber-400' },
+                            { border: 'border-l-rose-500',    bg: 'bg-rose-500/10',    text: 'text-rose-300',    dot: 'bg-rose-400' },
+                            { border: 'border-l-cyan-500',    bg: 'bg-cyan-500/10',    text: 'text-cyan-300',    dot: 'bg-cyan-400' },
+                            { border: 'border-l-fuchsia-500', bg: 'bg-fuchsia-500/10', text: 'text-fuchsia-300', dot: 'bg-fuchsia-400' },
+                            { border: 'border-l-orange-500',  bg: 'bg-orange-500/10',  text: 'text-orange-300',  dot: 'bg-orange-400' },
+                        ];
+                        const subjectColorMap = new Map<string, typeof subjectPalette[0]>();
+                        let paletteIdx = 0;
+                        const getSubjectColor = (subject: string) => {
+                            const key = subject.toLowerCase().trim();
+                            if (!subjectColorMap.has(key)) {
+                                subjectColorMap.set(key, subjectPalette[paletteIdx % subjectPalette.length]);
+                                paletteIdx++;
+                            }
+                            return subjectColorMap.get(key)!;
+                        };
+
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+                        const shiftDate = (delta: number) => {
+                            const [y, m, d] = homeworkDate.split('-').map(Number);
+                            const next = new Date(y, m - 1, d + delta);
+                            const ns = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
+                            if (ns <= todayStr) setHomeworkDate(ns);
+                        };
+
+                        const displayDate = (() => {
+                            const [y, m, d] = homeworkDate.split('-').map(Number);
+                            const dt = new Date(y, m - 1, d);
+                            if (homeworkDate === todayStr) return 'Today';
+                            const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+                            const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+                            if (homeworkDate === yStr) return 'Yesterday';
+                            return dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+                        })();
+
+                        const isToday = homeworkDate === todayStr;
+
+                        return (
+                            <>
+                                {/* ── Header ── */}
+                                <div className="flex items-center gap-3 mb-5">
+                                    <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl shrink-0">📚</div>
+                                    <div>
+                                        <h2 className="text-white font-bold text-lg leading-tight">Homework</h2>
+                                        <p className="text-slate-400 text-sm">{info?.firstName}&apos;s class assignments</p>
+                                    </div>
+                                </div>
+
+                                {/* ── Day navigator ── */}
+                                <div className="flex justify-center mb-5">
+                                    <div className="inline-flex items-center bg-slate-800/70 border border-slate-700 rounded-2xl p-1 gap-1 shadow-lg">
+                                        {/* Previous day */}
+                                        <button
+                                            onClick={() => shiftDate(-1)}
+                                            className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 active:scale-90 transition-all text-lg font-bold"
+                                            title="Previous day"
+                                        >
+                                            ‹
+                                        </button>
+
+                                        {/* Date label + calendar picker */}
+                                        <div className="relative">
+                                            <button
+                                                type="button"
+                                                onClick={() => homeworkDateInputRef.current?.showPicker()}
+                                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-slate-700 active:scale-95 transition-all group"
+                                                title="Pick a date"
+                                            >
+                                                <div className="text-center min-w-[72px]">
+                                                    <p className="text-white font-semibold text-sm group-hover:text-indigo-300 transition-colors leading-tight">{displayDate}</p>
+                                                    {displayDate !== 'Today' && displayDate !== 'Yesterday' && (
+                                                        <p className="text-slate-500 text-[10px] leading-tight">{homeworkDate}</p>
+                                                    )}
+                                                </div>
+                                                <span className="text-indigo-400 group-hover:text-indigo-300 transition-colors text-base leading-none">📅</span>
+                                            </button>
+                                            {/* Input positioned at bottom-center so picker opens near the icon */}
+                                            <input
+                                                ref={homeworkDateInputRef}
+                                                type="date"
+                                                value={homeworkDate}
+                                                max={todayStr}
+                                                onChange={(e) => e.target.value && setHomeworkDate(e.target.value)}
+                                                className="absolute bottom-0 left-1/2 -translate-x-1/2 w-px h-px opacity-0 pointer-events-none"
+                                            />
+                                        </div>
+
+                                        {/* Next day */}
+                                        <button
+                                            onClick={() => shiftDate(1)}
+                                            disabled={isToday}
+                                            className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 active:scale-90 transition-all disabled:opacity-25 disabled:cursor-not-allowed text-lg font-bold"
+                                            title="Next day"
+                                        >
+                                            ›
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* ── Content ── */}
+                                {sectionLoading ? (
+                                    <div className="flex items-center justify-center py-16">
+                                        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                                    </div>
+                                ) : homework.length === 0 ? (
+                                    <div className="text-center py-16">
+                                        <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center text-3xl mx-auto mb-4">🎉</div>
+                                        <p className="text-slate-300 font-medium">No homework for {displayDate.toLowerCase()}!</p>
+                                        <p className="text-slate-500 text-sm mt-1">Check another date or enjoy the break.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {homework.map((h: any) => {
+                                            const color = getSubjectColor(h.subject || 'general');
+                                            return (
+                                                <div key={h.id} className={`bg-slate-800/50 border border-slate-700/60 border-l-4 ${color.border} rounded-xl p-4 hover:bg-slate-800 transition-colors`}>
+                                                    {h.subject && (
+                                                        <div className="flex items-center gap-1.5 mb-2">
+                                                            <span className={`w-2 h-2 rounded-full shrink-0 ${color.dot}`} />
+                                                            <span className={`text-xs font-bold uppercase tracking-wide ${color.text}`}>{h.subject}</span>
+                                                        </div>
+                                                    )}
+                                                    <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-line">{h.message}</p>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </>
+                        );
+                    })()}
                 </div>
             )}
 
