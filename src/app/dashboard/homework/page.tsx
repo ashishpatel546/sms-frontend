@@ -44,8 +44,10 @@ export default function HomeworkPage() {
 
     const [homework, setHomework] = useState<HomeworkEntry[]>([]);
     const [listLoading, setListLoading] = useState(false);
+    const [filterDate, setFilterDate] = useState(todayStr());
 
     const dateInputRef = useRef<HTMLInputElement>(null);
+    const filterDateInputRef = useRef<HTMLInputElement>(null);
 
     // Send modal
     const [showSendModal, setShowSendModal] = useState(false);
@@ -87,15 +89,15 @@ export default function HomeworkPage() {
         if (!selectedClassId || !selectedSectionId) { setHomework([]); return; }
         setListLoading(true);
         try {
-            const res = await authFetch(
-                `${API_BASE_URL}/homework?classId=${selectedClassId}&sectionId=${selectedSectionId}`,
-                { headers: authHeaders }
-            );
+            const url = filterDate
+                ? `${API_BASE_URL}/homework?classId=${selectedClassId}&sectionId=${selectedSectionId}&date=${filterDate}`
+                : `${API_BASE_URL}/homework?classId=${selectedClassId}&sectionId=${selectedSectionId}`;
+            const res = await authFetch(url, { headers: authHeaders });
             if (res.ok) setHomework(await res.json());
             else setHomework([]);
         } catch { setHomework([]); }
         finally { setListLoading(false); }
-    }, [selectedClassId, selectedSectionId]);
+    }, [selectedClassId, selectedSectionId, filterDate]);
 
     useEffect(() => { fetchHomework(); }, [fetchHomework]);
 
@@ -212,7 +214,7 @@ export default function HomeworkPage() {
                 </button>
             </div>
 
-            {/* Class + Section Selectors */}
+            {/* Class + Section + Date Filters */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 mb-6 shadow-sm">
                 <div className="flex flex-col sm:flex-row gap-4">
                     <div className="flex-1">
@@ -249,6 +251,39 @@ export default function HomeworkPage() {
                             {sections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
                     </div>
+                    <div className="flex-1">
+                        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Date</label>
+                        <div className="relative">
+                            <button
+                                type="button"
+                                onClick={() => filterDateInputRef.current?.showPicker()}
+                                disabled={!selectedClassId || !selectedSectionId}
+                                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                    filterDate
+                                        ? "bg-indigo-50 border-indigo-400 text-indigo-700 font-medium"
+                                        : "bg-slate-50 border-slate-200 text-slate-500 hover:border-indigo-400 hover:text-indigo-600"
+                                }`}
+                            >
+                                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                <span className="flex-1 text-left">{filterDate ? formatDate(filterDate) : "All dates"}</span>
+                                {filterDate && (
+                                    <span
+                                        role="button"
+                                        onClick={(e) => { e.stopPropagation(); setFilterDate(""); }}
+                                        className="ml-auto text-indigo-400 hover:text-indigo-700"
+                                        title="Clear date"
+                                    >✕</span>
+                                )}
+                            </button>
+                            <input
+                                ref={filterDateInputRef}
+                                type="date"
+                                value={filterDate}
+                                onChange={(e) => setFilterDate(e.target.value)}
+                                className="absolute bottom-0 left-1/2 -translate-x-1/2 w-px h-px opacity-0 pointer-events-none"
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -266,8 +301,19 @@ export default function HomeworkPage() {
             ) : sortedDates.length === 0 ? (
                 <div className="text-center py-20 bg-white border border-dashed border-slate-200 rounded-2xl">
                     <div className="text-5xl mb-3 opacity-40">🗒️</div>
-                    <p className="text-slate-500 font-medium">No homework found for {selectedClassName} — {selectedSectionName}.</p>
-                    <p className="text-slate-400 text-sm mt-1">Click "Send Homework" to add the first entry.</p>
+                    {filterDate ? (
+                        <>
+                            <p className="text-slate-500 font-medium">No homework for {formatDate(filterDate)}.</p>
+                            <p className="text-slate-400 text-sm mt-1">
+                                <button onClick={() => setFilterDate("")} className="underline hover:text-indigo-600">Clear filter</button> to see all dates, or send homework for this date.
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <p className="text-slate-500 font-medium">No homework found for {selectedClassName} — {selectedSectionName}.</p>
+                            <p className="text-slate-400 text-sm mt-1">Click "Send Homework" to add the first entry.</p>
+                        </>
+                    )}
                 </div>
             ) : (
                 <div className="space-y-5">
