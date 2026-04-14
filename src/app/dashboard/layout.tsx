@@ -145,6 +145,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 </>
                             )}
                             <li className="pt-4 mt-4 space-y-2 border-t border-gray-200">
+                                <Link href="/dashboard/support" className={getLinkClass("/dashboard/support")}><span className="ml-3">❓ Help / Support</span></Link>
                                 <Link href="/dashboard/settings" className={getLinkClass("/dashboard/settings")}><span className="ml-3">⚙️ Settings</span></Link>
                             </li>
                         </ul>

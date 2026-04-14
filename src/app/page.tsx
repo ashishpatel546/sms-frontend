@@ -382,9 +382,9 @@ export default function LoginPage() {
           </div>
 
           <p className="text-center text-slate-600 text-sm mt-6">
-            Need help? Contact{" "}
-            <a href="mailto:support@colegios.in" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
-              support@colegios.in
+            Need help?{" "}
+            <a href="/contact-us" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors hover:underline">
+              Contact Support
             </a>
           </p>
 

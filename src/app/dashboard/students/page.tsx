@@ -313,7 +313,7 @@ export default function StudentsPage() {
                 <div className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 mb-6">
                     <h2 className="text-lg font-semibold text-slate-700 mb-4">Search Students</h2>
                     <form onSubmit={handleSearch}>
-                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Student ID</label>
                                 <input type="text" value={searchId} onChange={e => setSearchId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="e.g. 1" />
@@ -350,7 +350,7 @@ export default function StudentsPage() {
                                 </select>
                             </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Academic Year</label>
                                 <select value={searchSessionId} onChange={e => setSearchSessionId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2">

@@ -529,8 +529,8 @@ export default function SettingsPage() {
                                 <h3 className="text-sm font-semibold text-slate-700 mb-3">Add New Session</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                     <div>
-                                        <label className="block mb-1 text-xs font-medium text-gray-700">Name (e.g. 2026-2027)</label>
-                                        <input type="text" value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                                        <label className="block mb-1 text-xs font-medium text-gray-700">Session Name</label>
+                                        <input type="text" placeholder="e.g. 2026-2027" value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-xs font-medium text-gray-700">Start Date</label>

@@ -272,7 +272,7 @@ export default function TeachersPage() {
                 <div className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 mb-6">
                     <h2 className="text-lg font-semibold text-slate-700 mb-4">Search Staff</h2>
                     <form onSubmit={handleSearch}>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4">
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Teacher ID</label>
                                 <input type="text" value={searchId} onChange={e => setSearchId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="e.g. 1" />
