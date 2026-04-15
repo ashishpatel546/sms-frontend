@@ -2044,20 +2044,20 @@ export default function FeesDashboardPage() {
                                                                 });
                                                             }
                                                         }}
-                                                        className={`p-4 border rounded-lg transition-all relative ${canPayOT || hasHistory ? 'cursor-pointer hover:shadow-md' : 'opacity-75'} ${
+                                                        className={`p-4 border rounded-lg transition-all relative overflow-hidden ${canPayOT || hasHistory ? 'cursor-pointer hover:shadow-md' : 'opacity-75'} ${
                                                             isOTSelected ? 'ring-2 ring-blue-500 border-blue-500 bg-blue-50 scale-[1.01] shadow-md' :
                                                             ot.status === 'PAID' ? 'border-green-200 bg-green-50' :
                                                             ot.status === 'PARTIAL' ? 'border-yellow-200 bg-yellow-50' :
                                                             'border-purple-200 bg-purple-50'
                                                         }`}
                                                     >
-                                                        <div className="flex justify-between items-center mb-2">
-                                                            <span className="font-bold text-slate-800 text-sm">{ot.label}</span>
-                                                            <div className="flex items-center gap-1">
+                                                        <div className="flex items-start gap-1 mb-2">
+                                                            <span className="font-bold text-slate-800 text-sm flex-1 min-w-0">{ot.label}</span>
+                                                            <div className="flex items-center gap-1 shrink-0">
                                                                 {hasHistory && (
                                                                     <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                                                                 )}
-                                                                <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${ot.status === 'PAID' ? 'bg-green-100 text-green-800' : ot.status === 'PARTIAL' ? 'bg-yellow-100 text-yellow-800' : 'bg-purple-100 text-purple-800'}`}>
+                                                                <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded whitespace-nowrap ${ot.status === 'PAID' ? 'bg-green-100 text-green-800' : ot.status === 'PARTIAL' ? 'bg-yellow-100 text-yellow-800' : 'bg-purple-100 text-purple-800'}`}>
                                                                     {ot.status}
                                                                 </span>
                                                             </div>
@@ -2076,9 +2076,9 @@ export default function FeesDashboardPage() {
                                                                     <span>₹{Number(ot.totalPaid).toFixed(2)}</span>
                                                                 </div>
                                                             )}
-                                                            <div className="flex justify-between border-t border-slate-200 pt-1 mt-1 font-semibold text-slate-800">
-                                                                <span>Balance:</span>
-                                                                <span className={ot.outstanding > 0 ? 'text-red-600' : 'text-green-600'}>₹{Number(ot.outstanding).toFixed(2)}</span>
+                                                            <div className={`border-t border-slate-200 pt-1 mt-1 font-semibold leading-snug ${ot.outstanding > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                                <span className="block text-[10px] font-medium opacity-80">{ot.outstanding > 0 ? 'Balance Due' : 'Balance'}</span>
+                                                                <span className="block">₹{Number(ot.outstanding).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                                             </div>
                                                         </div>
                                                         {/* ── PARTIAL card action buttons (matching monthly fees behaviour) ── */}
@@ -2169,7 +2169,7 @@ export default function FeesDashboardPage() {
                                         {/* Monthly Fee Calendar */}
                                         <div>
                                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Monthly Fees</p>
-                                            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                                            <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3">
                                         {(studentFeeDetails.feePeriods ?? studentFeeDetails.monthlyBreakdown).map((period: any) => {
                                             // Support both feePeriods objects and legacy monthlyBreakdown objects
                                             const isLegacy = !period.months;
@@ -2243,7 +2243,7 @@ export default function FeesDashboardPage() {
                                                             }
                                                         }
                                                     }}
-                                                    className={`p-4 border rounded-lg transition-all relative ${canPay || status === 'PAID' || status === 'PARTIAL' ? 'cursor-pointer hover:shadow-md' : 'opacity-75 bg-slate-50'
+                                                    className={`p-3 border rounded-lg transition-all relative overflow-hidden ${canPay || status === 'PAID' || status === 'PARTIAL' ? 'cursor-pointer hover:shadow-md' : 'opacity-75 bg-slate-50'
                                                         } ${isSelected ? 'ring-2 ring-blue-500 border-blue-500 bg-blue-50 scale-[1.02] shadow-md z-10' :
                                                             isPartiallySelected ? 'ring-1 ring-blue-300 border-blue-300 bg-blue-50/50' :
                                                             status === 'OVERDUE' ? 'border-red-200 bg-red-50' :
@@ -2258,13 +2258,13 @@ export default function FeesDashboardPage() {
                                                             {periodSize === 3 ? 'Q' : periodSize === 6 ? 'H' : 'A'}
                                                         </div>
                                                     )}
-                                                    <div className="flex justify-between items-center mb-2">
-                                                        <h3 className="font-bold text-slate-800 text-sm leading-tight">{label}</h3>
-                                                        <div className="flex items-center gap-1">
+                                                    <div className="flex items-start gap-1 mb-2">
+                                                        <h3 className="font-bold text-slate-800 text-sm leading-tight flex-1 min-w-0">{label}</h3>
+                                                        <div className="flex items-center gap-1 shrink-0">
                                                             {(status === 'PAID' || status === 'PARTIAL') && period.payments?.length > 0 && (
                                                                 <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                                                             )}
-                                                            <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${status === 'PAID' ? 'bg-green-100 text-green-800' :
+                                                            <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded whitespace-nowrap ${status === 'PAID' ? 'bg-green-100 text-green-800' :
                                                                 status === 'OVERDUE' ? 'bg-red-100 text-red-800' :
                                                                     status === 'PARTIAL' ? 'bg-yellow-100 text-yellow-800' :
                                                                         'bg-slate-100 text-slate-800'
@@ -2333,9 +2333,9 @@ export default function FeesDashboardPage() {
                                                                             </div>
                                                                         )}
                                                                         {outstanding > 0 ? (
-                                                                            <div className="flex justify-between font-semibold text-red-600">
-                                                                                <span>Balance Due:</span>
-                                                                                <span>₹{Number(outstanding).toFixed(2)}</span>
+                                                                            <div className="font-semibold text-red-600 leading-snug">
+                                                                                <span className="block text-[10px] font-medium opacity-80">Balance Due</span>
+                                                                                <span className="block">₹{Number(outstanding).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                                                             </div>
                                                                         ) : (excess === 0 && status !== 'UNPAID') ? (
                                                                             <div className="flex justify-between font-semibold text-green-600">

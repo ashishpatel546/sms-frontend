@@ -1,5 +1,5 @@
 // Service Worker for School Management System PWA
-const CACHE_NAME = 'school-ms-v4';
+const CACHE_NAME = 'school-ms-v5';
 
 // App shell files to cache immediately
 const APP_SHELL = [
@@ -55,16 +55,9 @@ self.addEventListener('fetch', (event) => {
   // Skip API calls — always use network for fresh data.
   // Compare by origin (scheme + hostname + port) so requests to a different
   // backend port or subdomain are never served from cache.
+  // Use plain `return` (no respondWith) so the browser handles the request
+  // natively without SW thread overhead.
   if (url.pathname.startsWith('/api/') || url.origin !== self.location.origin) {
-    event.respondWith(
-      fetch(event.request).catch(() => {
-        // If offline and it's a navigation request, show the cached home page
-        if (event.request.mode === 'navigate') {
-          return caches.match('/');
-        }
-        return new Response('Offline', { status: 503 });
-      }),
-    );
     return;
   }
 
