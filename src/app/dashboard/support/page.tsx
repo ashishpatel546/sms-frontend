@@ -47,7 +47,7 @@ export default function DashboardSupportPage() {
     
     // Construct the WhatsApp message
     const name = `${user.firstName || ''} ${user.lastName || ''}`.trim();
-    const message = `Hello, I need help.\n\n*Name:* ${name}\n*Username:* ${user.username || 'N/A'}\n*School:* ${schoolName}\n*Role:* ${user.role || 'N/A'}\n\n*Issue Details:*\n${issue}`;
+    const message = `Hello, I need help.\n\n*Name:* ${name}\n*Mobile:* ${user.mobile || 'N/A'}\n*School:* ${schoolName}\n*Role:* ${user.role || 'N/A'}\n\n*Issue Details:*\n${issue}`;
     
     // Encode the URI and redirect to wa.me
     const encodeMessage = encodeURIComponent(message);
@@ -205,8 +205,8 @@ export default function DashboardSupportPage() {
                   <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-sm">
                      <div className="text-slate-500">Name:</div>
                      <div className="font-medium text-slate-800 text-right">{user?.firstName} {user?.lastName}</div>
-                     <div className="text-slate-500">Username:</div>
-                     <div className="font-medium text-slate-800 text-right">{user?.username || 'N/A'}</div>
+                     <div className="text-slate-500">Mobile:</div>
+                     <div className="font-medium text-slate-800 text-right">{user?.mobile || 'N/A'}</div>
                      <div className="text-slate-500">Role:</div>
                      <div className="font-medium text-slate-800 text-right capitalize">{user?.role?.replace("_", " ")}</div>
                      <div className="text-slate-500">School:</div>
