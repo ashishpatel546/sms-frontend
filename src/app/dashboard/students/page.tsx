@@ -497,7 +497,7 @@ export default function StudentsPage() {
                                         type="button"
                                         onClick={() => {
                                             const headers = "firstName,lastName,gender,dateOfBirth,mobile,email,alternateMobile,category,religion,bloodGroup,aadhaarNumber,fathersName,fatherAadhaarNumber,mothersName,motherAadhaarNumber,addressLine1,addressLine2,landmark,city,state,postalCode,country,classId,sectionId,academicSessionId,subjectIds";
-                                            const sample = "John,Doe,Male,2010-05-15,9876543210,john.doe@example.com,,General,HINDU,O+,,Ramesh Doe,,Sunita Doe,,12 Main Street,,Near Park,Delhi,DL,110001,INDIA,1,1,1,1|2";
+                                            const sample = "John,Doe,Male,2010-05-15,9876543210,john.doe@example.com,,General,HINDU,O+,,Ramesh Doe,,Sunita Doe,,12 Main Street,,Near Park,Delhi,Delhi,110001,India,1,1,1,1|2";
                                             const blob = new Blob([headers + "\n" + sample], { type: "text/csv" });
                                             const url = URL.createObjectURL(blob);
                                             const a = document.createElement("a");

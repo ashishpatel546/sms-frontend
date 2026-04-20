@@ -6,6 +6,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
+import { Country, State, City } from "country-state-city";
 
 export default function EditStudentPage() {
     const router = useRouter();
@@ -29,12 +30,31 @@ export default function EditStudentPage() {
         dateOfBirth: "",
         siblingId: "",
         isActive: true,
+        address: { addressLine1: "", addressLine2: "", landmark: "", city: "", state: "", postalCode: "", country: "IN" }
     });
+
+    const countries = Country.getAllCountries();
+    const [states, setStates] = useState<any[]>(State.getStatesOfCountry("IN"));
+    const [cities, setCities] = useState<any[]>([]);
     const [availableDiscounts, setAvailableDiscounts] = useState<any[]>([]);
     const [selectedDiscounts, setSelectedDiscounts] = useState<number[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
+
+    useEffect(() => {
+        if (formData.address?.country) {
+            setStates(State.getStatesOfCountry(formData.address.country));
+        }
+    }, [formData.address?.country]);
+
+    useEffect(() => {
+        if (formData.address?.country && formData.address?.state) {
+            setCities(City.getCitiesOfState(formData.address.country, formData.address.state));
+        } else {
+            setCities([]);
+        }
+    }, [formData.address?.country, formData.address?.state]);
 
     // Sibling Modal State
     const [showSiblingModal, setShowSiblingModal] = useState(false);
@@ -60,6 +80,25 @@ export default function EditStudentPage() {
                 const student = await studRes.json();
 
                 if (student) {
+                    // Reverse-map stored full country/state names to ISO codes for the dropdowns
+                    let addressCountryCode = "IN";
+                    let addressStateCode = "";
+                    let addressCity = student.address?.city || "";
+                    if (student.address) {
+                        const allCountries = Country.getAllCountries();
+                        const foundCountry = allCountries.find((c: any) => c.name.toUpperCase() === (student.address.country || "").toUpperCase());
+                        if (foundCountry) addressCountryCode = foundCountry.isoCode;
+                        const statesOfCountry = State.getStatesOfCountry(addressCountryCode);
+                        const foundState = statesOfCountry.find((s: any) => s.name.toUpperCase() === (student.address.state || "").toUpperCase());
+                        if (foundState) addressStateCode = foundState.isoCode;
+                        // Normalize city to match dropdown option casing (backend stores uppercase)
+                        if (addressCity && addressStateCode) {
+                            const citiesOfState = City.getCitiesOfState(addressCountryCode, addressStateCode);
+                            const foundCity = citiesOfState.find((c: any) => c.name.toUpperCase() === addressCity.toUpperCase());
+                            if (foundCity) addressCity = foundCity.name;
+                        }
+                    }
+
                     setFormData({
                         firstName: student.firstName || "",
                         lastName: student.lastName || "",
@@ -78,6 +117,15 @@ export default function EditStudentPage() {
                         dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split('T')[0] : "",
                         siblingId: student.siblingId ? student.siblingId.toString() : "",
                         isActive: student.isActive,
+                        address: {
+                            addressLine1: student.address?.addressLine1 || "",
+                            addressLine2: student.address?.addressLine2 || "",
+                            landmark: student.address?.landmark || "",
+                            city: addressCity,
+                            state: addressStateCode,
+                            postalCode: student.address?.postalCode || "",
+                            country: addressCountryCode,
+                        }
                     });
                     if (student.studentDiscounts) {
                         const activeDiscounts = student.studentDiscounts.filter((sd: any) => sd.isActive);
@@ -109,6 +157,17 @@ export default function EditStudentPage() {
 
         fetchData();
     }, [id]);
+
+    const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        if (name === "country") {
+            setFormData(prev => ({ ...prev, address: { ...prev.address, country: value, state: "", city: "" } }));
+        } else if (name === "state") {
+            setFormData(prev => ({ ...prev, address: { ...prev.address, state: value, city: "" } }));
+        } else {
+            setFormData(prev => ({ ...prev, address: { ...prev.address, [name]: value } }));
+        }
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const target = e.target as HTMLInputElement;
@@ -207,11 +266,23 @@ export default function EditStudentPage() {
         setError("");
 
         try {
+            const addressPayload = formData.address?.addressLine1 ? (() => {
+                const countryObj = Country.getCountryByCode(formData.address.country);
+                const stateObj = State.getStateByCodeAndCountry(formData.address.state, formData.address.country);
+                return {
+                    ...formData.address,
+                    country: countryObj ? countryObj.name : formData.address.country,
+                    state: stateObj ? stateObj.name : formData.address.state,
+                };
+            })() : undefined;
+
             const payload = {
                 ...formData,
+                address: addressPayload,
                 siblingId: formData.siblingId ? parseInt(formData.siblingId) : null,
                 discountIds: selectedDiscounts
             };
+            if (!payload.address) delete (payload as any).address;
 
             // Remove optional empty string fields to prevent validation errors
             const optionalFields = ['email', 'aadhaarNumber', 'mobile', 'alternateMobile', 'category', 'bloodGroup', 'religion', 'dateOfBirth'];
@@ -304,6 +375,60 @@ export default function EditStudentPage() {
                             <div>
                                 <label htmlFor="aadhaarNumber" className="block mb-2 text-sm font-medium text-gray-900">Aadhaar Number <span className="text-gray-400 font-normal">(Optional)</span></label>
                                 <input type="text" id="aadhaarNumber" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Address Info */}
+                    <div>
+                        <h3 className="text-lg font-bold mb-4 text-slate-700 border-b pb-2">Address Information</h3>
+                        <div className="grid gap-6 md:grid-cols-2">
+                            <div>
+                                <label htmlFor="country" className="block mb-2 text-sm font-medium text-gray-900">Country</label>
+                                <select id="country" name="country" value={formData.address?.country} onChange={handleAddressChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
+                                    <option value="">Select Country</option>
+                                    {countries.map(c => (
+                                        <option key={c.isoCode} value={c.isoCode}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label htmlFor="state" className="block mb-2 text-sm font-medium text-gray-900">State</label>
+                                <select id="state" name="state" value={formData.address?.state} onChange={handleAddressChange} disabled={!states.length} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:opacity-50">
+                                    <option value="">Select State</option>
+                                    {states.map(s => (
+                                        <option key={s.isoCode} value={s.isoCode}>{s.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label htmlFor="city" className="block mb-2 text-sm font-medium text-gray-900">City</label>
+                                {cities.length > 0 ? (
+                                    <select id="city" name="city" value={formData.address?.city} onChange={handleAddressChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
+                                        <option value="">Select City</option>
+                                        {cities.map(c => (
+                                            <option key={c.name} value={c.name}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <input type="text" id="city" name="city" value={formData.address?.city} onChange={handleAddressChange} placeholder="City name" disabled={!formData.address?.state} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:opacity-50" />
+                                )}
+                            </div>
+                            <div>
+                                <label htmlFor="postalCode" className="block mb-2 text-sm font-medium text-gray-900">Postal Code</label>
+                                <input type="text" id="postalCode" name="postalCode" value={formData.address?.postalCode} onChange={handleAddressChange} placeholder="PIN code" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label htmlFor="addressLine1" className="block mb-2 text-sm font-medium text-gray-900">Address Line 1</label>
+                                <input type="text" id="addressLine1" name="addressLine1" value={formData.address?.addressLine1} onChange={handleAddressChange} placeholder="Street address, Flat no, etc." className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label htmlFor="addressLine2" className="block mb-2 text-sm font-medium text-gray-900">Address Line 2 <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" id="addressLine2" name="addressLine2" value={formData.address?.addressLine2} onChange={handleAddressChange} placeholder="Apartment, suite, unit, etc." className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label htmlFor="landmark" className="block mb-2 text-sm font-medium text-gray-900">Landmark <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" id="landmark" name="landmark" value={formData.address?.landmark} onChange={handleAddressChange} placeholder="Near..." className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
                             </div>
                         </div>
                     </div>
