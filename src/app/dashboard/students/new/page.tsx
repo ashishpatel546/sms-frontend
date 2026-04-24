@@ -25,10 +25,17 @@ export default function AddStudentPage() {
         firstName: "",
         lastName: "",
         email: "",
+        pen: "",
         fathersName: "",
         fatherAadhaarNumber: "",
+        fatherPan: "",
+        fatherOccupation: "",
+        fatherIncome: "",
         mothersName: "",
         motherAadhaarNumber: "",
+        motherPan: "",
+        motherOccupation: "",
+        motherIncome: "",
         aadhaarNumber: "",
         mobile: "",
         alternateMobile: "",
@@ -248,6 +255,8 @@ export default function AddStudentPage() {
             const payload = {
                 ...formData,
                 siblingId: formData.siblingId ? parseInt(formData.siblingId) : undefined,
+                fatherIncome: formData.fatherIncome !== "" ? parseFloat(formData.fatherIncome) : undefined,
+                motherIncome: formData.motherIncome !== "" ? parseFloat(formData.motherIncome) : undefined,
                 discountIds: selectedDiscounts,
             };
 
@@ -261,7 +270,7 @@ export default function AddStudentPage() {
             }
 
             // Remove optional empty string fields to prevent validation errors
-            const optionalFields = ['email', 'aadhaarNumber', 'alternateMobile', 'bloodGroup'];
+            const optionalFields = ['email', 'aadhaarNumber', 'alternateMobile', 'bloodGroup', 'pen', 'fatherAadhaarNumber', 'fatherPan', 'fatherOccupation', 'motherAadhaarNumber', 'motherPan', 'motherOccupation'];
             optionalFields.forEach(field => {
                 const key = field as keyof typeof payload;
                 if (!payload[key]) {
@@ -382,6 +391,10 @@ export default function AddStudentPage() {
                                 <label htmlFor="aadhaarNumber" className="block mb-2 text-sm font-medium text-gray-900">Aadhaar Number <span className="text-gray-400 font-normal">(Optional)</span></label>
                                 <input type="text" id="aadhaarNumber" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
                             </div>
+                            <div>
+                                <label htmlFor="pen" className="block mb-2 text-sm font-medium text-gray-900">PEN (Permanent Enrollment Number) <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" id="pen" name="pen" value={formData.pen} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="e.g. 1234567890" />
+                            </div>
                         </div>
                     </div>
 
@@ -488,6 +501,30 @@ export default function AddStudentPage() {
                             <div>
                                 <label htmlFor="motherAadhaarNumber" className="block mb-2 text-sm font-medium text-gray-900">Mother's UUID (Aadhaar Number) <span className="text-gray-400 font-normal">(Optional)</span></label>
                                 <input type="text" id="motherAadhaarNumber" name="motherAadhaarNumber" value={formData.motherAadhaarNumber} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" />
+                            </div>
+                            <div>
+                                <label htmlFor="fatherPan" className="block mb-2 text-sm font-medium text-gray-900">Father's PAN <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" id="fatherPan" name="fatherPan" value={formData.fatherPan} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="PAN Number" />
+                            </div>
+                            <div>
+                                <label htmlFor="motherPan" className="block mb-2 text-sm font-medium text-gray-900">Mother's PAN <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" id="motherPan" name="motherPan" value={formData.motherPan} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="PAN Number" />
+                            </div>
+                            <div>
+                                <label htmlFor="fatherOccupation" className="block mb-2 text-sm font-medium text-gray-900">Father's Occupation <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" id="fatherOccupation" name="fatherOccupation" value={formData.fatherOccupation} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="e.g. Engineer" />
+                            </div>
+                            <div>
+                                <label htmlFor="motherOccupation" className="block mb-2 text-sm font-medium text-gray-900">Mother's Occupation <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" id="motherOccupation" name="motherOccupation" value={formData.motherOccupation} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="e.g. Teacher" />
+                            </div>
+                            <div>
+                                <label htmlFor="fatherIncome" className="block mb-2 text-sm font-medium text-gray-900">Father's Annual Income (₹) <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="number" id="fatherIncome" name="fatherIncome" value={formData.fatherIncome} onChange={handleChange} disabled={!!selectedSiblingObj} min="0" step="0.01" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="e.g. 500000" />
+                            </div>
+                            <div>
+                                <label htmlFor="motherIncome" className="block mb-2 text-sm font-medium text-gray-900">Mother's Annual Income (₹) <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="number" id="motherIncome" name="motherIncome" value={formData.motherIncome} onChange={handleChange} disabled={!!selectedSiblingObj} min="0" step="0.01" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="e.g. 300000" />
                             </div>
                         </div>
 

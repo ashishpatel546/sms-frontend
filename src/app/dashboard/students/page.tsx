@@ -27,6 +27,7 @@ export default function StudentsPage() {
     const [searchEmail, setSearchEmail] = useState("");
     const [searchMobile, setSearchMobile] = useState("");
     const [searchParents, setSearchParents] = useState("");
+    const [searchPen, setSearchPen] = useState("");
     const [searchStatus, setSearchStatus] = useState("");
     const [searchClassId, setSearchClassId] = useState("");
     const [searchSectionId, setSearchSectionId] = useState("");
@@ -58,6 +59,7 @@ export default function StudentsPage() {
         if (searchEmail) params.append("email", searchEmail);
         if (searchMobile) params.append("mobile", searchMobile);
         if (searchParents) params.append("parentsName", searchParents);
+        if (searchPen) params.append("pen", searchPen);
         if (searchStatus !== "") params.append("enrollmentStatus", searchStatus);
         if (searchClassId) params.append("classId", searchClassId);
         if (searchSectionId) params.append("sectionId", searchSectionId);
@@ -133,6 +135,7 @@ export default function StudentsPage() {
         setSearchEmail("");
         setSearchMobile("");
         setSearchParents("");
+        setSearchPen("");
         setSearchStatus("");
         setSearchClassId("");
         setSearchSectionId("");
@@ -339,6 +342,10 @@ export default function StudentsPage() {
                                 <input type="text" value={searchParents} onChange={e => setSearchParents(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="Mother or Father" />
                             </div>
                             <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">PEN (Permanent Enrollment Number)</label>
+                                <input type="text" value={searchPen} onChange={e => setSearchPen(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="e.g. 1234567890" />
+                            </div>
+                            <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
                                 <select value={searchStatus} onChange={e => setSearchStatus(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2">
                                     <option value="">All</option>
@@ -486,7 +493,7 @@ export default function StudentsPage() {
                                     <p className="font-semibold mb-2">CSV Format Requirements:</p>
                                     <ul className="list-disc pl-5 space-y-1">
                                         <li>Must contain headers exactly as shown below (order matters):</li>
-                                        <li className="font-mono text-xs bg-gray-100 p-1 rounded overflow-x-auto whitespace-nowrap">firstName,lastName,gender,dateOfBirth,mobile,email,alternateMobile,category,religion,bloodGroup,aadhaarNumber,fathersName,fatherAadhaarNumber,mothersName,motherAadhaarNumber,addressLine1,addressLine2,landmark,city,state,postalCode,country,classId,sectionId,academicSessionId,subjectIds</li>
+                                        <li className="font-mono text-xs bg-gray-100 p-1 rounded overflow-x-auto whitespace-nowrap">firstName,lastName,gender,dateOfBirth,mobile,email,alternateMobile,category,religion,bloodGroup,aadhaarNumber,fathersName,fatherAadhaarNumber,mothersName,motherAadhaarNumber,addressLine1,addressLine2,landmark,city,state,postalCode,country,classId,sectionId,academicSessionId,subjectIds,pen,fatherPan,motherPan,fatherOccupation,motherOccupation,fatherIncome,motherIncome</li>
                                         <li><span className="font-semibold text-red-600">Required:</span> firstName, lastName, gender, dateOfBirth, mobile, fathersName, mothersName, category, religion</li>
                                         <li><span className="font-semibold">Optional fields</span> can be left empty, but the column must still be present.</li>
                                         <li><span className="font-semibold">dateOfBirth:</span> Use format YYYY-MM-DD</li>
@@ -496,8 +503,8 @@ export default function StudentsPage() {
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            const headers = "firstName,lastName,gender,dateOfBirth,mobile,email,alternateMobile,category,religion,bloodGroup,aadhaarNumber,fathersName,fatherAadhaarNumber,mothersName,motherAadhaarNumber,addressLine1,addressLine2,landmark,city,state,postalCode,country,classId,sectionId,academicSessionId,subjectIds";
-                                            const sample = "John,Doe,Male,2010-05-15,9876543210,john.doe@example.com,,General,HINDU,O+,,Ramesh Doe,,Sunita Doe,,12 Main Street,,Near Park,Delhi,Delhi,110001,India,1,1,1,1|2";
+                                            const headers = "firstName,lastName,gender,dateOfBirth,mobile,email,alternateMobile,category,religion,bloodGroup,aadhaarNumber,fathersName,fatherAadhaarNumber,mothersName,motherAadhaarNumber,addressLine1,addressLine2,landmark,city,state,postalCode,country,classId,sectionId,academicSessionId,subjectIds,pen,fatherPan,motherPan,fatherOccupation,motherOccupation,fatherIncome,motherIncome";
+                                            const sample = "John,Doe,Male,2010-05-15,9876543210,john.doe@example.com,,General,HINDU,O+,,Ramesh Doe,,Sunita Doe,,12 Main Street,,Near Park,Delhi,Delhi,110001,India,1,1,1,1|2,,,,,,";
                                             const blob = new Blob([headers + "\n" + sample], { type: "text/csv" });
                                             const url = URL.createObjectURL(blob);
                                             const a = document.createElement("a");

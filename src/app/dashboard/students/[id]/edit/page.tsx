@@ -16,10 +16,17 @@ export default function EditStudentPage() {
         firstName: "",
         lastName: "",
         email: "",
+        pen: "",
         fathersName: "",
         fatherAadhaarNumber: "",
+        fatherPan: "",
+        fatherOccupation: "",
+        fatherIncome: "",
         mothersName: "",
         motherAadhaarNumber: "",
+        motherPan: "",
+        motherOccupation: "",
+        motherIncome: "",
         aadhaarNumber: "",
         mobile: "",
         alternateMobile: "",
@@ -103,10 +110,17 @@ export default function EditStudentPage() {
                         firstName: student.firstName || "",
                         lastName: student.lastName || "",
                         email: student.email || "",
+                        pen: student.pen || "",
                         fathersName: student.fathersName || "",
                         fatherAadhaarNumber: student.fatherAadhaarNumber || "",
+                        fatherPan: student.fatherPan || "",
+                        fatherOccupation: student.fatherOccupation || "",
+                        fatherIncome: student.fatherIncome != null ? String(student.fatherIncome) : "",
                         mothersName: student.mothersName || "",
                         motherAadhaarNumber: student.motherAadhaarNumber || "",
+                        motherPan: student.motherPan || "",
+                        motherOccupation: student.motherOccupation || "",
+                        motherIncome: student.motherIncome != null ? String(student.motherIncome) : "",
                         aadhaarNumber: student.aadhaarNumber || "",
                         mobile: student.mobile || "",
                         alternateMobile: student.alternateMobile || "",
@@ -280,12 +294,14 @@ export default function EditStudentPage() {
                 ...formData,
                 address: addressPayload,
                 siblingId: formData.siblingId ? parseInt(formData.siblingId) : null,
+                fatherIncome: formData.fatherIncome !== "" ? parseFloat(formData.fatherIncome) : null,
+                motherIncome: formData.motherIncome !== "" ? parseFloat(formData.motherIncome) : null,
                 discountIds: selectedDiscounts
             };
             if (!payload.address) delete (payload as any).address;
 
             // Remove optional empty string fields to prevent validation errors
-            const optionalFields = ['email', 'aadhaarNumber', 'mobile', 'alternateMobile', 'category', 'bloodGroup', 'religion', 'dateOfBirth'];
+            const optionalFields = ['email', 'aadhaarNumber', 'mobile', 'alternateMobile', 'category', 'bloodGroup', 'religion', 'dateOfBirth', 'pen', 'fatherAadhaarNumber', 'fatherPan', 'fatherOccupation', 'motherAadhaarNumber', 'motherPan', 'motherOccupation'];
             optionalFields.forEach(field => {
                 const key = field as keyof typeof payload;
                 if (!(payload as any)[key]) {
@@ -375,6 +391,10 @@ export default function EditStudentPage() {
                             <div>
                                 <label htmlFor="aadhaarNumber" className="block mb-2 text-sm font-medium text-gray-900">Aadhaar Number <span className="text-gray-400 font-normal">(Optional)</span></label>
                                 <input type="text" id="aadhaarNumber" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                            </div>
+                            <div>
+                                <label htmlFor="pen" className="block mb-2 text-sm font-medium text-gray-900">PEN (Permanent Enrollment Number) <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" id="pen" name="pen" value={formData.pen} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="e.g. 1234567890" />
                             </div>
                         </div>
                     </div>
@@ -482,6 +502,30 @@ export default function EditStudentPage() {
                             <div>
                                 <label htmlFor="motherAadhaarNumber" className="block mb-2 text-sm font-medium text-gray-900">Mother's UUID (Aadhaar Number) <span className="text-gray-400 font-normal">(Optional)</span></label>
                                 <input type="text" id="motherAadhaarNumber" name="motherAadhaarNumber" value={formData.motherAadhaarNumber} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" />
+                            </div>
+                            <div>
+                                <label htmlFor="fatherPan" className="block mb-2 text-sm font-medium text-gray-900">Father's PAN <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" id="fatherPan" name="fatherPan" value={formData.fatherPan} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="PAN Number" />
+                            </div>
+                            <div>
+                                <label htmlFor="motherPan" className="block mb-2 text-sm font-medium text-gray-900">Mother's PAN <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" id="motherPan" name="motherPan" value={formData.motherPan} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="PAN Number" />
+                            </div>
+                            <div>
+                                <label htmlFor="fatherOccupation" className="block mb-2 text-sm font-medium text-gray-900">Father's Occupation <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" id="fatherOccupation" name="fatherOccupation" value={formData.fatherOccupation} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="e.g. Engineer" />
+                            </div>
+                            <div>
+                                <label htmlFor="motherOccupation" className="block mb-2 text-sm font-medium text-gray-900">Mother's Occupation <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" id="motherOccupation" name="motherOccupation" value={formData.motherOccupation} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="e.g. Teacher" />
+                            </div>
+                            <div>
+                                <label htmlFor="fatherIncome" className="block mb-2 text-sm font-medium text-gray-900">Father's Annual Income (₹) <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="number" id="fatherIncome" name="fatherIncome" value={formData.fatherIncome} onChange={handleChange} disabled={!!selectedSiblingObj} min="0" step="0.01" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="e.g. 500000" />
+                            </div>
+                            <div>
+                                <label htmlFor="motherIncome" className="block mb-2 text-sm font-medium text-gray-900">Mother's Annual Income (₹) <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="number" id="motherIncome" name="motherIncome" value={formData.motherIncome} onChange={handleChange} disabled={!!selectedSiblingObj} min="0" step="0.01" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="e.g. 300000" />
                             </div>
                         </div>
 
