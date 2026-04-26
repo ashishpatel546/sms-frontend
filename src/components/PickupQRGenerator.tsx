@@ -87,7 +87,6 @@ const muiDarkTheme = createTheme({
   components: {
     MuiPaper:      { styleOverrides: { root: { backgroundImage: "none" } } },
     MuiDialog:     { styleOverrides: { paper: { backgroundColor: "#1e293b", backgroundImage: "none" } } },
-    MuiPickersDay: { styleOverrides: { root: { fontSize: "0.875rem" } } },
   },
 });
 
@@ -239,7 +238,7 @@ export default function PickupQRGenerator({ studentId, studentName }: PickupQRGe
   };
 
   const shareOrDownloadQR = async (
-    containerRef: React.RefObject<HTMLDivElement>,
+    containerRef: React.RefObject<HTMLDivElement | null>,
     pin: string,
     personName: string,
     sName: string | undefined,
@@ -402,7 +401,6 @@ export default function PickupQRGenerator({ studentId, studentName }: PickupQRGe
                     slotProps={{
                       textField: {
                         size: "small",
-                        placeholder: "Pick a time",
                         sx: {
                           width: "100%",
                           "& .MuiOutlinedInput-root": {
