@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { PieChart, Pie, Tooltip, ResponsiveContainer } from "recharts";
 import { API_BASE_URL } from "@/lib/api";
@@ -10,10 +10,11 @@ import toast, { Toaster } from "react-hot-toast";
 import ReceiptModal from "@/components/ReceiptModal";
 import { getEnv } from "@/lib/env";
 import ExamScheduleParentView from "./ExamScheduleParentView";
+import PickupQRGenerator from "@/components/PickupQRGenerator";
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-type ActiveSection = "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework";
+type ActiveSection = "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework" | "pickup";
 
 declare global {
     interface Window {
@@ -23,6 +24,7 @@ declare global {
 
 export default function StudentDashboardPage() {
     const params = useParams();
+    const router = useRouter();
     const studentId = params.id;
 
     const now = new Date();
@@ -50,6 +52,9 @@ export default function StudentDashboardPage() {
     const [sessions, setSessions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [sectionLoading, setSectionLoading] = useState(false);
+
+    // Sibling students (for the top student-switcher tab strip)
+    const [siblings, setSiblings] = useState<any[]>([]);
 
     // Fee payment selection state (multi-select checkboxes)
     // Initialise category filter whenever exam results load
@@ -81,10 +86,11 @@ export default function StudentDashboardPage() {
     const loadInitialInfo = useCallback(async () => {
         setLoading(true);
         try {
-            // First load sessions and info
-            const [infoRes, sessionsRes] = await Promise.all([
+            // First load sessions, info, and sibling list in parallel
+            const [infoRes, sessionsRes, siblingsRes] = await Promise.all([
                 authFetch(`${API_BASE_URL}/parent/student/${studentId}/info`, { headers: authHeaders }),
-                authFetch(`${API_BASE_URL}/parent/academic-sessions`, { headers: authHeaders })
+                authFetch(`${API_BASE_URL}/parent/academic-sessions`, { headers: authHeaders }),
+                authFetch(`${API_BASE_URL}/parent/my-students`, { headers: authHeaders }),
             ]);
 
             let infoData = null;
@@ -92,6 +98,11 @@ export default function StudentDashboardPage() {
 
             if (infoRes.ok) infoData = await infoRes.json();
             if (sessionsRes.ok) sessionsList = await sessionsRes.json();
+            if (siblingsRes.ok) {
+                const allStudents = await siblingsRes.json();
+                // Only show switcher when there are 2+ students
+                setSiblings(allStudents.length > 1 ? allStudents : []);
+            }
 
             setInfo(infoData);
             setSessions(sessionsList);
@@ -368,11 +379,51 @@ export default function StudentDashboardPage() {
         <div className="space-y-4 max-w-5xl">
             <Toaster position="top-right" />
 
-            {/* Back */}
-            <Link href="/parent-dashboard" className="inline-flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm animate-fade-in">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                All Students
-            </Link>
+            {/* Back — only when multi-student (single-student parents never see the card grid) */}
+            {siblings.length > 0 && (
+                <Link href="/parent-dashboard" className="inline-flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm animate-fade-in">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                    All Students
+                </Link>
+            )}
+
+            {/* ── Student Switcher (shown when parent has 2+ students) ── */}
+            {siblings.length > 0 && (
+                <div className="animate-fade-in">
+                    <p className="text-slate-500 text-xs mb-2 px-0.5">Switch student</p>
+                    <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar snap-x snap-mandatory">
+                        {siblings.map((s) => {
+                            const isActive = String(s.id) === String(studentId);
+                            const initials = `${s.firstName?.[0] ?? ""}${s.lastName?.[0] ?? ""}`;
+                            return (
+                                <button
+                                    key={s.id}
+                                    onClick={() => !isActive && router.push(`/parent-dashboard/student/${s.id}`)}
+                                    className={`shrink-0 snap-start flex items-center gap-2.5 px-3 py-2 rounded-xl border transition-all text-left
+                                        ${isActive
+                                            ? "bg-indigo-600/20 border-indigo-500/50 text-white shadow-sm shadow-indigo-500/20"
+                                            : "bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-white hover:bg-slate-800/70"
+                                        }`}
+                                >
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0
+                                        ${isActive ? "bg-indigo-500 text-white" : "bg-slate-700 text-slate-300"}`}>
+                                        {initials}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className={`text-sm font-semibold leading-tight truncate max-w-[120px] ${isActive ? "text-white" : "text-slate-300"}`}>
+                                            {s.firstName} {s.lastName}
+                                        </p>
+                                        <p className="text-[10px] text-slate-500 leading-tight truncate">
+                                            {[s.className, s.sectionName ? `Sec ${s.sectionName}` : null].filter(Boolean).join(" · ")}
+                                        </p>
+                                    </div>
+                                    {isActive && <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0 ml-0.5" />}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             {/* ── Student Header Card ── */}
             <div className="bg-linear-to-r from-indigo-600/20 to-purple-600/20 border border-indigo-500/30 rounded-xl sm:rounded-2xl p-3 sm:p-5 animate-slide-up">
@@ -393,19 +444,24 @@ export default function StudentDashboardPage() {
             </div>
 
             {/* ── Section Nav Tabs ── */}
-            <div className="flex gap-1 bg-slate-900/80 border border-slate-800 rounded-xl p-1 overflow-x-auto no-scrollbar animate-slide-up" style={{ animationDelay: '50ms' }}>
-                {([  
-                    ["fees", "💰 Fee & Dues"],
-                    ["attendance", "📊 Attendance"],
-                    ["results", "📝 Exam Results"],
-                    ["exam-schedule", "📅 Exam Schedule"],
-                    ["homework", "📚 Homework"],
-                    ["holidays", "🏝️ Holidays"],
-                    ["info", "👤 Personal Info"],
-                ] as const).map(([key, label]) => (
-                    <button key={key} onClick={() => { setActiveSection(key); if (key !== 'info' && key !== 'exam-schedule') setSectionLoading(true); }}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all shrink-0 ${activeSection === key ? "bg-indigo-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>
-                        {label}
+            <div className="grid grid-cols-4 gap-1 bg-slate-900/80 border border-slate-800 rounded-xl p-1.5 animate-slide-up" style={{ animationDelay: '50ms' }}>
+                {([
+                    ["fees",          "💰", "Fees"],
+                    ["attendance",    "📊", "Attendance"],
+                    ["results",       "📝", "Results"],
+                    ["exam-schedule", "📅", "Schedule"],
+                    ["homework",      "📚", "Homework"],
+                    ["pickup",        "🚗", "Pickup QR"],
+                    ["holidays",      "🏝️", "Holidays"],
+                    ["info",          "👤", "My Info"],
+                ] as const).map(([key, icon, label]) => (
+                    <button
+                        key={key}
+                        onClick={() => { setActiveSection(key as ActiveSection); if (key !== 'info' && key !== 'exam-schedule' && key !== 'pickup') setSectionLoading(true); }}
+                        className={`flex flex-col items-center gap-0.5 py-2.5 px-1 rounded-lg text-xs font-medium transition-all ${activeSection === key ? "bg-indigo-600 text-white shadow" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
+                    >
+                        <span className="text-lg leading-none">{icon}</span>
+                        <span className="leading-tight text-center">{label}</span>
                     </button>
                 ))}
             </div>
@@ -1358,6 +1414,22 @@ export default function StudentDashboardPage() {
             )}
 
                 </>
+            )}
+
+            {/* ════════════════════════════════
+                PICKUP QR TAB
+            ════════════════════════════════ */}
+            {activeSection === "pickup" && (
+                <div className="space-y-4 animate-scale-in">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl shrink-0">🚗</div>
+                        <div>
+                            <h2 className="text-white font-bold text-lg leading-tight">Pickup QR</h2>
+                            <p className="text-slate-400 text-sm">Authorise someone to collect {info?.firstName}</p>
+                        </div>
+                    </div>
+                    <PickupQRGenerator studentId={Number(studentId)} studentName={info ? `${info.firstName} ${info.lastName}` : undefined} />
+                </div>
             )}
 
             {/* ── Payment Confirmation Modal ── */}

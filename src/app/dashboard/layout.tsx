@@ -134,6 +134,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             )}
                             <li><Link href="/dashboard/examinations" className={getLinkClass("/dashboard/examinations")}><span className="ml-3">📝 Examinations</span></Link></li>
                             <li><Link href="/dashboard/homework" className={getLinkClass("/dashboard/homework")}><span className="ml-3">📚 Homework</span></Link></li>
+                            <li>
+                                <p className="px-2 pt-3 pb-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">Pickup</p>
+                                <ul className="space-y-1">
+                                    <li><Link href="/dashboard/pickup/scan" className={getLinkClass("/dashboard/pickup/scan")}><span className="ml-3">📷 Scan QR</span></Link></li>
+                                    <li><Link href="/dashboard/pickup/history" className={getLinkClass("/dashboard/pickup/history")}><span className="ml-3">📋 Pickup History</span></Link></li>
+                                </ul>
+                            </li>
                             {rbac.isAdmin && (
                                 <li><Link href="/dashboard/reports" className={getLinkClass("/dashboard/reports")}><span className="ml-3">📊 Reports</span></Link></li>
                             )}

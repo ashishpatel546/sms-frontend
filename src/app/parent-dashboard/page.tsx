@@ -20,6 +20,11 @@ export default function ParentDashboardPage() {
                 });
                 if (!res.ok) throw new Error("Failed to load students");
                 const data = await res.json();
+                // If there is exactly one student, go straight to their dashboard
+                if (data.length === 1) {
+                    router.replace(`/parent-dashboard/student/${data[0].id}`);
+                    return;
+                }
                 setStudents(data);
             } catch (err: any) {
                 setError(err.message || "Failed to load students");
@@ -28,7 +33,7 @@ export default function ParentDashboardPage() {
             }
         };
         fetchStudents();
-    }, []);
+    }, [router]);
 
     const avatarColors = [
         "from-violet-500 to-purple-600",
