@@ -36,7 +36,7 @@ export default function ClassesPage() {
                         classTeacher: sec.classStaff?.user
                             ? `${sec.classStaff.user.firstName} ${sec.classStaff.user.lastName}`
                             : '',
-                        studentCount: sec.students ? sec.students.length : 0,
+                        studentCount: sec.studentCount ?? 0,
                         classId: cls.id // For editing link
                     }))
                     : [{ // Handle class with no sections if any
