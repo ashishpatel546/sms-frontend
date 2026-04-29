@@ -185,7 +185,7 @@ export default function PWAInstallBanner() {
 
             {/* App Icon */}
             <img
-                src={'/colegios/logo.png'}
+                src={'/colegios/pwa-logo.png'}
                 alt={schoolName}
                 style={{ width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0 }}
             />

@@ -121,9 +121,9 @@ export default function LoginPage() {
 
         <div className="relative z-10">
           {/* Logo */}
-          <div className="flex items-center gap-4 mb-14">
-            <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-xl border border-white/20 p-2 hover:scale-105 transition-transform">
-              <img src="/colegios/logo.png" alt="Colegios Logo" className="w-full h-full object-contain drop-shadow-md" />
+          <div className="flex items-center gap-5 lg:gap-6 mb-14">
+            <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="w-20 h-20 lg:w-28 lg:h-28 rounded-2xl lg:rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-xl border border-white/20 p-1 lg:p-2 hover:scale-105 transition-transform overflow-hidden shrink-0">
+              <img src="/colegios/colegios-logo-v2.png" alt="Colegios Logo" className="w-full h-full object-cover drop-shadow-md rounded-xl lg:rounded-2xl" />
             </a>
             <div className="flex flex-col">
               <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="text-white font-extrabold text-4xl tracking-tight drop-shadow-md hover:text-indigo-200 transition-colors">
@@ -179,9 +179,9 @@ export default function LoginPage() {
             style={{ animation: 'fade-in 0.55s ease-out forwards' }}
           >
             <div className="absolute inset-0 opacity-30 bg-linear-to-br from-indigo-500/20 via-purple-500/10 to-transparent" />
-            <div className="relative flex items-center gap-3 mb-4">
-              <div className="w-14 h-14 rounded-3xl bg-white/10 border border-white/10 backdrop-blur-md flex items-center justify-center shadow-lg">
-                <img src="/colegios/logo.png" alt="Colegios Logo" className="w-10 h-10 object-contain" />
+            <div className="relative flex items-center gap-4 sm:gap-5 mb-5">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/10 border border-white/10 backdrop-blur-md flex items-center justify-center shadow-lg p-1 sm:p-1.5 overflow-hidden shrink-0">
+                <img src="/colegios/colegios-logo-v2.png" alt="Colegios Logo" className="w-full h-full object-cover rounded-xl" />
               </div>
               <div>
                 <p className="text-white font-extrabold text-xl tracking-tight">Colegios</p>
