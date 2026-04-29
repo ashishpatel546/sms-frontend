@@ -17,6 +17,8 @@ export default function EditStudentPage() {
         lastName: "",
         email: "",
         pen: "",
+        aparId: "",
+        abhaId: "",
         fathersName: "",
         fatherAadhaarNumber: "",
         fatherPan: "",
@@ -111,6 +113,8 @@ export default function EditStudentPage() {
                         lastName: student.lastName || "",
                         email: student.email || "",
                         pen: student.pen || "",
+                        aparId: student.aparId || "",
+                        abhaId: student.abhaId || "",
                         fathersName: student.fathersName || "",
                         fatherAadhaarNumber: student.fatherAadhaarNumber || "",
                         fatherPan: student.fatherPan || "",
@@ -301,7 +305,7 @@ export default function EditStudentPage() {
             if (!payload.address) delete (payload as any).address;
 
             // Remove optional empty string fields to prevent validation errors
-            const optionalFields = ['email', 'aadhaarNumber', 'mobile', 'alternateMobile', 'category', 'bloodGroup', 'religion', 'dateOfBirth', 'pen', 'fatherAadhaarNumber', 'fatherPan', 'fatherOccupation', 'motherAadhaarNumber', 'motherPan', 'motherOccupation'];
+            const optionalFields = ['email', 'aadhaarNumber', 'pen', 'aparId', 'abhaId', 'mobile', 'alternateMobile', 'category', 'bloodGroup', 'religion', 'dateOfBirth', 'fatherAadhaarNumber', 'fatherPan', 'fatherOccupation', 'motherAadhaarNumber', 'motherPan', 'motherOccupation'];
             optionalFields.forEach(field => {
                 const key = field as keyof typeof payload;
                 if (!(payload as any)[key]) {
@@ -393,8 +397,25 @@ export default function EditStudentPage() {
                                 <input type="text" id="aadhaarNumber" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
                             </div>
                             <div>
-                                <label htmlFor="pen" className="block mb-2 text-sm font-medium text-gray-900">PEN (Permanent Enrollment Number) <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <label htmlFor="pen" className="block mb-2">
+                                    <span className="block text-sm font-medium text-gray-900">PEN (Permanent Enrollment Number)</span>
+                                    <span className="text-xs text-gray-400">(Optional)</span>
+                                </label>
                                 <input type="text" id="pen" name="pen" value={formData.pen} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="e.g. 1234567890" />
+                            </div>
+                            <div>
+                                <label htmlFor="aparId" className="block mb-2">
+                                    <span className="block text-sm font-medium text-gray-900">APAR ID</span>
+                                    <span className="text-xs text-gray-400">(Optional)</span>
+                                </label>
+                                <input type="text" id="aparId" name="aparId" value={formData.aparId} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="Academic Bank of Credits ID" />
+                            </div>
+                            <div>
+                                <label htmlFor="abhaId" className="block mb-2">
+                                    <span className="block text-sm font-medium text-gray-900">ABHA ID</span>
+                                    <span className="text-xs text-gray-400">(Optional)</span>
+                                </label>
+                                <input type="text" id="abhaId" name="abhaId" value={formData.abhaId} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="Ayushman Bharat Health Account ID" />
                             </div>
                         </div>
                     </div>

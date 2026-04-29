@@ -270,7 +270,7 @@ export default function AddStudentPage() {
             }
 
             // Remove optional empty string fields to prevent validation errors
-            const optionalFields = ['email', 'aadhaarNumber', 'alternateMobile', 'bloodGroup', 'pen', 'fatherAadhaarNumber', 'fatherPan', 'fatherOccupation', 'motherAadhaarNumber', 'motherPan', 'motherOccupation'];
+            const optionalFields = ['email', 'aadhaarNumber', 'pen', 'aparId', 'abhaId', 'alternateMobile', 'bloodGroup', 'fatherAadhaarNumber', 'fatherPan', 'fatherOccupation', 'motherAadhaarNumber', 'motherPan', 'motherOccupation'];
             optionalFields.forEach(field => {
                 const key = field as keyof typeof payload;
                 if (!payload[key]) {
@@ -392,8 +392,25 @@ export default function AddStudentPage() {
                                 <input type="text" id="aadhaarNumber" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
                             </div>
                             <div>
-                                <label htmlFor="pen" className="block mb-2 text-sm font-medium text-gray-900">PEN (Permanent Enrollment Number) <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <label htmlFor="pen" className="block mb-2">
+                                    <span className="block text-sm font-medium text-gray-900">PEN (Permanent Enrollment Number)</span>
+                                    <span className="text-xs text-gray-400">(Optional)</span>
+                                </label>
                                 <input type="text" id="pen" name="pen" value={formData.pen} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="e.g. 1234567890" />
+                            </div>
+                            <div>
+                                <label htmlFor="aparId" className="block mb-2">
+                                    <span className="block text-sm font-medium text-gray-900">APAR ID</span>
+                                    <span className="text-xs text-gray-400">(Optional)</span>
+                                </label>
+                                <input type="text" id="aparId" name="aparId" value={formData.aparId} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="Academic Bank of Credits ID" />
+                            </div>
+                            <div>
+                                <label htmlFor="abhaId" className="block mb-2">
+                                    <span className="block text-sm font-medium text-gray-900">ABHA ID</span>
+                                    <span className="text-xs text-gray-400">(Optional)</span>
+                                </label>
+                                <input type="text" id="abhaId" name="abhaId" value={formData.abhaId} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="Ayushman Bharat Health Account ID" />
                             </div>
                         </div>
                     </div>
