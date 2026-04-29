@@ -42,13 +42,13 @@ const envVars = {
   ...loadEnvFile(path.join(__dirname, '.env.local')),
 };
 
-const SOURCE = path.join(__dirname, 'public/colegios/logo.png');
+const SOURCE = path.join(__dirname, 'public/colegios/pwa-logo.png');
 
 if (!existsSync(SOURCE)) {
-  console.error('❌  No logo found at public/colegios/logo.png');
+  console.error('❌  No logo found at public/colegios/pwa-logo.png');
   process.exit(1);
 }
-console.log('ℹ️   Using standard colegios logo: public/colegios/logo.png');
+console.log('ℹ️   Using standard colegios logo: public/colegios/pwa-logo.png');
 
 const ICONS_DIR = path.join(__dirname, 'public/icons');
 

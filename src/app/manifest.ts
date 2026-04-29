@@ -33,13 +33,13 @@ export default function manifest(): MetadataRoute.Manifest {
         name: 'Dashboard',
         url: '/dashboard',
         description: 'Go to the admin dashboard',
-        icons: [{ src: '/colegios/logo.png', sizes: '192x192' }],
+        icons: [{ src: '/colegios/pwa-logo.png', sizes: '192x192' }],
       },
       {
         name: 'Parent Portal',
         url: '/parent-dashboard',
         description: 'Go to the parent portal',
-        icons: [{ src: '/colegios/logo.png', sizes: '192x192' }],
+        icons: [{ src: '/colegios/pwa-logo.png', sizes: '192x192' }],
       },
     ],
   };

@@ -46,10 +46,10 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/colegios/logo.png", sizes: "192x192", type: "image/png" },
+      { url: "/colegios/pwa-logo.png", sizes: "192x192", type: "image/png" },
     ],
     apple: [
-      { url: "/colegios/logo.png", sizes: "180x180", type: "image/png" },
+      { url: "/colegios/pwa-logo.png", sizes: "180x180", type: "image/png" },
     ],
   },
 };
