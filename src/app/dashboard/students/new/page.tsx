@@ -26,6 +26,8 @@ export default function AddStudentPage() {
         lastName: "",
         email: "",
         pen: "",
+        aparId: "",
+        abhaId: "",
         fathersName: "",
         fatherAadhaarNumber: "",
         fatherPan: "",
