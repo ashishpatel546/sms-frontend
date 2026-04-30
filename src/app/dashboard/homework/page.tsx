@@ -370,7 +370,7 @@ export default function HomeworkPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
                         {/* Modal Header */}
-                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+                        <div className="px-4 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
                             <div>
                                 <h2 className="text-lg font-bold text-slate-900">📝 Send Homework</h2>
                                 <p className="text-xs text-slate-500 mt-0.5">{selectedClassName} — Section {selectedSectionName}</p>
@@ -381,7 +381,7 @@ export default function HomeworkPage() {
                         </div>
 
                         {/* Modal Body */}
-                        <div className="px-6 py-4 overflow-y-auto flex-1">
+                        <div className="px-4 sm:px-6 py-4 overflow-y-auto flex-1">
                             {/* Date */}
                             <div className="mb-5">
                                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Date</label>
@@ -436,32 +436,45 @@ export default function HomeworkPage() {
 
                             {/* Rows */}
                             <div className="mb-4">
-                                <div className="grid grid-cols-[180px_1fr_32px] gap-2 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wide px-1">
+                                <div className="hidden sm:grid sm:grid-cols-[180px_1fr_32px] gap-2 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wide px-1">
                                     <span>Subject (optional)</span>
                                     <span>Homework</span>
                                     <span />
                                 </div>
                                 <div className="space-y-3">
                                     {modalRows.map((row, i) => (
-                                        <div key={i} className="grid grid-cols-[180px_1fr_32px] gap-2 items-start">
+                                        <div key={i} className="relative flex flex-col gap-2 rounded-xl border border-slate-100 bg-slate-50 p-3 sm:border-0 sm:bg-transparent sm:p-0 sm:grid sm:grid-cols-[180px_1fr_32px] sm:items-start">
+                                            <div className="flex items-center justify-between sm:contents">
+                                                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide sm:hidden">Subject (optional)</span>
+                                                <button
+                                                    onClick={() => removeRow(i)}
+                                                    disabled={modalRows.length === 1}
+                                                    className="sm:hidden p-1 text-slate-300 hover:text-red-500 disabled:opacity-0 rounded-lg transition-colors"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                </button>
+                                            </div>
                                             <input
                                                 type="text"
                                                 placeholder="e.g. Mathematics"
                                                 value={row.subject}
                                                 onChange={(e) => updateRow(i, "subject", e.target.value)}
-                                                className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
                                             />
-                                            <textarea
-                                                placeholder="Describe the homework task..."
-                                                value={row.message}
-                                                onChange={(e) => updateRow(i, "message", e.target.value)}
-                                                rows={2}
-                                                className="border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                                            />
+                                            <div className="flex flex-col gap-1 sm:contents">
+                                                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide sm:hidden">Homework</span>
+                                                <textarea
+                                                    placeholder="Describe the homework task..."
+                                                    value={row.message}
+                                                    onChange={(e) => updateRow(i, "message", e.target.value)}
+                                                    rows={4}
+                                                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white sm:rows-2"
+                                                />
+                                            </div>
                                             <button
                                                 onClick={() => removeRow(i)}
                                                 disabled={modalRows.length === 1}
-                                                className="mt-1 p-1.5 text-slate-300 hover:text-red-500 disabled:opacity-0 rounded-lg transition-colors"
+                                                className="hidden sm:block sm:mt-1 p-1.5 text-slate-300 hover:text-red-500 disabled:opacity-0 rounded-lg transition-colors"
                                             >
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                             </button>
@@ -481,7 +494,7 @@ export default function HomeworkPage() {
                         </div>
 
                         {/* Modal Footer */}
-                        <div className="px-6 py-4 border-t border-slate-100 flex gap-3 justify-end shrink-0">
+                        <div className="px-4 sm:px-6 py-4 border-t border-slate-100 flex gap-3 justify-end shrink-0">
                             <button onClick={() => setShowSendModal(false)} className="px-4 py-2 text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors">
                                 Cancel
                             </button>
