@@ -41,7 +41,12 @@ export default function AttendancePage() {
 
     const [selectedClassId, setSelectedClassId] = useState("");
     const [selectedSectionId, setSelectedSectionId] = useState("");
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    // Use local date (not UTC) so the default "today" matches the teacher's wall clock.
+    // `toISOString()` would shift to UTC and produce yesterday's date in IST after ~6:30pm local.
+    const [selectedDate, setSelectedDate] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    });
     const [activeSession, setActiveSession] = useState<any>(null);
     const [loadingSession, setLoadingSession] = useState(true);
 

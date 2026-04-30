@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
+import { getEnv, getSchoolSlug } from "@/lib/env";
 import { setToken, setTokens, getDashboardRoute, getUser, authFetch, markMustChangePasswordFlow } from "@/lib/auth";
 import SplashScreen from "@/components/SplashScreen";
 
@@ -19,7 +20,7 @@ export default function LoginPage() {
   // Parent form
   const [mobile, setMobile] = useState("");
   // Staff form
-  const [emailPrefix, setEmailPrefix] = useState("");
+  const [staffIdentifier, setStaffIdentifier] = useState("");
   const [password, setPassword] = useState("");
 
   // Redirect if already logged in
@@ -43,9 +44,10 @@ export default function LoginPage() {
     setError("");
     setIsLoading(true);
     try {
+      const slug = getSchoolSlug();
       const res = await fetch(`${API_BASE_URL}/auth/login/parent`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(slug ? { 'X-School-Slug': slug } : {}) },
         body: JSON.stringify({ mobile, password }),
       });
       const data = await res.json().catch(() => ({}));
@@ -72,14 +74,14 @@ export default function LoginPage() {
     setError("");
     setIsLoading(true);
     try {
-      const fullEmail = `${emailPrefix}@colegios.in`;
+      const slug = getSchoolSlug();
       const res = await fetch(`${API_BASE_URL}/auth/login/staff`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: fullEmail, password }),
+        headers: { "Content-Type": "application/json", ...(slug ? { 'X-School-Slug': slug } : {}) },
+        body: JSON.stringify({ identifier: staffIdentifier, password }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || "Invalid email or password");
+      if (!res.ok) throw new Error(data.message || "Invalid mobile number or password");
       setTokens(data.access_token, data.refresh_token);
       setShowSplash(true);
       setTimeout(() => {
@@ -91,7 +93,7 @@ export default function LoginPage() {
         }
       }, 1500);
     } catch (err: any) {
-      setError(err.message || "Invalid email or password");
+      setError(err.message || "Invalid mobile number or password");
     } finally {
       setIsLoading(false);
     }
@@ -231,26 +233,21 @@ export default function LoginPage() {
             {activeTab === "staff" ? (
               <form onSubmit={handleStaffLogin} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Email Address</label>
-                  <div className="flex items-center">
-                    <div className="relative flex-1">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                        <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                        </svg>
-                      </div>
-                      <input
-                        type="text"
-                        value={emailPrefix}
-                        onChange={e => setEmailPrefix(e.target.value.toLowerCase().replace(/\s/g, ""))}
-                        required
-                        placeholder="admin"
-                        className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-l-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                      />
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Mobile or Email</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
                     </div>
-                    <span className="inline-flex items-center px-4 py-3 text-sm font-bold text-slate-300 bg-slate-800 border border-l-0 border-slate-700 rounded-r-xl">
-                      @colegios.in
-                    </span>
+                    <input
+                      type="text"
+                      value={staffIdentifier}
+                      onChange={e => setStaffIdentifier(e.target.value)}
+                      required
+                      placeholder="Mobile or Email"
+                      className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    />
                   </div>
                 </div>
                 <div>

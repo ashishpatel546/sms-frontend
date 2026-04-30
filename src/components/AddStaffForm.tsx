@@ -65,9 +65,8 @@ export default function AddStaffForm({
     const [formData, setFormData] = useState(EMPTY_FORM);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const [emailPrefix, setEmailPrefix] = useState("");
-    const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null);
-    const [checkingEmail, setCheckingEmail] = useState(false);
+    const [mobileAvailable, setMobileAvailable] = useState<boolean | null>(null);
+    const [checkingMobile, setCheckingMobile] = useState(false);
 
     // Designation
     const [designations, setDesignations] = useState<any[]>([]);
@@ -120,31 +119,30 @@ export default function AddStaffForm({
         }
     }, [formData.address.country, formData.address.state]);
 
-    // Check email availability
+    // Check mobile availability (debounced)
     useEffect(() => {
-        if (!emailPrefix.trim()) {
-            setEmailAvailable(null);
+        if (!formData.mobile.trim() || formData.mobile.length < 7) {
+            setMobileAvailable(null);
             return;
         }
 
         const debounceTimer = setTimeout(async () => {
-            setCheckingEmail(true);
+            setCheckingMobile(true);
             try {
-                const fullEmail = `${emailPrefix}@colegios.in`;
-                const res = await authFetch(`${API_BASE_URL}/users/check-availability?email=${fullEmail}`);
+                const res = await authFetch(`${API_BASE_URL}/users/check-availability?mobile=${encodeURIComponent(formData.mobile)}`);
                 if (res.ok) {
                     const data = await res.json();
-                    setEmailAvailable(data.available);
+                    setMobileAvailable(data.available);
                 }
             } catch (err) {
-                console.error("Failed to check email availability", err);
+                console.error("Failed to check mobile availability", err);
             } finally {
-                setCheckingEmail(false);
+                setCheckingMobile(false);
             }
         }, 500);
 
         return () => clearTimeout(debounceTimer);
-    }, [emailPrefix]);
+    }, [formData.mobile]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const target = e.target as HTMLInputElement;
@@ -248,11 +246,11 @@ export default function AddStaffForm({
                 if (payload[key] === "") delete payload[key];
             }
 
+            // Strip empty email (it is optional — personal contact only)
+            if (!payload.email) delete payload.email;
+
             // role is only sent when allowRoleSelect is explicitly shown
             if (!allowRoleSelect) delete payload.role;
-
-            const fullEmail = `${emailPrefix}@colegios.in`;
-            payload.email = fullEmail;
 
             const res = await authFetch(`${API_BASE_URL}/staff`, {
                 method: "POST",
@@ -356,41 +354,38 @@ export default function AddStaffForm({
                     <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">Contact Information</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
-                            <label className="block mb-1 text-sm font-medium text-gray-900">Email Address <span className="text-red-500">*</span></label>
-                            <div className="flex items-center">
-                                <div className="relative flex-1">
-                                    <input
-                                        type="text"
-                                        value={emailPrefix}
-                                        onChange={(e) => setEmailPrefix(e.target.value.toLowerCase().replace(/\s/g, ""))}
-                                        required
-                                        placeholder="username"
-                                        className={`bg-gray-50 border ${emailAvailable === false ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-l-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5`}
-                                    />
-                                    {checkingEmail && (
-                                        <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                                            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                                        </div>
-                                    )}
-                                </div>
-                                <span className="inline-flex items-center px-3 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg">
-                                    @colegios.in
-                                </span>
+                            <label className="block mb-1 text-sm font-medium text-gray-900">Mobile <span className="text-red-500">*</span></label>
+                            <div className="relative">
+                                <input
+                                    type="tel"
+                                    name="mobile"
+                                    value={formData.mobile}
+                                    onChange={handleChange}
+                                    required
+                                    maxLength={15}
+                                    className={`bg-gray-50 border ${mobileAvailable === false ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 pr-8`}
+                                />
+                                {checkingMobile && (
+                                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                    </div>
+                                )}
                             </div>
-                            {emailPrefix && !checkingEmail && (
-                                <p className={`mt-1 text-xs font-medium ${emailAvailable ? "text-green-600" : "text-red-500"}`}>
-                                    {emailAvailable ? "✓ This email prefix is available" : "✕ This email prefix is already taken"}
+                            {formData.mobile.length >= 7 && !checkingMobile && mobileAvailable !== null && (
+                                <p className={`mt-1 text-xs font-medium ${mobileAvailable ? "text-green-600" : "text-red-500"}`}>
+                                    {mobileAvailable ? "✓ Mobile number is available" : "✕ Mobile number already registered for staff"}
                                 </p>
                             )}
                         </div>
                         <div>
-                            <label className="block mb-1 text-sm font-medium text-gray-900">Mobile <span className="text-red-500">*</span></label>
-                            <input type="tel" name="mobile" value={formData.mobile} onChange={handleChange} required
+                            <label className="block mb-1 text-sm font-medium text-gray-900">Alternate Mobile <span className="text-gray-400 font-normal">(Optional)</span></label>
+                            <input type="tel" name="alternateMobile" value={formData.alternateMobile} onChange={handleChange}
                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
                         </div>
                         <div>
-                            <label className="block mb-1 text-sm font-medium text-gray-900">Alternate Mobile <span className="text-gray-400 font-normal">(Optional)</span></label>
-                            <input type="tel" name="alternateMobile" value={formData.alternateMobile} onChange={handleChange}
+                            <label className="block mb-1 text-sm font-medium text-gray-900">Personal Email <span className="text-gray-400 font-normal">(Optional)</span></label>
+                            <input type="email" name="email" value={formData.email ?? ""} onChange={handleChange}
+                                placeholder="for notifications only"
                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
                         </div>
                     </div>

@@ -8,12 +8,14 @@ import { API_BASE_URL } from "@/lib/api";
 import { NotificationBell } from "@/components/NotificationBell";
 import NotificationPermissionBanner from "@/components/NotificationPermissionBanner";
 import { getEnv } from "@/lib/env";
+import { useSchoolInfo } from "@/lib/useSchoolInfo";
 
 export default function ParentDashboardLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
     const [user, setUser] = useState<any>(null);
     const [menuOpen, setMenuOpen] = useState(false);
+    const schoolInfo = useSchoolInfo();
 
     useEffect(() => {
         const u = getUser();
@@ -54,7 +56,7 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
                             </svg>
                         </div>
                         <span className="text-white font-bold text-lg tracking-tight">
-                            {getEnv('SCHOOL_NAME') || 'EduSphere'}
+                            {schoolInfo?.name || getEnv('SCHOOL_NAME') || 'EduSphere'}
                         </span>
                         <span className="hidden sm:block text-slate-500 text-sm border-l border-slate-700 pl-3 ml-1">Parent Portal</span>
                     </div>

@@ -96,6 +96,12 @@ export default function StudentDashboardPage() {
             let infoData = null;
             let sessionsList = [];
 
+            if (infoRes.status === 404 || infoRes.status === 403) {
+                // Student doesn't belong to this school — send parent back to the listing
+                router.replace('/parent-dashboard');
+                return;
+            }
+
             if (infoRes.ok) infoData = await infoRes.json();
             if (sessionsRes.ok) sessionsList = await sessionsRes.json();
             if (siblingsRes.ok) {

@@ -1,14 +1,20 @@
 import { getToken, getRefreshToken, setTokens, logout } from "./auth";
-import { getEnv } from "./env";
+import { getEnv, getSchoolSlug } from "./env";
 
 export const API_BASE_URL = getEnv('API_URL') || "http://localhost:3000";
+export const SCHOOL_SLUG = getEnv('SCHOOL_SLUG') || '';
 
 export const fetcher = async (url: string) => {
-    const fullUrl = url.startsWith("http") ? url : `${API_BASE_URL}${url.startsWith("/") ? url : `/${url}`}`;
+    // Resolve at call time, not at module load, so window.__ENV__ is populated
+    const apiBase = getEnv('API_URL') || "http://localhost:3000";
+    const fullUrl = url.startsWith("http") ? url : `${apiBase}${url.startsWith("/") ? url : `/${url}`}`;
 
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
     };
+
+    const slug = getSchoolSlug();
+    if (slug) headers['X-School-Slug'] = slug;
 
     if (typeof window !== 'undefined') {
         const token = getToken();
@@ -23,7 +29,7 @@ export const fetcher = async (url: string) => {
         const refreshToken = getRefreshToken();
         if (refreshToken) {
             try {
-                const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+                const refreshRes = await fetch(`${apiBase}/auth/refresh-token`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ refreshToken }),

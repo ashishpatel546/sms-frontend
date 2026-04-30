@@ -123,7 +123,7 @@ export default function TeachersPage() {
             "department", "joiningDate", "qualification",
             "addressLine1", "addressLine2", "landmark", "city", "state", "postalCode", "country"
         ].join(",");
-        const dummyRow = "\nJohn,Doe,john.doe@colegios.in,9876543210,,Male,1990-01-01,O+,123412341234,General,HINDU,,,Teaching Staff,4,true,TEACHER,Science,2023-05-01,M.Sc,Street 1,,Near Park,New Delhi,Delhi,110001,INDIA";
+        const dummyRow = "\nJohn,Doe,john.doe@gmail.com,9876543210,,Male,1990-01-01,O+,123412341234,General,HINDU,,,Teaching Staff,4,true,TEACHER,Science,2023-05-01,M.Sc,Street 1,,Near Park,New Delhi,Delhi,110001,INDIA";
         
         const blob = new Blob([headers + dummyRow], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);

@@ -8,11 +8,11 @@
  *  • Print: prints ONLY the receipt, formatted for A5 paper.
  */
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { CheckCircle2, School, CreditCard, CalendarDays, User, Hash } from "lucide-react";
 import { jsPDF } from "jspdf";
 import { toPng } from "html-to-image";
-import { getEnv } from "@/lib/env";
+import { fetcher } from "@/lib/api";
 
 export interface ReceiptData {
     receiptNumber?: string;
@@ -95,7 +95,15 @@ export default function ReceiptModal({
     onWaiveOff,
     onIssueRefund,
 }: ReceiptModalProps) {
-    const schoolName = getEnv('SCHOOL_NAME') || "EduSphere";
+    const [schoolName, setSchoolName] = useState<string>("Loading...");
+
+    useEffect(() => {
+        fetcher("/school/info")
+            .then((data: any) => {
+                if (data?.name) setSchoolName(data.name);
+            })
+            .catch(() => {/* keep placeholder */});
+    }, []);
 
     const monthLabel =
         receiptData.monthsPaid || receiptData.feeMonth || "—";

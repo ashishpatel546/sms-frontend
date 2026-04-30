@@ -8,12 +8,14 @@ import { useRbac } from "@/lib/rbac";
 import { API_BASE_URL } from "@/lib/api";
 import { NotificationBell } from "@/components/NotificationBell";
 import { getEnv } from "@/lib/env";
+import { useSchoolInfo } from "@/lib/useSchoolInfo";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [user, setUser] = useState<any>(null);
+    const schoolInfo = useSchoolInfo();
 
     useEffect(() => {
         const u = getUser();
@@ -73,7 +75,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             </svg>
                         </button>
                         <span className="self-center text-lg sm:text-xl font-semibold whitespace-nowrap text-slate-900 truncate max-w-[140px] xs:max-w-xs sm:max-w-none">
-                            {getEnv('SCHOOL_NAME') || 'EduSphere'} <span className="hidden sm:inline">Dashboard</span>
+                            {schoolInfo?.name || getEnv('SCHOOL_NAME') || 'EduSphere'} <span className="hidden sm:inline">Dashboard</span>
                         </span>
                     </div>
                     <div className="flex items-center gap-3 lg:order-2">

@@ -1,5 +1,5 @@
 'use client';
-import { getEnv } from './env';
+import { getEnv, getSchoolSlug } from './env';
 
 const TOKEN_KEY = 'auth_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
@@ -87,9 +87,12 @@ export function logout(): void {
 }
 
 export function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const slug = getSchoolSlug();
+  if (slug) headers['X-School-Slug'] = slug;
   const token = getToken();
-  if (!token) return {};
-  return { Authorization: `Bearer ${token}` };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
 }
 
 // ── Refresh token state ────────────────────────────────────────
@@ -176,7 +179,7 @@ export async function authFetch(
     const timeoutId = setTimeout(() => refreshAbortController?.abort(), 15_000);
 
     try {
-      const API_BASE_URL = getEnv('API_URL') || 'http://localhost:3001';
+      const API_BASE_URL = getEnv('API_URL') || 'http://localhost:5000';
       const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

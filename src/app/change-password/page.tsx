@@ -1,86 +1,94 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
 import { getToken, setToken, setTokens, getUser, removeToken, authFetch, isMustChangePasswordFlow } from "@/lib/auth";
 
+function EyeIcon({ open }: { open: boolean }) {
+    return open ? (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+    ) : (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+        </svg>
+    );
+}
+
+function strengthLabel(score: number): { label: string; color: string; bars: number } {
+    if (score <= 1) return { label: "Weak",   color: "bg-red-500",    bars: 1 };
+    if (score <= 2) return { label: "Fair",   color: "bg-amber-500",  bars: 2 };
+    if (score <= 3) return { label: "Good",   color: "bg-yellow-400", bars: 3 };
+    if (score <= 4) return { label: "Strong", color: "bg-emerald-500",bars: 4 };
+    return              { label: "Very Strong", color: "bg-emerald-400", bars: 5 };
+}
+
 export default function ChangePasswordPage() {
     const router = useRouter();
-    const [currentPassword, setCurrentPassword] = useState("");
-    const [newPassword, setNewPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
+    const [form, setForm] = useState({ current: "", newPw: "", confirm: "" });
+    const [show, setShow] = useState({ current: false, newPw: false, confirm: false });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
-    const [showCurrent, setShowCurrent] = useState(false);
-    const [showNew, setShowNew] = useState(false);
     const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
         const u = getUser();
-        if (!u) {
-            router.replace("/");
-            return;
-        }
+        if (!u) { router.replace("/"); return; }
         if (!u.mustChangePassword) {
-            // Already changed password, redirect to dashboard
-            router.replace(u.role === 'PARENT' ? '/parent-dashboard' : '/dashboard');
+            router.replace(u.role === "PARENT" ? "/parent-dashboard" : "/dashboard");
             return;
         }
-        // isMustChangePasswordFlow() is true only when the login page set the in-memory
-        // flag just before navigating here (same SPA session). On a full page refresh the
-        // JS module reloads and the flag is false, so we clear the token and send the user
-        // back to login to re-enter credentials.
-        if (!isMustChangePasswordFlow()) {
-            removeToken();
-            router.replace("/");
-            return;
-        }
+        if (!isMustChangePasswordFlow()) { removeToken(); router.replace("/"); return; }
         setUser(u);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // intentionally run once on mount only
+    }, []);
+
+    const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+        setForm(f => ({ ...f, [k]: e.target.value }));
+
+    const toggleShow = (k: keyof typeof show) =>
+        setShow(s => ({ ...s, [k]: !s[k] }));
+
+    const strengthScore = useMemo(() => {
+        const p = form.newPw;
+        if (!p) return 0;
+        let s = 0;
+        if (p.length >= 8)  s++;
+        if (p.length >= 12) s++;
+        if (/[A-Z]/.test(p)) s++;
+        if (/[0-9]/.test(p)) s++;
+        if (/[^A-Za-z0-9]/.test(p)) s++;
+        return s;
+    }, [form.newPw]);
+
+    const confirmMatch = form.confirm.length > 0 && form.newPw === form.confirm;
+    const confirmMismatch = form.confirm.length > 0 && form.newPw !== form.confirm;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
-        if (newPassword !== confirmPassword) {
-            setError("New passwords do not match");
-            return;
-        }
-        if (newPassword.length < 6) {
-            setError("Password must be at least 6 characters");
-            return;
-        }
-        if (newPassword === currentPassword) {
-            setError("New password must be different from current password");
-            return;
-        }
+        if (form.newPw !== form.confirm) { setError("New passwords do not match"); return; }
+        if (form.newPw.length < 6) { setError("Password must be at least 6 characters"); return; }
+        if (form.newPw === form.current) { setError("New password must differ from current password"); return; }
 
         setIsLoading(true);
         try {
             const res = await authFetch(`${API_BASE_URL}/auth/change-password`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${getToken()}`,
-                },
-                body: JSON.stringify({ currentPassword, newPassword }),
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+                body: JSON.stringify({ currentPassword: form.current, newPassword: form.newPw }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || "Failed to change password");
-            // Update token
-            if (data.refresh_token) {
-                setTokens(data.access_token, data.refresh_token);
-            } else {
-                setToken(data.access_token);
-            }
-            // Redirect to dashboard based on role
-            const updatedUser = getUser();
-            if (updatedUser?.role === 'PARENT') {
-                router.push("/parent-dashboard");
-            } else {
-                router.push("/dashboard");
-            }
+            // Clear fields before navigation to prevent browser password-save prompt
+            setForm({ current: "", newPw: "", confirm: "" });
+            if (data.refresh_token) setTokens(data.access_token, data.refresh_token);
+            else setToken(data.access_token);
+            const updated = getUser();
+            router.push(updated?.role === "PARENT" ? "/parent-dashboard" : "/dashboard");
         } catch (err: any) {
             setError(err.message || "Failed to change password");
         } finally {
@@ -90,137 +98,176 @@ export default function ChangePasswordPage() {
 
     if (!user) return null;
 
+    const str = form.newPw ? strengthLabel(strengthScore) : null;
+
     return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
+        <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-indigo-950 flex items-center justify-center px-4 py-12">
             <div className="w-full max-w-md">
-                {/* Icon + Header */}
-                <div className="flex flex-col items-center mb-8">
-                    <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/30 mb-4">
-                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+
+                {/* Icon + heading */}
+                <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-linear-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/30 mb-5">
+                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                         </svg>
                     </div>
-                    <h1 className="text-white text-2xl font-bold">Change Your Password</h1>
-                    <p className="text-slate-400 text-sm mt-1 text-center">
-                        Hello, <span className="text-white font-medium">{user.firstName}</span>! For security, please set a new password before continuing.
+                    <h1 className="text-2xl font-bold text-white tracking-tight">Create your password</h1>
+                    <p className="text-slate-400 text-sm mt-2">
+                        Welcome, <span className="text-indigo-400 font-semibold">{user.firstName}</span>. Set a new password to get started.
                     </p>
                 </div>
 
-                {/* Warning Banner */}
-                <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl mb-6">
-                    <svg className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <div className="text-sm text-amber-300">
-                        <p className="font-semibold mb-1">First-time login detected</p>
-                        <p className="text-amber-400">You are using the default password. You must set a secure new password to access the system.</p>
-                    </div>
-                </div>
+                {/* Card */}
+                <div className="bg-slate-900/70 backdrop-blur-md border border-slate-700/50 rounded-3xl p-7 shadow-2xl shadow-slate-950/60">
+                    {/* autoComplete="off" prevents browser from showing its native save-password popup */}
+                    <form onSubmit={handleSubmit} autoComplete="off" className="space-y-5">
 
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-7 shadow-2xl">
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        {/* Current Password */}
+                        {/* Current password */}
                         <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Current Password (Default)</label>
+                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Current Password</label>
                             <div className="relative">
                                 <input
-                                    type={showCurrent ? "text" : "password"}
-                                    value={currentPassword}
-                                    onChange={e => setCurrentPassword(e.target.value)}
+                                    type={show.current ? "text" : "password"}
+                                    value={form.current}
+                                    onChange={set("current")}
                                     required
-                                    placeholder="Enter default password"
-                                    className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                    autoComplete="off"
+                                    data-lpignore="true"
+                                    data-form-type="other"
+                                    placeholder="Enter your current password"
+                                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/70 focus:border-indigo-500/50 transition-all"
                                 />
-                                <button type="button" onClick={() => setShowCurrent(!showCurrent)}
-                                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition-colors">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showCurrent ? "M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" : "M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"} />
-                                    </svg>
+                                <button type="button" onClick={() => toggleShow("current")}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-0.5">
+                                    <EyeIcon open={show.current} />
                                 </button>
                             </div>
                         </div>
 
-                        {/* New Password */}
+                        {/* Divider */}
+                        <div className="border-t border-slate-800" />
+
+                        {/* New password */}
                         <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">New Password</label>
+                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">New Password</label>
                             <div className="relative">
                                 <input
-                                    type={showNew ? "text" : "password"}
-                                    value={newPassword}
-                                    onChange={e => setNewPassword(e.target.value)}
+                                    type={show.newPw ? "text" : "password"}
+                                    value={form.newPw}
+                                    onChange={set("newPw")}
                                     required
-                                    minLength={6}
-                                    placeholder="Min. 6 characters"
-                                    className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                    autoComplete="off"
+                                    data-lpignore="true"
+                                    data-form-type="other"
+                                    placeholder="Create a strong password"
+                                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/70 focus:border-indigo-500/50 transition-all"
                                 />
-                                <button type="button" onClick={() => setShowNew(!showNew)}
-                                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition-colors">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showNew ? "M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" : "M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"} />
-                                    </svg>
+                                <button type="button" onClick={() => toggleShow("newPw")}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-0.5">
+                                    <EyeIcon open={show.newPw} />
                                 </button>
                             </div>
-                            {/* Strength indicator */}
-                            {newPassword && (
-                                <div className="mt-2">
-                                    <div className="flex gap-1 mt-1">
-                                        {[1, 2, 3, 4].map(i => (
-                                            <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${newPassword.length >= i * 2
-                                                ? i <= 1 ? 'bg-red-500' : i <= 2 ? 'bg-yellow-500' : i <= 3 ? 'bg-blue-500' : 'bg-green-500'
-                                                : 'bg-slate-700'}`} />
+                            {/* Strength meter */}
+                            {str && (
+                                <div className="mt-2.5">
+                                    <div className="flex gap-1 mb-1.5">
+                                        {[1,2,3,4,5].map(i => (
+                                            <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-300 ${i <= str.bars ? str.color : "bg-slate-700"}`} />
                                         ))}
                                     </div>
-                                    <p className="text-xs text-slate-500 mt-1">
-                                        {newPassword.length < 4 ? 'Too weak' : newPassword.length < 6 ? 'Weak' : newPassword.length < 8 ? 'OK' : 'Strong'}
+                                    <p className={`text-xs font-medium ${str.bars >= 4 ? "text-emerald-400" : str.bars >= 3 ? "text-yellow-400" : str.bars >= 2 ? "text-amber-400" : "text-red-400"}`}>
+                                        {str.label}
                                     </p>
                                 </div>
                             )}
                         </div>
 
-                        {/* Confirm Password */}
+                        {/* Confirm password */}
                         <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Confirm New Password</label>
+                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Confirm New Password</label>
                             <div className="relative">
                                 <input
-                                    type="password"
-                                    value={confirmPassword}
-                                    onChange={e => setConfirmPassword(e.target.value)}
+                                    type={show.confirm ? "text" : "password"}
+                                    value={form.confirm}
+                                    onChange={set("confirm")}
                                     required
-                                    placeholder="Re-enter new password"
-                                    className={`w-full bg-slate-800 border text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all ${confirmPassword && confirmPassword !== newPassword ? 'border-red-500/70 focus:ring-red-500' : 'border-slate-700 focus:ring-indigo-500'}`}
+                                    autoComplete="off"
+                                    data-lpignore="true"
+                                    data-form-type="other"
+                                    placeholder="Re-enter your new password"
+                                    className={`w-full bg-slate-800/80 border rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 transition-all ${
+                                        confirmMatch    ? "border-emerald-500/60 focus:ring-emerald-500/40" :
+                                        confirmMismatch ? "border-red-500/60 focus:ring-red-500/40" :
+                                                          "border-slate-700 focus:ring-indigo-500/70 focus:border-indigo-500/50"
+                                    }`}
                                 />
-                                {confirmPassword && confirmPassword === newPassword && (
-                                    <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center">
-                                        <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                <button type="button" onClick={() => toggleShow("confirm")}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-0.5">
+                                    <EyeIcon open={show.confirm} />
+                                </button>
+                                {confirmMatch && (
+                                    <div className="absolute right-10 top-1/2 -translate-y-1/2">
+                                        <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                        </svg>
                                     </div>
                                 )}
                             </div>
+                            {confirmMismatch && (
+                                <p className="text-xs text-red-400 mt-1.5 flex items-center gap-1">
+                                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                    Passwords don&apos;t match
+                                </p>
+                            )}
                         </div>
 
+                        {/* Error */}
                         {error && (
-                            <div className="flex items-center gap-2 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
-                                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                {error}
+                            <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/25 rounded-xl px-4 py-3">
+                                <svg className="w-4 h-4 text-red-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                                </svg>
+                                <p className="text-sm text-red-300">{error}</p>
                             </div>
                         )}
 
+                        {/* Submit */}
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full py-3 rounded-xl font-semibold text-white bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center gap-2"
+                            className="relative w-full bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3 text-sm transition-all shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 flex items-center justify-center gap-2"
                         >
                             {isLoading ? (
-                                <><svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Updating...</>
+                                <>
+                                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                    </svg>
+                                    Saving…
+                                </>
                             ) : (
-                                <><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg> Set New Password</>
+                                <>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                                    </svg>
+                                    Set Password &amp; Continue
+                                </>
                             )}
                         </button>
                     </form>
                 </div>
 
-                <p className="text-center text-slate-600 text-sm mt-6">
-                    <button onClick={() => { removeToken(); router.push('/'); }} className="text-slate-500 hover:text-slate-400 transition-colors">
-                        ← Back to Login
+                <p className="text-center mt-6">
+                    <button
+                        onClick={() => { removeToken(); router.push("/"); }}
+                        className="text-sm text-slate-500 hover:text-slate-400 transition-colors inline-flex items-center gap-1.5"
+                    >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                        </svg>
+                        Back to Login
                     </button>
                 </p>
             </div>
