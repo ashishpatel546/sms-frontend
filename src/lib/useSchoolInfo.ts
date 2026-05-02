@@ -39,13 +39,15 @@ export function useSchoolInfo(): SchoolInfo | null {
     const slug = getSchoolSlug() || '';
     const lsKey = `school_info:${slug}`;
 
-    // 1. In-memory hit (same tab, already fetched)
+    // 1. In-memory hit — seed state immediately so there's no flicker,
+    //    but still fall through to revalidate below.
     if (_cache && _cacheKey === lsKey) {
       setInfo(_cache);
-      return;
     }
 
-    // 2. localStorage hit (persists across page refreshes)
+    // 2. localStorage hit (persists across page refreshes) — serve immediately,
+    //    but always revalidate in background so logo changes are picked up.
+    let servedFromCache = false;
     try {
       const raw = localStorage.getItem(lsKey);
       if (raw) {
@@ -53,13 +55,14 @@ export function useSchoolInfo(): SchoolInfo | null {
         _cache = parsed;
         _cacheKey = lsKey;
         setInfo(parsed);
-        return;
+        servedFromCache = true;
       }
     } catch {
       // localStorage unavailable (e.g. private mode with storage blocked)
     }
 
-    // 3. HTTP fetch — deduplicated so concurrent callers share one request
+    // 3. HTTP fetch — always run (stale-while-revalidate).
+    //    Deduplicated so concurrent callers share one request.
     if (!_inflight) {
       _inflight = fetcher('/school/info')
         .then((data: any) => {
@@ -88,6 +91,7 @@ export function useSchoolInfo(): SchoolInfo | null {
         });
     }
 
+    // Always update state when fresh data arrives
     _inflight.then((data) => {
       if (data) setInfo(data);
     });
