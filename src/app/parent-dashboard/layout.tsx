@@ -7,7 +7,6 @@ import { getUser, isAuthenticated, logout, getToken, setToken, setTokens, authFe
 import { API_BASE_URL } from "@/lib/api";
 import { NotificationBell } from "@/components/NotificationBell";
 import NotificationPermissionBanner from "@/components/NotificationPermissionBanner";
-import { getEnv } from "@/lib/env";
 import { useSchoolInfo } from "@/lib/useSchoolInfo";
 
 export default function ParentDashboardLayout({ children }: { children: React.ReactNode }) {
@@ -56,7 +55,7 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
                             </svg>
                         </div>
                         <span className="text-white font-bold text-lg tracking-tight">
-                            {schoolInfo?.name || getEnv('SCHOOL_NAME') || 'EduSphere'}
+                            {schoolInfo?.name || 'School'}
                         </span>
                         <span className="hidden sm:block text-slate-500 text-sm border-l border-slate-700 pl-3 ml-1">Parent Portal</span>
                     </div>

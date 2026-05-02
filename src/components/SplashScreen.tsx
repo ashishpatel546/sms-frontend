@@ -1,19 +1,16 @@
 "use client";
 import Image from "next/image";
-import { getEnv } from "@/lib/env";
+import { useSchoolInfo } from "@/lib/useSchoolInfo";
 
 import { useEffect, useState } from "react";
 
 export default function SplashScreen() {
   const [show, setShow] = useState(true);
   const [fade, setFade] = useState(false);
-  const [imgSrc, setImgSrc] = useState("/colegios/Colegios.png"); // safe SSR default — updated in useEffect
+  const schoolInfo = useSchoolInfo();
+  const imgSrc = schoolInfo?.logoUrl ?? "/colegios/Colegios.png";
 
   useEffect(() => {
-    // Resolve the actual logo URL on the client where window.__ENV__ is available
-    const logoUrl = getEnv('SCHOOL_LOGO_URL');
-    if (logoUrl) setImgSrc(logoUrl);
-
     // Start fading out after 1.5s
     const fadeTimer = setTimeout(() => {
       setFade(true);
@@ -54,7 +51,6 @@ export default function SplashScreen() {
           width={256}
           height={256}
           className="w-full h-full object-contain drop-shadow-xl"
-          onError={() => setImgSrc("/colegios/Colegios.png")}
           unoptimized
         />
       </div>

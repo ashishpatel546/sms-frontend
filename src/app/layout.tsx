@@ -60,8 +60,6 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const envConfig = {
-    SCHOOL_NAME: process.env.SCHOOL_NAME,
-    SCHOOL_LOGO_URL: process.env.SCHOOL_LOGO_URL,
     API_URL: process.env.API_URL,
     SCHOOL_SLUG: process.env.SCHOOL_SLUG,
     RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
