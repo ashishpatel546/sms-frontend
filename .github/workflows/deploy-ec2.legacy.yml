@@ -3,35 +3,45 @@ name: Deploy Frontend to EC2
 on:
   push:
     branches:
-      - development
+      - stage
       - main
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target Environment (e.g., demo, school-xyz)'
+        required: true
+        default: 'demo'
+      port:
+        description: 'Application Port to bind PM2 process'
+        required: false
+        default: '3000'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  APP_ENV: ${{ github.ref == 'refs/heads/development' && 'development' || 'production' }}
-  PORT: ${{ github.ref == 'refs/heads/development' && '3001' || '3000' }}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ github.ref == 'refs/heads/development' && 'development' || 'production' }}
+    environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/stage' && 'edusphere' || 'demo') }}
+    env:
+      APP_ENV: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/stage' && 'edusphere' || 'demo') }}
+      PORT: ${{ github.event.inputs.port || (github.ref == 'refs/heads/stage' && '3001' || '3000') }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '20' # Match your local Node.js version
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
       - name: Build Next.js project
-        # Variables are loaded from AWS SSM at runtime; no secrets needed at build time.
+        # We no longer need secrets injected here. Variables are loaded from AWS SSM at runtime.
         run: npm run build
 
       - name: Deploy to EC2 - Prepare Environment
@@ -54,6 +64,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          # Need scripts/ for the runtime AWS SSM config fetcher
           source: ".next/,public/,scripts/,package.json,package-lock.json,ecosystem.config.js"
           target: "/home/${{ secrets.EC2_USERNAME }}/sms-frontend-${{ env.APP_ENV }}"
 
@@ -71,20 +82,23 @@ jobs:
 
             DIR_NAME="sms-frontend-${{ env.APP_ENV }}"
             cd /home/${{ secrets.EC2_USERNAME }}/$DIR_NAME
-
+            
             # Install production dependencies
             npm ci --omit=dev
-
-            # Fetch AWS SSM params into .env
+            
+            # Provide environment variables to the fetch script
             export NODE_ENV=production
+            export SCHOOL_SLUG="${{ env.APP_ENV }}"
             export PORT="${{ env.PORT }}"
-            export SSM_ENV="${{ env.APP_ENV }}"
-
+            # We assume stage for everything here except if you have a prod branch logic
+            export SSM_ENV="stage"
+            
+            # Fetch variables from AWS SSM into .env
             node scripts/fetch-aws-ssm.mjs
-
+            
             # Export .env vars into shell so PM2 --update-env picks them up
             set -a && source .env && set +a
-
+            
             # Restart or start PM2 with the dynamic name
             export PM2_NAME=$DIR_NAME
             pm2 start ecosystem.config.js --only $DIR_NAME --update-env || pm2 restart $DIR_NAME --update-env

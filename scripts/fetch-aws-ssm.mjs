@@ -7,21 +7,14 @@ if (isLocal && !process.env.FORCE_AWS_SSM) {
   process.exit(0);
 }
 
-const env = process.env.SSM_ENV || process.env.NODE_ENV || 'stage';
-// The PM2 / deploy script should pass the tenant via process.env.SCHOOL_SLUG
-const tenant = process.env.SCHOOL_SLUG;
-if (!tenant) {
-  console.error('❌ SCHOOL_SLUG environment variable is missing.');
-  process.exit(1);
-}
+const env = process.env.SSM_ENV || process.env.NODE_ENV || 'development';
 
-console.log(`🔄 Fetching env from AWS SSM for tenant [${tenant}] on env [${env}]...`);
+console.log(`🔄 Fetching env from AWS SSM for env [${env}]...`);
 
-// We are assuming EC2 IAM Profile will provide credentials automatically
+// We assume EC2 IAM Profile provides credentials automatically
 const ssmClient = new SSMClient({ region: process.env.AWS_REGION || 'ap-south-1' });
 
 const sharedPath = `/sms/${env}/shared/`;
-const tenantPath = `/sms/${env}/${tenant}/frontend/`;
 
 const fetchParams = async (path) => {
   let nextToken = undefined;
@@ -53,9 +46,8 @@ const fetchParams = async (path) => {
 const run = async () => {
    try {
       const sharedParams = await fetchParams(sharedPath);
-      const tenantParams = await fetchParams(tenantPath);
 
-      if (sharedParams.length === 0 && tenantParams.length === 0) {
+      if (sharedParams.length === 0) {
          console.warn("⚠️ No parameters found in SSM.");
       }
 
@@ -69,8 +61,6 @@ const run = async () => {
       };
       
       sharedParams.forEach(p => processParam(p, sharedPath));
-      // Tenant overrides shared
-      tenantParams.forEach(p => processParam(p, tenantPath));
 
       // Append explicitly passed PORT from deployment script if not provided by SSM
       if (process.env.PORT && !envContent.includes('PORT=')) {
@@ -78,7 +68,7 @@ const run = async () => {
       }
 
       fs.writeFileSync('.env', envContent);
-      console.log(`✅ Fetched and wrote ${sharedParams.length + tenantParams.length} parameters to .env`);
+      console.log(`✅ Fetched and wrote ${sharedParams.length} parameters to .env`);
    } catch(e) {
       console.error('❌ Failed to fetch parameters from SSM', e);
       process.exit(1);
