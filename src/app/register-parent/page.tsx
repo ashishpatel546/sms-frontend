@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { API_BASE_URL } from "@/lib/api";
 import { setToken, setTokens } from "@/lib/auth";
+import { getSchoolSlug } from "@/lib/env";
 
 type Step = "mobile" | "otp" | "students" | "details";
 
@@ -87,13 +88,28 @@ export default function RegisterParentPage() {
         }
     };
 
+    // ── Helpers ──
+    const schoolHeaders = () => {
+        const slug = getSchoolSlug();
+        const h: Record<string, string> = {};
+        if (slug) h['X-School-Slug'] = slug;
+        return h;
+    };
+
     // ── Debounced mobile check ──
     const checkMobile = useCallback(async (num: string) => {
         if (num.length < 10) { setMobileCheck({ status: "idle", students: [] }); return; }
         setMobileCheck({ status: "checking", students: [] });
         try {
-            const res = await fetch(`${API_BASE_URL}/auth/parent/check-mobile?mobile=${encodeURIComponent(num)}`);
+            const res = await fetch(`${API_BASE_URL}/auth/parent/check-mobile?mobile=${encodeURIComponent(num)}`, {
+                headers: schoolHeaders(),
+            });
             const data = await res.json();
+            if (!res.ok) {
+                // Server error (e.g. tenant not resolved) — treat as not found so user sees the helper text
+                setMobileCheck({ status: "not_found", students: [] });
+                return;
+            }
             setMobileCheck({ status: data.found ? "found" : "not_found", students: data.students || [] });
         } catch {
             setMobileCheck({ status: "idle", students: [] });
@@ -120,7 +136,7 @@ export default function RegisterParentPage() {
         try {
             const res = await fetch(`${API_BASE_URL}/auth/parent/request-otp`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...schoolHeaders() },
                 body: JSON.stringify({ mobile }),
             });
             const data = await res.json();
@@ -142,7 +158,7 @@ export default function RegisterParentPage() {
         try {
             const res = await fetch(`${API_BASE_URL}/auth/parent/verify-otp`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...schoolHeaders() },
                 body: JSON.stringify({ mobile, otp }),
             });
             const data = await res.json();
@@ -167,7 +183,7 @@ export default function RegisterParentPage() {
         try {
             const res = await fetch(`${API_BASE_URL}/auth/parent/register`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${registrationToken}` },
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${registrationToken}`, ...schoolHeaders() },
                 body: JSON.stringify({
                     firstName: form.firstName,
                     lastName: form.lastName,

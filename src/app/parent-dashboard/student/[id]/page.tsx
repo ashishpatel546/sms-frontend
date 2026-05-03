@@ -278,8 +278,8 @@ export default function StudentDashboardPage() {
             const scriptLoaded = await loadRazorpayScript();
             if (!scriptLoaded) throw new Error("Failed to load Razorpay SDK. Check your connection.");
 
-            const rzpKey = getEnv('RAZORPAY_KEY_ID');
-            if (!rzpKey) throw new Error("Razorpay public key missing from frontend environment");
+            const rzpKey = order.keyId as string | undefined;
+            if (!rzpKey) throw new Error("Razorpay is not configured for this school. Please contact the school administration.");
 
             // 3. Configure the checkout popup
             const baseUrl = getEnv('FRONTEND_URL') || window.location.origin;
