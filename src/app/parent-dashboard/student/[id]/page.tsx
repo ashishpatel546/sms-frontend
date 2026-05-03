@@ -1452,7 +1452,7 @@ export default function StudentDashboardPage() {
 
                         <div className="bg-slate-800 rounded-xl p-4 mb-5 space-y-2">
                             {selectedMonths2Pay.map(key => {
-                                const m = fees?.months.find((x: any) => x.key === key);
+                                const m = allDueItems.find((x: any) => x.key === key);
                                 return (
                                     <div key={key} className="flex justify-between text-sm">
                                         <span className="text-slate-300">{m?.label}</span>

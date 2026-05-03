@@ -62,7 +62,6 @@ export default function RootLayout({
   const envConfig = {
     API_URL: process.env.API_URL,
     SCHOOL_SLUG: process.env.SCHOOL_SLUG,
-    RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
     FRONTEND_URL: process.env.FRONTEND_URL,
     VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY,
   };
