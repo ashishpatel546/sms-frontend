@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Papa from "papaparse";
 import Table from "../../../components/Table";
 import { API_BASE_URL } from "@/lib/api";
 import { toast } from "react-hot-toast";
@@ -50,6 +51,54 @@ export default function StudentsPage() {
     const [bulkFile, setBulkFile] = useState<File | null>(null);
     const [bulkUploading, setBulkUploading] = useState(false);
     const [bulkResult, setBulkResult] = useState<{ successful: number; failed: number; errors: string[] } | null>(null);
+    const [bulkValidation, setBulkValidation] = useState<{ errors: string[]; warnings: string[]; rowCount: number } | null>(null);
+
+    const REQUIRED_HEADERS = ["firstName", "lastName", "gender", "dateOfBirth", "mobile", "category", "religion", "fathersName", "mothersName"];
+    const REQUIRED_FIELDS = REQUIRED_HEADERS;
+    const DATE_DDMMYYYY = /^\d{2}-\d{2}-\d{4}$/;
+    const DATE_YYYYMMDD = /^\d{4}-\d{2}-\d{2}$/;
+
+    const validateBulkFile = (file: File) => {
+        setBulkValidation(null);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target?.result as string;
+            const result = Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: "greedy" });
+            const errors: string[] = [];
+            const warnings: string[] = [];
+
+            if (result.errors.length > 0) {
+                errors.push(`CSV parse error: ${result.errors[0].message}`);
+                setBulkValidation({ errors, warnings, rowCount: 0 });
+                return;
+            }
+
+            const headers = result.meta.fields ?? [];
+            const missingHeaders = REQUIRED_HEADERS.filter(h => !headers.includes(h));
+            if (missingHeaders.length > 0) {
+                errors.push(`Missing required column(s): ${missingHeaders.join(", ")}`);
+            }
+
+            (result.data as Record<string, string>[]).forEach((row, i) => {
+                const rowNum = i + 1;
+                const missingFields = REQUIRED_FIELDS.filter(f => !row[f]?.trim());
+                if (missingFields.length > 0) {
+                    errors.push(`Row ${rowNum}: Missing required fields: ${missingFields.join(", ")}`);
+                    return;
+                }
+                const dob = row.dateOfBirth?.trim() ?? "";
+                if (dob && !DATE_DDMMYYYY.test(dob) && !DATE_YYYYMMDD.test(dob)) {
+                    errors.push(`Row ${rowNum}: dateOfBirth "${dob}" must be DD-MM-YYYY or YYYY-MM-DD`);
+                } else if (DATE_DDMMYYYY.test(dob)) {
+                    // Warn about auto-conversion
+                    warnings.push(`Row ${rowNum}: dateOfBirth "${dob}" is DD-MM-YYYY — will be auto-converted`);
+                }
+            });
+
+            setBulkValidation({ errors, warnings, rowCount: result.data.length });
+        };
+        reader.readAsText(file);
+    };
 
     const buildParams = (overridePage?: number) => {
         const params = new URLSearchParams();
@@ -164,6 +213,13 @@ export default function StudentsPage() {
         setTimeout(() => fetchStudents(1), 0);
     };
 
+    const closeBulkModal = () => {
+        setShowBulkModal(false);
+        setBulkFile(null);
+        setBulkResult(null);
+        setBulkValidation(null);
+    };
+
     const handleBulkUpload = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!bulkFile) return;
@@ -189,7 +245,7 @@ export default function StudentsPage() {
                 if (result.successful > 0 && result.failed === 0) {
                     toast.success(`Successfully imported ${result.successful} students`);
                     fetchStudents(1); // Refresh list
-                    setTimeout(() => setShowBulkModal(false), 2000);
+                    setTimeout(() => closeBulkModal(), 2000);
                 } else if (result.successful > 0) {
                     toast.success(`Partially imported ${result.successful} students. Check errors.`);
                     fetchStudents(1); // Refresh list
@@ -482,7 +538,7 @@ export default function StudentsPage() {
                         <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                             <div className="flex items-center justify-between p-4 border-b">
                                 <h3 className="text-xl font-semibold text-gray-900">Bulk Import Students</h3>
-                                <button onClick={() => setShowBulkModal(false)} className="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+                                <button onClick={closeBulkModal} className="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
                                     <svg className="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
                                         <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6" />
                                     </svg>
@@ -524,10 +580,43 @@ export default function StudentsPage() {
                                     <input 
                                         type="file" 
                                         accept=".csv"
-                                        onChange={(e) => setBulkFile(e.target.files?.[0] || null)}
+                                        onChange={(e) => {
+                                            const f = e.target.files?.[0] || null;
+                                            setBulkFile(f);
+                                            setBulkResult(null);
+                                            if (f) validateBulkFile(f);
+                                            else setBulkValidation(null);
+                                        }}
                                         className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none p-2 mb-4" 
                                         required
                                     />
+
+                                    {bulkValidation && !bulkResult && (
+                                        <div className={`p-4 mb-4 text-sm rounded-lg border ${bulkValidation.errors.length > 0 ? 'bg-red-50 text-red-800 border-red-200' : 'bg-green-50 text-green-800 border-green-200'}`}>
+                                            <p className="font-bold mb-1">
+                                                {bulkValidation.errors.length > 0
+                                                    ? `⚠️ Validation found ${bulkValidation.errors.length} issue(s) in ${bulkValidation.rowCount} row(s)`
+                                                    : `✅ File looks good — ${bulkValidation.rowCount} row(s) ready to import`}
+                                            </p>
+                                            {bulkValidation.errors.length > 0 && (
+                                                <div className="mt-2 max-h-40 overflow-y-auto text-xs bg-white p-2 rounded border border-red-100">
+                                                    {bulkValidation.errors.map((err, i) => (
+                                                        <div key={i} className="mb-1 text-red-600 font-mono">{err}</div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {bulkValidation.warnings.length > 0 && (
+                                                <details className="mt-2">
+                                                    <summary className="text-xs cursor-pointer text-amber-700 font-medium">{bulkValidation.warnings.length} auto-conversion note(s)</summary>
+                                                    <div className="mt-1 max-h-32 overflow-y-auto text-xs bg-white p-2 rounded border border-amber-100">
+                                                        {bulkValidation.warnings.map((w, i) => (
+                                                            <div key={i} className="mb-1 text-amber-700 font-mono">{w}</div>
+                                                        ))}
+                                                    </div>
+                                                </details>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {bulkResult && (
                                         <div className={`p-4 mb-4 text-sm rounded-lg ${bulkResult.failed > 0 ? 'bg-orange-50 text-orange-800 border border-orange-200' : 'bg-green-50 text-green-800 border border-green-200'}`}>
@@ -547,7 +636,7 @@ export default function StudentsPage() {
                                     <div className="flex justify-end gap-2 mt-6">
                                         <button 
                                             type="button" 
-                                            onClick={() => setShowBulkModal(false)} 
+                                            onClick={closeBulkModal} 
                                             className="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5"
                                         >
                                             Close
