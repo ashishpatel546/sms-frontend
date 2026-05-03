@@ -9,9 +9,9 @@ export const getEnv = (key: string) => {
 /**
  * Derives the school slug from the browser hostname at runtime.
  *
- * Production : edusphere.colegios.in  → "edusphere"
- * Local dev  : edusphere.localhost    → "edusphere"
- *              (access the app at http://edusphere.localhost:3000)
+ * Production : kps.colegios.in         → "kps"
+ * Staging    : kps.test.colegios.in    → "kps"  (first segment only)
+ * Local dev  : kps.localhost           → "kps"
  *
  * Falls back to SCHOOL_SLUG env var only as a last resort for
  * environments that can't use a subdomain (e.g. bare IP access).
@@ -22,13 +22,16 @@ export function getSchoolSlug(): string {
 
     if (host.endsWith('.colegios.in')) {
       const sub = host.slice(0, host.length - '.colegios.in'.length);
-      if (sub && !sub.includes('.')) return sub;
+      // sub may be "kps" (production) or "kps.test" (staging) — always take the first segment
+      const slug = sub ? sub.split('.')[0] : '';
+      if (slug) return slug;
     }
 
     // *.localhost resolves to 127.0.0.1 natively in modern browsers
     if (host.endsWith('.localhost')) {
       const sub = host.slice(0, host.length - '.localhost'.length);
-      if (sub && !sub.includes('.')) return sub;
+      const slug = sub ? sub.split('.')[0] : '';
+      if (slug) return slug;
     }
   }
 
