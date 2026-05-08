@@ -578,7 +578,21 @@ export default function StudentDashboardPage() {
                 ] as const).map(([key, icon, label]) => (
                     <button
                         key={key}
-                        onClick={() => { setActiveSection(key as ActiveSection); if (key !== 'info' && key !== 'exam-schedule' && key !== 'pickup') setSectionLoading(true); }}
+                        onClick={() => {
+                            const section = key as ActiveSection;
+                            if (section === activeSection) {
+                                // Already on this tab — re-fetch directly
+                                if (section === "leaves") fetchLeaves(leavesPage);
+                                else if (section === "fees") { setSectionLoading(true); fetchFees(); }
+                                else if (section === "attendance") { setSectionLoading(true); fetchAttendance(); }
+                                else if (section === "results") { setSectionLoading(true); fetchExamResults(); }
+                                else if (section === "holidays") { setSectionLoading(true); fetchHolidays(); }
+                                else if (section === "homework") { setSectionLoading(true); fetchHomework(); }
+                            } else {
+                                setActiveSection(section);
+                                if (section !== 'info' && section !== 'exam-schedule' && section !== 'pickup') setSectionLoading(true);
+                            }
+                        }}
                         className={`flex flex-col items-center gap-0.5 py-2.5 px-1 rounded-lg text-xs font-medium transition-all ${activeSection === key ? "bg-indigo-600 text-white shadow" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
                     >
                         <span className="text-lg leading-none">{icon}</span>
