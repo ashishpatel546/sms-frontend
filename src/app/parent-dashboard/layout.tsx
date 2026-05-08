@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { getUser, isAuthenticated, logout, getToken, setToken, setTokens, authFetch, resetRefreshState } from "@/lib/auth";
+import { getUser, isAuthenticated, logout, getToken, getRefreshToken, setToken, setTokens, authFetch, resetRefreshState } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
 import { NotificationBell } from "@/components/NotificationBell";
 import NotificationPermissionBanner from "@/components/NotificationPermissionBanner";
@@ -22,6 +22,26 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
         if (u.mustChangePassword) { router.replace("/change-password"); return; }
         if (u.role !== "PARENT") { router.replace("/dashboard"); return; }
         setUser(u);
+
+        // Proactively refresh the access token so the navbar always reflects
+        // the latest name from the DB (e.g. after admin updates father's name).
+        const rt = getRefreshToken();
+        if (rt) {
+            fetch(`${API_BASE_URL}/auth/refresh-token`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refreshToken: rt }),
+            })
+                .then(res => res.ok ? res.json() : null)
+                .then(data => {
+                    if (data?.access_token) {
+                        setTokens(data.access_token, rt);
+                        const updated = getUser();
+                        if (updated) setUser(updated);
+                    }
+                })
+                .catch(() => { /* silent — stale name is non-critical */ });
+        }
     }, [router]);
 
     // When the Android PWA returns from background, any in-flight token refresh

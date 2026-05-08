@@ -11,10 +11,33 @@ import ReceiptModal from "@/components/ReceiptModal";
 import { getEnv } from "@/lib/env";
 import ExamScheduleParentView from "./ExamScheduleParentView";
 import PickupQRGenerator from "@/components/PickupQRGenerator";
+import ApplyLeaveModal from "@/components/ApplyLeaveModal";
+import LeaveTimeline from "@/components/LeaveTimeline";
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-type ActiveSection = "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework" | "pickup";
+const LEAVE_STATUS_STYLES: Record<string, string> = {
+    PENDING: "bg-amber-500/15 text-amber-400 border border-amber-500/25",
+    FIRST_APPROVED: "bg-blue-500/15 text-blue-400 border border-blue-500/25",
+    APPROVED: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25",
+    REJECTED: "bg-red-500/15 text-red-400 border border-red-500/25",
+    CANCELLED: "bg-slate-700 text-slate-400 border border-slate-600",
+};
+const LEAVE_STATUS_LABELS: Record<string, string> = {
+    PENDING: "Pending",
+    FIRST_APPROVED: "1st Approved",
+    APPROVED: "Approved",
+    REJECTED: "Rejected",
+    CANCELLED: "Cancelled",
+};
+const LEAVE_TYPE_LABELS: Record<string, string> = {
+    SICK_LEAVE: "Sick Leave",
+    CASUAL_LEAVE: "Casual Leave",
+    OTHER_LEAVE: "Other Leave",
+};
+const fmtDate = (d: string) => { const [y, m, day] = d.split("-"); return `${day}/${m}/${y}`; };
+
+type ActiveSection = "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework" | "pickup" | "leaves";
 
 declare global {
     interface Window {
@@ -44,6 +67,17 @@ export default function StudentDashboardPage() {
     const catDropdownRef = useRef<HTMLDivElement>(null);
     const [holidays, setHolidays] = useState<any[]>([]);
     const [homework, setHomework] = useState<any[]>([]);
+    const [leaves, setLeaves] = useState<any>(null);
+    const [leavesPage, setLeavesPage] = useState(1);
+    const [showApplyLeave, setShowApplyLeave] = useState(false);
+    const [viewerDoc, setViewerDoc] = useState<{ url: string; fileName: string; mimeType: string } | null>(null);
+    const [cancelLeaveId, setCancelLeaveId] = useState<number | null>(null);
+    const [cancelLeaving, setCancelLeaving] = useState(false);
+    const [viewLeave, setViewLeave] = useState<any | null>(null);
+    const [replyLeaveId, setReplyLeaveId] = useState<number | null>(null);
+    const [replyNote, setReplyNote] = useState("");
+    const [replyFile, setReplyFile] = useState<File | null>(null);
+    const [replySending, setReplySending] = useState(false);
     const homeworkDateInputRef = useRef<HTMLInputElement>(null);
     const [homeworkDate, setHomeworkDate] = useState(() => {
         const d = new Date();
@@ -183,6 +217,85 @@ export default function StudentDashboardPage() {
         finally { setSectionLoading(false); }
     }, [studentId, homeworkDate]);
 
+    const fetchLeaves = useCallback(async (p = 1) => {
+        setSectionLoading(true);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/leaves/student/${studentId}?page=${p}&limit=10`, { headers: authHeaders });
+            if (res.ok) setLeaves(await res.json());
+        } catch (err) { console.error(err); }
+        finally { setSectionLoading(false); }
+    }, [studentId]);
+
+    const handleReply = async () => {
+        if (!replyLeaveId) return;
+        if (!replyNote.trim() && !replyFile) {
+            toast.error("Please write a message or attach a document.");
+            return;
+        }
+        if (replyFile && replyFile.size > 5 * 1024 * 1024) {
+            toast.error("File is too large. Maximum size is 5 MB.");
+            return;
+        }
+        setReplySending(true);
+        try {
+            const formData = new FormData();
+            if (replyNote.trim()) formData.append("note", replyNote.trim());
+            if (replyFile) formData.append("file", replyFile);
+            const res = await authFetch(`${API_BASE_URL}/leaves/${replyLeaveId}/respond`, {
+                method: "POST",
+                body: formData,
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || "Failed to send reply");
+            }
+            toast.success("Reply sent!");
+            setReplyLeaveId(null);
+            setReplyNote("");
+            setReplyFile(null);
+            fetchLeaves(leavesPage);
+        } catch (err: any) {
+            toast.error(err.message || "Failed to send reply");
+        } finally {
+            setReplySending(false);
+        }
+    };
+
+    const handleOpenDoc = async (leaveId: number, doc: { id: number; fileName: string; mimeType: string }) => {
+        try {
+            const res = await authFetch(`${API_BASE_URL}/leaves/${leaveId}/documents/${doc.id}/url`);
+            if (res.ok) {
+                const { url } = await res.json();
+                setViewerDoc({ url, fileName: doc.fileName, mimeType: doc.mimeType });
+            } else {
+                toast.error("Failed to get document URL");
+            }
+        } catch { toast.error("Failed to get document URL"); }
+    };
+
+    const handleCancelLeave = async () => {
+        if (!cancelLeaveId) return;
+        setCancelLeaving(true);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/leaves/${cancelLeaveId}/cancel`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({}),
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || "Cancellation failed");
+            }
+            toast.success("Leave cancelled");
+            setCancelLeaveId(null);
+            fetchLeaves(leavesPage);
+        } catch (err: any) {
+            toast.error(err.message || "Failed to cancel leave");
+        } finally {
+            setCancelLeaving(false);
+        }
+    };
+
     // Unconditionally refetch data whenever tab changes or prerequisites change
     useEffect(() => {
         if (activeSection === "fees") fetchFees();
@@ -190,7 +303,8 @@ export default function StudentDashboardPage() {
         else if (activeSection === "results") fetchExamResults();
         else if (activeSection === "holidays") fetchHolidays();
         else if (activeSection === "homework") fetchHomework();
-    }, [activeSection, fetchFees, fetchAttendance, fetchExamResults, fetchHolidays, fetchHomework]);
+        else if (activeSection === "leaves") fetchLeaves(leavesPage);
+    }, [activeSection, fetchFees, fetchAttendance, fetchExamResults, fetchHolidays, fetchHomework, fetchLeaves, leavesPage]);
 
     const toggleMonthPay = (monthKey: string) => {
         setSelectedMonths2Pay(prev =>
@@ -457,9 +571,10 @@ export default function StudentDashboardPage() {
                     ["results",       "📝", "Results"],
                     ["exam-schedule", "📅", "Schedule"],
                     ["homework",      "📚", "Homework"],
+                    ["leaves",        "🗓️", "Leaves"],
                     ["pickup",        "🚗", "Pickup QR"],
                     ["holidays",      "🏝️", "Holidays"],
-                    ["info",          "👤", "My Info"],
+                    ["info",          "👤", "Student Info"],
                 ] as const).map(([key, icon, label]) => (
                     <button
                         key={key}
@@ -1438,6 +1553,97 @@ export default function StudentDashboardPage() {
                 </div>
             )}
 
+            {/* ════════════════════════════════
+                LEAVES TAB
+            ════════════════════════════════ */}
+            {activeSection === "leaves" && (
+                <div className="space-y-4 animate-scale-in">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl shrink-0">🗓️</div>
+                            <div>
+                                <h2 className="text-white font-bold text-lg leading-tight">Leave Requests</h2>
+                                <p className="text-slate-400 text-sm">Track and apply for leaves</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setShowApplyLeave(true)}
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors shrink-0"
+                        >
+                            + Apply Leave
+                        </button>
+                    </div>
+
+                    {leaves && leaves.data && leaves.data.length > 0 ? (
+                        <div className="space-y-3">
+                            {leaves.data.map((leave: any) => (
+                                <div key={leave.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div>
+                                            <p className="text-white font-medium text-sm">{LEAVE_TYPE_LABELS[leave.leaveType] ?? leave.leaveType}</p>
+                                            <p className="text-slate-400 text-xs mt-0.5">
+                                                {fmtDate(leave.fromDate)}{leave.fromDate !== leave.toDate ? ` → ${fmtDate(leave.toDate)}` : ""} · {leave.leaveDuration === "HALF_DAY" ? "Half Day" : "Full Day"}
+                                            </p>
+                                        </div>
+                                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap shrink-0 ${LEAVE_STATUS_STYLES[leave.status] ?? ""}`}>
+                                            {LEAVE_STATUS_LABELS[leave.status] ?? leave.status}
+                                        </span>
+                                    </div>
+                                    {leave.isActionRequired && (
+                                        <div className="mt-2 flex items-center gap-1.5">
+                                            <svg className="w-3.5 h-3.5 shrink-0 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            <span className="text-orange-400 text-xs font-medium">Response needed</span>
+                                        </div>
+                                    )}
+                                    <div className="flex items-center justify-between mt-3">
+                                        <p className="text-slate-600 text-xs">Applied {new Date(leave.createdAt).toLocaleDateString()}</p>
+                                        <div className="flex items-center gap-2">
+                                            {leave.status === "PENDING" && (
+                                                <button
+                                                    onClick={() => setCancelLeaveId(leave.id)}
+                                                    className="px-2.5 py-1 text-xs font-medium text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-colors"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => setViewLeave(leave)}
+                                                className="px-2.5 py-1 text-xs font-medium text-slate-300 border border-slate-700 rounded-lg hover:bg-slate-800 transition-colors"
+                                            >
+                                                View Details
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center">
+                            <div className="text-4xl mb-3">🗓️</div>
+                            <p className="text-slate-400 text-sm">No leave requests yet</p>
+                            <p className="text-slate-600 text-xs mt-1">Tap &quot;Apply Leave&quot; to submit a new request</p>
+                        </div>
+                    )}
+
+                    {/* Pagination */}
+                    {leaves && Math.ceil((leaves.total ?? 0) / 10) > 1 && (
+                        <div className="flex items-center justify-center gap-2">
+                            <button
+                                onClick={() => setLeavesPage(p => Math.max(1, p - 1))}
+                                disabled={leavesPage === 1}
+                                className="px-3 py-1.5 text-xs border border-slate-700 text-slate-400 rounded-lg disabled:opacity-40 hover:bg-slate-800 transition-colors"
+                            >← Prev</button>
+                            <span className="text-xs text-slate-500">{leavesPage} / {Math.ceil((leaves.total ?? 0) / 10)}</span>
+                            <button
+                                onClick={() => setLeavesPage(p => p + 1)}
+                                disabled={leavesPage >= Math.ceil((leaves.total ?? 0) / 10)}
+                                className="px-3 py-1.5 text-xs border border-slate-700 text-slate-400 rounded-lg disabled:opacity-40 hover:bg-slate-800 transition-colors"
+                            >Next →</button>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* ── Payment Confirmation Modal ── */}
             {showConfirmModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -1537,6 +1743,208 @@ export default function StudentDashboardPage() {
                     onClose={() => setShowReceipt(null)}
                 />
             )}
+
+            {/* ── In-app Document Viewer ── */}
+            {viewerDoc && (
+                <div className="fixed inset-0 z-[60] flex flex-col bg-black/90" onClick={e => { if (e.target === e.currentTarget) setViewerDoc(null); }}>
+                    <div className="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-700 shrink-0">
+                        <span className="text-white text-sm font-medium truncate max-w-xs">{viewerDoc.fileName}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <a
+                                href={viewerDoc.url}
+                                download={viewerDoc.fileName}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg transition-colors"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                Download
+                            </a>
+                            <button onClick={() => setViewerDoc(null)} className="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-auto flex items-center justify-center p-4">
+                        {viewerDoc.mimeType === 'application/pdf' ? (
+                            <iframe src={viewerDoc.url} title={viewerDoc.fileName} className="w-full h-full min-h-[70vh] rounded-lg border-0 bg-white" />
+                        ) : (
+                            <img src={viewerDoc.url} alt={viewerDoc.fileName} className="max-w-full max-h-full object-contain rounded-lg shadow-xl" />
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ── Leave Detail Modal ── */}
+            {viewLeave && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) setViewLeave(null); }}>
+                    <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl">
+                        {/* Header */}
+                        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-700 shrink-0">
+                            <div>
+                                <p className="text-white font-bold text-base">{LEAVE_TYPE_LABELS[viewLeave.leaveType] ?? viewLeave.leaveType}</p>
+                                <p className="text-slate-400 text-xs mt-0.5">
+                                    {fmtDate(viewLeave.fromDate)}{viewLeave.fromDate !== viewLeave.toDate ? ` \u2192 ${fmtDate(viewLeave.toDate)}` : ""} &middot; {viewLeave.leaveDuration === "HALF_DAY" ? "Half Day" : "Full Day"}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${LEAVE_STATUS_STYLES[viewLeave.status] ?? ""}`}>
+                                    {LEAVE_STATUS_LABELS[viewLeave.status] ?? viewLeave.status}
+                                </span>
+                                <button onClick={() => setViewLeave(null)} className="p-1 rounded-lg text-slate-400 hover:text-white transition-colors">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+                        </div>
+                        {/* Scrollable body */}
+                        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                            {/* Reason */}
+                            {viewLeave.reason && (
+                                <div>
+                                    <p className="text-slate-500 text-xs font-medium mb-1">Reason</p>
+                                    <p className="text-slate-300 text-sm">{viewLeave.reason}</p>
+                                </div>
+                            )}
+                            {/* Chronological timeline of events */}
+                            <LeaveTimeline leave={viewLeave} theme="dark" />
+                            {/* Reply button — shown if school is still waiting for a response */}
+                            {viewLeave.isActionRequired && (
+                                <button
+                                    onClick={() => { setReplyLeaveId(viewLeave.id); setReplyNote(""); setReplyFile(null); }}
+                                    className="w-full px-3 py-2 text-xs font-medium rounded-xl border bg-orange-500/20 text-orange-300 border-orange-500/40 hover:bg-orange-500/30 transition-colors"
+                                >
+                                    💬 Reply to school
+                                </button>
+                            )}
+                            {/* Attached documents */}
+                            {viewLeave.documents && viewLeave.documents.length > 0 && (
+                                <div>
+                                    <p className="text-slate-500 text-xs font-medium mb-1.5">Attached documents</p>
+                                    <div className="space-y-1.5">
+                                        {viewLeave.documents.map((doc: any) => (
+                                            <button
+                                                key={doc.id}
+                                                onClick={() => handleOpenDoc(viewLeave.id, doc)}
+                                                className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg border border-slate-700 hover:border-slate-500 hover:bg-slate-800/50 transition-colors text-xs text-slate-300"
+                                            >
+                                                <span className="shrink-0">{doc.mimeType === 'application/pdf' ? '\uD83D\uDCC4' : '\uD83D\uDDBC\uFE0F'}</span>
+                                                <span className="truncate">{doc.fileName}</span>
+                                                <span className="ml-auto shrink-0 text-slate-500">{doc.mimeType === 'application/pdf' ? 'PDF' : 'Image'}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            <p className="text-slate-600 text-xs">Applied {new Date(viewLeave.createdAt).toLocaleDateString()}</p>
+                        </div>
+                        {/* Footer — cancel button for PENDING */}
+                        {viewLeave.status === "PENDING" && (
+                            <div className="px-5 py-4 border-t border-slate-700 shrink-0">
+                                <button
+                                    onClick={() => { setViewLeave(null); setCancelLeaveId(viewLeave.id); }}
+                                    className="w-full py-2.5 text-sm font-medium text-red-400 border border-red-500/30 rounded-xl hover:bg-red-500/10 transition-colors"
+                                >
+                                    Cancel Leave
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ── Reply to Action-Required Modal ── */}
+            {replyLeaveId !== null && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-md shadow-2xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-white font-bold text-base">Reply to School</h3>
+                            <button onClick={() => setReplyLeaveId(null)} className="p-1 rounded-lg text-slate-400 hover:text-white transition-colors">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <p className="text-slate-400 text-xs mb-3">Write your reply below. You can also attach a document (optional).</p>
+                        <textarea
+                            value={replyNote}
+                            onChange={e => setReplyNote(e.target.value)}
+                            rows={4}
+                            placeholder="Type your reply here…"
+                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-orange-500/60 resize-none mb-3"
+                        />
+                        {/* File attachment */}
+                        <div className="mb-4">
+                            {replyFile ? (
+                                <div className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl">
+                                    <span className="text-xs text-slate-300 truncate flex-1">{replyFile.name}</span>
+                                    <button onClick={() => setReplyFile(null)} className="shrink-0 text-slate-500 hover:text-red-400 text-xs transition-colors">Remove</button>
+                                </div>
+                            ) : (
+                                <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-400 hover:text-slate-300 transition-colors">
+                                    <input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                                        className="hidden"
+                                        onChange={e => { const f = e.target.files?.[0]; if (f) setReplyFile(f); e.target.value = ""; }}
+                                    />
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                    Attach document (optional)
+                                </label>
+                            )}
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setReplyLeaveId(null)}
+                                disabled={replySending}
+                                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl transition-colors text-sm disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleReply}
+                                disabled={replySending || (!replyNote.trim() && !replyFile)}
+                                className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-500 text-white font-medium rounded-xl transition-colors text-sm disabled:opacity-50"
+                            >
+                                {replySending ? "Sending…" : "Send Reply"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Cancel Leave Confirm Modal ── */}
+            {cancelLeaveId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+                        <div className="mb-4 text-center">
+                            <div className="w-12 h-12 bg-red-500/15 text-red-400 rounded-full flex items-center justify-center text-xl mx-auto mb-3">✕</div>
+                            <h3 className="text-white font-bold text-lg">Cancel Leave</h3>
+                            <p className="text-slate-400 text-sm mt-1">Are you sure you want to cancel this leave request?</p>
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setCancelLeaveId(null)}
+                                disabled={cancelLeaving}
+                                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl transition-colors text-sm disabled:opacity-50"
+                            >
+                                Keep it
+                            </button>
+                            <button
+                                onClick={handleCancelLeave}
+                                disabled={cancelLeaving}
+                                className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white font-medium rounded-xl transition-colors text-sm disabled:opacity-50"
+                            >
+                                {cancelLeaving ? "Cancelling…" : "Yes, Cancel"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Apply Leave Modal ── */}
+            {showApplyLeave && info && (
+                <ApplyLeaveModal
+                    studentId={Number(studentId)}
+                    studentName={`${info.firstName} ${info.lastName}`}
+                    onClose={() => setShowApplyLeave(false)}
+                    onSuccess={() => { setShowApplyLeave(false); fetchLeaves(leavesPage); }}
+                />)}
         </div>
     );
 }

@@ -130,6 +130,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 <li><Link href="/dashboard/enrollment" className={getLinkClass("/dashboard/enrollment")}><span className="ml-3">📋 Enrollment</span></Link></li>
                             )}
                             <li><Link href="/dashboard/attendance" className={getLinkClass("/dashboard/attendance")}><span className="ml-3">📅 Attendance</span></Link></li>
+                            <li><Link href="/dashboard/leaves" className={getLinkClass("/dashboard/leaves")}><span className="ml-3">🗓️ Leave Requests</span></Link></li>
                             {rbac.canAccessFees && (
                                 <li><Link href="/dashboard/fees" className={getLinkClass("/dashboard/fees")}><span className="ml-3">💰 Fees</span></Link></li>
                             )}

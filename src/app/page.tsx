@@ -204,6 +204,7 @@ export default function LoginPage() {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-1.5 flex gap-1.5 mb-6">
             <button
               onClick={() => { setActiveTab("staff"); setError(""); }}
+              suppressHydrationWarning
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === "staff"
                 ? "bg-linear-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/20"
                 : "text-slate-500 hover:text-slate-300"
@@ -216,6 +217,7 @@ export default function LoginPage() {
             </button>
             <button
               onClick={() => { setActiveTab("parent"); setError(""); }}
+              suppressHydrationWarning
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === "parent"
                 ? "bg-linear-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/20"
                 : "text-slate-500 hover:text-slate-300"
@@ -245,6 +247,7 @@ export default function LoginPage() {
                       value={staffIdentifier}
                       onChange={e => setStaffIdentifier(e.target.value)}
                       required
+                      suppressHydrationWarning
                       placeholder="Mobile or Email"
                       className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                     />
@@ -265,12 +268,14 @@ export default function LoginPage() {
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       required
+                      suppressHydrationWarning
                       placeholder="••••••••"
                       className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 pr-11 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
+                      suppressHydrationWarning
                       className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition-colors"
                     >
                       {showPassword ? (
@@ -290,6 +295,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
+                  suppressHydrationWarning
                   className="w-full py-3 rounded-xl font-semibold text-white bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 transition-all duration-200 flex items-center justify-center gap-2 mt-2"
                 >
                   {isLoading ? (
@@ -316,6 +322,7 @@ export default function LoginPage() {
                         value={mobile}
                         onChange={e => setMobile(e.target.value)}
                         required
+                        suppressHydrationWarning
                         placeholder="e.g. 9876543210"
                         className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                       />
@@ -334,12 +341,14 @@ export default function LoginPage() {
                         value={password}
                         onChange={e => setPassword(e.target.value)}
                         required
+                        suppressHydrationWarning
                         placeholder="••••••••"
                         className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 pr-11 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
+                        suppressHydrationWarning
                         className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition-colors"
                       >
                         {showPassword ? (
@@ -359,6 +368,7 @@ export default function LoginPage() {
                   <button
                     type="submit"
                     disabled={isLoading}
+                    suppressHydrationWarning
                     className="w-full py-3 rounded-xl font-semibold text-white bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 transition-all duration-200 flex items-center justify-center gap-2 mt-2"
                   >
                     {isLoading ? (
