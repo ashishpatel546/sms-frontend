@@ -10,8 +10,8 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import { CheckCircle2, School, CreditCard, CalendarDays, User, Hash, MapPin, Phone, Mail, Globe } from "lucide-react";
-import { jsPDF } from "jspdf";
-import { toPng } from "html-to-image";
+import { getToken } from "@/lib/auth";
+import { getEnv, getSchoolSlug } from "@/lib/env";
 import { fetcher } from "@/lib/api";
 import toast from "react-hot-toast";
 
@@ -103,12 +103,9 @@ export default function ReceiptModal({
     const [schoolPhone, setSchoolPhone] = useState<string | null>(null);
     const [schoolEmail, setSchoolEmail] = useState<string | null>(null);
     const [schoolWebsite, setSchoolWebsite] = useState<string | null>(null);
-    // schoolLogoUrl — raw S3 URL, for display in the modal <img> tag.
-    // logoProxyUrl  — same-origin Next.js proxy URL (/api/proxy-logo?url=...).
-    //   Because it’s same-origin, html-to-image’s internal fetch() can load it
-    //   without CORS restrictions, so the logo embeds correctly in PDFs and print.
+    // schoolLogoUrl — raw S3 URL, only used to display the logo inside the modal.
+    // Server-side PDF generation fetches the logo directly (no CORS issues).
     const [schoolLogoUrl, setSchoolLogoUrl] = useState<string | null>(null);
-    const [logoProxyUrl, setLogoProxyUrl] = useState<string | null>(null);
 
     useEffect(() => {
         fetcher("/school/info")
@@ -119,12 +116,7 @@ export default function ReceiptModal({
                 setSchoolPhone(data?.phone ?? null);
                 setSchoolEmail(data?.email ?? null);
                 setSchoolWebsite(data?.website ?? null);
-                if (data?.logoUrl) {
-                    setSchoolLogoUrl(data.logoUrl);
-                    // Build the same-origin proxy URL. html-to-image fetches this
-                    // via browser fetch() — same-origin means no CORS at all.
-                    setLogoProxyUrl(`/api/proxy-logo?url=${encodeURIComponent(data.logoUrl)}`);
-                }
+                if (data?.logoUrl) setSchoolLogoUrl(data.logoUrl);
             })
             .catch(() => {/* keep placeholder */});
     }, []);
@@ -132,238 +124,72 @@ export default function ReceiptModal({
     const monthLabel =
         receiptData.monthsPaid || receiptData.feeMonth || "—";
 
-    // Ref to the receipt card — used by handlePrint to grab exact HTML without
-    // risk of querySelector matching another .receipt-print-area on the page.
     const receiptRef = useRef<HTMLDivElement>(null);
     const [isDownloading, setIsDownloading] = useState(false);
     const [isPrinting, setIsPrinting] = useState(false);
 
-    // ── Print handler (A5)
-    // Uses html-to-image to capture the receipt as a PNG, then injects a single
-    // <img> into a print container and calls window.print().
-    //
-    // Why image-based instead of HTML injection?
-    // The previous HTML-injection approach relied on @media print CSS to hide
-    // siblings and let the receipt flow across pages. This is fragile on mobile
-    // PWA (Android/iOS standalone mode): the browser computes print page count
-    // from the live DOM height BEFORE the @media print rules are applied, which
-    // causes the receipt to repeat on every generated page (duplication bug).
-    //
-    // Injecting a single <img> instead means:
-    //   • One element → browser always produces exactly one page
-    //   • No CSS color/class parsing — just a flat image
-    //   • Works identically on desktop Chrome, Android PWA, and iOS standalone
+    // ── Shared: POST receipt data to /api/receipt-pdf, get back a PDF blob ──
+    const fetchReceiptPDF = async (action: 'print' | 'download'): Promise<Blob | null> => {
+        const token = getToken();
+        const slug = getSchoolSlug();
+        const apiBase = getEnv('API_URL') || 'http://localhost:3000';
+
+        const res = await fetch('/api/receipt-pdf', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                ...(slug ? { 'X-School-Slug': slug } : {}),
+                'X-Api-Base': apiBase,
+            },
+            body: JSON.stringify({ receiptData, isAdmin: isAdmin ?? false, action }),
+        });
+
+        if (!res.ok) {
+            throw new Error(`receipt-pdf API returned ${res.status}`);
+        }
+        return res.blob();
+    };
+
+    // ── Print handler: generate PDF server-side, open in new tab → browser prints it ──
     const handlePrint = async () => {
-        if (!receiptRef.current) return;
         setIsPrinting(true);
-
-        const element = receiptRef.current;
-        const originalMaxHeight = element.style.maxHeight;
-        element.style.maxHeight = 'none';
-
-        const scrollBody = element.querySelector('.receipt-scroll-body') as HTMLElement;
-        const sbOriginalMaxHeight = scrollBody ? scrollBody.style.maxHeight : '';
-        const sbOriginalOverflow = scrollBody ? scrollBody.style.overflow : '';
-        if (scrollBody) {
-            scrollBody.style.maxHeight = 'none';
-            scrollBody.style.overflow = 'visible';
-        }
-
-        // Imperatively swap the logo <img> src to the same-origin proxy URL
-        // before toPng so html-to-image fetches it without CORS issues.
-        const logoImgEl = element.querySelector('[data-receipt-logo]') as HTMLImageElement | null;
-        const originalLogoSrc = logoImgEl?.getAttribute('src') ?? null;
-        if (logoImgEl) {
-            if (logoProxyUrl) {
-                logoImgEl.src = logoProxyUrl;
-            } else {
-                // No proxy URL — use a transparent placeholder so toPng never
-                // tries to fetch the cross-origin S3 URL.
-                logoImgEl.src = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
-                logoImgEl.style.visibility = 'hidden';
-            }
-        }
-
         try {
-            const imgData = await toPng(element, {
-                pixelRatio: 2,
-                skipFonts: true,
-                filter: (node: Node) => {
-                    const el = node as HTMLElement;
-                    if (!el.classList) return true;
-                    return (
-                        !el.classList.contains('no-print') &&
-                        !el.hasAttribute('data-html2canvas-ignore')
-                    );
-                },
-            });
-
-            // Restore constraints before opening print dialog
-            element.style.maxHeight = originalMaxHeight;
-            if (scrollBody) {
-                scrollBody.style.maxHeight = sbOriginalMaxHeight;
-                scrollBody.style.overflow = sbOriginalOverflow;
+            const blob = await fetchReceiptPDF('print');
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const win = window.open(url, '_blank');
+            if (win) {
+                win.onload = () => { win.print(); };
             }
-            // Restore logo img src
-            if (logoImgEl) {
-                if (originalLogoSrc !== null) logoImgEl.src = originalLogoSrc;
-                logoImgEl.style.visibility = '';
-            }
-
-            // Inject a single <img> — one element = exactly one print page,
-            // no page-count computation issues on mobile.
-            // The container is locked to the exact A5 page dimensions and
-            // object-fit:contain scales the image to fit — so regardless of
-            // the receipt's aspect ratio it always renders on a single page.
-            const printContainer = document.createElement('div');
-            printContainer.id = '__receipt-print-root__';
-            printContainer.innerHTML = `<img src="${imgData}" style="display:block;width:148mm;height:210mm;object-fit:contain;object-position:top center;" />`;
-            document.body.appendChild(printContainer);
-
-            const printStyle = document.createElement('style');
-            printStyle.id = '__receipt-print-style__';
-            printStyle.textContent = `
-@media print {
-  @page { size: A5 portrait; margin: 0; }
-  html, body {
-    margin: 0 !important; padding: 0 !important; background: white !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  body > *:not(#__receipt-print-root__) { display: none !important; }
-  #__receipt-print-root__ {
-    display: block !important;
-    width: 148mm !important;
-    height: 210mm !important;
-    overflow: hidden !important;
-    page-break-after: avoid !important;
-    break-after: avoid !important;
-  }
-  #__receipt-print-root__ img {
-    display: block !important;
-    width: 148mm !important;
-    height: 210mm !important;
-    object-fit: contain !important;
-    object-position: top center !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
-}`;
-            document.head.appendChild(printStyle);
-
-            setTimeout(() => {
-                setIsPrinting(false);
-                window.print();
-                setTimeout(() => {
-                    document.getElementById('__receipt-print-root__') && document.body.removeChild(printContainer);
-                    document.getElementById('__receipt-print-style__') && document.head.removeChild(printStyle);
-                }, 1500);
-            }, 150);
-
+            // Revoke after a reasonable delay
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
         } catch (err) {
-            console.error('[ReceiptModal] Print toPng error:', err);
-            element.style.maxHeight = originalMaxHeight;
-            if (scrollBody) {
-                scrollBody.style.maxHeight = sbOriginalMaxHeight;
-                scrollBody.style.overflow = sbOriginalOverflow;
-            }
-            if (logoImgEl) {
-                if (originalLogoSrc !== null) logoImgEl.src = originalLogoSrc;
-                logoImgEl.style.visibility = '';
-            }
-            setIsPrinting(false);
+            console.error('[ReceiptModal] Print error:', err);
             toast.error('Failed to prepare print. Please try again.');
+        } finally {
+            setIsPrinting(false);
         }
     };
 
-    // ── PDF Download handler (A4, uses html-to-image + jsPDF)
-    // html-to-image renders via SVG foreignObject so the browser handles ALL
-    // CSS natively — including modern color functions like oklch()/lab() used
-    // by Tailwind v4, which legacy html2canvas cannot parse.
+    // ── Download handler: generate PDF server-side, trigger file download ──
     const handleDownloadPDF = async () => {
-        if (!receiptRef.current) return;
         setIsDownloading(true);
-
-        const element = receiptRef.current;
-        const originalMaxHeight = element.style.maxHeight;
-        element.style.maxHeight = 'none';
-
-        const scrollBody = element.querySelector('.receipt-scroll-body') as HTMLElement;
-        const sbOriginalMaxHeight = scrollBody ? scrollBody.style.maxHeight : '';
-        const sbOriginalOverflow = scrollBody ? scrollBody.style.overflow : '';
-        if (scrollBody) {
-            scrollBody.style.maxHeight = 'none';
-            scrollBody.style.overflow = 'visible';
-        }
-
-        // Imperatively swap the logo <img> src to the same-origin proxy URL
-        // before toPng so html-to-image fetches it without CORS issues.
-        const logoImgEl = element.querySelector('[data-receipt-logo]') as HTMLImageElement | null;
-        const originalLogoSrc = logoImgEl?.getAttribute('src') ?? null;
-        if (logoImgEl) {
-            if (logoProxyUrl) {
-                logoImgEl.src = logoProxyUrl;
-            } else {
-                // No proxy URL — use a transparent placeholder so toPng never
-                // tries to fetch the cross-origin S3 URL.
-                logoImgEl.src = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
-                logoImgEl.style.visibility = 'hidden';
-            }
-        }
-
         try {
-            const imgData = await toPng(element, {
-                pixelRatio: 2,
-                skipFonts: true,
-                filter: (node: Node) => {
-                    const el = node as HTMLElement;
-                    if (!el.classList) return true;
-                    return (
-                        !el.classList.contains('no-print') &&
-                        !el.hasAttribute('data-html2canvas-ignore')
-                    );
-                },
-            });
-
-            // Measure the rendered image dimensions to compute mmHeight
-            const img = new Image();
-            await new Promise<void>((resolve) => { img.onload = () => resolve(); img.src = imgData; });
-
-            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
-            // Available area with 8mm margins on all sides (A5 = 148×210mm)
-            const margin = 8;
-            const availW = 148 - margin * 2;
-            const availH = 210 - margin * 2;
-            const imgRatio = img.naturalHeight / img.naturalWidth;
-            const availRatio = availH / availW;
-
-            // Scale to fit entirely within the page, maintaining aspect ratio
-            let fitW: number, fitH: number;
-            if (imgRatio > availRatio) {
-                fitH = availH;
-                fitW = availH / imgRatio;
-            } else {
-                fitW = availW;
-                fitH = availW * imgRatio;
-            }
-            const x = margin + (availW - fitW) / 2;
-            pdf.addImage(imgData, 'PNG', x, margin, fitW, fitH);
-
-            pdf.save(`receipt-${receiptData.receiptNumber || 'download'}.pdf`);
+            const blob = await fetchReceiptPDF('download');
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `receipt-${receiptData.receiptNumber || 'download'}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
         } catch (err) {
-            console.error('[ReceiptModal] PDF toPng error:', err);
+            console.error('[ReceiptModal] Download error:', err);
             toast.error('Failed to generate PDF. Please try again.');
         } finally {
-            element.style.maxHeight = originalMaxHeight;
-            if (scrollBody) {
-                scrollBody.style.maxHeight = sbOriginalMaxHeight;
-                scrollBody.style.overflow = sbOriginalOverflow;
-            }
-            // Restore logo img src
-            if (logoImgEl) {
-                if (originalLogoSrc !== null) logoImgEl.src = originalLogoSrc;
-                logoImgEl.style.visibility = '';
-            }
             setIsDownloading(false);
         }
     };
