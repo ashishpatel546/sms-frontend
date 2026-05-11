@@ -413,7 +413,10 @@ export default function ReceiptModal({
                                 <div>
                                     <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">Receipt No.</p>
                                     <p className="font-bold font-mono text-slate-800 break-all text-sm leading-tight">
-                                        {receiptData.receiptNumber || "—"}
+                                        {receiptData.receiptNumber
+                                            ? receiptData.receiptNumber
+                                            : <span className="text-slate-400 font-normal not-italic text-xs">Adjustment Record</span>
+                                        }
                                     </p>
                                 </div>
                             </div>

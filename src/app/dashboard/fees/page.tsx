@@ -2163,17 +2163,44 @@ export default function FeesDashboardPage() {
                                                         {/* ── PARTIAL card action buttons (matching monthly fees behaviour) ── */}
                                                         {ot.status === 'PARTIAL' && (
                                                             <div className="mt-2 grid grid-cols-2 gap-1" onClick={e => e.stopPropagation()}>
-                                                                {/* View Receipt — opens payment/adjustment history modal */}
+                                                                {/* View Receipt — opens ReceiptModal if payment exists, else history modal */}
                                                                 {hasHistory && (
                                                                     <button
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            setPaymentHistoryData({ monthKey: ot.monthKey, label: ot.label, totalDue: ot.totalDue, totalPaid: ot.totalPaid, outstanding: ot.outstanding, excess: ot.excess ?? 0, status: ot.status, payments: ot.payments || [], adjustments: ot.adjustments || [] });
+                                                                            const latestOTPayment = (ot.payments || []).at(-1);
+                                                                            const s = students.find((st: any) => st.id.toString() === selectedStudentId);
+                                                                            const lastOTAdj = (ot.adjustments || []).at(-1);
+                                                                            setReceiptData({
+                                                                                receiptNumber: latestOTPayment?.receiptNumber,
+                                                                                paymentDate: latestOTPayment?.paymentDate ?? lastOTAdj?.adjustedAt,
+                                                                                amountPaid: latestOTPayment ? latestOTPayment.amountPaid : 0,
+                                                                                paymentMethod: latestOTPayment?.paymentMethod ?? 'Fee Adjustment',
+                                                                                studentName: `${s?.firstName} ${s?.lastName}`,
+                                                                                studentClass: s?.class?.name || null,
+                                                                                studentSection: s?.section?.name || null,
+                                                                                feeCategory: ot.label,
+                                                                                academicYear: collectionYear,
+                                                                                monthsPaid: ot.label,
+                                                                                totalBaseFee: latestOTPayment?.baseFeeAmount || 0,
+                                                                                totalLateFee: latestOTPayment?.otherFeeAmount || 0,
+                                                                                components: latestOTPayment?.components ?? [],
+                                                                                appliedDiscounts: latestOTPayment?.feeBreakdown?.discounts || (latestOTPayment?.discountAmount > 0 ? [{ name: 'Discount', amount: latestOTPayment.discountAmount }] : []),
+                                                                                categoryBreakdown: latestOTPayment?.feeBreakdown?.categories || [],
+                                                                                totalPayable: ot.totalDue ?? null,
+                                                                                balanceAfterPayment: ot.outstanding,
+                                                                                excess: ot.excess ?? 0,
+                                                                                monthKey: ot.monthKey,
+                                                                                adjustments: ot.adjustments ?? [],
+                                                                                collectedByName: latestOTPayment?.collectedByName || null,
+                                                                                gatewayPaymentId: latestOTPayment?.gatewayPaymentId || null,
+                                                                                gatewayOrderId: latestOTPayment?.gatewayOrderId || null,
+                                                                            });
                                                                         }}
                                                                         className="col-span-2 text-[10px] text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded px-2 py-1 text-center transition-colors flex items-center justify-center gap-1"
                                                                     >
                                                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                                                                        View Receipt / History
+                                                                        View Receipt
                                                                     </button>
                                                                 )}
                                                                 {/* Collect Remaining */}
@@ -2430,28 +2457,46 @@ export default function FeesDashboardPage() {
                                                     {/* ── PARTIAL card action buttons ── */}
                                                     {status === 'PARTIAL' && (
                                                         <div className="mt-2 grid grid-cols-2 gap-1" onClick={e => e.stopPropagation()}>
-                                                            {/* View Receipt — opens payment history modal */}
+                                                            {/* View Receipt — opens ReceiptModal if payment exists, else history modal */}
                                                             {hasPeriodHistory && (
                                                                 <button
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        setPaymentHistoryData({
-                                                                            monthKey: periodMonths[0],
-                                                                            months: periodMonths,
-                                                                            label,
-                                                                            totalDue: period.totalDue,
-                                                                            totalPaid: period.totalPaid,
-                                                                            outstanding,
+                                                                        // Use period.payments directly (embedded in feePeriods/legacy object) as primary source
+                                                                        const allPeriodPmts: any[] = period.payments?.length > 0 ? period.payments : periodPayments;
+                                                                        const latestPeriodPayment = allPeriodPmts.at(-1);
+                                                                        const s = students.find((st: any) => st.id.toString() === selectedStudentId);
+                                                                        const lastPeriodAdj = periodAdjustments.at(-1);
+                                                                        setReceiptData({
+                                                                            receiptNumber: latestPeriodPayment?.receiptNumber,
+                                                                            paymentDate: latestPeriodPayment?.paymentDate ?? lastPeriodAdj?.adjustedAt,
+                                                                            amountPaid: latestPeriodPayment ? latestPeriodPayment.amountPaid : 0,
+                                                                            paymentMethod: latestPeriodPayment?.paymentMethod ?? 'Fee Adjustment',
+                                                                            studentName: `${s?.firstName} ${s?.lastName}`,
+                                                                            studentClass: s?.class?.name || null,
+                                                                            studentSection: s?.section?.name || null,
+                                                                            feeCategory: label,
+                                                                            academicYear: collectionYear,
+                                                                            monthsPaid: label,
+                                                                            totalBaseFee: latestPeriodPayment?.baseFeeAmount || 0,
+                                                                            totalLateFee: latestPeriodPayment?.otherFeeAmount || 0,
+                                                                            components: latestPeriodPayment?.components ?? [],
+                                                                            appliedDiscounts: latestPeriodPayment?.feeBreakdown?.discounts || (latestPeriodPayment?.discountAmount > 0 ? [{ name: 'Discount', amount: latestPeriodPayment.discountAmount }] : []),
+                                                                            categoryBreakdown: latestPeriodPayment?.feeBreakdown?.categories || [],
+                                                                            totalPayable: period.totalDue ?? null,
+                                                                            balanceAfterPayment: outstanding,
                                                                             excess: period.excess ?? 0,
-                                                                            status,
-                                                                            payments: periodPayments,
-                                                                            adjustments: periodAdjustments,
+                                                                            monthKey: periodMonths[0],
+                                                                            adjustments: periodAdjustments ?? [],
+                                                                            collectedByName: latestPeriodPayment?.collectedByName || null,
+                                                                            gatewayPaymentId: latestPeriodPayment?.gatewayPaymentId || null,
+                                                                            gatewayOrderId: latestPeriodPayment?.gatewayOrderId || null,
                                                                         });
                                                                     }}
                                                                     className="col-span-2 text-[10px] text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded px-2 py-1 text-center transition-colors flex items-center justify-center gap-1"
                                                                 >
                                                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                                                                    View Receipt / History
+                                                                    View Receipt
                                                                 </button>
                                                             )}
                                                             {/* Collect Remaining */}
