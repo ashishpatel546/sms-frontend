@@ -78,8 +78,8 @@ export default function ReportsDashboard() {
 
     // Fee Received Filters
     const [receivedSessionId, setReceivedSessionId] = useState('');
-    const [receivedFromDate, setReceivedFromDate] = useState('');
-    const [receivedToDate, setReceivedToDate] = useState('');
+    const [receivedFromDate, setReceivedFromDate] = useState(new Date().toISOString().split('T')[0]);
+    const [receivedToDate, setReceivedToDate] = useState(new Date().toISOString().split('T')[0]);
     const [receivedClassId, setReceivedClassId] = useState('');
     const [receivedAvailableSections, setReceivedAvailableSections] = useState<any[]>([]);
     const [receivedSectionId, setReceivedSectionId] = useState('');
@@ -699,20 +699,68 @@ export default function ReportsDashboard() {
                                     <h2 className="text-lg font-bold text-slate-800">Recent Fee Adjustments (Waive-off & Refund)</h2>
                                     <p className="text-sm text-gray-500">Log of recent records from the fee_adjustment table.</p>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                     <input 
                                         type="date" 
                                         className="border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
                                         value={feeAdjustmentsFromDate}
-                                        onChange={(e) => setFeeAdjustmentsFromDate(e.target.value)}
+                                        onChange={(e) => {
+                                            const from = e.target.value;
+                                            setFeeAdjustmentsFromDate(from);
+                                            // Auto-clamp toDate if it exceeds 31 days from new fromDate
+                                            if (from) {
+                                                const maxTo = new Date(from);
+                                                maxTo.setDate(maxTo.getDate() + 31);
+                                                const maxToStr = maxTo.toISOString().split('T')[0];
+                                                if (feeAdjustmentsToDate > maxToStr) setFeeAdjustmentsToDate(maxToStr);
+                                                if (feeAdjustmentsToDate < from) setFeeAdjustmentsToDate(from);
+                                            }
+                                        }}
                                     />
                                     <span className="text-slate-500 text-sm">to</span>
                                     <input 
                                         type="date" 
                                         className="border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                        min={feeAdjustmentsFromDate}
+                                        max={(() => { const d = new Date(feeAdjustmentsFromDate); d.setDate(d.getDate() + 31); return d.toISOString().split('T')[0]; })()}
                                         value={feeAdjustmentsToDate}
-                                        onChange={(e) => setFeeAdjustmentsToDate(e.target.value)}
+                                        onChange={(e) => {
+                                            const to = e.target.value;
+                                            const from = feeAdjustmentsFromDate;
+                                            const diffDays = (new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24);
+                                            if (diffDays > 31) { toast.error('Date range cannot exceed 31 days'); return; }
+                                            if (to < from) { toast.error('End date cannot be before start date'); return; }
+                                            setFeeAdjustmentsToDate(to);
+                                        }}
                                     />
+                                    <span className="text-xs text-slate-400">Max 31 days</span>
+                                    {feeAdjustments.length > 0 && (
+                                        <button
+                                            onClick={() => {
+                                                const header = ['Date', 'Student', 'Type', 'Amount', 'Recorded By', 'Permitted By'];
+                                                const rows = feeAdjustments.map((adj: any) => [
+                                                    adj.date,
+                                                    `"${(adj.student || '').replace(/"/g, '""')}"`,
+                                                    adj.type,
+                                                    adj.amount,
+                                                    `"${(adj.recordedBy || '').replace(/"/g, '""')}"`,
+                                                    `"${(adj.permittedBy || '').replace(/"/g, '""')}"`,
+                                                ]);
+                                                const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\n');
+                                                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                                                const url = URL.createObjectURL(blob);
+                                                const a = document.createElement('a');
+                                                a.href = url;
+                                                a.download = `fee-adjustments-${feeAdjustmentsFromDate}-to-${feeAdjustmentsToDate}.csv`;
+                                                a.click();
+                                                URL.revokeObjectURL(url);
+                                            }}
+                                            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors"
+                                        >
+                                            <Download className="w-4 h-4" />
+                                            CSV
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                             <div className="overflow-x-auto">
@@ -724,7 +772,8 @@ export default function ReportsDashboard() {
                                                 <th className="px-5 py-3 font-semibold">Student</th>
                                                 <th className="px-5 py-3 font-semibold">Type</th>
                                                 <th className="px-5 py-3 font-semibold text-right">Amount</th>
-                                                <th className="px-5 py-3 font-semibold">Auth By</th>
+                                                <th className="px-5 py-3 font-semibold">Recorded By</th>
+                                                <th className="px-5 py-3 font-semibold">Permitted By</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -738,7 +787,8 @@ export default function ReportsDashboard() {
                                                         </span>
                                                     </td>
                                                     <td className="px-5 py-3 text-right font-semibold">₹{adj.amount}</td>
-                                                    <td className="px-5 py-3 text-gray-500">{adj.authBy}</td>
+                                                    <td className="px-5 py-3 text-gray-500">{adj.recordedBy}</td>
+                                                    <td className="px-5 py-3 text-gray-500">{adj.permittedBy || '—'}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -1217,16 +1267,36 @@ export default function ReportsDashboard() {
                                     type="date"
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
                                     value={receivedFromDate}
-                                    onChange={(e) => setReceivedFromDate(e.target.value)}
+                                    onChange={(e) => {
+                                        const from = e.target.value;
+                                        setReceivedFromDate(from);
+                                        if (from && receivedToDate) {
+                                            const maxTo = new Date(from);
+                                            maxTo.setDate(maxTo.getDate() + 31);
+                                            const maxToStr = maxTo.toISOString().split('T')[0];
+                                            if (receivedToDate > maxToStr) setReceivedToDate(maxToStr);
+                                            if (receivedToDate < from) setReceivedToDate(from);
+                                        }
+                                    }}
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">To Date</label>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">To Date <span className="text-slate-400 font-normal normal-case">(max 31 days)</span></label>
                                 <input
                                     type="date"
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    min={receivedFromDate || undefined}
+                                    max={receivedFromDate ? (() => { const d = new Date(receivedFromDate); d.setDate(d.getDate() + 31); return d.toISOString().split('T')[0]; })() : undefined}
                                     value={receivedToDate}
-                                    onChange={(e) => setReceivedToDate(e.target.value)}
+                                    onChange={(e) => {
+                                        const to = e.target.value;
+                                        if (receivedFromDate) {
+                                            const diffDays = (new Date(to).getTime() - new Date(receivedFromDate).getTime()) / (1000 * 60 * 60 * 24);
+                                            if (diffDays > 31) { toast.error('Date range cannot exceed 31 days'); return; }
+                                            if (to < receivedFromDate) { toast.error('End date cannot be before start date'); return; }
+                                        }
+                                        setReceivedToDate(to);
+                                    }}
                                 />
                             </div>
                         </div>

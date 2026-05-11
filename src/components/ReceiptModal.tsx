@@ -9,10 +9,11 @@
  */
 
 import React, { useRef, useState, useEffect } from "react";
-import { CheckCircle2, School, CreditCard, CalendarDays, User, Hash } from "lucide-react";
+import { CheckCircle2, School, CreditCard, CalendarDays, User, Hash, MapPin, Phone, Mail, Globe } from "lucide-react";
 import { jsPDF } from "jspdf";
 import { toPng } from "html-to-image";
 import { fetcher } from "@/lib/api";
+import toast from "react-hot-toast";
 
 export interface ReceiptData {
     receiptNumber?: string;
@@ -65,6 +66,7 @@ export interface ReceiptData {
         adjustedAt?: string;
         reason?: string;
         createdByName?: string;
+        permittedByName?: string;
     }>;
     collectedByName?: string;
     gatewayPaymentId?: string;
@@ -96,11 +98,33 @@ export default function ReceiptModal({
     onIssueRefund,
 }: ReceiptModalProps) {
     const [schoolName, setSchoolName] = useState<string>("Loading...");
+    const [schoolTagline, setSchoolTagline] = useState<string | null>(null);
+    const [schoolAddress, setSchoolAddress] = useState<string | null>(null);
+    const [schoolPhone, setSchoolPhone] = useState<string | null>(null);
+    const [schoolEmail, setSchoolEmail] = useState<string | null>(null);
+    const [schoolWebsite, setSchoolWebsite] = useState<string | null>(null);
+    // schoolLogoUrl — raw S3 URL, for display in the modal <img> tag.
+    // logoProxyUrl  — same-origin Next.js proxy URL (/api/proxy-logo?url=...).
+    //   Because it’s same-origin, html-to-image’s internal fetch() can load it
+    //   without CORS restrictions, so the logo embeds correctly in PDFs and print.
+    const [schoolLogoUrl, setSchoolLogoUrl] = useState<string | null>(null);
+    const [logoProxyUrl, setLogoProxyUrl] = useState<string | null>(null);
 
     useEffect(() => {
         fetcher("/school/info")
             .then((data: any) => {
                 if (data?.name) setSchoolName(data.name);
+                setSchoolTagline(data?.tagline ?? null);
+                setSchoolAddress(data?.address ?? null);
+                setSchoolPhone(data?.phone ?? null);
+                setSchoolEmail(data?.email ?? null);
+                setSchoolWebsite(data?.website ?? null);
+                if (data?.logoUrl) {
+                    setSchoolLogoUrl(data.logoUrl);
+                    // Build the same-origin proxy URL. html-to-image fetches this
+                    // via browser fetch() — same-origin means no CORS at all.
+                    setLogoProxyUrl(`/api/proxy-logo?url=${encodeURIComponent(data.logoUrl)}`);
+                }
             })
             .catch(() => {/* keep placeholder */});
     }, []);
@@ -145,9 +169,25 @@ export default function ReceiptModal({
             scrollBody.style.overflow = 'visible';
         }
 
+        // Imperatively swap the logo <img> src to the same-origin proxy URL
+        // before toPng so html-to-image fetches it without CORS issues.
+        const logoImgEl = element.querySelector('[data-receipt-logo]') as HTMLImageElement | null;
+        const originalLogoSrc = logoImgEl?.getAttribute('src') ?? null;
+        if (logoImgEl) {
+            if (logoProxyUrl) {
+                logoImgEl.src = logoProxyUrl;
+            } else {
+                // No proxy URL — use a transparent placeholder so toPng never
+                // tries to fetch the cross-origin S3 URL.
+                logoImgEl.src = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+                logoImgEl.style.visibility = 'hidden';
+            }
+        }
+
         try {
             const imgData = await toPng(element, {
                 pixelRatio: 2,
+                skipFonts: true,
                 filter: (node: Node) => {
                     const el = node as HTMLElement;
                     if (!el.classList) return true;
@@ -163,6 +203,11 @@ export default function ReceiptModal({
             if (scrollBody) {
                 scrollBody.style.maxHeight = sbOriginalMaxHeight;
                 scrollBody.style.overflow = sbOriginalOverflow;
+            }
+            // Restore logo img src
+            if (logoImgEl) {
+                if (originalLogoSrc !== null) logoImgEl.src = originalLogoSrc;
+                logoImgEl.style.visibility = '';
             }
 
             // Inject a single <img> — one element = exactly one print page,
@@ -215,13 +260,19 @@ export default function ReceiptModal({
                 }, 1500);
             }, 150);
 
-        } catch {
+        } catch (err) {
+            console.error('[ReceiptModal] Print toPng error:', err);
             element.style.maxHeight = originalMaxHeight;
             if (scrollBody) {
                 scrollBody.style.maxHeight = sbOriginalMaxHeight;
                 scrollBody.style.overflow = sbOriginalOverflow;
             }
+            if (logoImgEl) {
+                if (originalLogoSrc !== null) logoImgEl.src = originalLogoSrc;
+                logoImgEl.style.visibility = '';
+            }
             setIsPrinting(false);
+            toast.error('Failed to prepare print. Please try again.');
         }
     };
 
@@ -245,9 +296,25 @@ export default function ReceiptModal({
             scrollBody.style.overflow = 'visible';
         }
 
+        // Imperatively swap the logo <img> src to the same-origin proxy URL
+        // before toPng so html-to-image fetches it without CORS issues.
+        const logoImgEl = element.querySelector('[data-receipt-logo]') as HTMLImageElement | null;
+        const originalLogoSrc = logoImgEl?.getAttribute('src') ?? null;
+        if (logoImgEl) {
+            if (logoProxyUrl) {
+                logoImgEl.src = logoProxyUrl;
+            } else {
+                // No proxy URL — use a transparent placeholder so toPng never
+                // tries to fetch the cross-origin S3 URL.
+                logoImgEl.src = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+                logoImgEl.style.visibility = 'hidden';
+            }
+        }
+
         try {
             const imgData = await toPng(element, {
                 pixelRatio: 2,
+                skipFonts: true,
                 filter: (node: Node) => {
                     const el = node as HTMLElement;
                     if (!el.classList) return true;
@@ -283,11 +350,19 @@ export default function ReceiptModal({
             pdf.addImage(imgData, 'PNG', x, margin, fitW, fitH);
 
             pdf.save(`receipt-${receiptData.receiptNumber || 'download'}.pdf`);
+        } catch (err) {
+            console.error('[ReceiptModal] PDF toPng error:', err);
+            toast.error('Failed to generate PDF. Please try again.');
         } finally {
             element.style.maxHeight = originalMaxHeight;
             if (scrollBody) {
                 scrollBody.style.maxHeight = sbOriginalMaxHeight;
                 scrollBody.style.overflow = sbOriginalOverflow;
+            }
+            // Restore logo img src
+            if (logoImgEl) {
+                if (originalLogoSrc !== null) logoImgEl.src = originalLogoSrc;
+                logoImgEl.style.visibility = '';
             }
             setIsDownloading(false);
         }
@@ -432,18 +507,71 @@ export default function ReceiptModal({
                     </div>
 
                     {/* ── Premium Header ── */}
-                    <div className="relative z-10 shrink-0 bg-slate-900 border-b-4 border-emerald-500 px-6 py-6 text-center print:rounded-none overflow-hidden">
+                    <div className="relative z-10 shrink-0 bg-slate-900 border-b-4 border-emerald-500 px-6 py-5 text-center print:rounded-none overflow-hidden">
                         {/* Subtle background pattern */}
                         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-white to-transparent" />
                         
-                        <div className="relative z-10 flex flex-col items-center justify-center">
-                            <div className="bg-white/10 p-2 rounded-full mb-3 inline-flex">
-                                <School className="w-6 h-6 text-emerald-400" />
+                        <div className="relative z-10 flex flex-col items-center justify-center gap-1">
+                            {/* Logo or fallback icon */}
+                            <div className="mb-2">
+                                {schoolLogoUrl ? (
+                                    <img
+                                        data-receipt-logo
+                                        src={schoolLogoUrl}
+                                        alt={schoolName}
+                                        className="h-14 w-auto max-w-[120px] object-contain"
+                                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                    />
+                                ) : (
+                                    <div className="bg-white/10 p-2 rounded-full inline-flex">
+                                        <School className="w-6 h-6 text-emerald-400" />
+                                    </div>
+                                )}
                             </div>
-                            <h2 className="text-white font-black text-xl tracking-wide">
+
+                            {/* School name */}
+                            <h2 className="text-white font-black text-xl tracking-wide leading-tight">
                                 {schoolName}
                             </h2>
-                            <p className="text-slate-300 text-xs mt-1 uppercase tracking-widest font-medium">Official Fee Receipt</p>
+
+                            {/* Tagline */}
+                            {schoolTagline && (
+                                <p className="text-slate-300 text-xs italic leading-snug">{schoolTagline}</p>
+                            )}
+
+                            {/* Address */}
+                            {schoolAddress && (
+                                <p className="text-slate-400 text-[11px] leading-snug max-w-xs flex items-start gap-1 justify-center">
+                                    <MapPin className="w-3 h-3 mt-0.5 shrink-0 text-slate-500" />
+                                    <span>{schoolAddress}</span>
+                                </p>
+                            )}
+
+                            {/* Contact details: phone, email, website */}
+                            {(schoolPhone || schoolEmail || schoolWebsite) && (
+                                <div className="flex flex-wrap justify-center gap-x-3 gap-y-0.5 mt-0.5">
+                                    {schoolPhone && (
+                                        <span className="text-slate-400 text-[11px] flex items-center gap-1">
+                                            <Phone className="w-3 h-3 text-slate-500" />
+                                            {schoolPhone}
+                                        </span>
+                                    )}
+                                    {schoolEmail && (
+                                        <span className="text-slate-400 text-[11px] flex items-center gap-1">
+                                            <Mail className="w-3 h-3 text-slate-500" />
+                                            {schoolEmail}
+                                        </span>
+                                    )}
+                                    {schoolWebsite && (
+                                        <span className="text-slate-400 text-[11px] flex items-center gap-1">
+                                            <Globe className="w-3 h-3 text-slate-500" />
+                                            {schoolWebsite.replace(/^https?:\/\//, '')}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+
+                            <p className="text-slate-300 text-xs mt-2 uppercase tracking-widest font-medium">Official Fee Receipt</p>
                         </div>
                     </div>
 
@@ -619,6 +747,11 @@ export default function ReceiptModal({
                                                         Waived by: {a.createdByName}
                                                     </span>
                                                 )}
+                                                {a.permittedByName && (
+                                                    <span className="block text-xs text-gray-400">
+                                                        Permitted by: {a.permittedByName}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="py-2 text-right text-sm whitespace-nowrap">
                                                 -₹{Number(a.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
@@ -696,18 +829,18 @@ export default function ReceiptModal({
                         )}
 
                         {/* Authorized signature line / Digital generation notice */}
-                        <div className="mt-6 pt-4 border-t border-slate-200 text-xs text-slate-500 flex justify-between items-center">
+                        <div className="mt-6 pt-4 border-t border-slate-200 text-xs text-slate-500 flex justify-between items-center gap-4">
                             {isAdmin ? (
                                 <div className="text-center">
                                     <div className="w-32 border-b border-slate-400 mb-1 h-6"></div>
                                     <span className="font-medium">Authorized Signature</span>
                                 </div>
                             ) : (
-                                <span className="italic bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-100">
+                                <span className="italic bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-100 min-w-0">
                                     This is a digitally generated receipt and does not require a signature.
                                 </span>
                             )}
-                            <span className="font-medium text-slate-400 uppercase tracking-widest text-[10px]">Thank You</span>
+                            <span className="font-medium text-slate-400 uppercase tracking-widest text-[10px] shrink-0">Thank You</span>
                         </div>
                     </div>
 

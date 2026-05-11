@@ -221,6 +221,10 @@ export default function FeesDashboardPage() {
     const [adjType, setAdjType] = useState<'REFUND' | 'WAIVE_OFF'>('REFUND');
     const [adjModalOpen, setAdjModalOpen] = useState(false);
     const [submittingAdj, setSubmittingAdj] = useState(false);
+    const [adjPermittedBySearch, setAdjPermittedBySearch] = useState("");
+    const [adjPermittedByResults, setAdjPermittedByResults] = useState<any[]>([]);
+    const [adjPermittedByUserId, setAdjPermittedByUserId] = useState<number | null>(null);
+    const [adjPermittedByName, setAdjPermittedByName] = useState("");
 
     // Fetch Setup Data
     useEffect(() => {
@@ -835,12 +839,20 @@ export default function FeesDashboardPage() {
         setAdjReason("");
         setAdjPaymentMethod("CASH");
         setAdjType(defaultType);
+        setAdjPermittedBySearch("");
+        setAdjPermittedByResults([]);
+        setAdjPermittedByUserId(null);
+        setAdjPermittedByName("");
         setAdjModalOpen(true);
     };
 
     const handleIssueAdjustment = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedStudentId || !adjFeeMonth) return;
+        if (adjType === 'WAIVE_OFF' && !adjPermittedByUserId) {
+            toast.error('Please select who permitted this waive-off.');
+            return;
+        }
         setSubmittingAdj(true);
         try {
             const body: any = {
@@ -852,6 +864,7 @@ export default function FeesDashboardPage() {
                 type: adjType,
             };
             if (adjType === 'REFUND') body.paymentMethod = adjPaymentMethod;
+            if (adjPermittedByUserId) body.permittedByUserId = adjPermittedByUserId;
             const res = await authFetch(`${API_BASE_URL}/fees/adjustment`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -879,6 +892,19 @@ export default function FeesDashboardPage() {
         } finally {
             setSubmittingAdj(false);
         }
+    };
+
+    const searchPermittedBy = async (query: string) => {
+        setAdjPermittedBySearch(query);
+        if (!query.trim()) { setAdjPermittedByResults([]); return; }
+        try {
+            const res = await authFetch(`${API_BASE_URL}/users?staffOnly=true&name=${encodeURIComponent(query)}&limit=10`);
+            if (res.ok) {
+                const data = await res.json();
+                const users = Array.isArray(data) ? data : (data.data ?? []);
+                setAdjPermittedByResults(users);
+            }
+        } catch { /* ignore */ }
     };
 
     const handleRevertWaiveOff = async (adjustmentId: number) => {
@@ -1224,6 +1250,59 @@ export default function FeesDashboardPage() {
                                     placeholder={adjType === 'REFUND' ? 'e.g. Overpayment, Error correction...' : 'Reason for waiving dues (required)'}
                                 />
                             </div>
+                            {/* Permitted By — required for WAIVE_OFF */}
+                            {adjType === 'WAIVE_OFF' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-900 mb-1">
+                                        Permitted By <span className="text-red-500">*</span>
+                                        <span className="ml-1 text-xs text-gray-400 font-normal">Search staff by name</span>
+                                    </label>
+                                    {adjPermittedByUserId ? (
+                                        <div className="flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2">
+                                            <svg className="w-4 h-4 text-purple-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.121 17.804A7 7 0 1112 19a7 7 0 01-6.879-1.196" /></svg>
+                                            <span className="text-sm font-medium text-purple-800 flex-1">{adjPermittedByName}</span>
+                                            <button type="button" onClick={() => { setAdjPermittedByUserId(null); setAdjPermittedByName(""); setAdjPermittedBySearch(""); }} className="text-gray-400 hover:text-gray-600">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={adjPermittedBySearch}
+                                                onChange={(e) => searchPermittedBy(e.target.value)}
+                                                className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-purple-500 focus:border-purple-500"
+                                                placeholder="Type name to search..."
+                                                autoComplete="off"
+                                            />
+                                            {adjPermittedByResults.length > 0 && (
+                                                <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                                    {adjPermittedByResults.map((u: any) => (
+                                                        <button
+                                                            key={u.id}
+                                                            type="button"
+                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-purple-50 flex items-center gap-2"
+                                                            onClick={() => {
+                                                                const desig = u.designation?.title;
+                                                                const label = desig ? `${u.firstName} ${u.lastName} (${desig})` : `${u.firstName} ${u.lastName}`;
+                                                                setAdjPermittedByUserId(u.id);
+                                                                setAdjPermittedByName(label);
+                                                                setAdjPermittedBySearch("");
+                                                                setAdjPermittedByResults([]);
+                                                            }}
+                                                        >
+                                                            <span className="font-medium text-slate-800">{u.firstName} {u.lastName}</span>
+                                                            <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded ml-auto">
+                                                                {u.designation?.title || u.role?.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                                                            </span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" disabled={submittingAdj} className={`flex-1 text-white py-2.5 rounded-lg font-bold transition-colors disabled:opacity-50 ${adjType === 'REFUND' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-purple-600 hover:bg-purple-700'}`}>
                                     {submittingAdj ? 'Processing...' : adjType === 'REFUND' ? 'Confirm Refund' : 'Confirm Waive Off'}
