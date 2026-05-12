@@ -3,9 +3,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import useSWR from "swr";
 import { API_BASE_URL, fetcher } from "@/lib/api";
-import { authFetch } from "@/lib/auth";
+import { authFetch, getToken } from "@/lib/auth";
 import { Loader } from "@/components/ui/Loader";
 import toast from "react-hot-toast";
+import { getEnv, getSchoolSlug } from "@/lib/env";
+import type { ResultDataForPDF } from "@/lib/result-pdf-document";
 
 interface Props {
     studentId: number | null;
@@ -43,6 +45,8 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
     const categoryDropdownRef = useRef<HTMLDivElement>(null);
     const [editedMarks, setEditedMarks] = useState<any[]>([]);
     const [auditCard, setAuditCard] = useState<any | null>(null);
+    const [isPrinting, setIsPrinting] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     // Initialise selected categories whenever the category list or defaultCategoryId changes
     useEffect(() => {
@@ -230,6 +234,167 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
 
     const canSave = mode !== 'view';
 
+    /** Builds the ResultDataForPDF payload from currently loaded state */
+    const buildResultData = (): ResultDataForPDF => {
+        const visibleCats: any[] = categories.filter((c: any) => selectedCategoryIds.has(c.id));
+
+        const sessionLabel = (() => {
+            // student.session may contain the label; fall back to sessionId
+            const s = (student as any)?.academicSession;
+            if (s?.name) return s.name;
+            if (s?.year) return s.year;
+            return String(sessionId ?? '');
+        })();
+
+        const categoryResults = visibleCats.map((cat: any) => {
+            const isTargetCat = examSettings?.finalTargetCategoryId === cat.id;
+
+            const subjects = (student?.studentSubjects ?? []).map((ss: any) => {
+                const subject = ss.subject || ss.extraSubject;
+                if (!subject) return null;
+                const m = getMark(subject.id, cat.id);
+                const isSplit = subject.hasTheory && subject.hasPractical;
+
+                const theoryTotal     = isSplit ? (m.theoryTotalMarks     != null && m.theoryTotalMarks     !== '' ? Number(m.theoryTotalMarks)     : null) : null;
+                const theoryObtained  = isSplit ? (m.theoryObtainedMarks  != null && m.theoryObtainedMarks  !== '' ? Number(m.theoryObtainedMarks)  : null) : null;
+                const practicalTotal  = isSplit ? (m.practicalTotalMarks  != null && m.practicalTotalMarks  !== '' ? Number(m.practicalTotalMarks)  : null) : null;
+                const practicalObtained = isSplit ? (m.practicalObtainedMarks != null && m.practicalObtainedMarks !== '' ? Number(m.practicalObtainedMarks) : null) : null;
+
+                const totalMarks    = isSplit
+                    ? ((theoryTotal ?? 0) + (practicalTotal ?? 0) > 0 ? (theoryTotal ?? 0) + (practicalTotal ?? 0) : null)
+                    : (m.totalMarks != null && m.totalMarks !== '' ? Number(m.totalMarks) : null);
+                const obtainedMarks = isSplit
+                    ? ((theoryObtained ?? 0) + (practicalObtained ?? 0) > 0 ? (theoryObtained ?? 0) + (practicalObtained ?? 0) : null)
+                    : (m.obtainedMarks != null && m.obtainedMarks !== '' ? Number(m.obtainedMarks) : null);
+
+                const percentage = (totalMarks && totalMarks > 0 && obtainedMarks != null)
+                    ? Number(((obtainedMarks * 100) / totalMarks).toFixed(1))
+                    : null;
+
+                return {
+                    subjectName:       subject.name as string,
+                    hasTheory:         !!subject.hasTheory,
+                    hasPractical:      !!subject.hasPractical,
+                    theoryTotal,
+                    theoryObtained,
+                    practicalTotal,
+                    practicalObtained,
+                    totalMarks,
+                    obtainedMarks,
+                    percentage,
+                    grade:   (m.grade as string | null) ?? null,
+                    isPass:  m.isPass != null ? (m.isPass as boolean) : null,
+                };
+            }).filter(Boolean) as any[];
+
+            // Overall per category
+            let sumTotal = 0, sumObtained = 0;
+            subjects.forEach((subj: any) => {
+                if (subj.totalMarks)    sumTotal    += subj.totalMarks;
+                if (subj.obtainedMarks) sumObtained += subj.obtainedMarks;
+            });
+
+            let overallPercentage: number | null = null;
+            let overallGrade: string | null = null;
+            let overallPass: boolean | null = null;
+
+            if (sumTotal > 0) {
+                overallPercentage = Number(((sumObtained * 100) / sumTotal).toFixed(1));
+                for (const g of (gradingSystems as any[])) {
+                    if (
+                        overallPercentage >= g.minPercentage &&
+                        (overallPercentage < g.maxPercentage || (g.maxPercentage === 100 && overallPercentage <= 100))
+                    ) {
+                        overallGrade = g.gradeName;
+                        overallPass  = !g.isFailGrade;
+                        break;
+                    }
+                }
+            }
+
+            return {
+                categoryName: `${cat.name}${isTargetCat ? ' (Final)' : ''}`,
+                subjects,
+                sumTotal,
+                sumObtained,
+                overallPercentage,
+                overallGrade,
+                overallPass,
+            };
+        });
+
+        return {
+            studentName:  `${student?.firstName ?? ''} ${student?.lastName ?? ''}`.trim(),
+            className:    student?.class?.name ?? '',
+            sectionName:  student?.section?.name ?? '',
+            rollNo:       student?.rollNo ?? null,
+            admissionNo:  student?.admissionNo ?? null,
+            sessionLabel,
+            categories:   categoryResults,
+            generatedAt:  new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        };
+    };
+
+    /** POST result data to /api/result-pdf, returns a PDF Blob */
+    const fetchResultPDF = async (action: 'print' | 'download'): Promise<Blob | null> => {
+        const token = getToken();
+        const slug  = getSchoolSlug();
+        const apiBase = getEnv('API_URL') || 'http://localhost:3000';
+
+        const res = await fetch('/api/result-pdf', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token  ? { 'Authorization': `Bearer ${token}` }  : {}),
+                ...(slug   ? { 'X-School-Slug': slug }               : {}),
+                'X-Api-Base': apiBase,
+            },
+            body: JSON.stringify({ resultData: buildResultData(), action }),
+        });
+
+        if (!res.ok) throw new Error(`result-pdf API returned ${res.status}`);
+        return res.blob();
+    };
+
+    const handlePrint = async () => {
+        setIsPrinting(true);
+        try {
+            const blob = await fetchResultPDF('print');
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const win = window.open(url, '_blank');
+            if (win) win.onload = () => win.print();
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (err) {
+            console.error('[StudentResultModal] Print error:', err);
+            toast.error('Failed to prepare print. Please try again.');
+        } finally {
+            setIsPrinting(false);
+        }
+    };
+
+    const handleDownloadPDF = async () => {
+        setIsDownloading(true);
+        try {
+            const blob = await fetchResultPDF('download');
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const name = `${student?.firstName ?? 'student'}-${student?.lastName ?? ''}-result`.toLowerCase().replace(/\s+/g, '-');
+            a.download = `${name}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+        } catch (err) {
+            console.error('[StudentResultModal] Download error:', err);
+            toast.error('Failed to generate PDF. Please try again.');
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
     /** Opens the audit info card for a saved mark record */
     const openAuditCard = (markRecord: any) => {
         if (!markRecord.id) return;
@@ -320,6 +485,56 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                 Save Changes
                             </button>
                         )}
+                        {/* Download PDF */}
+                        <button
+                            onClick={handleDownloadPDF}
+                            disabled={isDownloading || isLoading}
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 min-h-9 disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{ backgroundColor: '#047857', color: '#ffffff' }}
+                            title="Download result as PDF"
+                        >
+                            {isDownloading ? (
+                                <>
+                                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                                    </svg>
+                                    <span className="hidden sm:inline">Generating…</span>
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    <span className="hidden sm:inline">Download PDF</span>
+                                </>
+                            )}
+                        </button>
+                        {/* Print */}
+                        <button
+                            onClick={handlePrint}
+                            disabled={isPrinting || isLoading}
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 min-h-9 disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{ backgroundColor: '#1e293b', color: '#ffffff' }}
+                            title="Print result card"
+                        >
+                            {isPrinting ? (
+                                <>
+                                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                                    </svg>
+                                    <span className="hidden sm:inline">Preparing…</span>
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
+                                    <span className="hidden sm:inline">Print</span>
+                                </>
+                            )}
+                        </button>
                         <button onClick={onClose} className="text-slate-500 hover:text-slate-800 p-1.5 rounded-lg hover:bg-slate-100">
                             <span className="sr-only">Close</span>
                             <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
