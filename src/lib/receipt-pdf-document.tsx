@@ -22,6 +22,7 @@ import {
     Font,
     renderToBuffer,
 } from '@react-pdf/renderer';
+import type { Style } from '@react-pdf/types';
 import path from 'path';
 import type { ReceiptDataForPDF, SchoolInfoForPDF } from './receipt-html-template';
 
@@ -418,8 +419,8 @@ function ReceiptDocument({ data, school, isAdmin }: Props) {
                                 key={row.key}
                                 style={[
                                     s.tblRow,
-                                    row.rowStyle ?? {},
-                                    idx === rows.length - 1 ? s.tblRowLast : {},
+                                    (row.rowStyle ?? {}) as Style,
+                                    (idx === rows.length - 1 ? s.tblRowLast : {}) as Style,
                                 ]}
                             >
                                 {row.desc}
