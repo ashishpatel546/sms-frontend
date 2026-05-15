@@ -9,6 +9,7 @@ import { getUser } from './auth';
 const ROLE_LEVEL: Record<string, number> = {
     SUPER_ADMIN: 100,
     ADMIN: 80,
+    HR_ADMIN: 70,
     SUB_ADMIN: 60,
     TEACHER: 40,
     PARENT: 20,
@@ -64,6 +65,17 @@ export interface RbacPermissions {
 
     /** Enrollment management (SUB_ADMIN+) */
     canManageEnrollments: boolean;
+
+    /** HR Portal: view own attendance/leaves/salary (TEACHER+) */
+    canAccessHRSelfService: boolean;
+    /** HR Portal: manage staff attendance, leaves, policies (HR_ADMIN+) */
+    canAccessHR: boolean;
+    /** HR Portal: manage attendance zones, policies, salary config (HR_ADMIN+) */
+    canManageHR: boolean;
+    /** HR Portal: generate/finalize payroll (ADMIN+) */
+    canManagePayroll: boolean;
+    /** HR Portal: is the user an HR_ADMIN specifically */
+    isHrAdmin: boolean;
 }
 
 /**
@@ -110,5 +122,11 @@ export function useRbac(): RbacPermissions {
         canAccessAdminPanel: level >= 80,
 
         canManageEnrollments: level >= 60,
+
+        canAccessHRSelfService: level >= 40,
+        canAccessHR: level >= 70,
+        canManageHR: level >= 70,
+        canManagePayroll: level >= 80,
+        isHrAdmin: level === 70,
     };
 }

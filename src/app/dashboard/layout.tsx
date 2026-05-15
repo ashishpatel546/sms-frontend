@@ -38,6 +38,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const isActive = (path: string) => {
         if (path === '/dashboard') return pathname === '/dashboard';
+        if (path === '/dashboard/hr') return pathname === '/dashboard/hr';
         return pathname === path || pathname.startsWith(`${path}/`);
     };
 
@@ -145,6 +146,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             </li>
                             {rbac.isAdmin && (
                                 <li><Link href="/dashboard/reports" className={getLinkClass("/dashboard/reports")}><span className="ml-3">📊 Reports</span></Link></li>
+                            )}
+                            {rbac.canAccessHR && (
+                                <>
+                                    <li className="pt-4 border-t border-gray-200">
+                                        <p className="px-2 pb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">HR Portal</p>
+                                    </li>
+                                    <li><Link href="/dashboard/hr" className={getLinkClass("/dashboard/hr")}><span className="ml-3">🏢 HR Overview</span></Link></li>
+                                    <li><Link href="/dashboard/hr/staff-attendance" className={getLinkClass("/dashboard/hr/staff-attendance")}><span className="ml-3">🕐 Staff Attendance</span></Link></li>
+                                    <li><Link href="/dashboard/hr/leaves" className={getLinkClass("/dashboard/hr/leaves")}><span className="ml-3">📋 Staff Leaves</span></Link></li>
+                                    <li><Link href="/dashboard/hr/leave-policies" className={getLinkClass("/dashboard/hr/leave-policies")}><span className="ml-3">📜 Leave Policies</span></Link></li>
+                                    {rbac.canManagePayroll && (
+                                        <li><Link href="/dashboard/hr/payroll" className={getLinkClass("/dashboard/hr/payroll")}><span className="ml-3">💵 Payroll</span></Link></li>
+                                    )}
+                                    <li><Link href="/dashboard/hr/salary-config" className={getLinkClass("/dashboard/hr/salary-config")}><span className="ml-3">⚙️ Salary Config</span></Link></li>
+                                    <li><Link href="/dashboard/hr/staff-attendance/zones" className={getLinkClass("/dashboard/hr/staff-attendance/zones")}><span className="ml-3">📍 Attendance Zones</span></Link></li>
+                                </>
+                            )}
+                            {rbac.canAccessHRSelfService && !rbac.canAccessHR && (
+                                <>
+                                    <li className="pt-4 border-t border-gray-200">
+                                        <p className="px-2 pb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">My HR</p>
+                                    </li>
+                                    <li><Link href="/dashboard/my-attendance" className={getLinkClass("/dashboard/my-attendance")}><span className="ml-3">🕐 My Attendance</span></Link></li>
+                                    <li><Link href="/dashboard/my-leaves" className={getLinkClass("/dashboard/my-leaves")}><span className="ml-3">🗓️ My Leaves</span></Link></li>
+                                    <li><Link href="/dashboard/my-salary" className={getLinkClass("/dashboard/my-salary")}><span className="ml-3">💵 My Salary</span></Link></li>
+                                </>
                             )}
                             {rbac.canAccessAdminPanel && (
                                 <>

@@ -11,6 +11,7 @@ export interface AuthUser {
   lastName: string;
   mustChangePassword: boolean;
   mobile?: string;
+  staffId?: number;
 }
 
 export function setToken(token: string): void {
