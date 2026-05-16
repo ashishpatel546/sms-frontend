@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { hrApi } from "@/lib/hr-api";
 import toast, { Toaster } from "react-hot-toast";
+import Link from "next/link";
 import {
   startRegistration,
   startAuthentication,
@@ -15,6 +16,7 @@ export default function AttendanceKioskPage() {
   const [employeeCode, setEmployeeCode] = useState("");
   const [message, setMessage] = useState("");
   const [lastRecord, setLastRecord] = useState<any>(null);
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const today = new Date().toISOString().slice(0, 10);
 
@@ -39,11 +41,8 @@ export default function AttendanceKioskPage() {
     if (!employeeCode) return;
     setStep("verifying");
     try {
-      // Get auth options
       const options = await hrApi.attendance.webauthn.getAuthOptions(Number(employeeCode));
-      // Perform browser WebAuthn
       const authResponse = await startAuthentication({ optionsJSON: options });
-      // Verify on server — automatically records attendance
       const record = await hrApi.attendance.webauthn.verifyAuth(Number(employeeCode), authResponse, today);
       setLastRecord(record);
       setMessage(`Attendance recorded — ${record.status}`);
@@ -56,17 +55,23 @@ export default function AttendanceKioskPage() {
   };
 
   const statusColor =
-    step === "success"
-      ? "bg-green-500"
-      : step === "error"
-      ? "bg-red-500"
-      : step === "verifying"
-      ? "bg-blue-500"
-      : "bg-gray-800";
+    step === "success" ? "bg-green-500"
+    : step === "error" ? "bg-red-500"
+    : step === "verifying" ? "bg-blue-500"
+    : "bg-gray-800";
 
   return (
-    <div className={`min-h-screen flex flex-col items-center justify-center transition-colors duration-500 ${statusColor}`}>
+    <div className={`min-h-screen flex flex-col items-center justify-center transition-colors duration-500 ${statusColor} relative`}>
       <Toaster />
+
+      {/* Back link — subtle top-left corner */}
+      <Link
+        href="/dashboard/hr/staff-attendance"
+        className="absolute top-4 left-4 text-white/70 hover:text-white text-sm flex items-center gap-1 transition-colors"
+      >
+        ← Back to Attendance
+      </Link>
+
       <div className="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-sm text-center space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Attendance Kiosk</h1>
@@ -76,7 +81,7 @@ export default function AttendanceKioskPage() {
         {(step === "idle" || step === "entering") && (
           <>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Enter Employee Code</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Enter Your Employee Code</label>
               <input
                 ref={inputRef}
                 type="number"
@@ -93,9 +98,35 @@ export default function AttendanceKioskPage() {
               disabled={!employeeCode}
               className="w-full bg-blue-600 text-white py-3 rounded-xl text-lg font-semibold hover:bg-blue-700 disabled:opacity-40 transition-colors"
             >
-              Scan Fingerprint / Face
+              Verify Identity →
             </button>
-            <p className="text-xs text-gray-400">Enter your employee code then press the button or Enter to scan your biometric.</p>
+            <p className="text-xs text-gray-400">
+              Type your employee code then press the button. Your browser will prompt for fingerprint, face, or a nearby phone scan to confirm your identity.
+            </p>
+
+            {/* How it works accordion */}
+            <div className="border border-gray-200 rounded-xl text-left overflow-hidden">
+              <button
+                onClick={() => setShowHowItWorks((v) => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <span>How does this work?</span>
+                <span className="text-gray-400">{showHowItWorks ? "▲" : "▼"}</span>
+              </button>
+              {showHowItWorks && (
+                <div className="px-4 pb-4 text-xs text-gray-600 space-y-2 border-t border-gray-100">
+                  <p><strong>This kiosk uses WebAuthn</strong> — the same passwordless standard used by banks and Google. No fingerprint images are ever stored.</p>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li><strong>One-time setup:</strong> HR registers your employee code to your device's biometric (Face ID / fingerprint). A cryptographic key pair is created inside your device's secure chip — the private key never leaves it.</li>
+                    <li><strong>Daily check-in:</strong> Enter your employee code → the server sends a one-time challenge locked to <em>your specific credential</em> → your device asks for your biometric to sign it → attendance is recorded.</li>
+                    <li><strong>Security:</strong> Someone else typing your code cannot mark attendance — the challenge requires <em>your</em> private key on <em>your</em> device. Your phone can also act as the authenticator via Bluetooth / QR scan.</li>
+                  </ol>
+                  <p className="text-gray-400 pt-1">
+                    Haven't registered yet? Log in to the dashboard → <strong>My Attendance</strong> → <strong>Register Device for Kiosk</strong>.
+                  </p>
+                </div>
+              )}
+            </div>
           </>
         )}
 
@@ -103,7 +134,7 @@ export default function AttendanceKioskPage() {
           <div className="space-y-4">
             <div className="w-16 h-16 mx-auto border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
             <p className="text-lg font-medium text-gray-700">Verifying…</p>
-            <p className="text-sm text-gray-500">Please follow your browser's biometric prompt.</p>
+            <p className="text-sm text-gray-500">Please follow your browser's biometric prompt. If a QR code appears, scan it with your registered phone.</p>
           </div>
         )}
 

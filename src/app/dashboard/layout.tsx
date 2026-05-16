@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { getUser, logout, isAuthenticated, getDashboardRoute, getToken, setToken, setTokens, authFetch, resetRefreshState } from "@/lib/auth";
+import { getUser, logout, isAuthenticated, getDashboardRoute, getToken, setToken, setTokens, authFetch, resetRefreshState, isTokenExpired, silentRefresh } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
 import { API_BASE_URL } from "@/lib/api";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -17,11 +17,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const schoolInfo = useSchoolInfo();
 
     useEffect(() => {
-        const u = getUser();
-        if (!u) { router.replace("/"); return; }
-        if (u.mustChangePassword) { router.replace("/change-password"); return; }
-        if (u.role === "PARENT") { router.replace("/parent-dashboard"); return; }
-        setUser(u);
+        const initAuth = async () => {
+            const u = getUser();
+            if (!u) { router.replace("/"); return; }
+            if (u.mustChangePassword) { router.replace("/change-password"); return; }
+            if (u.role === "PARENT") { router.replace("/parent-dashboard"); return; }
+
+            // Proactively refresh expired token before any API calls fire
+            if (isTokenExpired()) {
+                try {
+                    const ok = await silentRefresh();
+                    if (!ok) { logout(); return; }
+                } catch {
+                    // Network error — keep the user logged in; authFetch will retry on the next API call
+                }
+            }
+
+            setUser(u);
+        };
+        initAuth();
     }, [router]);
 
     // When the PWA returns from background, reset any stuck refresh state
@@ -163,7 +177,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     <li><Link href="/dashboard/hr/staff-attendance/zones" className={getLinkClass("/dashboard/hr/staff-attendance/zones")}><span className="ml-3">📍 Attendance Zones</span></Link></li>
                                 </>
                             )}
-                            {rbac.canAccessHRSelfService && !rbac.canAccessHR && (
+                            {rbac.canAccessHRSelfService && (
                                 <>
                                     <li className="pt-4 border-t border-gray-200">
                                         <p className="px-2 pb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">My HR</p>

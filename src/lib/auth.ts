@@ -67,6 +67,44 @@ export function isAuthenticated(): boolean {
   return getUser() !== null;
 }
 
+/** Returns true if the stored access token is missing or past its expiry time. */
+export function isTokenExpired(): boolean {
+  const token = getToken();
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const exp = payload.exp as number | undefined;
+    return exp ? Date.now() / 1000 > exp : false;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Silently refresh the access token using the stored refresh token.
+ * Returns true if the refresh succeeded and new tokens were stored.
+ * Returns false if the refresh token is missing or the server rejected it.
+ * Throws if there is a network error (caller should NOT log out in that case).
+ */
+export async function silentRefresh(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+  const API_BASE_URL = getEnv('API_URL') || 'http://localhost:5000';
+  const slug = getSchoolSlug();
+  const res = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(slug ? { 'X-School-Slug': slug } : {}),
+    },
+    body: JSON.stringify({ refreshToken }),
+  });
+  if (!res.ok) return false;
+  const data = await res.json();
+  setTokens(data.access_token, data.refresh_token ?? refreshToken);
+  return true;
+}
+
 /**
  * Transient in-memory flag set by the login page when redirecting to /change-password
  * because mustChangePassword is true. Resets automatically on any full page refresh

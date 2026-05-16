@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { hrApi, AttendanceZone } from "@/lib/hr-api";
 import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
+import Link from "next/link";
 
 const EMPTY: Partial<AttendanceZone> = { name: "", lat: 0, lng: 0, radiusMeters: 100, isActive: true };
 
@@ -53,8 +54,12 @@ export default function AttendanceZonesPage() {
   return (
     <div className="p-6 space-y-4">
       <Toaster />
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <Link href="/dashboard/hr/staff-attendance" className="text-gray-400 hover:text-gray-700 transition-colors" title="Back to Staff Attendance">
+          ← Back
+        </Link>
         <h1 className="text-xl font-bold text-gray-900">Attendance Geo-Zones</h1>
+        <div className="flex-1" />
         {rbac.canManageHR && (
           <button onClick={openCreate} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
             + New Zone
@@ -93,8 +98,8 @@ export default function AttendanceZonesPage() {
               {zones.map((z) => (
                 <tr key={z.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-900">{z.name}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{z.lat.toFixed(6)}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{z.lng.toFixed(6)}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{Number(z.lat).toFixed(6)}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{Number(z.lng).toFixed(6)}</td>
                   <td className="px-4 py-3">{z.radiusMeters}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs border ${z.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}>

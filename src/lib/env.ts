@@ -33,6 +33,14 @@ export function getSchoolSlug(): string {
       const slug = sub ? sub.split('.')[0] : '';
       if (slug) return slug;
     }
+
+    // Cloudflare tunnel: edusphere.appme.in → "edusphere"
+    if (host.endsWith('.appme.in')) {
+      const sub = host.slice(0, host.length - '.appme.in'.length);
+      const slug = sub ? sub.split('.')[0] : '';
+      const reserved = ['myapp', 'myrealapp'];
+      if (slug && !reserved.includes(slug)) return slug;
+    }
   }
 
   // Last-resort fallback (Docker / bare-IP / CI overrides)

@@ -16,12 +16,13 @@ const ROLE_LABELS: Record<string, { label: string; color: string }> = {
     SUPER_ADMIN: { label: "Super Admin", color: "bg-purple-500/20 text-purple-300 border-purple-500/30" },
     ADMIN: { label: "Admin", color: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
     SUB_ADMIN: { label: "Sub Admin", color: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30" },
+    HR_ADMIN: { label: "HR Admin", color: "bg-orange-500/20 text-orange-300 border-orange-500/30" },
     TEACHER: { label: "Teacher", color: "bg-green-500/20 text-green-300 border-green-500/30" },
     STUDENT: { label: "Student", color: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
     PARENT: { label: "Parent", color: "bg-pink-500/20 text-pink-300 border-pink-500/30" },
 };
 
-const ALL_ROLES = ["", "SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "TEACHER", "PARENT", "STUDENT"];
+const ALL_ROLES = ["", "SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "HR_ADMIN", "TEACHER", "PARENT", "STUDENT"];
 
 export default function AdminPanel() {
     const router = useRouter();
@@ -135,7 +136,7 @@ export default function AdminPanel() {
             if (searchMobile) params.set("mobile", searchMobile);
             if (searchDesignation) params.set("designationId", searchDesignation);
             // staffOnly=true by default unless user explicitly chose to show all or selected a non-staff role
-            const isNonStaffRole = searchRole && !["SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "TEACHER", ""].includes(searchRole);
+            const isNonStaffRole = searchRole && !["SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "HR_ADMIN", "TEACHER", ""].includes(searchRole);
             if (!showAllUsers && !isNonStaffRole) params.set("staffOnly", "true");
             params.set("page", String(overridePage ?? page));
             params.set("limit", String(overrideSize ?? pageSize));

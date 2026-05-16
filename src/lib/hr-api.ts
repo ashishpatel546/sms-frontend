@@ -2,28 +2,18 @@
  * hr-api.ts — Typed API client for all HR Portal endpoints.
  * Uses the same token/slug handling as api.ts.
  */
-import { getToken } from './auth';
-import { getEnv, getSchoolSlug } from './env';
+import { authFetch } from './auth';
+import { getEnv } from './env';
 
 const base = () => getEnv('API_URL') || 'http://localhost:3000';
-
-function headers(extra: Record<string, string> = {}): Record<string, string> {
-  const h: Record<string, string> = { 'Content-Type': 'application/json', ...extra };
-  const slug = getSchoolSlug();
-  if (slug) h['X-School-Slug'] = slug;
-  const token = getToken();
-  if (token) h['Authorization'] = `Bearer ${token}`;
-  return h;
-}
 
 async function req<T>(
   method: string,
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const res = await fetch(`${base()}${path}`, {
+  const res = await authFetch(`${base()}${path}`, {
     method,
-    headers: headers(),
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
@@ -33,7 +23,8 @@ async function req<T>(
     throw err;
   }
   if (res.status === 204) return undefined as T;
-  return res.json();
+  const text = await res.text();
+  return text ? JSON.parse(text) : (undefined as T);
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -167,6 +158,23 @@ export interface StaffBiometric {
   credentialId: string;
   deviceName: string;
   registeredAt: string;
+  staffId?: number;
+  staff?: { id: number; employeeCode: number; user: { firstName: string; lastName: string } };
+}
+
+export interface WebauthnRegistrationPermit {
+  id: number;
+  staffId: number;
+  grantedByUserId: number;
+  grantedAt: string;
+  expiresAt: string;
+  usedAt: string | null;
+}
+
+export interface WebauthnPermitStatus {
+  allowed: boolean;
+  hasStaffProfile?: boolean;
+  expiresAt?: string;
 }
 
 // ── Leave Policies ─────────────────────────────────────────────────────────
@@ -207,6 +215,10 @@ export const hrApi = {
       checkInTime?: string; checkOutTime?: string;
       clientTimestamp?: string; overrideReason?: string;
     }) => req<StaffAttendanceRecord>('POST', '/hr/staff-attendance', data),
+    selfCheckIn: (data: { lat: number; lng: number; clientTimestamp?: string }) =>
+      req<StaffAttendanceRecord>('POST', '/hr/staff-attendance/self-checkin', data),
+    myMonthly: (month: number, year: number) =>
+      req<StaffAttendanceRecord[]>('GET', `/hr/staff-attendance/monthly/me?month=${month}&year=${year}`),
     monthly: (staffId: number, month: number, year: number) =>
       req<StaffAttendanceRecord[]>('GET', `/hr/staff-attendance/monthly?staffId=${staffId}&month=${month}&year=${year}`),
     daily: (date: string) =>
@@ -225,18 +237,45 @@ export const hrApi = {
         req<AttendanceBypassWindow>('POST', '/hr/staff-attendance/bypass', data),
     },
     webauthn: {
+      // HR: register on behalf of staff
       getRegOptions: (staffId: number) =>
         req<any>('POST', '/hr/staff-attendance/webauthn/register-options', { staffId }),
       verifyReg: (staffId: number, response: any, deviceName?: string) =>
         req<StaffBiometric>('POST', '/hr/staff-attendance/webauthn/register-verify', { staffId, response, deviceName }),
-      getAuthOptions: (employeeCode: number) =>
-        req<any>('GET', `/hr/staff-attendance/webauthn/auth-options?employeeCode=${employeeCode}`),
-      verifyAuth: (employeeCode: number, authenticationResponse: any, date?: string) =>
-        req<StaffAttendanceRecord>('POST', `/hr/staff-attendance/webauthn/verify${date ? `?date=${date}` : ''}`, { employeeCode, authenticationResponse }),
       credentials: (staffId: number) =>
         req<StaffBiometric[]>('GET', `/hr/staff-attendance/webauthn/credentials/${staffId}`),
       deleteCredential: (id: number) =>
         req<void>('DELETE', `/hr/staff-attendance/webauthn/credentials/${id}`),
+      allCredentials: () =>
+        req<StaffBiometric[]>('GET', '/hr/staff-attendance/webauthn/all-credentials'),
+
+      // HR: permit management
+      grantPermit: (staffId: number) =>
+        req<WebauthnRegistrationPermit>('POST', `/hr/staff-attendance/webauthn/permit/${staffId}`),
+      revokePermitByStaff: (staffId: number) =>
+        req<void>('DELETE', `/hr/staff-attendance/webauthn/permit/by-staff/${staffId}`),
+      revokePermit: (permitId: number) =>
+        req<void>('DELETE', `/hr/staff-attendance/webauthn/permit/${permitId}`),
+      listPermits: () =>
+        req<WebauthnRegistrationPermit[]>('GET', '/hr/staff-attendance/webauthn/permits'),
+
+      // Staff self-service
+      myPermitStatus: () =>
+        req<WebauthnPermitStatus>('GET', '/hr/staff-attendance/webauthn/my-permit-status'),
+      selfGetRegOptions: () =>
+        req<any>('POST', '/hr/staff-attendance/webauthn/self/register-options', {}),
+      selfVerifyReg: (response: any, deviceName?: string) =>
+        req<StaffBiometric>('POST', '/hr/staff-attendance/webauthn/self/register-verify', { response, deviceName }),
+      myCredentials: () =>
+        req<StaffBiometric[]>('GET', '/hr/staff-attendance/webauthn/self/credentials'),
+      deleteMyCredential: (id: number) =>
+        req<void>('DELETE', `/hr/staff-attendance/webauthn/self/credentials/${id}`),
+
+      // Kiosk authentication
+      getAuthOptions: (employeeCode: number) =>
+        req<any>('GET', `/hr/staff-attendance/webauthn/auth-options?employeeCode=${employeeCode}`),
+      verifyAuth: (employeeCode: number, authenticationResponse: any, date?: string) =>
+        req<StaffAttendanceRecord>('POST', `/hr/staff-attendance/webauthn/verify${date ? `?date=${date}` : ''}`, { employeeCode, authenticationResponse }),
     },
   },
 

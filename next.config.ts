@@ -1,8 +1,12 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
-  allowedDevOrigins: ["myrealapp.appme.in", "https://myrealapp.appme.in"],
+  allowedDevOrigins: [
+    'myrealapp.appme.in',
+    'https://myrealapp.appme.in',
+    '*.appme.in',
+  ],
   reactCompiler: true,
 };
 

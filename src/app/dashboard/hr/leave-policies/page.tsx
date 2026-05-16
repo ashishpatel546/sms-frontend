@@ -45,8 +45,11 @@ export default function LeavePoliciesPage() {
   };
 
   const handleSeedDefaults = async () => {
-    try { const created = await hrApi.leavePolicies.seedDefaults(); toast.success(`${created.length} default policies seeded`); load(); }
-    catch (e: any) { toast.error(e?.info?.message ?? "Seed failed"); }
+    try {
+      const result = await hrApi.leavePolicies.seedDefaults();
+      toast.success(`${result.length} default ${result.length === 1 ? 'policy' : 'policies'} loaded`);
+      load();
+    } catch (e: any) { toast.error(e?.info?.message ?? "Seed failed"); }
   };
 
   return (
@@ -67,15 +70,33 @@ export default function LeavePoliciesPage() {
       </div>
 
       {/* Info Banner */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-        <h2 className="text-sm font-semibold text-green-900 mb-1">About Leave Policies</h2>
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
+        <h2 className="text-sm font-semibold text-green-900">About Leave Policies</h2>
         <p className="text-xs text-green-800 leading-relaxed">
-          Leave policies define the types of leave available to staff — e.g. <strong>Casual Leave</strong>, <strong>Sick Leave</strong>, <strong>Earned Leave</strong>, and <strong>Maternity Leave</strong>.
-          Each policy has an annual entitlement (total days per year), carry-forward rules, and whether it applies to all staff or specific categories.
-          Click <strong>Seed Defaults</strong> to automatically create the standard set of leave types.
-          Once created, staff members get leave balances populated from these policies each year.
-          If a staff member applies for more days than their balance, the excess is treated as <strong>Loss of Pay (LOP)</strong>.
+          Leave policies define the types of leave available to staff. Each policy sets the annual
+          entitlement, carry-forward rules, and whether it is paid. Once created, staff get leave
+          balances from these policies each year. Leave beyond balance is treated as <strong>Loss of Pay (LOP)</strong>.
         </p>
+        <div>
+          <p className="text-xs font-semibold text-green-900 mb-1.5">"Seed Defaults" creates the following standard policies:</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            {[
+              { name: "Casual Leave (CL)",    days: 12,  cf: false, cfMax: 0,  paid: true },
+              { name: "Sick Leave (SL)",       days: 12,  cf: false, cfMax: 0,  paid: true },
+              { name: "Earned Leave (EL)",     days: 15,  cf: true,  cfMax: 30, paid: true },
+              { name: "Maternity Leave (ML)",  days: 180, cf: false, cfMax: 0,  paid: true },
+              { name: "Paternity Leave (PL)",  days: 15,  cf: false, cfMax: 0,  paid: true },
+            ].map((p) => (
+              <div key={p.name} className="flex items-center justify-between bg-white border border-green-100 rounded-md px-3 py-1.5 text-xs">
+                <span className="font-medium text-gray-800">{p.name}</span>
+                <span className="text-gray-500 space-x-2">
+                  <span>{p.days} days/yr</span>
+                  {p.cf && <span className="text-blue-600">↩ max {p.cfMax} days carry-fwd</span>}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {loading ? (
@@ -104,7 +125,7 @@ export default function LeavePoliciesPage() {
                   <td className="px-4 py-3 font-medium text-gray-900">{p.name}</td>
                   <td className="px-4 py-3 text-gray-500 font-mono">{p.code}</td>
                   <td className="px-4 py-3">{p.totalDaysPerYear}</td>
-                  <td className="px-4 py-3">{p.carryForward ? `Yes (max ${p.maxCarryForwardDays}d)` : "No"}</td>
+                  <td className="px-4 py-3">{p.carryForward ? `Yes (max ${Math.round(p.maxCarryForwardDays)} days)` : "No"}</td>
                   <td className="px-4 py-3">{p.isPaid ? "Paid" : "Unpaid"}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs border ${p.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}>
@@ -140,7 +161,7 @@ export default function LeavePoliciesPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Days / Year</label>
-                <input type="number" min={0} value={form.totalDaysPerYear ?? 0} onChange={(e) => setForm((f) => ({ ...f, totalDaysPerYear: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
+                <input type="number" min={0} step={1} value={form.totalDaysPerYear ?? 0} onChange={(e) => setForm((f) => ({ ...f, totalDaysPerYear: parseInt(e.target.value) || 0 }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
               </div>
               <div className="flex items-center gap-2">
                 <input id="cf" type="checkbox" checked={form.carryForward ?? false} onChange={(e) => setForm((f) => ({ ...f, carryForward: e.target.checked }))} className="rounded" />
@@ -148,7 +169,7 @@ export default function LeavePoliciesPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Max Carry-Forward Days</label>
-                <input type="number" min={0} value={form.maxCarryForwardDays ?? 0} onChange={(e) => setForm((f) => ({ ...f, maxCarryForwardDays: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" disabled={!form.carryForward} />
+                <input type="number" min={0} step={1} value={form.maxCarryForwardDays ?? 0} onChange={(e) => setForm((f) => ({ ...f, maxCarryForwardDays: parseInt(e.target.value) || 0 }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" disabled={!form.carryForward} />
               </div>
               <div className="flex items-center gap-2">
                 <input id="paid" type="checkbox" checked={form.isPaid ?? true} onChange={(e) => setForm((f) => ({ ...f, isPaid: e.target.checked }))} className="rounded" />
