@@ -23,14 +23,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             if (u.mustChangePassword) { router.replace("/change-password"); return; }
             if (u.role === "PARENT") { router.replace("/parent-dashboard"); return; }
 
-            // Proactively refresh expired token before any API calls fire
+            // Proactively refresh expired token before any API calls fire.
+            // IMPORTANT: never log the user out from here. If the refresh fails
+            // (transient server error, race with another tab/hook rotating the
+            // refresh token, etc.), authFetch's global 401 handler will retry
+            // on the next real API call. Hard-logging out here causes spurious
+            // sign-outs when the user returns to the tab after a while.
             if (isTokenExpired()) {
-                try {
-                    const ok = await silentRefresh();
-                    if (!ok) { logout(); return; }
-                } catch {
-                    // Network error — keep the user logged in; authFetch will retry on the next API call
-                }
+                try { await silentRefresh(); } catch { /* network error — ignore */ }
             }
 
             setUser(u);

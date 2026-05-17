@@ -43,6 +43,8 @@ const EMPTY_FORM = {
     mothersName: "",
     staffCategory: "",
     designationId: "" as string | number,
+    joiningDate: new Date().toISOString().split('T')[0],
+    exitDate: "",
     isActive: true,
     role: "TEACHER",
     address: {
@@ -242,7 +244,7 @@ export default function AddStaffForm({
             }
 
             // Strip empty optional strings
-            for (const key of ["alternateMobile", "fathersName", "mothersName", "aadhaarNumber", "bloodGroup"] as const) {
+            for (const key of ["alternateMobile", "fathersName", "mothersName", "aadhaarNumber", "bloodGroup", "joiningDate", "exitDate"] as const) {
                 if (payload[key] === "") delete payload[key];
             }
 
@@ -527,6 +529,16 @@ export default function AddStaffForm({
                                 <p className="text-[11px] text-gray-500 mt-1">Roles can be changed later from the Admin panel.</p>
                             </div>
                         )}
+                        <div>
+                            <label className="block mb-1 text-sm font-medium text-gray-900">Joining Date <span className="text-red-500">*</span></label>
+                            <input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleChange} required
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                        </div>
+                        <div>
+                            <label className="block mb-1 text-sm font-medium text-gray-900">Exit Date</label>
+                            <input type="date" name="exitDate" value={formData.exitDate} onChange={handleChange}
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                        </div>
                     </div>
                 </div>
 

@@ -52,7 +52,7 @@ export default function AttendanceZonesPage() {
   };
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
       <div className="flex items-center gap-3">
         <Link href="/dashboard/hr/staff-attendance" className="text-gray-400 hover:text-gray-700 transition-colors" title="Back to Staff Attendance">
@@ -82,47 +82,70 @@ export default function AttendanceZonesPage() {
       ) : zones.length === 0 ? (
         <div className="text-center py-12 text-gray-500 text-sm">No zones defined yet.</div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
-              <tr>
-                <th className="px-4 py-3 text-left">Name</th>
-                <th className="px-4 py-3 text-left">Latitude</th>
-                <th className="px-4 py-3 text-left">Longitude</th>
-                <th className="px-4 py-3 text-left">Radius (m)</th>
-                <th className="px-4 py-3 text-left">Status</th>
-                {rbac.canManageHR && <th className="px-4 py-3 text-left">Actions</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {zones.map((z) => (
-                <tr key={z.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{z.name}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{Number(z.lat).toFixed(6)}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{Number(z.lng).toFixed(6)}</td>
-                  <td className="px-4 py-3">{z.radiusMeters}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs border ${z.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}>
-                      {z.isActive ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  {rbac.canManageHR && (
-                    <td className="px-4 py-3 flex gap-2">
-                      <button onClick={() => openEdit(z)} className="text-blue-600 hover:underline text-xs">Edit</button>
-                      <button onClick={() => handleDelete(z.id)} className="text-red-600 hover:underline text-xs">Delete</button>
-                    </td>
-                  )}
+        <>
+          {/* Mobile cards */}
+          <div className="sm:hidden space-y-3">
+            {zones.map((z) => (
+              <div key={z.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-medium text-gray-900 text-sm">{z.name}</p>
+                  <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs border ${z.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}>{z.isActive ? "Active" : "Inactive"}</span>
+                </div>
+                <div className="text-xs text-gray-600 font-mono space-y-0.5">
+                  <div>{Number(z.lat).toFixed(6)}, {Number(z.lng).toFixed(6)}</div>
+                  <div className="text-gray-500">Radius: {z.radiusMeters}m</div>
+                </div>
+                {rbac.canManageHR && (
+                  <div className="flex gap-3">
+                    <button onClick={() => openEdit(z)} className="text-blue-600 hover:underline text-xs">Edit</button>
+                    <button onClick={() => handleDelete(z.id)} className="text-red-600 hover:underline text-xs">Delete</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Tablet+ table */}
+          <div className="hidden sm:block overflow-x-auto rounded-xl border border-gray-200">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
+                <tr>
+                  <th className="px-4 py-3 text-left">Name</th>
+                  <th className="px-4 py-3 text-left">Latitude</th>
+                  <th className="px-4 py-3 text-left">Longitude</th>
+                  <th className="px-4 py-3 text-left">Radius (m)</th>
+                  <th className="px-4 py-3 text-left">Status</th>
+                  {rbac.canManageHR && <th className="px-4 py-3 text-left">Actions</th>}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {zones.map((z) => (
+                  <tr key={z.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium text-gray-900">{z.name}</td>
+                    <td className="px-4 py-3 font-mono text-xs">{Number(z.lat).toFixed(6)}</td>
+                    <td className="px-4 py-3 font-mono text-xs">{Number(z.lng).toFixed(6)}</td>
+                    <td className="px-4 py-3">{z.radiusMeters}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs border ${z.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}>{z.isActive ? "Active" : "Inactive"}</span>
+                    </td>
+                    {rbac.canManageHR && (
+                      <td className="px-4 py-3 flex gap-2">
+                        <button onClick={() => openEdit(z)} className="text-blue-600 hover:underline text-xs">Edit</button>
+                        <button onClick={() => handleDelete(z.id)} className="text-red-600 hover:underline text-xs">Delete</button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {/* Form modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-sm space-y-4">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 w-full sm:max-w-sm space-y-4 max-h-[90vh] overflow-y-auto">
             <h2 className="font-semibold text-lg">{editId ? "Edit" : "New"} Geo-Zone</h2>
             <div>
               <label className="text-sm font-medium">Zone Name</label>

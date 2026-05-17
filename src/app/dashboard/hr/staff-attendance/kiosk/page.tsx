@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { hrApi } from "@/lib/hr-api";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
+import StaffLookupForm from "@/components/StaffLookupForm";
 import {
   startRegistration,
   startAuthentication,
@@ -14,6 +15,7 @@ type KioskStep = "idle" | "entering" | "verifying" | "success" | "error";
 export default function AttendanceKioskPage() {
   const [step, setStep] = useState<KioskStep>("idle");
   const [employeeCode, setEmployeeCode] = useState("");
+  const [showLookup, setShowLookup] = useState(false);
   const [message, setMessage] = useState("");
   const [lastRecord, setLastRecord] = useState<any>(null);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
@@ -103,6 +105,30 @@ export default function AttendanceKioskPage() {
             <p className="text-xs text-gray-400">
               Type your employee code then press the button. Your browser will prompt for fingerprint, face, or a nearby phone scan to confirm your identity.
             </p>
+
+            {/* Lookup helper — resolve by Staff ID / mobile when the user doesn't remember their employee code */}
+            <div className="border border-gray-200 rounded-xl text-left overflow-hidden">
+              <button
+                onClick={() => setShowLookup((v) => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <span>Don't remember your employee code? Lookup by ID or mobile</span>
+                <span className="text-gray-400">{showLookup ? "▲" : "▼"}</span>
+              </button>
+              {showLookup && (
+                <div className="px-4 pb-4 pt-3 border-t border-gray-100">
+                  <StaffLookupForm
+                    fields={{ employeeCode: false, id: true, mobile: true }}
+                    onResolved={(staff) => {
+                      setEmployeeCode(String(staff.employeeCode));
+                      setStep("entering");
+                      setShowLookup(false);
+                      toast.success(`Loaded ${staff.firstName} ${staff.lastName} (EMP-${staff.employeeCode})`);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
 
             {/* How it works accordion */}
             <div className="border border-gray-200 rounded-xl text-left overflow-hidden">

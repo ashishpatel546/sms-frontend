@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { getUser, isAuthenticated, logout, getToken, getRefreshToken, setToken, setTokens, authFetch, resetRefreshState } from "@/lib/auth";
+import { getSchoolSlug } from "@/lib/env";
 import { API_BASE_URL } from "@/lib/api";
 import { NotificationBell } from "@/components/NotificationBell";
 import NotificationPermissionBanner from "@/components/NotificationPermissionBanner";
@@ -27,9 +28,13 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
         // the latest name from the DB (e.g. after admin updates father's name).
         const rt = getRefreshToken();
         if (rt) {
+            const slug = getSchoolSlug();
             fetch(`${API_BASE_URL}/auth/refresh-token`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(slug ? { 'X-School-Slug': slug } : {}),
+                },
                 body: JSON.stringify({ refreshToken: rt }),
             })
                 .then(res => res.ok ? res.json() : null)

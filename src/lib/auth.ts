@@ -219,9 +219,13 @@ export async function authFetch(
 
     try {
       const API_BASE_URL = getEnv('API_URL') || 'http://localhost:5000';
+      const slug = getSchoolSlug();
       const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(slug ? { 'X-School-Slug': slug } : {}),
+        },
         body: JSON.stringify({ refreshToken }),
         signal: refreshAbortController.signal,
       });

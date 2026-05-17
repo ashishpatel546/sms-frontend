@@ -24,9 +24,23 @@ export default function StaffLeavesPage() {
   const [leaves, setLeaves] = useState<StaffLeaveApplication[]>([]);
   const [policies, setPolicies] = useState<StaffLeavePolicy[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState<StaffLeaveStatus | "">("");
+  const [filterStatus, setFilterStatus] = useState<StaffLeaveStatus | "">("PENDING");
   const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1);
   const [filterYear, setFilterYear] = useState(now.getFullYear());
+  const [filterSearch, setFilterSearch] = useState("");
+  
+  // Committed filters for HR
+  const [committedFilters, setCommittedFilters] = useState<{
+    status: StaffLeaveStatus | "";
+    month: number;
+    year: number;
+    search: string;
+  }>({
+    status: "PENDING",
+    month: now.getMonth() + 1,
+    year: now.getFullYear(),
+    search: "",
+  });
 
   // Apply form state
   const [showApply, setShowApply] = useState(false);
@@ -49,20 +63,51 @@ export default function StaffLeavesPage() {
   const loadLeaves = useCallback(async () => {
     setLoading(true);
     try {
-      const params: any = { month: filterMonth, year: filterYear };
-      if (filterStatus) params.status = filterStatus;
-      // Non-HR staff see only their own leaves
-      if (!rbac.canAccessHR && user?.staffId) params.staffId = user.staffId;
-      const data = await hrApi.leaves.list(params);
-      setLeaves(data);
+      // Non-HR staff: use self-service endpoint (staffId derived from JWT on backend)
+      if (!rbac.canAccessHR) {
+        const data = await hrApi.leaves.myLeaves({ status: filterStatus || undefined, year: filterYear });
+        setLeaves(data);
+      } else {
+        const params: any = { month: committedFilters.month, year: committedFilters.year };
+        if (committedFilters.status) params.status = committedFilters.status;
+        if (committedFilters.search) params.search = committedFilters.search;
+        const data = await hrApi.leaves.list(params);
+        setLeaves(data);
+      }
     } catch { toast.error("Failed to load leaves"); }
     finally { setLoading(false); }
-  }, [filterMonth, filterYear, filterStatus, rbac.canAccessHR, user?.staffId]);
+  }, [committedFilters, filterYear, filterStatus, rbac.canAccessHR]);
 
   useEffect(() => {
     hrApi.leavePolicies.list().then(setPolicies).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     loadLeaves();
   }, [loadLeaves]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCommittedFilters({
+      status: filterStatus,
+      month: filterMonth,
+      year: filterYear,
+      search: filterSearch,
+    });
+  };
+
+  const handleReset = () => {
+    setFilterStatus("PENDING");
+    setFilterMonth(now.getMonth() + 1);
+    setFilterYear(now.getFullYear());
+    setFilterSearch("");
+    setCommittedFilters({
+      status: "PENDING",
+      month: now.getMonth() + 1,
+      year: now.getFullYear(),
+      search: "",
+    });
+  };
 
   const handleApply = async () => {
     if (!applyForm.staffId || !applyForm.leavePolicyId || !applyForm.fromDate || !applyForm.toDate || !applyForm.reason) {
@@ -92,11 +137,11 @@ export default function StaffLeavesPage() {
   };
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">Staff Leaves</h1>
-        <button onClick={() => setShowApply(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+        <button onClick={() => setShowApply(true)} className="bg-blue-600 text-white px-3 py-2 sm:px-4 rounded-lg text-sm font-medium hover:bg-blue-700">
           + Apply Leave
         </button>
       </div>
@@ -113,19 +158,46 @@ export default function StaffLeavesPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <select value={filterMonth} onChange={(e) => setFilterMonth(Number(e.target.value))} className="border rounded-lg px-3 py-2 text-sm">
-          {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-        </select>
-        <select value={filterYear} onChange={(e) => setFilterYear(Number(e.target.value))} className="border rounded-lg px-3 py-2 text-sm">
-          {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((y) => <option key={y}>{y}</option>)}
-        </select>
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="border rounded-lg px-3 py-2 text-sm">
-          <option value="">All Status</option>
-          {(["PENDING","APPROVED","REJECTED","CANCELLED"] as StaffLeaveStatus[]).map((s) => <option key={s}>{s}</option>)}
-        </select>
-        <button onClick={loadLeaves} className="bg-gray-100 border rounded-lg px-3 py-2 text-sm hover:bg-gray-200">Refresh</button>
-      </div>
+      <form onSubmit={handleSearch} className="bg-white border border-gray-200 rounded-xl p-4 mb-6 shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Search Staff</label>
+            <input 
+              type="text" 
+              placeholder="Search by ID, Name, or Emp Code" 
+              value={filterSearch} 
+              onChange={(e) => setFilterSearch(e.target.value)} 
+              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg w-full p-2.5" 
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg w-full p-2.5">
+              <option value="">All Statuses</option>
+              <option value="PENDING">⏳ Pending / Unapproved</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Month</label>
+            <select value={filterMonth} onChange={(e) => setFilterMonth(Number(e.target.value))} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg w-full p-2.5">
+              {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Year</label>
+            <select value={filterYear} onChange={(e) => setFilterYear(Number(e.target.value))} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg w-full p-2.5">
+              {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((y) => <option key={y}>{y}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <button type="submit" className="px-5 py-2.5 bg-blue-700 text-white text-sm font-medium rounded-xl hover:bg-blue-800 transition-colors">Search</button>
+          <button type="button" onClick={handleReset} className="px-5 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors">Reset</button>
+        </div>
+      </form>
 
       {/* Table */}
       {loading ? (
@@ -133,52 +205,109 @@ export default function StaffLeavesPage() {
       ) : leaves.length === 0 ? (
         <p className="text-sm text-gray-500">No leave applications found.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
-              <tr>
-                <th className="px-4 py-3 text-left">Staff</th>
-                <th className="px-4 py-3 text-left">Leave Type</th>
-                <th className="px-4 py-3 text-left">Period</th>
-                <th className="px-4 py-3 text-left">Days</th>
-                <th className="px-4 py-3 text-left">Status</th>
-                {rbac.canAccessHR && <th className="px-4 py-3 text-left">Actions</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {leaves.map((l) => (
-                <tr key={l.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">#{l.staffId}</td>
-                  <td className="px-4 py-3">{l.leavePolicy?.name ?? `#${l.leavePolicyId}`}</td>
-                  <td className="px-4 py-3">{l.fromDate} → {l.toDate}</td>
-                  <td className="px-4 py-3">{l.leaveDays}{l.isLop ? <span className="ml-1 text-red-500 text-xs">(LOP:{l.lopDays}d)</span> : null}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[l.status]}`}>{l.status}</span>
-                  </td>
-                  {rbac.canAccessHR && (
-                    <td className="px-4 py-3 flex gap-2">
-                      {l.status === "PENDING" && (
+        <>
+          {/* Mobile cards */}
+          <div className="sm:hidden space-y-3">
+            {leaves.map((l) => (
+              <div key={l.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium text-gray-900 text-sm">
+                      {rbac.canAccessHR 
+                        ? (l.staff?.user ? `${l.staff.user.firstName} ${l.staff.user.lastName} ` : `Staff #${l.staffId} `) 
+                        : ""}
+                      <span className="text-gray-500">— {l.leavePolicy?.name ?? `#${l.leavePolicyId}`}</span>
+                    </p>
+                    {rbac.canAccessHR && l.staff?.employeeCode && (
+                      <p className="text-xs text-gray-500">Emp Code: {l.staff.employeeCode}</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-0.5">{l.fromDate} → {l.toDate} · {l.leaveDays}d{l.isLop ? ` (LOP:${l.lopDays}d)` : ""}</p>
+                  </div>
+                  <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[l.status]}`}>{l.status}</span>
+                </div>
+                {rbac.canAccessHR && (
+                  <div className="flex gap-3">
+                    {l.status === "PENDING" && (
+                      <>
+                        <button onClick={() => handleApprove(l.id)} className="text-green-600 hover:underline text-xs">Approve</button>
+                        <button onClick={() => { setRejectId(l.id); setRejectReason(""); }} className="text-red-600 hover:underline text-xs">Reject</button>
+                      </>
+                    )}
+                    {["PENDING","APPROVED"].includes(l.status) && (
+                      <button onClick={() => handleCancel(l.id)} className="text-gray-500 hover:underline text-xs">Cancel</button>
+                    )}
+                  </div>
+                )}
+                {!rbac.canAccessHR && ["PENDING","APPROVED"].includes(l.status) && (
+                  <button onClick={() => handleCancel(l.id)} className="text-red-500 hover:underline text-xs">Cancel application</button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Tablet+ table */}
+          <div className="hidden sm:block overflow-x-auto rounded-xl border border-gray-200">
+            <table className="min-w-full text-sm text-left">
+              <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
+                <tr>
+                  {rbac.canAccessHR && <th className="px-4 py-3">Staff</th>}
+                  <th className="px-4 py-3">Leave Type</th>
+                  <th className="px-4 py-3">Period</th>
+                  <th className="px-4 py-3">Days</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {leaves.map((l) => (
+                  <tr key={l.id} className="hover:bg-gray-50 transition-colors">
+                    {rbac.canAccessHR && (
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-gray-900">
+                          {l.staff?.user ? `${l.staff.user.firstName} ${l.staff.user.lastName}` : `Staff #${l.staffId}`}
+                        </div>
+                        {l.staff?.employeeCode && (
+                          <div className="text-xs text-gray-500">Emp Code: {l.staff.employeeCode}</div>
+                        )}
+                      </td>
+                    )}
+                    <td className="px-4 py-3 text-gray-700">{l.leavePolicy?.name ?? `#${l.leavePolicyId}`}</td>
+                    <td className="px-4 py-3 text-gray-700">{l.fromDate} {l.fromDate !== l.toDate ? `→ ${l.toDate}` : ""}</td>
+                    <td className="px-4 py-3 text-gray-700">{l.leaveDays}{l.isLop ? <span className="ml-1 text-red-500 text-xs font-medium">(LOP:{l.lopDays}d)</span> : null}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_STYLES[l.status]}`}>{l.status}</span>
+                    </td>
+                    <td className="px-4 py-4 flex gap-3">
+                      {rbac.canAccessHR ? (
                         <>
-                          <button onClick={() => handleApprove(l.id)} className="text-green-600 hover:underline text-xs">Approve</button>
-                          <button onClick={() => { setRejectId(l.id); setRejectReason(""); }} className="text-red-600 hover:underline text-xs">Reject</button>
+                          {l.status === "PENDING" && (
+                            <>
+                              <button onClick={() => handleApprove(l.id)} className="text-green-600 hover:text-green-800 hover:underline text-xs font-medium">Approve</button>
+                              <button onClick={() => { setRejectId(l.id); setRejectReason(""); }} className="text-red-600 hover:text-red-800 hover:underline text-xs font-medium">Reject</button>
+                            </>
+                          )}
+                          {["PENDING","APPROVED"].includes(l.status) && (
+                            <button onClick={() => handleCancel(l.id)} className="text-gray-500 hover:text-gray-700 hover:underline text-xs font-medium">Cancel</button>
+                          )}
                         </>
-                      )}
-                      {["PENDING","APPROVED"].includes(l.status) && (
-                        <button onClick={() => handleCancel(l.id)} className="text-gray-500 hover:underline text-xs">Cancel</button>
+                      ) : (
+                        ["PENDING","APPROVED"].includes(l.status) && (
+                          <button onClick={() => handleCancel(l.id)} className="text-gray-500 hover:text-gray-700 hover:underline text-xs font-medium">Cancel</button>
+                        )
                       )}
                     </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {/* Apply modal */}
       {showApply && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md space-y-4">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 w-full sm:max-w-md space-y-4 max-h-[90vh] overflow-y-auto">
             <h2 className="font-semibold text-lg">Apply Leave</h2>
             {rbac.canAccessHR && (
               <StaffPicker

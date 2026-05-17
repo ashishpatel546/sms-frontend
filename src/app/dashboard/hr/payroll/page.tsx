@@ -43,7 +43,7 @@ export default function PayrollPage() {
   };
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">Payroll</h1>
@@ -71,51 +71,65 @@ export default function PayrollPage() {
       ) : runs.length === 0 ? (
         <div className="text-center py-12 text-gray-500 text-sm">No payroll runs yet.</div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
-              <tr>
-                <th className="px-4 py-3 text-left">Period</th>
-                <th className="px-4 py-3 text-left">Status</th>
-                <th className="px-4 py-3 text-left">Created</th>
-                <th className="px-4 py-3 text-left">Finalized At</th>
-                <th className="px-4 py-3 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {runs.map((r) => (
-                <tr key={r.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">
-                    {MONTHS[r.month - 1]} {r.year}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${r.status === "FINALIZED" ? "bg-green-50 text-green-700 border-green-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
-                      {r.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500">{new Date(r.createdAt).toLocaleDateString()}</td>
-                  <td className="px-4 py-3 text-gray-500">{r.finalizedAt ? new Date(r.finalizedAt).toLocaleDateString() : "—"}</td>
-                  <td className="px-4 py-3 flex gap-2">
-                    <Link href={`/dashboard/hr/payroll/${r.id}`} className="text-blue-600 hover:underline text-xs">
-                      View Entries
-                    </Link>
-                    {rbac.canManagePayroll && r.status === "DRAFT" && (
-                      <button onClick={() => handleFinalize(r.id, r.month, r.year)} className="text-green-600 hover:underline text-xs">
-                        Finalize
-                      </button>
-                    )}
-                  </td>
+        <>
+          {/* Mobile cards */}
+          <div className="sm:hidden space-y-3">
+            {runs.map((r) => (
+              <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-gray-900">{MONTHS[r.month - 1]} {r.year}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${r.status === "FINALIZED" ? "bg-green-50 text-green-700 border-green-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>{r.status}</span>
+                </div>
+                <p className="text-xs text-gray-500">Created: {new Date(r.createdAt).toLocaleDateString()}{r.finalizedAt ? ` · Finalized: ${new Date(r.finalizedAt).toLocaleDateString()}` : ""}</p>
+                <div className="flex gap-3">
+                  <Link href={`/dashboard/hr/payroll/${r.id}`} className="text-blue-600 hover:underline text-xs">View Entries</Link>
+                  {rbac.canManagePayroll && r.status === "DRAFT" && (
+                    <button onClick={() => handleFinalize(r.id, r.month, r.year)} className="text-green-600 hover:underline text-xs">Finalize</button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tablet+ table */}
+          <div className="hidden sm:block overflow-x-auto rounded-xl border border-gray-200">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
+                <tr>
+                  <th className="px-4 py-3 text-left">Period</th>
+                  <th className="px-4 py-3 text-left">Status</th>
+                  <th className="px-4 py-3 text-left">Created</th>
+                  <th className="px-4 py-3 text-left">Finalized At</th>
+                  <th className="px-4 py-3 text-left">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {runs.map((r) => (
+                  <tr key={r.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium text-gray-900">{MONTHS[r.month - 1]} {r.year}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${r.status === "FINALIZED" ? "bg-green-50 text-green-700 border-green-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>{r.status}</span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-500">{new Date(r.createdAt).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-gray-500">{r.finalizedAt ? new Date(r.finalizedAt).toLocaleDateString() : "—"}</td>
+                    <td className="px-4 py-3 flex gap-2">
+                      <Link href={`/dashboard/hr/payroll/${r.id}`} className="text-blue-600 hover:underline text-xs">View Entries</Link>
+                      {rbac.canManagePayroll && r.status === "DRAFT" && (
+                        <button onClick={() => handleFinalize(r.id, r.month, r.year)} className="text-green-600 hover:underline text-xs">Finalize</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {/* Generate draft modal */}
       {showDraft && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-sm space-y-4">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 w-full sm:max-w-sm space-y-4">
             <h2 className="font-semibold text-lg">Generate Payroll Draft</h2>
             <p className="text-sm text-gray-600">
               This will calculate attendance-adjusted salaries for all staff with an active CTC for the selected month.

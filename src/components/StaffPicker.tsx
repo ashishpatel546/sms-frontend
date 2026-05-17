@@ -10,7 +10,7 @@ export interface StaffResult {
     firstName: string;
     lastName: string;
     mobile?: string;
-    designation?: { name: string };
+    designation?: { title: string };
 }
 
 interface Props {
@@ -138,7 +138,7 @@ export default function StaffPicker({
                         </p>
                         <p className="text-xs text-blue-600">
                             EMP-{selected.employeeCode}
-                            {selected.designation?.name ? ` · ${selected.designation.name}` : ""}
+                            {selected.designation?.title ? ` · ${selected.designation.title}` : ""}
                             {selected.mobile ? ` · ${selected.mobile}` : ""}
                         </p>
                     </div>
@@ -187,7 +187,7 @@ export default function StaffPicker({
                                 </p>
                                 <p className="text-xs text-gray-500">
                                     EMP-{staff.employeeCode}
-                                    {staff.designation?.name ? ` · ${staff.designation.name}` : ""}
+                                    {staff.designation?.title ? ` · ${staff.designation.title}` : ""}
                                     {staff.mobile ? ` · ${staff.mobile}` : ""}
                                 </p>
                             </button>

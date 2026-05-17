@@ -41,9 +41,9 @@ export default function HrOverviewPage() {
   if (loading) return <div className="p-6 text-sm text-gray-500">Loading HR overview…</div>;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-6">
       <Toaster />
-      <h1 className="text-2xl font-bold text-gray-900">HR Portal Overview</h1>
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-900">HR Portal Overview</h1>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -64,9 +64,9 @@ export default function HrOverviewPage() {
           </div>
           <ul className="divide-y divide-gray-100">
             {pendingLeaves.slice(0, 5).map((l) => (
-              <li key={l.id} className="py-2 text-sm flex items-center justify-between">
+              <li key={l.id} className="py-2 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5">
                 <span className="text-gray-700">Staff #{l.staffId} — {l.leavePolicy?.name ?? `Policy #${l.leavePolicyId}`}</span>
-                <span className="text-gray-500">{l.fromDate} → {l.toDate} ({l.leaveDays}d)</span>
+                <span className="text-gray-500 text-xs sm:text-sm">{l.fromDate} → {l.toDate} ({l.leaveDays}d)</span>
               </li>
             ))}
           </ul>

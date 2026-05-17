@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import { hrApi, StaffAttendanceRecord, StaffBiometric, WebauthnPermitStatus } from "@/lib/hr-api";
 import toast, { Toaster } from "react-hot-toast";
 import { startRegistration } from "@simplewebauthn/browser";
+import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
+import { API_BASE_URL } from "@/lib/api";
+import { authFetch } from "@/lib/auth";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const STATUS_STYLES: Record<string, string> = {
@@ -12,8 +15,27 @@ const STATUS_STYLES: Record<string, string> = {
   ABSENT: "bg-red-100 text-red-700 border-red-200",
   HALF_DAY: "bg-blue-100 text-blue-700 border-blue-200",
   ON_LEAVE: "bg-purple-100 text-purple-700 border-purple-200",
-  HOLIDAY: "bg-gray-100 text-gray-500 border-gray-200",
+  HOLIDAY: "bg-sky-100 text-sky-700 border-sky-200",
 };
+
+interface HolidayInfo {
+  id: number;
+  description: string;
+  startDate: string;
+  endDate: string;
+  isEntireSchool: boolean;
+}
+
+/** Returns the holiday description if `dateStr` (YYYY-MM-DD) falls within a school-wide holiday range. */
+function findHolidayFor(dateStr: string, holidays: HolidayInfo[]): HolidayInfo | null {
+  for (const h of holidays) {
+    if (!h.isEntireSchool) continue;
+    const start = (h.startDate || "").slice(0, 10);
+    const end = (h.endDate || "").slice(0, 10);
+    if (start && end && dateStr >= start && dateStr <= end) return h;
+  }
+  return null;
+}
 const now = new Date();
 const todayStr = now.toISOString().slice(0, 10);
 
@@ -24,6 +46,7 @@ export default function MyAttendancePage() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [loading, setLoading] = useState(false);
+  const [holidays, setHolidays] = useState<HolidayInfo[]>([]);
 
   // Today's check-in state
   const [checkInState, setCheckInState] = useState<CheckInState>("idle");
@@ -94,6 +117,20 @@ export default function MyAttendancePage() {
     return () => { cancelled = true; };
   }, []);
 
+  // Load school holidays once — used to mark HOLIDAY days in the calendar
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await authFetch(`${API_BASE_URL}/holidays`);
+        if (!res.ok) return;
+        const list = await res.json();
+        if (!cancelled) setHolidays(Array.isArray(list) ? list : []);
+      } catch { /* ignore — holidays optional */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const handleRegisterDevice = async () => {
     setRegState("registering");
     setRegMsg("Follow the prompt to scan your fingerprint or face…");
@@ -158,15 +195,40 @@ export default function MyAttendancePage() {
     );
   };
 
+  // ── Compute month-level stats including auto-derived holidays (Sundays + school-wide holidays) ──
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const recordByDate = new Map(records.map((r) => [r.date, r]));
+  let holidayCount = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    if (recordByDate.has(dateStr)) continue; // an explicit record (PRESENT/LATE/etc.) overrides
+    const isSunday = new Date(year, month - 1, d).getDay() === 0;
+    if (isSunday || findHolidayFor(dateStr, holidays)) holidayCount++;
+  }
+
   const counts = {
     PRESENT: records.filter((r) => r.status === "PRESENT").length,
     LATE: records.filter((r) => r.status === "LATE").length,
-    ABSENT: records.filter((r) => r.status === "ABSENT").length,
+    HALF_DAY: records.filter((r) => r.status === "HALF_DAY").length,
     ON_LEAVE: records.filter((r) => r.status === "ON_LEAVE").length,
+    ABSENT: records.filter((r) => r.status === "ABSENT").length,
+    HOLIDAY: records.filter((r) => r.status === "HOLIDAY").length + holidayCount,
   };
+  const presentish = counts.PRESENT + counts.LATE + counts.HALF_DAY;
+  const workingMarked = counts.PRESENT + counts.LATE + counts.HALF_DAY + counts.ON_LEAVE + counts.ABSENT;
+  const presentPct = workingMarked > 0 ? Math.round((presentish / workingMarked) * 100) : 0;
+
+  const pieData = [
+    { name: "Present", value: counts.PRESENT, fill: "#22c55e" },
+    { name: "Late", value: counts.LATE, fill: "#facc15" },
+    { name: "Half Day", value: counts.HALF_DAY, fill: "#a855f7" },
+    { name: "Leave", value: counts.ON_LEAVE, fill: "#3b82f6" },
+    { name: "Absent", value: counts.ABSENT, fill: "#ef4444" },
+    { name: "Holiday", value: counts.HOLIDAY, fill: "#0ea5e9" },
+  ].filter((d) => d.value > 0);
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
       <h1 className="text-xl font-bold text-gray-900">My Attendance</h1>
 
@@ -339,13 +401,56 @@ export default function MyAttendancePage() {
         </select>
       </div>
 
-      {/* Summary chips */}
-      <div className="flex flex-wrap gap-3">
-        {Object.entries(counts).map(([status, count]) => (
-          <div key={status} className={`px-3 py-1.5 rounded-full text-xs font-medium border ${STATUS_STYLES[status] ?? "bg-gray-100 text-gray-600"}`}>
-            {status}: {count}
+      {/* Calendar + Donut chart panel (matches student attendance style) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <CalendarBlock month={month} year={year} records={records} holidays={holidays} />
+
+        <div className="flex flex-col gap-4">
+          <div className="flex justify-center flex-col items-center bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            {pieData.length > 0 ? (
+              <div className="relative">
+                <ResponsiveContainer width={240} height={240}>
+                  <PieChart>
+                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={3} dataKey="value" />
+                    <Tooltip
+                      formatter={(val: any, name: any) => [`${val} days`, name]}
+                      contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+                  <span className="text-slate-800 text-4xl font-black">{presentPct}%</span>
+                  <span className="text-slate-500 text-xs mt-1 uppercase tracking-widest font-bold">Present</span>
+                </div>
+              </div>
+            ) : (
+              <div className="py-10 text-center">
+                <p className="text-slate-500 text-sm">No attendance data for this month yet.</p>
+              </div>
+            )}
           </div>
-        ))}
+
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Present", value: counts.PRESENT, color: "text-green-600", bg: "bg-green-50 border-green-100" },
+              { label: "Late", value: counts.LATE, color: "text-yellow-600", bg: "bg-yellow-50 border-yellow-100" },
+              { label: "Half Day", value: counts.HALF_DAY, color: "text-purple-600", bg: "bg-purple-50 border-purple-100" },
+              { label: "Leave", value: counts.ON_LEAVE, color: "text-blue-600", bg: "bg-blue-50 border-blue-100" },
+              { label: "Absent", value: counts.ABSENT, color: "text-red-600", bg: "bg-red-50 border-red-100" },
+              { label: "Holiday", value: counts.HOLIDAY, color: "text-sky-600", bg: "bg-sky-50 border-sky-100" },
+            ].map((item) => (
+              <div key={item.label} className={`border rounded-xl p-3 text-center shadow-sm ${item.bg}`}>
+                <div className={`text-2xl font-black ${item.color} mb-1`}>{item.value}</div>
+                <div className="text-slate-500 font-bold text-[10px] uppercase tracking-wider">{item.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-slate-800 rounded-xl p-4 flex items-center justify-between text-white shadow-md">
+            <div className="font-medium text-sm text-slate-300 uppercase tracking-wider">Working Days Marked</div>
+            <div className="text-2xl font-bold">{workingMarked}</div>
+          </div>
+        </div>
       </div>
 
       {/* Records list */}
@@ -354,33 +459,118 @@ export default function MyAttendancePage() {
       ) : records.length === 0 ? (
         <p className="text-sm text-gray-500">No attendance records for this period.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
-              <tr>
-                <th className="px-4 py-3 text-left">Date</th>
-                <th className="px-4 py-3 text-left">Status</th>
-                <th className="px-4 py-3 text-left">Method</th>
-                <th className="px-4 py-3 text-left">Check-In</th>
-                <th className="px-4 py-3 text-left">Check-Out</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {records.map((r) => (
-                <tr key={r.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">{r.date}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500">{r.method}</td>
-                  <td className="px-4 py-3">{r.checkInTime ?? "—"}</td>
-                  <td className="px-4 py-3">{r.checkOutTime ?? "—"}</td>
+        <>
+          {/* Mobile cards */}
+          <div className="sm:hidden space-y-3">
+            {records.map((r) => (
+              <div key={r.date} className="bg-white border border-gray-200 rounded-xl p-4 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-gray-900 text-sm">{r.date}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
+                </div>
+                <div className="text-xs text-gray-600 flex gap-4">
+                  <span><span className="text-gray-400">In: </span>{r.checkInTime ?? "—"}</span>
+                  <span><span className="text-gray-400">Out: </span>{r.checkOutTime ?? "—"}</span>
+                  <span className="text-gray-400">{r.method}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tablet+ table */}
+          <div className="hidden sm:block overflow-x-auto rounded-xl border border-gray-200">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
+                <tr>
+                  <th className="px-4 py-3 text-left">Date</th>
+                  <th className="px-4 py-3 text-left">Status</th>
+                  <th className="px-4 py-3 text-left">Method</th>
+                  <th className="px-4 py-3 text-left">Check-In</th>
+                  <th className="px-4 py-3 text-left">Check-Out</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {records.map((r) => (
+                  <tr key={r.date} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">{r.date}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-500">{r.method}</td>
+                    <td className="px-4 py-3">{r.checkInTime ?? "—"}</td>
+                    <td className="px-4 py-3">{r.checkOutTime ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
+    </div>
+  );
+}
+
+// ── Calendar block ─────────────────────────────────────────────────────────
+function CalendarBlock({ month, year, records, holidays }: { month: number; year: number; records: StaffAttendanceRecord[]; holidays: HolidayInfo[] }) {
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const firstDayOfMonth = new Date(year, month - 1, 1).getDay();
+  const recordByDate = new Map(records.map((r) => [r.date, r]));
+
+  const cells = Array.from({ length: 42 }, (_, i) => {
+    const day = i - firstDayOfMonth + 1;
+    if (day < 1 || day > daysInMonth) return { day: null as number | null, status: null as string | null, date: null as string | null, label: "" };
+    const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const rec = recordByDate.get(dateStr);
+    if (rec) return { day, status: rec.status, date: dateStr, label: `${dateStr}: ${rec.status}` };
+    const isSunday = new Date(year, month - 1, day).getDay() === 0;
+    if (isSunday) return { day, status: "SUNDAY", date: dateStr, label: `${dateStr}: Sunday (Weekly Off)` };
+    const hol = findHolidayFor(dateStr, holidays);
+    if (hol) return { day, status: "HOLIDAY", date: dateStr, label: `${dateStr}: ${hol.description}` };
+    return { day, status: null, date: dateStr, label: dateStr };
+  });
+
+  const colorFor = (status: string | null) => {
+    switch (status) {
+      case "PRESENT": return "bg-green-500 border-green-600 text-white shadow-sm shadow-green-500/20";
+      case "LATE": return "bg-yellow-400 border-yellow-500 text-white shadow-sm shadow-yellow-400/20";
+      case "HALF_DAY": return "bg-purple-500 border-purple-600 text-white shadow-sm shadow-purple-500/20";
+      case "ON_LEAVE": return "bg-blue-500 border-blue-600 text-white shadow-sm shadow-blue-500/20";
+      case "ABSENT": return "bg-red-500 border-red-600 text-white shadow-sm shadow-red-500/20";
+      case "HOLIDAY": return "bg-sky-500 border-sky-600 text-white shadow-sm shadow-sky-500/20";
+      case "SUNDAY": return "bg-orange-50 text-orange-400 border-orange-200";
+      default: return "bg-slate-50 border-slate-200 text-slate-500";
+    }
+  };
+
+  return (
+    <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200">
+      <h4 className="text-slate-800 font-bold text-center mb-4">{monthNames[month - 1]} {year}</h4>
+      <div className="grid grid-cols-7 gap-1 text-center mb-2">
+        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
+          <div key={d} className="text-slate-500 text-[10px] font-bold py-1 uppercase">{d}</div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1.5">
+        {cells.map((c, i) => (
+          <div
+            key={i}
+            title={c.day ? c.label : ""}
+            className={`aspect-square flex items-center justify-center rounded-lg text-xs font-bold border ${c.day ? colorFor(c.status) : "bg-transparent border-transparent"}`}
+          >
+            {c.day ?? ""}
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-wrap justify-center gap-2 mt-4 text-[10px] font-medium text-slate-600">
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500" /> Present</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-yellow-400" /> Late</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-purple-500" /> Half</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Leave</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Absent</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-sky-500" /> Holiday</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-orange-100 border border-orange-200" /> Sunday</span>
+      </div>
     </div>
   );
 }

@@ -73,9 +73,9 @@ export default function PayrollRunPage() {
   const fmt = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <button onClick={() => router.back()} className="text-gray-500 hover:text-gray-700 text-sm">← Back</button>
         <h1 className="text-xl font-bold text-gray-900">
           Payroll — {run ? `${MONTHS[run.month - 1]} ${run.year}` : `Run #${runId}`}
@@ -124,61 +124,81 @@ export default function PayrollRunPage() {
       ) : entries.length === 0 ? (
         <div className="text-center py-12 text-gray-500 text-sm">No entries for this payroll run.</div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
-              <tr>
-                <th className="px-4 py-3 text-left">Staff</th>
-                <th className="px-4 py-3 text-right">Working Days</th>
-                <th className="px-4 py-3 text-right">Present</th>
-                <th className="px-4 py-3 text-right">LOP</th>
-                <th className="px-4 py-3 text-right">Gross (₹)</th>
-                <th className="px-4 py-3 text-right">Deductions (₹)</th>
-                <th className="px-4 py-3 text-right">Net Pay (₹)</th>
-                <th className="px-4 py-3 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {entries.map((e) => {
-                const staffName = e.staff
-                  ? `${e.staff.user.firstName} ${e.staff.user.lastName}`
-                  : `Staff #${e.staffId}`;
-                return (
-                  <tr key={e.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{staffName}</div>
-                      {e.staff?.designation && <div className="text-xs text-gray-500">{e.staff.designation}</div>}
-                    </td>
-                    <td className="px-4 py-3 text-right">{e.workingDays}</td>
-                    <td className="px-4 py-3 text-right">{e.presentDays}</td>
-                    <td className="px-4 py-3 text-right">{e.lopDays > 0 ? <span className="text-red-600">{e.lopDays}</span> : 0}</td>
-                    <td className="px-4 py-3 text-right">{fmt(Number(e.grossEarnings))}</td>
-                    <td className="px-4 py-3 text-right text-red-600">{fmt(Number(e.totalDeductions))}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-green-700">{fmt(Number(e.netPay))}</td>
-                    <td className="px-4 py-3 flex gap-2">
-                      <button
-                        onClick={() => handleDownloadSlip(e)}
-                        disabled={downloadingId === e.staffId}
-                        className="text-blue-600 hover:underline text-xs disabled:opacity-50"
-                      >
-                        {downloadingId === e.staffId ? "…" : "PDF"}
-                      </button>
-                      {run?.status === "DRAFT" && rbac.canManagePayroll && (
-                        <button
-                          onClick={() => handleRecalculate(e.staffId)}
-                          disabled={recalcId === e.staffId}
-                          className="text-amber-600 hover:underline text-xs disabled:opacity-50"
-                        >
-                          {recalcId === e.staffId ? "…" : "Recalc"}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {/* Mobile cards */}
+          <div className="sm:hidden space-y-3">
+            {entries.map((e) => {
+              const staffName = e.staff ? `${e.staff.user.firstName} ${e.staff.user.lastName}` : `Staff #${e.staffId}`;
+              return (
+                <div key={e.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm">{staffName}</p>
+                      {e.staff?.designation && <p className="text-xs text-gray-500">{e.staff.designation}</p>}
+                    </div>
+                    <p className="font-bold text-green-700 shrink-0">{fmt(Number(e.netPay))}</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
+                    <div><span className="text-gray-400">Days </span>{e.workingDays}</div>
+                    <div><span className="text-gray-400">Present </span>{e.presentDays}</div>
+                    <div><span className="text-gray-400">LOP </span><span className={e.lopDays > 0 ? "text-red-600" : ""}>{e.lopDays}</span></div>
+                    <div><span className="text-gray-400">Gross </span>{fmt(Number(e.grossEarnings))}</div>
+                    <div className="col-span-2"><span className="text-gray-400">Deductions </span><span className="text-red-600">{fmt(Number(e.totalDeductions))}</span></div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={() => handleDownloadSlip(e)} disabled={downloadingId === e.staffId} className="text-blue-600 hover:underline text-xs disabled:opacity-50">{downloadingId === e.staffId ? "…" : "Download PDF"}</button>
+                    {run?.status === "DRAFT" && rbac.canManagePayroll && (
+                      <button onClick={() => handleRecalculate(e.staffId)} disabled={recalcId === e.staffId} className="text-amber-600 hover:underline text-xs disabled:opacity-50">{recalcId === e.staffId ? "…" : "Recalculate"}</button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Tablet+ table */}
+          <div className="hidden sm:block overflow-x-auto rounded-xl border border-gray-200">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
+                <tr>
+                  <th className="px-4 py-3 text-left">Staff</th>
+                  <th className="px-4 py-3 text-right">Working Days</th>
+                  <th className="px-4 py-3 text-right">Present</th>
+                  <th className="px-4 py-3 text-right">LOP</th>
+                  <th className="px-4 py-3 text-right">Gross (₹)</th>
+                  <th className="px-4 py-3 text-right">Deductions (₹)</th>
+                  <th className="px-4 py-3 text-right">Net Pay (₹)</th>
+                  <th className="px-4 py-3 text-left">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {entries.map((e) => {
+                  const staffName = e.staff ? `${e.staff.user.firstName} ${e.staff.user.lastName}` : `Staff #${e.staffId}`;
+                  return (
+                    <tr key={e.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-gray-900">{staffName}</div>
+                        {e.staff?.designation && <div className="text-xs text-gray-500">{e.staff.designation}</div>}
+                      </td>
+                      <td className="px-4 py-3 text-right">{e.workingDays}</td>
+                      <td className="px-4 py-3 text-right">{e.presentDays}</td>
+                      <td className="px-4 py-3 text-right">{e.lopDays > 0 ? <span className="text-red-600">{e.lopDays}</span> : 0}</td>
+                      <td className="px-4 py-3 text-right">{fmt(Number(e.grossEarnings))}</td>
+                      <td className="px-4 py-3 text-right text-red-600">{fmt(Number(e.totalDeductions))}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-green-700">{fmt(Number(e.netPay))}</td>
+                      <td className="px-4 py-3 flex gap-2">
+                        <button onClick={() => handleDownloadSlip(e)} disabled={downloadingId === e.staffId} className="text-blue-600 hover:underline text-xs disabled:opacity-50">{downloadingId === e.staffId ? "…" : "PDF"}</button>
+                        {run?.status === "DRAFT" && rbac.canManagePayroll && (
+                          <button onClick={() => handleRecalculate(e.staffId)} disabled={recalcId === e.staffId} className="text-amber-600 hover:underline text-xs disabled:opacity-50">{recalcId === e.staffId ? "…" : "Recalc"}</button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

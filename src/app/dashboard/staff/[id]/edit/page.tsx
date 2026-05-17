@@ -31,6 +31,8 @@ export default function EditStaffPage() {
         mothersName: "",
         staffCategory: "",
         designationId: "",
+        joiningDate: "",
+        exitDate: "",
         isActive: true,
         address: {
             addressLine1: "",
@@ -136,6 +138,8 @@ export default function EditStaffPage() {
                     mothersName: teacher.mothersName || "",
                     staffCategory: teacher.staffCategory || "",
                     designationId: teacher.designation?.id || "",
+                    joiningDate: teacher.joiningDate ? new Date(teacher.joiningDate).toISOString().split('T')[0] : "",
+                    exitDate: teacher.exitDate ? new Date(teacher.exitDate).toISOString().split('T')[0] : "",
                     isActive: teacher.isActive ?? true,
                     address: {
                         addressLine1: teacher.address?.addressLine1 || "",
@@ -244,6 +248,10 @@ export default function EditStaffPage() {
                 payload.designationId = parseInt(payload.designationId as any) as any;
             } else {
                 delete (payload as any).designationId;
+            }
+
+            for (const key of ["alternateMobile", "fathersName", "mothersName", "aadhaarNumber", "bloodGroup", "joiningDate", "exitDate"] as const) {
+                if ((payload as any)[key] === "") delete (payload as any)[key];
             }
 
             const res = await authFetch(`${API_BASE_URL}/staff/${id}`, {
@@ -520,6 +528,16 @@ export default function EditStaffPage() {
                                     {designations.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
                                     {isAdmin && <option value="CREATE_NEW" className="font-bold text-blue-600">+ Create New Designation</option>}
                                 </select>
+                            </div>
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Joining Date <span className="text-red-500">*</span></label>
+                                <input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleChange} required
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                            </div>
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">Exit Date</label>
+                                <input type="date" name="exitDate" value={formData.exitDate} onChange={handleChange}
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
                             </div>
                         </div>
                     </div>
