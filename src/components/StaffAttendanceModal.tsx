@@ -112,7 +112,7 @@ export default function StaffAttendanceModal({ staffId, staffLabel, onClose }: P
                                     {cells.map((c, i) => (
                                         <div
                                             key={i}
-                                            title={c.day ? (c.record ? `${c.date}: ${c.record.status} (${c.record.method})` : c.status === "SUNDAY" ? `${c.date}: Sunday` : c.date) : ""}
+                                            title={c.day ? (c.record ? `${c.date}: ${c.record.status} (${c.record.method})` : c.status === "SUNDAY" ? `${c.date}: Sunday` : c.date ?? "") : ""}
                                             className={`aspect-square flex items-center justify-center rounded-lg text-xs font-bold border ${c.day ? getStatusColor(c.status) : "bg-transparent border-transparent"}`}
                                         >
                                             {c.day || ""}
