@@ -463,7 +463,7 @@ export default function MyAttendancePage() {
           {/* Mobile cards */}
           <div className="sm:hidden space-y-3">
             {records.map((r) => (
-              <div key={r.date} className="bg-white border border-gray-200 rounded-xl p-4 space-y-1.5">
+              <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-900 text-sm">{r.date}</span>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
@@ -491,7 +491,7 @@ export default function MyAttendancePage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {records.map((r) => (
-                  <tr key={r.date} className="hover:bg-gray-50">
+                  <tr key={r.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">{r.date}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>

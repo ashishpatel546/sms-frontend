@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { hrApi, SalaryComponentDef, SalaryComponentDefault, EmployeeSalaryConfig } from "@/lib/hr-api";
+import { hrApi, SalaryComponentDef, EmployeeSalaryConfig } from "@/lib/hr-api";
 import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
 import StaffPicker from "@/components/StaffPicker";
@@ -12,12 +12,11 @@ export default function SalaryConfigPage() {
   const rbac = useRbac();
   const [tab, setTab] = useState<ComponentTab>("ctc");
   const [components, setComponents] = useState<SalaryComponentDef[]>([]);
-  const [compDefaults, setCompDefaults] = useState<SalaryComponentDefault[]>([]);
   const [configs, setConfigs] = useState<EmployeeSalaryConfig[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Component form
-  const EMPTY_COMP: Partial<SalaryComponentDef> = { name: "", code: "", type: "EARNING", calcType: "FLAT", value: 0, isActive: true, displayOrder: 0 };
+  const EMPTY_COMP: Partial<SalaryComponentDef> = { name: "", code: "", type: "EARNING", calcType: "FLAT", value: 0, isDefault: false, isActive: true, displayOrder: 0 };
   const [compForm, setCompForm] = useState<Partial<SalaryComponentDef>>(EMPTY_COMP);
   const [compEditId, setCompEditId] = useState<number | null>(null);
   const [showCompForm, setShowCompForm] = useState(false);
@@ -31,14 +30,7 @@ export default function SalaryConfigPage() {
     setLoading(true);
     try {
       const [comps, cfgs] = await Promise.allSettled([hrApi.salaryComponents.list(), hrApi.employeeSalary.listActive()]);
-      if (comps.status === "fulfilled") {
-        setComponents(comps.value);
-        if (comps.value.length === 0) {
-          try { setCompDefaults(await hrApi.salaryComponents.listDefaults()); } catch { /* ignore */ }
-        } else {
-          setCompDefaults([]);
-        }
-      }
+      if (comps.status === "fulfilled") setComponents(comps.value);
       if (cfgs.status === "fulfilled") setConfigs(cfgs.value);
     } catch { toast.error("Failed to load salary config"); }
     finally { setLoading(false); }
@@ -188,56 +180,14 @@ export default function SalaryConfigPage() {
               Components with <em>% of Basic</em> or <em>% of Gross</em> calculation are recomputed each payroll run.
             </p>
           </div>
-          {rbac.canManagePayroll && components.length > 0 && (
-            <div className="flex justify-end">
+          {rbac.canManagePayroll && (
+            <div className="flex gap-2 justify-end">
+              <button onClick={handleSeedComps} className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">Seed Defaults</button>
               <button onClick={() => { setCompForm(EMPTY_COMP); setCompEditId(null); setShowCompForm(true); }} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">+ Add Component</button>
             </div>
           )}
-
-          {/* Suggested defaults card — shown when no components seeded yet */}
-          {!loading && components.length === 0 && rbac.canManagePayroll && compDefaults.length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 sm:p-5 space-y-3">
-              <div className="flex items-start sm:items-center justify-between gap-3 flex-col sm:flex-row">
-                <div>
-                  <h2 className="text-sm font-semibold text-amber-900">Suggested Indian payroll components</h2>
-                  <p className="text-xs text-amber-800 mt-1">
-                    Apply standard Indian payroll components in one click. You can edit or delete any of them afterwards.
-                  </p>
-                </div>
-                <button
-                  onClick={handleSeedComps}
-                  className="shrink-0 bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700"
-                >
-                  Seed defaults
-                </button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {compDefaults.sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)).map((d) => (
-                  <div key={d.code} className="flex items-center justify-between bg-white border border-amber-100 rounded-md px-3 py-2 text-xs gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold ${d.type === 'EARNING' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {d.type === 'EARNING' ? 'EARN' : 'DEDN'}
-                      </span>
-                      <span className="font-medium text-gray-800 truncate">{d.name}</span>
-                      <span className="text-gray-400 font-mono shrink-0">{d.code}</span>
-                    </div>
-                    <div className="text-gray-500 shrink-0 text-right">
-                      {d.calcType === 'FLAT' ? `₹${Number(d.value).toLocaleString('en-IN')}` : d.calcType === 'PERCENTAGE_OF_BASIC' ? `${d.value}% of Basic` : `${d.value}% of Gross`}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {loading ? <p className="text-sm text-gray-500">Loading…</p> : components.length === 0 ? (
-            <div className="text-center py-8 text-gray-500 text-sm">
-              {rbac.canManagePayroll
-                ? compDefaults.length > 0
-                  ? <>Seed the defaults above, or <button onClick={() => { setCompForm(EMPTY_COMP); setCompEditId(null); setShowCompForm(true); }} className="text-blue-600 hover:underline">add a custom component</button>.</>
-                  : <>No components yet. <button onClick={handleSeedComps} className="text-blue-600 hover:underline">Seed defaults</button> or <button onClick={() => { setCompForm(EMPTY_COMP); setCompEditId(null); setShowCompForm(true); }} className="text-blue-600 hover:underline">add a custom component</button>.</>
-                : 'No salary components configured yet.'}
-            </div>
+            <div className="text-center py-12 text-gray-500 text-sm">No components. Click "Seed Defaults" to add standard components.</div>
           ) : (
             <>
               {/* Mobile cards */}

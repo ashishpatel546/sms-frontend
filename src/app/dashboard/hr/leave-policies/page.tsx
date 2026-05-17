@@ -49,9 +49,11 @@ export default function LeavePoliciesPage() {
         setSettings(settingsResp);
         setSettingsDraft(settingsResp);
       }
-      // Always fetch defaults for HR admins so we can show missing ones even after some policies are created
-      if (rbac.canManageHR) {
+      // Defaults are HR-only and only useful if no policies exist yet
+      if (rbac.canManageHR && policiesList.length === 0) {
         try { setDefaults(await hrApi.leavePolicies.listDefaults()); } catch { /* ignore */ }
+      } else {
+        setDefaults([]);
       }
     } catch { toast.error("Failed to load leave policies"); }
     finally { setLoading(false); }
@@ -79,8 +81,8 @@ export default function LeavePoliciesPage() {
 
   const handleApplyDefaults = async () => {
     try {
-      await hrApi.leavePolicies.seedDefaults();
-      toast.success("Default policies applied");
+      const result = await hrApi.leavePolicies.seedDefaults();
+      toast.success(`${result.length} default ${result.length === 1 ? 'policy' : 'policies'} applied`);
       load();
     } catch (e: any) { toast.error(e?.info?.message ?? "Apply failed"); }
   };
@@ -191,69 +193,50 @@ export default function LeavePoliciesPage() {
         </div>
       )}
 
-      {/* Suggested Defaults card — show whenever there are missing defaults */}
-      {!loading && rbac.canManageHR && defaults.length > 0 && (() => {
-        const existingCodes = new Set(policies.map((p) => p.code));
-        const missingDefaults = defaults.filter((d) => !existingCodes.has(d.code));
-        if (missingDefaults.length === 0) return null;
-        return (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 sm:p-5 space-y-3">
-            <div className="flex items-start sm:items-center justify-between gap-3 flex-col sm:flex-row">
-              <div>
-                <h2 className="text-sm font-semibold text-green-900">
-                  {policies.length === 0
-                    ? 'Suggested defaults'
-                    : `${missingDefaults.length} default ${missingDefaults.length === 1 ? 'policy' : 'policies'} not yet applied`}
-                </h2>
-                <p className="text-xs text-green-800 mt-1">
-                  {policies.length === 0
-                    ? 'Apply the standard Indian-school leave policies in one click. You can edit or delete any of them afterwards.'
-                    : 'These standard policies are not yet in your configuration. Click to add the missing ones.'}
-                </p>
-              </div>
-              <button
-                onClick={handleApplyDefaults}
-                className="shrink-0 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700"
-              >
-                {policies.length === 0 ? 'Apply defaults' : `Add ${missingDefaults.length} missing`}
-              </button>
+      {/* Suggested Defaults card (only when no policies exist) */}
+      {!loading && policies.length === 0 && rbac.canManageHR && defaults.length > 0 && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 sm:p-5 space-y-3">
+          <div className="flex items-start sm:items-center justify-between gap-3 flex-col sm:flex-row">
+            <div>
+              <h2 className="text-sm font-semibold text-green-900">Suggested defaults</h2>
+              <p className="text-xs text-green-800 mt-1">
+                Apply the standard Indian-school leave policies in one click. You can edit or delete any of them afterwards.
+              </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {defaults.map((d) => {
-                const applied = existingCodes.has(d.code);
-                return (
-                  <div key={d.code} className={`flex items-center justify-between rounded-md px-3 py-2 text-xs border ${applied ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-white border-green-100'}`}>
-                    <div className="flex items-center gap-2">
-                      {applied
-                        ? <span className="text-green-600 text-[10px] font-semibold">✓ Applied</span>
-                        : <span className="text-amber-600 text-[10px] font-semibold">Missing</span>}
-                      <span className="font-medium text-gray-800">{d.name}</span>
-                      <span className="text-gray-400 font-mono">{d.code}</span>
-                    </div>
-                    <div className="text-gray-500 text-right space-x-2">
-                      <span>{d.totalDaysPerYear} d/yr</span>
-                      {d.carryForward && <span className="text-blue-600">↩ {d.maxCarryForwardDays}</span>}
-                      {!d.proRata && <span className="text-purple-600">no pro-rata</span>}
-                      {d.appliesToGender !== 'ALL' && (
-                        <span className="text-pink-600">{d.appliesToGender === 'FEMALE' ? '♀ female' : '♂ male'}</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <button
+              onClick={handleApplyDefaults}
+              className="shrink-0 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700"
+            >
+              Apply defaults
+            </button>
           </div>
-        );
-      })()}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {defaults.map((d) => (
+              <div key={d.code} className="flex items-center justify-between bg-white border border-green-100 rounded-md px-3 py-2 text-xs">
+                <div>
+                  <span className="font-medium text-gray-800">{d.name}</span>
+                  <span className="text-gray-400 font-mono ml-2">{d.code}</span>
+                </div>
+                <div className="text-gray-500 text-right space-x-2">
+                  <span>{d.totalDaysPerYear} d/yr</span>
+                  {d.carryForward && <span className="text-blue-600">\u21A9 {d.maxCarryForwardDays}</span>}
+                  {!d.proRata && <span className="text-purple-600">no pro-rata</span>}
+                  {d.appliesToGender !== 'ALL' && (
+                    <span className="text-pink-600">{d.appliesToGender === 'FEMALE' ? '\u2640 female' : '\u2642 male'}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading ? (
-        <p className="text-sm text-gray-500">Loading…</p>
+        <p className="text-sm text-gray-500">Loading\u2026</p>
       ) : policies.length === 0 ? (
         <div className="text-center py-12 text-gray-500 text-sm">
           {rbac.canManageHR
-            ? defaults.length > 0
-              ? 'No custom policies yet. Apply the suggested defaults above or click "+ New Policy".'
-              : 'No leave policies yet. Click "+ New Policy" to create your first policy.'
+            ? 'No custom policies yet. Apply the suggested defaults above or click "+ New Policy".'
             : 'No leave policies configured yet.'}
           {rbac.canManageHR && (
             <div className="mt-4">

@@ -42,11 +42,6 @@ export default function StaffAttendancePage() {
   const [appliedFilter, setAppliedFilter] = useState({ name: "", mobile: "", employeeCode: "", staffId: "" });
   const [viewStaff, setViewStaff] = useState<{ id: number; label: string } | null>(null);
 
-  // Server-side staff search results (used when none of today's records match the query)
-  interface StaffSearchResult { id: number; label: string; employeeCode?: string | number | null; mobile?: string | null; designation?: string | null }
-  const [searchResults, setSearchResults] = useState<StaffSearchResult[] | null>(null);
-  const [searchLoading, setSearchLoading] = useState(false);
-
   // Bypass form
   const [showBypass, setShowBypass] = useState(false);
   const [bypassForm, setBypassForm] = useState({ reason: "", durationHours: 8 });
@@ -178,53 +173,54 @@ export default function StaffAttendancePage() {
     const sid = next.staffId.trim();
     if (!name && !mobile && !empCode && !sid) {
       toast("Enter at least one search field.");
-      setSearchResults(null);
       return;
     }
 
-    // Always do a server lookup so the results list reflects ALL matching staff,
-    // not just those that already have an attendance row for today.
+    // Quick local check — if anything matches today's records, the table will show it.
+    const matchesLocal = records.some((r) => {
+      const fullName = `${r.staff?.user?.firstName ?? ""} ${r.staff?.user?.lastName ?? ""}`.toLowerCase();
+      const rMobile = r.staff?.user?.mobile ?? "";
+      const rEmp = String(r.staff?.employeeCode ?? "");
+      const rSid = String(r.staffId);
+      if (name && !fullName.includes(name.toLowerCase())) return false;
+      if (mobile && !rMobile.includes(mobile)) return false;
+      if (empCode && rEmp !== empCode) return false;
+      if (sid && rSid !== sid) return false;
+      return true;
+    });
+    if (matchesLocal) return;
+
+    // Fall back to a server-side staff lookup so the search button is always actionable
+    // (e.g. staff hasn't marked attendance today yet). Pick the most specific filter available.
     const params = new URLSearchParams();
     if (sid) params.set("id", sid);
-    if (empCode) params.set("employeeCode", empCode);
-    if (mobile) params.set("mobile", mobile);
-    if (name) params.set("search", name);
-    params.set("limit", "20");
-
-    setSearchLoading(true);
+    else if (empCode) params.set("employeeCode", empCode);
+    else if (mobile) params.set("mobile", mobile);
+    else if (name) params.set("search", name);
+    params.set("limit", "5");
     try {
       const res = await authFetch(`${API_BASE_URL}/staff?${params.toString()}`);
       if (!res.ok) throw new Error("Lookup failed");
       const data = await res.json();
-      const list: any[] = data?.data ?? (Array.isArray(data) ? data : []);
-      const mapped: StaffSearchResult[] = list.map((row) => {
-        const first = row.user?.firstName ?? row.firstName ?? "";
-        const last = row.user?.lastName ?? row.lastName ?? "";
-        const label = `${first} ${last}`.trim() || `Staff #${row.id}`;
-        return {
-          id: row.id,
-          label,
-          employeeCode: row.employeeCode ?? null,
-          mobile: row.user?.mobile ?? row.mobile ?? null,
-          designation: typeof row.designation === 'object' ? row.designation?.title ?? null : row.designation ?? null,
-        };
-      });
-      setSearchResults(mapped);
-      if (mapped.length === 0) {
+      const list = data?.data ?? (Array.isArray(data) ? data : []);
+      if (!list.length) {
         toast.error("No staff found for the given criteria.");
+        return;
+      }
+      const row = list[0];
+      const label = `${row.user?.firstName ?? row.firstName ?? ""} ${row.user?.lastName ?? row.lastName ?? ""}`.trim() || `Staff #${row.id}`;
+      setViewStaff({ id: row.id, label });
+      if (list.length > 1) {
+        toast(`${list.length} staff matched — showing ${label}. Refine search for others.`);
       }
     } catch (e: any) {
       toast.error(e?.message ?? "Search failed");
-      setSearchResults([]);
-    } finally {
-      setSearchLoading(false);
     }
   };
   const clearSearch = () => {
     const empty = { name: "", mobile: "", employeeCode: "", staffId: "" };
     setDraftFilter(empty);
     setAppliedFilter(empty);
-    setSearchResults(null);
   };
 
   const staffNameOf = (r: StaffAttendanceRecord) =>
@@ -446,66 +442,6 @@ export default function StaffAttendancePage() {
         </div>
       </form>
 
-      {/* Search results panel — shown when a server-side search has been executed */}
-      {(searchLoading || searchResults !== null) && (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-            <div>
-              <p className="text-sm font-semibold text-gray-800">Search results</p>
-              <p className="text-[11px] text-gray-500">
-                {searchLoading
-                  ? "Searching…"
-                  : `${searchResults?.length ?? 0} staff matched${(searchResults?.length ?? 0) >= 20 ? " (showing first 20)" : ""}`}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={clearSearch}
-              className="text-xs text-gray-600 hover:text-gray-900 underline"
-            >
-              Close results
-            </button>
-          </div>
-          {searchLoading ? (
-            <p className="px-4 py-6 text-sm text-gray-500">Loading…</p>
-          ) : (searchResults?.length ?? 0) === 0 ? (
-            <p className="px-4 py-6 text-sm text-gray-500">No staff match your search.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="bg-white text-gray-600 text-xs uppercase">
-                  <tr>
-                    <th className="px-4 py-2 text-left">Name</th>
-                    <th className="px-4 py-2 text-left">Employee Code</th>
-                    <th className="px-4 py-2 text-left">Mobile</th>
-                    <th className="px-4 py-2 text-left">Designation</th>
-                    <th className="px-4 py-2 text-left">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {searchResults!.map((s) => (
-                    <tr key={s.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 font-medium text-gray-900">{s.label}</td>
-                      <td className="px-4 py-2 text-gray-600">{s.employeeCode ? `EMP-${s.employeeCode}` : "—"}</td>
-                      <td className="px-4 py-2 text-gray-600">{s.mobile ?? "—"}</td>
-                      <td className="px-4 py-2 text-gray-600">{s.designation ?? "—"}</td>
-                      <td className="px-4 py-2">
-                        <button
-                          onClick={() => setViewStaff({ id: s.id, label: s.label })}
-                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg"
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Records table */}
       {loading ? (
         <p className="text-sm text-gray-500">Loading…</p>
@@ -516,7 +452,7 @@ export default function StaffAttendancePage() {
           {/* Mobile cards */}
           <div className="sm:hidden space-y-3">
             {filteredRecords.map((r) => (
-              <div key={r.staffId || r.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
+              <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-medium text-gray-900 text-sm truncate">{staffNameOf(r)}</p>
@@ -557,7 +493,7 @@ export default function StaffAttendancePage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredRecords.map((r) => (
-                  <tr key={r.staffId || r.id} className="hover:bg-gray-50">
+                  <tr key={r.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">{staffNameOf(r)}</div>
                       <div className="text-[11px] text-gray-500">
