@@ -277,9 +277,25 @@ export default function MyAttendancePage() {
             : "Check In Now"}
           </button>
         )}
-        {todayRecord && todayRecord.status !== "ON_LEAVE" && todayRecord.status !== "HOLIDAY" && (
+        {todayRecord && todayRecord.status !== "ON_LEAVE" && todayRecord.status !== "HOLIDAY" && !todayRecord.checkOutTime && (
+          <button
+            onClick={handleCheckIn}
+            disabled={checkInState === "locating" || checkInState === "submitting"}
+            className="shrink-0 flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow transition-colors"
+          >
+            {(checkInState === "locating" || checkInState === "submitting") ? (
+              <span className="animate-spin">⏳</span>
+            ) : (
+              <span>📍</span>
+            )}
+            {checkInState === "locating" ? "Getting Location…"
+            : checkInState === "submitting" ? "Marking…"
+            : "Check Out Now"}
+          </button>
+        )}
+        {todayRecord && todayRecord.status !== "ON_LEAVE" && todayRecord.status !== "HOLIDAY" && todayRecord.checkOutTime && (
           <div className="shrink-0 flex items-center gap-2 text-green-700 font-semibold text-sm">
-            <span>✅</span> Attendance recorded
+            <span>✅</span> Checked out
           </div>
         )}
       </div>
@@ -463,7 +479,7 @@ export default function MyAttendancePage() {
           {/* Mobile cards */}
           <div className="sm:hidden space-y-3">
             {records.map((r) => (
-              <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-1.5">
+              <div key={r.date} className="bg-white border border-gray-200 rounded-xl p-4 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-900 text-sm">{r.date}</span>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
@@ -491,7 +507,7 @@ export default function MyAttendancePage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {records.map((r) => (
-                  <tr key={r.id} className="hover:bg-gray-50">
+                  <tr key={r.date} className="hover:bg-gray-50">
                     <td className="px-4 py-3">{r.date}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
