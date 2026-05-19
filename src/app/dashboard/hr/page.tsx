@@ -25,7 +25,7 @@ export default function HrOverviewPage() {
         ]);
         if (lr.status === "fulfilled") setRuns(lr.value.slice(0, 3));
         if (pl.status === "fulfilled") setPendingLeaves(pl.value);
-        if (ta.status === "fulfilled") setTodayAttendance(ta.value);
+        if (ta.status === "fulfilled") setTodayAttendance(ta.value.data);
       } catch {
         // Partial failures are OK — each settled independently above
       } finally {

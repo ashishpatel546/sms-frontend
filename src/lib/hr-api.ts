@@ -109,6 +109,7 @@ export type StaffAttendanceStatus =
   | 'ON_LEAVE'
   | 'HOLIDAY';
 export type AttendanceMethod = 'MANUAL' | 'WEBAUTHN' | 'GEOFENCE' | 'BYPASS';
+export type CheckOutReason = 'REGULAR' | 'HALF_DAY' | 'EARLY_LEAVE' | 'OVERTIME' | 'FORGOT';
 
 export interface StaffAttendanceRecord {
   id: number;
@@ -118,6 +119,7 @@ export interface StaffAttendanceRecord {
   method: AttendanceMethod;
   checkInTime?: string;
   checkOutTime?: string;
+  checkOutReason?: CheckOutReason;
   lat?: number;
   lng?: number;
   matchedZoneId?: number;
@@ -130,6 +132,31 @@ export interface StaffAttendanceRecord {
   };
   /** Populated by the daily endpoint when method = MANUAL or WEBAUTHN kiosk-by-admin */
   markedBy?: { id: number; firstName: string; lastName: string; role: string };
+}
+
+export interface TodayAttendanceStatus {
+  todayRecord: StaffAttendanceRecord | null;
+  pendingCheckOut: { date: string; checkInTime: string; daysAgo: number } | null;
+  canCheckIn: boolean;
+  canCheckOut: boolean;
+}
+
+export interface DailyAttendanceSummary {
+  PRESENT: number;
+  LATE: number;
+  ABSENT: number;
+  HALF_DAY: number;
+  ON_LEAVE: number;
+  HOLIDAY: number;
+}
+
+export interface PaginatedDailyAttendance {
+  data: StaffAttendanceRecord[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  summary: DailyAttendanceSummary;
 }
 
 export interface AttendanceZone {
@@ -333,11 +360,37 @@ export const hrApi = {
       lat: number;
       lng: number;
       clientTimestamp?: string;
+      checkInTime?: string;
+      status?: 'PRESENT' | 'LATE' | 'HALF_DAY';
     }) =>
       req<StaffAttendanceRecord>(
         'POST',
         '/hr/staff-attendance/self-checkin',
         data,
+      ),
+    selfCheckOut: (data: {
+      lat: number;
+      lng: number;
+      clientTimestamp?: string;
+      checkOutTime?: string;
+      reason: CheckOutReason;
+      statusOverride?: 'PRESENT' | 'LATE' | 'HALF_DAY';
+    }) =>
+      req<StaffAttendanceRecord>(
+        'POST',
+        '/hr/staff-attendance/self-checkout',
+        data,
+      ),
+    resolvePending: (data: { pendingDate: string }) =>
+      req<StaffAttendanceRecord>(
+        'POST',
+        '/hr/staff-attendance/resolve-pending',
+        data,
+      ),
+    todayStatus: () =>
+      req<TodayAttendanceStatus>(
+        'GET',
+        '/hr/staff-attendance/me/today-status',
       ),
     myMonthly: (month: number, year: number) =>
       req<StaffAttendanceRecord[]>(
@@ -349,11 +402,24 @@ export const hrApi = {
         'GET',
         `/hr/staff-attendance/monthly?staffId=${staffId}&month=${month}&year=${year}`,
       ),
-    daily: (date: string) =>
-      req<StaffAttendanceRecord[]>(
+    daily: (date: string, opts?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      employeeCode?: string;
+      staffId?: string;
+    }) => {
+      const p = new URLSearchParams({ date });
+      if (opts?.page) p.set('page', String(opts.page));
+      if (opts?.limit) p.set('limit', String(opts.limit));
+      if (opts?.search) p.set('search', opts.search);
+      if (opts?.employeeCode) p.set('employeeCode', opts.employeeCode);
+      if (opts?.staffId) p.set('staffId', opts.staffId);
+      return req<PaginatedDailyAttendance>(
         'GET',
-        `/hr/staff-attendance/daily?date=${date}`,
-      ),
+        `/hr/staff-attendance/daily?${p.toString()}`,
+      );
+    },
     zones: {
       list: () => req<AttendanceZone[]>('GET', '/hr/staff-attendance/zones'),
       create: (data: {

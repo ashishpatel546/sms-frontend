@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { hrApi, StaffAttendanceRecord, AttendanceBypassWindow, StaffBiometric, WebauthnRegistrationPermit } from "@/lib/hr-api";
+import { hrApi, StaffAttendanceRecord, AttendanceBypassWindow, StaffBiometric, WebauthnRegistrationPermit, DailyAttendanceSummary } from "@/lib/hr-api";
 import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
@@ -10,6 +10,31 @@ import StaffLookupForm from "@/components/StaffLookupForm";
 import StaffAttendanceModal from "@/components/StaffAttendanceModal";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
+import dayjs from "dayjs";
+import duration from "dayjs/plugin/duration";
+dayjs.extend(duration);
+
+const PAGE_SIZE = 20;
+
+function calcDuration(checkIn?: string, checkOut?: string): string | null {
+  if (!checkIn || !checkOut) return null;
+  const inMs = dayjs(`1970-01-01T${checkIn}`).valueOf();
+  const outMs = dayjs(`1970-01-01T${checkOut}`).valueOf();
+  if (outMs <= inMs) return null;
+  const dur = dayjs.duration(outMs - inMs);
+  const hh = String(Math.floor(dur.asHours())).padStart(2, "0");
+  const mm = String(dur.minutes()).padStart(2, "0");
+  const ss = String(dur.seconds()).padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
+}
+
+const DURATION_TEXT: Record<string, string> = {
+  PRESENT: "text-green-700 font-medium",
+  LATE: "text-amber-700 font-medium",
+  HALF_DAY: "text-blue-700 font-medium",
+  ON_LEAVE: "text-purple-700",
+  ABSENT: "text-red-500",
+};
 
 const STATUS_STYLES: Record<string, string> = {
   PRESENT: "bg-green-100 text-green-700",
@@ -29,6 +54,14 @@ export default function StaffAttendancePage() {
   const [bypass, setBypass] = useState<AttendanceBypassWindow | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Pagination + server-side search
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [summary, setSummary] = useState<DailyAttendanceSummary>({ PRESENT: 0, LATE: 0, ABSENT: 0, HALF_DAY: 0, ON_LEAVE: 0, HOLIDAY: 0 });
+  const [draftSearch, setDraftSearch] = useState({ name: "", mobile: "", employeeCode: "", staffId: "" });
+  const [activeSearch, setActiveSearch] = useState({ name: "", mobile: "", employeeCode: "", staffId: "" });
+
   // Manual mark form
   const [showMark, setShowMark] = useState(false);
   const [markStaffId, setMarkStaffId] = useState<number | null>(null);
@@ -37,9 +70,7 @@ export default function StaffAttendancePage() {
   const [markDate, setMarkDate] = useState<string>(today);
   const [markForm, setMarkForm] = useState({ status: "PRESENT", method: "MANUAL", checkInTime: "", checkOutTime: "", overrideReason: "" });
 
-  // Records table search + view modal — separate draft (in inputs) and applied (used to filter)
-  const [draftFilter, setDraftFilter] = useState({ name: "", mobile: "", employeeCode: "", staffId: "" });
-  const [appliedFilter, setAppliedFilter] = useState({ name: "", mobile: "", employeeCode: "", staffId: "" });
+  // View-month modal
   const [viewStaff, setViewStaff] = useState<{ id: number; label: string } | null>(null);
 
   // Bypass form
@@ -56,17 +87,31 @@ export default function StaffAttendancePage() {
   const loadRecords = useCallback(async () => {
     setLoading(true);
     try {
+      const search = [activeSearch.name, activeSearch.mobile].filter(Boolean).join(" ").trim() || undefined;
       const [recs, bp] = await Promise.allSettled([
-        hrApi.attendance.daily(date),
+        hrApi.attendance.daily(date, {
+          page: currentPage,
+          limit: PAGE_SIZE,
+          search,
+          employeeCode: activeSearch.employeeCode || undefined,
+          staffId: activeSearch.staffId || undefined,
+        }),
         hrApi.attendance.bypass.getActive(),
       ]);
-      if (recs.status === "fulfilled") setRecords(recs.value);
+      if (recs.status === "fulfilled") {
+        setRecords(recs.value.data);
+        setTotalPages(recs.value.totalPages);
+        setTotalRecords(recs.value.total);
+        setSummary(recs.value.summary);
+      }
       if (bp.status === "fulfilled") setBypass(bp.value);
     } catch { toast.error("Failed to load attendance"); }
     finally { setLoading(false); }
-  }, [date]);
+  }, [date, currentPage, activeSearch]);
 
   useEffect(() => { loadRecords(); }, [loadRecords]);
+  // Reset to page 1 when date changes
+  useEffect(() => { setCurrentPage(1); }, [date]);
 
   const handleMark = async () => {
     if (!markStaffId) { toast.error("Please select a staff member"); return; }
@@ -139,88 +184,25 @@ export default function StaffAttendancePage() {
     } catch { toast.error("Failed to delete"); }
   };
 
-  const present = records.filter((r) => ["PRESENT", "LATE"].includes(r.status)).length;  const absent = records.filter((r) => r.status === "ABSENT").length;
+  const present = summary.PRESENT + summary.LATE;
+  const absent = summary.ABSENT;
+  const hasActiveSearch = Boolean(activeSearch.name || activeSearch.mobile || activeSearch.employeeCode || activeSearch.staffId);
 
-  /** Filter daily records client-side. Each non-empty field narrows results (AND semantics). */
-  const filteredRecords = useMemo(() => {
-    const name = appliedFilter.name.trim().toLowerCase();
-    const mobile = appliedFilter.mobile.trim();
-    const empCode = appliedFilter.employeeCode.trim();
-    const sid = appliedFilter.staffId.trim();
-    if (!name && !mobile && !empCode && !sid) return records;
-    return records.filter((r) => {
-      const fullName = `${r.staff?.user?.firstName ?? ""} ${r.staff?.user?.lastName ?? ""}`.toLowerCase();
-      const rMobile = r.staff?.user?.mobile ?? "";
-      const rEmp = String(r.staff?.employeeCode ?? "");
-      const rSid = String(r.staffId);
-      if (name && !fullName.includes(name)) return false;
-      if (mobile && !rMobile.includes(mobile)) return false;
-      if (empCode && rEmp !== empCode) return false;
-      if (sid && rSid !== sid) return false;
-      return true;
-    });
-  }, [records, appliedFilter]);
-
-  const hasActiveFilter = Boolean(appliedFilter.name || appliedFilter.mobile || appliedFilter.employeeCode || appliedFilter.staffId);
-
-  const applySearch = async () => {
-    const next = { ...draftFilter };
-    setAppliedFilter(next);
-
-    const name = next.name.trim();
-    const mobile = next.mobile.trim();
-    const empCode = next.employeeCode.trim();
-    const sid = next.staffId.trim();
-    if (!name && !mobile && !empCode && !sid) {
+  const applySearch = () => {
+    const next = { ...draftSearch };
+    if (!next.name && !next.mobile && !next.employeeCode && !next.staffId) {
       toast("Enter at least one search field.");
       return;
     }
-
-    // Quick local check — if anything matches today's records, the table will show it.
-    const matchesLocal = records.some((r) => {
-      const fullName = `${r.staff?.user?.firstName ?? ""} ${r.staff?.user?.lastName ?? ""}`.toLowerCase();
-      const rMobile = r.staff?.user?.mobile ?? "";
-      const rEmp = String(r.staff?.employeeCode ?? "");
-      const rSid = String(r.staffId);
-      if (name && !fullName.includes(name.toLowerCase())) return false;
-      if (mobile && !rMobile.includes(mobile)) return false;
-      if (empCode && rEmp !== empCode) return false;
-      if (sid && rSid !== sid) return false;
-      return true;
-    });
-    if (matchesLocal) return;
-
-    // Fall back to a server-side staff lookup so the search button is always actionable
-    // (e.g. staff hasn't marked attendance today yet). Pick the most specific filter available.
-    const params = new URLSearchParams();
-    if (sid) params.set("id", sid);
-    else if (empCode) params.set("employeeCode", empCode);
-    else if (mobile) params.set("mobile", mobile);
-    else if (name) params.set("search", name);
-    params.set("limit", "5");
-    try {
-      const res = await authFetch(`${API_BASE_URL}/staff?${params.toString()}`);
-      if (!res.ok) throw new Error("Lookup failed");
-      const data = await res.json();
-      const list = data?.data ?? (Array.isArray(data) ? data : []);
-      if (!list.length) {
-        toast.error("No staff found for the given criteria.");
-        return;
-      }
-      const row = list[0];
-      const label = `${row.user?.firstName ?? row.firstName ?? ""} ${row.user?.lastName ?? row.lastName ?? ""}`.trim() || `Staff #${row.id}`;
-      setViewStaff({ id: row.id, label });
-      if (list.length > 1) {
-        toast(`${list.length} staff matched — showing ${label}. Refine search for others.`);
-      }
-    } catch (e: any) {
-      toast.error(e?.message ?? "Search failed");
-    }
+    setActiveSearch(next);
+    setCurrentPage(1);
   };
+
   const clearSearch = () => {
     const empty = { name: "", mobile: "", employeeCode: "", staffId: "" };
-    setDraftFilter(empty);
-    setAppliedFilter(empty);
+    setDraftSearch(empty);
+    setActiveSearch(empty);
+    setCurrentPage(1);
   };
 
   const staffNameOf = (r: StaffAttendanceRecord) =>
@@ -370,10 +352,11 @@ export default function StaffAttendancePage() {
       <div className="flex flex-wrap items-center gap-3">
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="border rounded-lg px-3 py-2 text-sm" />
         <span className="text-sm text-gray-600">Present: <strong className="text-green-700">{present}</strong></span>
+        <span className="text-sm text-gray-600">Late: <strong className="text-amber-700">{summary.LATE}</strong></span>
         <span className="text-sm text-gray-600">Absent: <strong className="text-red-700">{absent}</strong></span>
-        <span className="text-sm text-gray-600">Total: <strong>{records.length}</strong></span>
-        {hasActiveFilter && (
-          <span className="text-xs text-gray-500">({filteredRecords.length} match{filteredRecords.length === 1 ? "" : "es"})</span>
+        <span className="text-sm text-gray-600">Total: <strong>{totalRecords}</strong></span>
+        {hasActiveSearch && (
+          <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded px-2 py-0.5">{totalRecords} result{totalRecords === 1 ? "" : "s"} for search</span>
         )}
       </div>
 
@@ -387,8 +370,8 @@ export default function StaffAttendancePage() {
             <label className="block text-xs font-medium text-gray-600 mb-1">Name</label>
             <input
               type="text"
-              value={draftFilter.name}
-              onChange={(e) => setDraftFilter({ ...draftFilter, name: e.target.value })}
+              value={draftSearch.name}
+              onChange={(e) => setDraftSearch({ ...draftSearch, name: e.target.value })}
               placeholder="e.g. Rahul"
               className="w-full border rounded-lg px-3 py-2 text-sm"
             />
@@ -397,8 +380,8 @@ export default function StaffAttendancePage() {
             <label className="block text-xs font-medium text-gray-600 mb-1">Mobile Number</label>
             <input
               type="tel"
-              value={draftFilter.mobile}
-              onChange={(e) => setDraftFilter({ ...draftFilter, mobile: e.target.value })}
+              value={draftSearch.mobile}
+              onChange={(e) => setDraftSearch({ ...draftSearch, mobile: e.target.value })}
               placeholder="e.g. 9876543210"
               className="w-full border rounded-lg px-3 py-2 text-sm"
             />
@@ -407,8 +390,8 @@ export default function StaffAttendancePage() {
             <label className="block text-xs font-medium text-gray-600 mb-1">Employee Code</label>
             <input
               type="number"
-              value={draftFilter.employeeCode}
-              onChange={(e) => setDraftFilter({ ...draftFilter, employeeCode: e.target.value })}
+              value={draftSearch.employeeCode}
+              onChange={(e) => setDraftSearch({ ...draftSearch, employeeCode: e.target.value })}
               placeholder="e.g. 1024"
               className="w-full border rounded-lg px-3 py-2 text-sm"
             />
@@ -417,8 +400,8 @@ export default function StaffAttendancePage() {
             <label className="block text-xs font-medium text-gray-600 mb-1">Staff ID</label>
             <input
               type="number"
-              value={draftFilter.staffId}
-              onChange={(e) => setDraftFilter({ ...draftFilter, staffId: e.target.value })}
+              value={draftSearch.staffId}
+              onChange={(e) => setDraftSearch({ ...draftSearch, staffId: e.target.value })}
               placeholder="e.g. 17"
               className="w-full border rounded-lg px-3 py-2 text-sm"
             />
@@ -445,37 +428,41 @@ export default function StaffAttendancePage() {
       {/* Records table */}
       {loading ? (
         <p className="text-sm text-gray-500">Loading…</p>
-      ) : filteredRecords.length === 0 ? (
-        <p className="text-sm text-gray-500">{records.length === 0 ? "No attendance records for this date." : "No staff match your search."}</p>
+      ) : records.length === 0 ? (
+        <p className="text-sm text-gray-500">{hasActiveSearch ? "No staff match your search." : "No attendance records for this date."}</p>
       ) : (
         <>
           {/* Mobile cards */}
           <div className="sm:hidden space-y-3">
-            {filteredRecords.map((r) => (
-              <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-medium text-gray-900 text-sm truncate">{staffNameOf(r)}</p>
-                    <p className="text-[11px] text-gray-500">
-                      {r.staff?.employeeCode ? `EMP-${r.staff.employeeCode}` : `Staff #${r.staffId}`}
-                      {r.staff?.user?.mobile ? ` · ${r.staff.user.mobile}` : ""}
-                    </p>
+            {records.map((r) => {
+              const dur = calcDuration(r.checkInTime, r.checkOutTime);
+              return (
+                <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-900 text-sm truncate">{staffNameOf(r)}</p>
+                      <p className="text-[11px] text-gray-500">
+                        {r.staff?.employeeCode ? `EMP-${r.staff.employeeCode}` : `Staff #${r.staffId}`}
+                        {r.staff?.user?.mobile ? ` · ${r.staff.user.mobile}` : ""}
+                      </p>
+                    </div>
+                    <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
                   </div>
-                  <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-600">
+                    <div><span className="text-gray-400">In: </span>{r.checkInTime ?? "—"}</div>
+                    <div><span className="text-gray-400">Out: </span>{r.checkOutTime ?? "—"}</div>
+                    {dur && <div className={`col-span-2 ${DURATION_TEXT[r.status] ?? "text-gray-600"}`}>⏱ {dur}</div>}
+                    <div className="col-span-2"><span className="text-gray-400">Marked: </span>{auditLabel(r)}</div>
+                  </div>
+                  <button
+                    onClick={() => setViewStaff({ id: r.staffId, label: staffNameOf(r) })}
+                    className="text-blue-600 hover:underline text-xs font-medium"
+                  >
+                    View month →
+                  </button>
                 </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-600">
-                  <div><span className="text-gray-400">In: </span>{r.checkInTime ?? "—"}</div>
-                  <div><span className="text-gray-400">Out: </span>{r.checkOutTime ?? "—"}</div>
-                  <div className="col-span-2"><span className="text-gray-400">Marked: </span>{auditLabel(r)}</div>
-                </div>
-                <button
-                  onClick={() => setViewStaff({ id: r.staffId, label: staffNameOf(r) })}
-                  className="text-blue-600 hover:underline text-xs font-medium"
-                >
-                  View month →
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Tablet+ table */}
@@ -487,39 +474,100 @@ export default function StaffAttendancePage() {
                   <th className="px-4 py-3 text-left">Status</th>
                   <th className="px-4 py-3 text-left">Check-In</th>
                   <th className="px-4 py-3 text-left">Check-Out</th>
+                  <th className="px-4 py-3 text-left">Duration</th>
                   <th className="px-4 py-3 text-left">Marked By</th>
                   <th className="px-4 py-3 text-left">View</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredRecords.map((r) => (
-                  <tr key={r.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{staffNameOf(r)}</div>
-                      <div className="text-[11px] text-gray-500">
-                        {r.staff?.employeeCode ? `EMP-${r.staff.employeeCode}` : `Staff #${r.staffId}`}
-                        {r.staff?.user?.mobile ? ` · ${r.staff.user.mobile}` : ""}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
-                    </td>
-                    <td className="px-4 py-3">{r.checkInTime ?? "—"}</td>
-                    <td className="px-4 py-3">{r.checkOutTime ?? "—"}</td>
-                    <td className="px-4 py-3 text-xs text-gray-600">{auditLabel(r)}</td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => setViewStaff({ id: r.staffId, label: staffNameOf(r) })}
-                        className="text-blue-600 hover:underline text-xs font-medium"
-                      >
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {records.map((r) => {
+                  const dur = calcDuration(r.checkInTime, r.checkOutTime);
+                  return (
+                    <tr key={r.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-gray-900">{staffNameOf(r)}</div>
+                        <div className="text-[11px] text-gray-500">
+                          {r.staff?.employeeCode ? `EMP-${r.staff.employeeCode}` : `Staff #${r.staffId}`}
+                          {r.staff?.user?.mobile ? ` · ${r.staff.user.mobile}` : ""}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
+                      </td>
+                      <td className="px-4 py-3 tabular-nums">{r.checkInTime ?? "—"}</td>
+                      <td className="px-4 py-3 tabular-nums">{r.checkOutTime ?? "—"}</td>
+                      <td className={`px-4 py-3 tabular-nums ${dur ? (DURATION_TEXT[r.status] ?? "text-gray-600") : "text-gray-400"}`}>{dur ?? "—"}</td>
+                      <td className="px-4 py-3 text-xs text-gray-600">{auditLabel(r)}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => setViewStaff({ id: r.staffId, label: staffNameOf(r) })}
+                          className="text-blue-600 hover:underline text-xs font-medium"
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+
+          {/* Pagination controls */}
+          {totalPages > 1 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <p className="text-xs text-gray-500">
+                Page {currentPage} of {totalPages} &mdash; {totalRecords} record{totalRecords === 1 ? "" : "s"} total
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  className="px-2.5 py-1.5 text-xs border rounded-lg disabled:opacity-40 hover:bg-gray-50"
+                  aria-label="First page"
+                >
+                  «
+                </button>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-xs border rounded-lg disabled:opacity-40 hover:bg-gray-50"
+                >
+                  Prev
+                </button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+                  const pg = start + i;
+                  return pg <= totalPages ? (
+                    <button
+                      key={pg}
+                      onClick={() => setCurrentPage(pg)}
+                      className={`px-3 py-1.5 text-xs border rounded-lg ${
+                        pg === currentPage ? "bg-blue-600 text-white border-blue-600" : "hover:bg-gray-50"
+                      }`}
+                    >
+                      {pg}
+                    </button>
+                  ) : null;
+                })}
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 text-xs border rounded-lg disabled:opacity-40 hover:bg-gray-50"
+                >
+                  Next
+                </button>
+                <button
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="px-2.5 py-1.5 text-xs border rounded-lg disabled:opacity-40 hover:bg-gray-50"
+                  aria-label="Last page"
+                >
+                  »
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
 

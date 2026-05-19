@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { hrApi, StaffAttendanceRecord, StaffBiometric, WebauthnPermitStatus } from "@/lib/hr-api";
+import { hrApi, StaffAttendanceRecord, StaffBiometric, WebauthnPermitStatus, CheckOutReason, TodayAttendanceStatus } from "@/lib/hr-api";
 import toast, { Toaster } from "react-hot-toast";
 import { startRegistration } from "@simplewebauthn/browser";
 import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
+import dayjs from "dayjs";
+import duration from "dayjs/plugin/duration";
+dayjs.extend(duration);
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const STATUS_STYLES: Record<string, string> = {
@@ -36,6 +39,29 @@ function findHolidayFor(dateStr: string, holidays: HolidayInfo[]): HolidayInfo |
   }
   return null;
 }
+
+/** Calculates duration between two HH:mm:ss strings. Returns "HH:MM:SS" or null. */
+function calcDuration(checkIn?: string, checkOut?: string): string | null {
+  if (!checkIn || !checkOut) return null;
+  const base = "1970-01-01T";
+  const inMs = dayjs(base + checkIn).valueOf();
+  const outMs = dayjs(base + checkOut).valueOf();
+  if (outMs <= inMs) return null;
+  const dur = dayjs.duration(outMs - inMs);
+  const hh = String(Math.floor(dur.asHours())).padStart(2, "0");
+  const mm = String(dur.minutes()).padStart(2, "0");
+  const ss = String(dur.seconds()).padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
+}
+
+const DURATION_STYLES: Record<string, string> = {
+  PRESENT: "text-green-700 font-medium",
+  LATE: "text-amber-700 font-medium",
+  HALF_DAY: "text-blue-700 font-medium",
+  ON_LEAVE: "text-purple-700 font-medium",
+  ABSENT: "text-red-500",
+  HOLIDAY: "text-sky-600",
+};
 const now = new Date();
 const todayStr = now.toISOString().slice(0, 10);
 
@@ -52,6 +78,16 @@ export default function MyAttendancePage() {
   const [checkInState, setCheckInState] = useState<CheckInState>("idle");
   const [checkInMsg, setCheckInMsg] = useState("");
   const [todayRecord, setTodayRecord] = useState<StaffAttendanceRecord | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<"PRESENT" | "LATE" | "HALF_DAY">("PRESENT");
+
+  // Checkout state
+  const [checkOutState, setCheckOutState] = useState<CheckInState>("idle");
+  const [checkOutMsg, setCheckOutMsg] = useState("");
+  const [checkOutReason, setCheckOutReason] = useState<CheckOutReason>("REGULAR");
+
+  // Pending prior-day checkout
+  const [pendingCheckOut, setPendingCheckOut] = useState<TodayAttendanceStatus["pendingCheckOut"]>(null);
+  const [resolvingPending, setResolvingPending] = useState(false);
 
   // Biometric registration state
   const [biometrics, setBiometrics] = useState<StaffBiometric[]>([]);
@@ -72,6 +108,19 @@ export default function MyAttendancePage() {
     } catch { /* silently ignore — biometrics section is optional */ }
   }
 
+  // Load today's status (todayRecord + pending checkout) on mount
+  useEffect(() => {
+    let cancelled = false;
+    hrApi.attendance.todayStatus()
+      .then((s) => {
+        if (cancelled) return;
+        setTodayRecord(s.todayRecord);
+        setPendingCheckOut(s.pendingCheckOut);
+      })
+      .catch(() => { /* no staff profile — ignore */ });
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     const doLoad = async () => {
@@ -80,13 +129,12 @@ export default function MyAttendancePage() {
         const recs = await hrApi.attendance.myMonthly(month, year);
         if (cancelled) return;
         setRecords(recs);
+        // Sync todayRecord from monthly only if todayStatus hasn't loaded it yet
         if (month === now.getMonth() + 1 && year === now.getFullYear()) {
-          setTodayRecord(recs.find((r) => r.date === todayStr) ?? null);
+          setTodayRecord((prev) => prev ?? recs.find((r) => r.date === todayStr) ?? null);
         }
       } catch (e: any) {
         if (cancelled) return;
-        // 404 = route not ready or no staff record → treat as empty, not an error
-        // 403 = no access → treat as empty silently
         if (e?.status === 404 || e?.status === 403) {
           setRecords([]);
         } else {
@@ -169,18 +217,25 @@ export default function MyAttendancePage() {
         setCheckInState("submitting");
         setCheckInMsg("Verifying location and marking attendance…");
         try {
+          // Send local time from browser to avoid server-timezone bugs
+          const localTime = new Date().toTimeString().slice(0, 8);
           const record = await hrApi.attendance.selfCheckIn({
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
             clientTimestamp: new Date().toISOString(),
+            checkInTime: localTime,
+            status: selectedStatus,
           });
           setTodayRecord(record as any);
           setCheckInState("done");
-          setCheckInMsg(`Marked as ${(record as any).status} at ${new Date().toLocaleTimeString()}`);
-          // Refresh month view after successful check-in (state change triggers useEffect)
+          setCheckInMsg(`Checked in as ${(record as any).status} at ${(record as any).checkInTime ?? localTime}`);
           setMonth(now.getMonth() + 1); setYear(now.getFullYear());
         } catch (e: any) {
-          const msg = e?.info?.message ?? "Check-in failed. You may be outside the school zone.";
+          const info = e?.info;
+          if (info?.code === "PENDING_CHECKOUT") {
+            setPendingCheckOut({ date: info.pendingDate, checkInTime: "—", daysAgo: 1 });
+          }
+          const msg = info?.message ?? "Check-in failed. You may be outside the school zone.";
           setCheckInState("error");
           setCheckInMsg(msg);
         }
@@ -193,6 +248,58 @@ export default function MyAttendancePage() {
       },
       { enableHighAccuracy: true, timeout: 15000 },
     );
+  };
+
+  const handleCheckOut = () => {
+    if (!navigator.geolocation) { toast.error("Your browser does not support GPS location"); return; }
+
+    setCheckOutState("locating");
+    setCheckOutMsg("Getting your location…");
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        setCheckOutState("submitting");
+        setCheckOutMsg("Recording check-out…");
+        try {
+          const localTime = new Date().toTimeString().slice(0, 8);
+          const record = await hrApi.attendance.selfCheckOut({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            clientTimestamp: new Date().toISOString(),
+            checkOutTime: localTime,
+            reason: checkOutReason,
+          });
+          setTodayRecord(record as any);
+          setCheckOutState("done");
+          setCheckOutMsg(`Checked out at ${(record as any).checkOutTime ?? localTime}`);
+          setMonth(now.getMonth() + 1); setYear(now.getFullYear());
+        } catch (e: any) {
+          const msg = e?.info?.message ?? "Check-out failed.";
+          setCheckOutState("error");
+          setCheckOutMsg(msg);
+        }
+      },
+      (err) => {
+        setCheckOutState("error");
+        if (err.code === 1) setCheckOutMsg("Location permission denied. Please allow location access and try again.");
+        else setCheckOutMsg("Could not get location. Please try again.");
+      },
+      { enableHighAccuracy: true, timeout: 15000 },
+    );
+  };
+
+  const handleResolvePending = async () => {
+    if (!pendingCheckOut) return;
+    setResolvingPending(true);
+    try {
+      await hrApi.attendance.resolvePending({ pendingDate: pendingCheckOut.date });
+      setPendingCheckOut(null);
+      toast.success(`Checkout resolved for ${pendingCheckOut.date} (marked as end-of-day 17:00)`);
+    } catch (e: any) {
+      toast.error(e?.info?.message ?? "Failed to resolve pending checkout");
+    } finally {
+      setResolvingPending(false);
+    }
   };
 
   // ── Compute month-level stats including auto-derived holidays (Sundays + school-wide holidays) ──
@@ -232,69 +339,116 @@ export default function MyAttendancePage() {
       <Toaster />
       <h1 className="text-xl font-bold text-gray-900">My Attendance</h1>
 
-      {/* ── Today's Check-In Card ── */}
-      <div className={`rounded-xl border-2 p-5 flex flex-col sm:flex-row sm:items-center gap-4 transition-colors ${
-        checkInState === "done" || todayRecord ? "border-green-300 bg-green-50"
-        : checkInState === "error" ? "border-red-300 bg-red-50"
+      {/* ── Pending checkout banner — blocks new check-in ── */}
+      {pendingCheckOut && (
+        <div className="rounded-xl border-2 border-red-300 bg-red-50 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1">
+            <p className="text-sm font-bold text-red-800">⚠️ Unclosed Check-In from {pendingCheckOut.date}</p>
+            <p className="text-xs text-red-600 mt-0.5">
+              You checked in at {pendingCheckOut.checkInTime} but never checked out.
+              Please resolve this before checking in today.
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={handleResolvePending}
+              disabled={resolvingPending}
+              className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow transition-colors"
+            >
+              {resolvingPending ? <span className="animate-spin">⏳</span> : <span>🔒</span>}
+              {resolvingPending ? "Resolving…" : "Mark Checkout (End of Day)"}
+            </button>
+            <span className="text-xs text-red-700 bg-red-100 border border-red-200 rounded-lg px-3 py-2">
+              Or contact HR to resolve manually.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Today's Check-In / Check-Out Card ── */}
+      <div className={`rounded-xl border-2 p-5 flex flex-col gap-4 transition-colors ${
+        todayRecord?.checkOutTime ? "border-green-300 bg-green-50"
+        : checkInState === "error" || checkOutState === "error" ? "border-red-300 bg-red-50"
         : "border-blue-200 bg-blue-50"
       }`}>
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-gray-800 mb-0.5">Today — {new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</p>
-          {todayRecord ? (
-            <div className="flex items-center gap-2 mt-1">
-              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_STYLES[todayRecord.status] ?? "bg-gray-100"}`}>{todayRecord.status}</span>
-              <span className="text-xs text-gray-500">via {todayRecord.method}</span>
-              {todayRecord.checkInTime && <span className="text-xs text-gray-500">· in {todayRecord.checkInTime}</span>}
-              {todayRecord.checkOutTime && <span className="text-xs text-gray-500">out {todayRecord.checkOutTime}</span>}
-            </div>
-          ) : (
-            <p className="text-xs text-gray-500 mt-1">
-              {checkInState === "idle" ? "You have not checked in yet." : checkInMsg}
-            </p>
-          )}
-          {checkInState === "error" && (
-            <p className="text-xs text-red-600 mt-1">{checkInMsg}</p>
-          )}
-          {(checkInState === "locating" || checkInState === "submitting") && (
-            <p className="text-xs text-blue-600 mt-1">{checkInMsg}</p>
-          )}
+        <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-gray-800 mb-0.5">Today — {new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</p>
+            {todayRecord ? (
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_STYLES[todayRecord.status] ?? "bg-gray-100"}`}>{todayRecord.status}</span>
+                <span className="text-xs text-gray-500">via {todayRecord.method}</span>
+                {todayRecord.checkInTime && <span className="text-xs text-gray-500">· in {todayRecord.checkInTime}</span>}
+                {todayRecord.checkOutTime && <span className="text-xs text-gray-500">out {todayRecord.checkOutTime}</span>}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500 mt-1">
+                {checkInState === "idle" ? "You have not checked in yet." : checkInMsg}
+              </p>
+            )}
+            {checkInState === "error" && <p className="text-xs text-red-600 mt-1">{checkInMsg}</p>}
+            {(checkInState === "locating" || checkInState === "submitting") && <p className="text-xs text-blue-600 mt-1">{checkInMsg}</p>}
+            {checkOutState === "error" && <p className="text-xs text-red-600 mt-1">{checkOutMsg}</p>}
+            {(checkOutState === "locating" || checkOutState === "submitting") && <p className="text-xs text-amber-600 mt-1">{checkOutMsg}</p>}
+          </div>
         </div>
 
-        {!todayRecord && (
-          <button
-            onClick={handleCheckIn}
-            disabled={checkInState === "locating" || checkInState === "submitting"}
-            className="shrink-0 flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow transition-colors"
-          >
-            {(checkInState === "locating" || checkInState === "submitting") ? (
-              <span className="animate-spin">⏳</span>
-            ) : (
-              <span>📍</span>
-            )}
-            {checkInState === "locating" ? "Getting Location…"
-            : checkInState === "submitting" ? "Marking…"
-            : checkInState === "error" ? "Retry Check-In"
-            : "Check In Now"}
-          </button>
+        {/* Check-In row — shown when not yet checked in and no pending block */}
+        {!todayRecord && !pendingCheckOut && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-gray-600">Status:</label>
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value as typeof selectedStatus)}
+                className="text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+                <option value="PRESENT">Present</option>
+                <option value="LATE">Late</option>
+                <option value="HALF_DAY">Half Day</option>
+              </select>
+            </div>
+            <button
+              onClick={handleCheckIn}
+              disabled={checkInState === "locating" || checkInState === "submitting"}
+              className="shrink-0 flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow transition-colors"
+            >
+              {(checkInState === "locating" || checkInState === "submitting") ? <span className="animate-spin">⏳</span> : <span>📍</span>}
+              {checkInState === "locating" ? "Getting Location…" : checkInState === "submitting" ? "Marking…" : checkInState === "error" ? "Retry Check-In" : "Check In Now"}
+            </button>
+          </div>
         )}
-        {todayRecord && todayRecord.status !== "ON_LEAVE" && todayRecord.status !== "HOLIDAY" && !todayRecord.checkOutTime && (
-          <button
-            onClick={handleCheckIn}
-            disabled={checkInState === "locating" || checkInState === "submitting"}
-            className="shrink-0 flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow transition-colors"
-          >
-            {(checkInState === "locating" || checkInState === "submitting") ? (
-              <span className="animate-spin">⏳</span>
-            ) : (
-              <span>📍</span>
-            )}
-            {checkInState === "locating" ? "Getting Location…"
-            : checkInState === "submitting" ? "Marking…"
-            : "Check Out Now"}
-          </button>
+
+        {/* Check-Out row — shown when checked in but not yet checked out */}
+        {todayRecord && !["ON_LEAVE", "HOLIDAY"].includes(todayRecord.status) && !todayRecord.checkOutTime && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-gray-600">Reason:</label>
+              <select
+                value={checkOutReason}
+                onChange={(e) => setCheckOutReason(e.target.value as CheckOutReason)}
+                className="text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+              >
+                <option value="REGULAR">Regular checkout</option>
+                <option value="HALF_DAY">Half day</option>
+                <option value="EARLY_LEAVE">Early leave</option>
+                <option value="OVERTIME">Overtime</option>
+              </select>
+            </div>
+            <button
+              onClick={handleCheckOut}
+              disabled={checkOutState === "locating" || checkOutState === "submitting"}
+              className="shrink-0 flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow transition-colors"
+            >
+              {(checkOutState === "locating" || checkOutState === "submitting") ? <span className="animate-spin">⏳</span> : <span>📍</span>}
+              {checkOutState === "locating" ? "Getting Location…" : checkOutState === "submitting" ? "Recording…" : checkOutState === "error" ? "Retry Check-Out" : "Check Out Now"}
+            </button>
+          </div>
         )}
-        {todayRecord && todayRecord.status !== "ON_LEAVE" && todayRecord.status !== "HOLIDAY" && todayRecord.checkOutTime && (
-          <div className="shrink-0 flex items-center gap-2 text-green-700 font-semibold text-sm">
+
+        {/* Fully checked out */}
+        {todayRecord?.checkOutTime && (
+          <div className="flex items-center gap-2 text-green-700 font-semibold text-sm">
             <span>✅</span> Checked out
           </div>
         )}
@@ -305,20 +459,47 @@ export default function MyAttendancePage() {
       </div>
 
       {/* ── Kiosk Device Registration ── */}
-      <div className="border border-indigo-200 rounded-xl overflow-hidden">
+      <div className={`rounded-xl overflow-hidden border-2 ${
+        biometrics.length > 0 ? "border-green-200" : permitStatus.allowed ? "border-indigo-300" : "border-amber-200"
+      }`}>
         <button
           onClick={() => setShowRegPanel((v) => !v)}
-          className="w-full flex items-center justify-between px-5 py-3.5 bg-indigo-50 hover:bg-indigo-100 transition-colors text-left"
+          className={`w-full flex items-center justify-between px-5 py-3.5 transition-colors text-left ${
+            biometrics.length > 0 ? "bg-green-50 hover:bg-green-100"
+            : permitStatus.allowed ? "bg-indigo-50 hover:bg-indigo-100"
+            : "bg-amber-50 hover:bg-amber-100"
+          }`}
         >
-          <div>
-            <p className="text-sm font-semibold text-indigo-900">Register Device for Kiosk</p>
-            <p className="text-xs text-indigo-600 mt-0.5">
-              {biometrics.length === 0
-                ? "Not registered — set up this device for kiosk attendance"
-                : "Device registered — use the kiosk from where it was set up"}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-base shrink-0 ${
+              biometrics.length > 0 ? "bg-green-100 text-green-600"
+              : permitStatus.allowed ? "bg-indigo-100 text-indigo-600"
+              : "bg-amber-100 text-amber-600"
+            }`}>
+              {biometrics.length > 0 ? "✓" : "🔑"}
+            </div>
+            <div>
+              <p className={`text-sm font-semibold ${
+                biometrics.length > 0 ? "text-green-900" : permitStatus.allowed ? "text-indigo-900" : "text-amber-900"
+              }`}>
+                {biometrics.length > 0 ? `Kiosk Device: ${biometrics[0].deviceName || "Registered"}` : "Register Device for Kiosk"}
+              </p>
+              <p className={`text-xs mt-0.5 ${
+                biometrics.length > 0 ? "text-green-700"
+                : permitStatus.allowed ? "text-indigo-600"
+                : "text-amber-700"
+              }`}>
+                {biometrics.length > 0
+                  ? `Registered ${new Date(biometrics[0].registeredAt).toLocaleDateString()} · Active for kiosk check-in`
+                  : permitStatus.allowed
+                  ? "Registration permitted — tap to set up this device"
+                  : "Not set up — ask HR to grant registration permission"}
+              </p>
+            </div>
           </div>
-          <span className="text-indigo-400 text-sm">{showRegPanel ? "▲" : "▼"}</span>
+          <span className={`text-sm shrink-0 ml-2 ${
+            biometrics.length > 0 ? "text-green-400" : permitStatus.allowed ? "text-indigo-400" : "text-amber-400"
+          }`}>{showRegPanel ? "▲" : "▼"}</span>
         </button>
 
         {showRegPanel && (
@@ -333,14 +514,15 @@ export default function MyAttendancePage() {
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Your Registered Device</p>
                 {biometrics.map((b) => (
-                  <div key={b.id} className="flex items-center justify-between border border-green-200 bg-green-50 rounded-lg px-3 py-2.5">
-                    <div>
-                      <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
-                        <span className="text-green-600">✓</span> {b.deviceName || "Unnamed Device"}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-0.5">Registered {new Date(b.registeredAt).toLocaleDateString()} · Only usable at the kiosk from that device</p>
+                  <div key={b.id} className="flex items-center justify-between border border-green-200 bg-green-50 rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-lg shrink-0">✓</div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">{b.deviceName || "Unnamed Device"}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Registered {new Date(b.registeredAt).toLocaleDateString()} · Kiosk check-in active</p>
+                      </div>
                     </div>
-                    <button onClick={() => handleDeleteBiometric(b.id)} className="text-red-500 hover:text-red-700 text-xs shrink-0 ml-3">Remove</button>
+                    <button onClick={() => handleDeleteBiometric(b.id)} className="text-red-500 hover:text-red-700 text-xs shrink-0 ml-3 border border-red-200 rounded px-2 py-1">Remove</button>
                   </div>
                 ))}
                 {!permitStatus.allowed && (
@@ -478,19 +660,23 @@ export default function MyAttendancePage() {
         <>
           {/* Mobile cards */}
           <div className="sm:hidden space-y-3">
-            {records.map((r) => (
-              <div key={r.date} className="bg-white border border-gray-200 rounded-xl p-4 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-gray-900 text-sm">{r.date}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
+            {records.map((r) => {
+              const dur = calcDuration(r.checkInTime, r.checkOutTime);
+              return (
+                <div key={r.date} className="bg-white border border-gray-200 rounded-xl p-4 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-gray-900 text-sm">{r.date}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
+                  </div>
+                  <div className="text-xs text-gray-600 flex gap-4 flex-wrap">
+                    <span><span className="text-gray-400">In: </span>{r.checkInTime ?? "—"}</span>
+                    <span><span className="text-gray-400">Out: </span>{r.checkOutTime ?? "—"}</span>
+                    {dur && <span className={DURATION_STYLES[r.status] ?? "text-gray-600"}>⏱ {dur}</span>}
+                    <span className="text-gray-400">{r.method}</span>
+                  </div>
                 </div>
-                <div className="text-xs text-gray-600 flex gap-4">
-                  <span><span className="text-gray-400">In: </span>{r.checkInTime ?? "—"}</span>
-                  <span><span className="text-gray-400">Out: </span>{r.checkOutTime ?? "—"}</span>
-                  <span className="text-gray-400">{r.method}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Tablet+ table */}
@@ -503,20 +689,27 @@ export default function MyAttendancePage() {
                   <th className="px-4 py-3 text-left">Method</th>
                   <th className="px-4 py-3 text-left">Check-In</th>
                   <th className="px-4 py-3 text-left">Check-Out</th>
+                  <th className="px-4 py-3 text-left">Duration</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {records.map((r) => (
-                  <tr key={r.date} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">{r.date}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">{r.method}</td>
-                    <td className="px-4 py-3">{r.checkInTime ?? "—"}</td>
-                    <td className="px-4 py-3">{r.checkOutTime ?? "—"}</td>
-                  </tr>
-                ))}
+                {records.map((r) => {
+                  const dur = calcDuration(r.checkInTime, r.checkOutTime);
+                  return (
+                    <tr key={r.date} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">{r.date}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">{r.method}</td>
+                      <td className="px-4 py-3">{r.checkInTime ?? "—"}</td>
+                      <td className="px-4 py-3">{r.checkOutTime ?? "—"}</td>
+                      <td className={`px-4 py-3 tabular-nums ${dur ? (DURATION_STYLES[r.status] ?? "text-gray-600") : "text-gray-400"}`}>
+                        {dur ?? "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
