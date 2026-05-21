@@ -14,6 +14,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const router = useRouter();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [user, setUser] = useState<any>(null);
+    const [features, setFeatures] = useState<Record<string, boolean>>({});
     const schoolInfo = useSchoolInfo();
 
     useEffect(() => {
@@ -34,6 +35,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             }
 
             setUser(u);
+
+            // Load feature flags for sidebar visibility
+            try {
+                const res = await authFetch(`${API_BASE_URL}/school/features`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setFeatures(data ?? {});
+                }
+            } catch { /* non-critical — sidebar falls back to showing all links */ }
         };
         initAuth();
     }, [router]);

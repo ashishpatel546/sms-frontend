@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { hrApi, StaffAttendanceRecord, StaffBiometric, WebauthnPermitStatus, CheckOutReason, TodayAttendanceStatus } from "@/lib/hr-api";
 import toast, { Toaster } from "react-hot-toast";
-import { startRegistration } from "@simplewebauthn/browser";
+import { startRegistration, startAuthentication } from "@simplewebauthn/browser";
 import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
@@ -65,7 +65,7 @@ const DURATION_STYLES: Record<string, string> = {
 const now = new Date();
 const todayStr = now.toISOString().slice(0, 10);
 
-type CheckInState = "idle" | "locating" | "submitting" | "done" | "error";
+type CheckInState = "idle" | "locating" | "authenticating" | "submitting" | "done" | "error";
 
 export default function MyAttendancePage() {
   const [records, setRecords] = useState<StaffAttendanceRecord[]>([]);
@@ -84,6 +84,8 @@ export default function MyAttendancePage() {
   const [checkOutState, setCheckOutState] = useState<CheckInState>("idle");
   const [checkOutMsg, setCheckOutMsg] = useState("");
   const [checkOutReason, setCheckOutReason] = useState<CheckOutReason>("REGULAR");
+  const [checkOutStatusOverride, setCheckOutStatusOverride] = useState<"PRESENT" | "LATE" | "HALF_DAY">("PRESENT");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Pending prior-day checkout
   const [pendingCheckOut, setPendingCheckOut] = useState<TodayAttendanceStatus["pendingCheckOut"]>(null);
@@ -91,6 +93,7 @@ export default function MyAttendancePage() {
 
   // Biometric registration state
   const [biometrics, setBiometrics] = useState<StaffBiometric[]>([]);
+  const [biometricsLoading, setBiometricsLoading] = useState(true);
   const [permitStatus, setPermitStatus] = useState<WebauthnPermitStatus>({ allowed: false });
   const [regState, setRegState] = useState<"idle" | "registering" | "done" | "error">("idle");
   const [regMsg, setRegMsg] = useState("");
@@ -107,6 +110,13 @@ export default function MyAttendancePage() {
       setPermitStatus(permit);
     } catch { /* silently ignore — biometrics section is optional */ }
   }
+
+  // Sync checkOutStatusOverride whenever todayRecord changes
+  useEffect(() => {
+    if (todayRecord?.status && ["PRESENT", "LATE", "HALF_DAY"].includes(todayRecord.status)) {
+      setCheckOutStatusOverride(todayRecord.status as "PRESENT" | "LATE" | "HALF_DAY");
+    }
+  }, [todayRecord]);
 
   // Load today's status (todayRecord + pending checkout) on mount
   useEffect(() => {
@@ -146,7 +156,7 @@ export default function MyAttendancePage() {
     };
     doLoad();
     return () => { cancelled = true; };
-  }, [month, year]);
+  }, [month, year, refreshKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -160,6 +170,7 @@ export default function MyAttendancePage() {
         const permit = await hrApi.attendance.webauthn.myPermitStatus();
         if (!cancelled) setPermitStatus(permit);
       } catch { /* ignore — permit status stays at default { allowed: false } */ }
+      if (!cancelled) setBiometricsLoading(false);
     };
     doLoad();
     return () => { cancelled = true; };
@@ -206,86 +217,138 @@ export default function MyAttendancePage() {
     } catch { toast.error("Failed to remove device"); }
   };
 
-  const handleCheckIn = () => {
+  const handleCheckIn = async () => {
     if (!navigator.geolocation) { toast.error("Your browser does not support GPS location"); return; }
 
     setCheckInState("locating");
-    setCheckInMsg("Getting your location…");
+    setCheckInMsg("Getting your location and preparing device check…");
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        setCheckInState("submitting");
-        setCheckInMsg("Verifying location and marking attendance…");
-        try {
-          // Send local time from browser to avoid server-timezone bugs
-          const localTime = new Date().toTimeString().slice(0, 8);
-          const record = await hrApi.attendance.selfCheckIn({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            clientTimestamp: new Date().toISOString(),
-            checkInTime: localTime,
-            status: selectedStatus,
-          });
-          setTodayRecord(record as any);
-          setCheckInState("done");
-          setCheckInMsg(`Checked in as ${(record as any).status} at ${(record as any).checkInTime ?? localTime}`);
-          setMonth(now.getMonth() + 1); setYear(now.getFullYear());
-        } catch (e: any) {
-          const info = e?.info;
-          if (info?.code === "PENDING_CHECKOUT") {
-            setPendingCheckOut({ date: info.pendingDate, checkInTime: "—", daysAgo: 1 });
-          }
-          const msg = info?.message ?? "Check-in failed. You may be outside the school zone.";
-          setCheckInState("error");
-          setCheckInMsg(msg);
-        }
-      },
-      (err) => {
-        setCheckInState("error");
-        if (err.code === 1) setCheckInMsg("Location permission denied. Please allow location access and try again.");
-        else if (err.code === 2) setCheckInMsg("Location unavailable. Please check your GPS.");
-        else setCheckInMsg("Could not get location. Please try again.");
-      },
-      { enableHighAccuracy: true, timeout: 15000 },
-    );
+    // Fetch GPS and auth challenge in parallel — both are needed before we can
+    // show the biometric prompt; doing them in parallel saves ~1-2 seconds.
+    let position: GeolocationPosition;
+    let challengeOpts: any;
+    try {
+      [position, challengeOpts] = await Promise.all([
+        new Promise<GeolocationPosition>((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 15000,
+          })
+        ),
+        hrApi.attendance.webauthn.selfGetAuthChallenge(),
+      ]);
+    } catch (e: any) {
+      setCheckInState("error");
+      if (e?.code === 1) setCheckInMsg("Location permission denied. Please allow location access and try again.");
+      else if (e?.code === 2) setCheckInMsg("Location unavailable. Please check your GPS.");
+      else {
+        const msg = e?.info?.message ?? e?.message ?? "Preparation failed. Please try again.";
+        setCheckInMsg(msg);
+      }
+      return;
+    }
+
+    // Biometric prompt — proves this browser holds the enrolled private key
+    setCheckInState("authenticating");
+    setCheckInMsg("Confirm your identity with fingerprint or face…");
+    let assertion: any;
+    try {
+      assertion = await startAuthentication({ optionsJSON: challengeOpts });
+    } catch (e: any) {
+      setCheckInState("error");
+      setCheckInMsg("Biometric verification failed. Please use your registered device.");
+      return;
+    }
+
+    // Submit with GPS + WebAuthn assertion together
+    setCheckInState("submitting");
+    setCheckInMsg("Verifying location and marking attendance…");
+    try {
+      const localTime = new Date().toTimeString().slice(0, 8);
+      const record = await hrApi.attendance.selfCheckIn({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        clientTimestamp: new Date().toISOString(),
+        checkInTime: localTime,
+        status: selectedStatus,
+        webauthnAssertion: assertion,
+      });
+      setTodayRecord(record as any);
+      setCheckInState("done");
+      setCheckInMsg(`Checked in as ${(record as any).status} at ${(record as any).checkInTime ?? localTime}`);
+      setRefreshKey((k) => k + 1);
+    } catch (e: any) {
+      const info = e?.info;
+      if (info?.code === "PENDING_CHECKOUT") {
+        setPendingCheckOut({ date: info.pendingDate, checkInTime: "—", daysAgo: 1 });
+      }
+      const msg = info?.message ?? "Check-in failed. You may be outside the school zone.";
+      setCheckInState("error");
+      setCheckInMsg(msg);
+    }
   };
 
-  const handleCheckOut = () => {
+  const handleCheckOut = async () => {
     if (!navigator.geolocation) { toast.error("Your browser does not support GPS location"); return; }
 
     setCheckOutState("locating");
-    setCheckOutMsg("Getting your location…");
+    setCheckOutMsg("Getting your location and preparing device check…");
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        setCheckOutState("submitting");
-        setCheckOutMsg("Recording check-out…");
-        try {
-          const localTime = new Date().toTimeString().slice(0, 8);
-          const record = await hrApi.attendance.selfCheckOut({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            clientTimestamp: new Date().toISOString(),
-            checkOutTime: localTime,
-            reason: checkOutReason,
-          });
-          setTodayRecord(record as any);
-          setCheckOutState("done");
-          setCheckOutMsg(`Checked out at ${(record as any).checkOutTime ?? localTime}`);
-          setMonth(now.getMonth() + 1); setYear(now.getFullYear());
-        } catch (e: any) {
-          const msg = e?.info?.message ?? "Check-out failed.";
-          setCheckOutState("error");
-          setCheckOutMsg(msg);
-        }
-      },
-      (err) => {
-        setCheckOutState("error");
-        if (err.code === 1) setCheckOutMsg("Location permission denied. Please allow location access and try again.");
-        else setCheckOutMsg("Could not get location. Please try again.");
-      },
-      { enableHighAccuracy: true, timeout: 15000 },
-    );
+    let position: GeolocationPosition;
+    let challengeOpts: any;
+    try {
+      [position, challengeOpts] = await Promise.all([
+        new Promise<GeolocationPosition>((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 15000,
+          })
+        ),
+        hrApi.attendance.webauthn.selfGetAuthChallenge(),
+      ]);
+    } catch (e: any) {
+      setCheckOutState("error");
+      if (e?.code === 1) setCheckOutMsg("Location permission denied. Please allow location access and try again.");
+      else {
+        const msg = e?.info?.message ?? e?.message ?? "Preparation failed. Please try again.";
+        setCheckOutMsg(msg);
+      }
+      return;
+    }
+
+    setCheckOutState("authenticating");
+    setCheckOutMsg("Confirm your identity with fingerprint or face…");
+    let assertion: any;
+    try {
+      assertion = await startAuthentication({ optionsJSON: challengeOpts });
+    } catch {
+      setCheckOutState("error");
+      setCheckOutMsg("Biometric verification failed. Please use your registered device.");
+      return;
+    }
+
+    setCheckOutState("submitting");
+    setCheckOutMsg("Recording check-out…");
+    try {
+      const localTime = new Date().toTimeString().slice(0, 8);
+      const record = await hrApi.attendance.selfCheckOut({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        clientTimestamp: new Date().toISOString(),
+        checkOutTime: localTime,
+        reason: checkOutReason,
+        statusOverride: checkOutStatusOverride,
+        webauthnAssertion: assertion,
+      });
+      setTodayRecord(record as any);
+      setCheckOutState("done");
+      setCheckOutMsg(`Checked out at ${(record as any).checkOutTime ?? localTime}`);
+      setRefreshKey((k) => k + 1);
+    } catch (e: any) {
+      const msg = e?.info?.message ?? "Check-out failed.";
+      setCheckOutState("error");
+      setCheckOutMsg(msg);
+    }
   };
 
   const handleResolvePending = async () => {
@@ -387,14 +450,14 @@ export default function MyAttendancePage() {
               </p>
             )}
             {checkInState === "error" && <p className="text-xs text-red-600 mt-1">{checkInMsg}</p>}
-            {(checkInState === "locating" || checkInState === "submitting") && <p className="text-xs text-blue-600 mt-1">{checkInMsg}</p>}
+            {(checkInState === "locating" || checkInState === "authenticating" || checkInState === "submitting") && <p className="text-xs text-blue-600 mt-1">{checkInMsg}</p>}
             {checkOutState === "error" && <p className="text-xs text-red-600 mt-1">{checkOutMsg}</p>}
-            {(checkOutState === "locating" || checkOutState === "submitting") && <p className="text-xs text-amber-600 mt-1">{checkOutMsg}</p>}
+            {(checkOutState === "locating" || checkOutState === "authenticating" || checkOutState === "submitting") && <p className="text-xs text-amber-600 mt-1">{checkOutMsg}</p>}
           </div>
         </div>
 
-        {/* Check-In row — shown when not yet checked in and no pending block */}
-        {!todayRecord && !pendingCheckOut && (
+        {/* Check-In row — shown when device registered, not yet checked in, no pending block */}
+        {!biometricsLoading && biometrics.length > 0 && !todayRecord && !pendingCheckOut && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-2">
               <label className="text-xs font-medium text-gray-600">Status:</label>
@@ -410,18 +473,41 @@ export default function MyAttendancePage() {
             </div>
             <button
               onClick={handleCheckIn}
-              disabled={checkInState === "locating" || checkInState === "submitting"}
+              disabled={checkInState === "locating" || checkInState === "authenticating" || checkInState === "submitting"}
               className="shrink-0 flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow transition-colors"
             >
-              {(checkInState === "locating" || checkInState === "submitting") ? <span className="animate-spin">⏳</span> : <span>📍</span>}
-              {checkInState === "locating" ? "Getting Location…" : checkInState === "submitting" ? "Marking…" : checkInState === "error" ? "Retry Check-In" : "Check In Now"}
+              {(checkInState === "locating" || checkInState === "authenticating" || checkInState === "submitting") ? <span className="animate-spin">⏳</span> : <span>📍</span>}
+              {checkInState === "locating" ? "Getting Location…" : checkInState === "authenticating" ? "Scanning…" : checkInState === "submitting" ? "Marking…" : checkInState === "error" ? "Retry Check-In" : "Check In Now"}
             </button>
           </div>
         )}
 
-        {/* Check-Out row — shown when checked in but not yet checked out */}
-        {todayRecord && !["ON_LEAVE", "HOLIDAY"].includes(todayRecord.status) && !todayRecord.checkOutTime && (
+        {/* Not-registered notice — shown while loading is done but no device is enrolled */}
+        {!biometricsLoading && biometrics.length === 0 && !todayRecord && !pendingCheckOut && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            📱 This device is not registered for your account. Register your device below to enable self check-in.
+          </p>
+        )}
+
+        {/* Check-Out row — shown when device registered, checked in but not yet checked out */}
+        {!biometricsLoading && biometrics.length > 0 && todayRecord && !["ON_LEAVE", "HOLIDAY"].includes(todayRecord.status) && !todayRecord.checkOutTime && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-gray-600">Status:</label>
+              <select
+                value={checkOutStatusOverride}
+                onChange={(e) => {
+                  const val = e.target.value as "PRESENT" | "LATE" | "HALF_DAY";
+                  setCheckOutStatusOverride(val);
+                  if (val === "HALF_DAY") setCheckOutReason("HALF_DAY");
+                }}
+                className="text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+              >
+                <option value="PRESENT">Present</option>
+                <option value="LATE">Late</option>
+                <option value="HALF_DAY">Half Day</option>
+              </select>
+            </div>
             <div className="flex items-center gap-2">
               <label className="text-xs font-medium text-gray-600">Reason:</label>
               <select
@@ -437,11 +523,11 @@ export default function MyAttendancePage() {
             </div>
             <button
               onClick={handleCheckOut}
-              disabled={checkOutState === "locating" || checkOutState === "submitting"}
+              disabled={checkOutState === "locating" || checkOutState === "authenticating" || checkOutState === "submitting"}
               className="shrink-0 flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow transition-colors"
             >
-              {(checkOutState === "locating" || checkOutState === "submitting") ? <span className="animate-spin">⏳</span> : <span>📍</span>}
-              {checkOutState === "locating" ? "Getting Location…" : checkOutState === "submitting" ? "Recording…" : checkOutState === "error" ? "Retry Check-Out" : "Check Out Now"}
+              {(checkOutState === "locating" || checkOutState === "authenticating" || checkOutState === "submitting") ? <span className="animate-spin">⏳</span> : <span>📍</span>}
+              {checkOutState === "locating" ? "Getting Location…" : checkOutState === "authenticating" ? "Scanning…" : checkOutState === "submitting" ? "Recording…" : checkOutState === "error" ? "Retry Check-Out" : "Check Out Now"}
             </button>
           </div>
         )}

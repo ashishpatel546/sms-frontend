@@ -109,7 +109,12 @@ export type StaffAttendanceStatus =
   | 'ON_LEAVE'
   | 'HOLIDAY';
 export type AttendanceMethod = 'MANUAL' | 'WEBAUTHN' | 'GEOFENCE' | 'BYPASS';
-export type CheckOutReason = 'REGULAR' | 'HALF_DAY' | 'EARLY_LEAVE' | 'OVERTIME' | 'FORGOT';
+export type CheckOutReason =
+  | 'REGULAR'
+  | 'HALF_DAY'
+  | 'EARLY_LEAVE'
+  | 'OVERTIME'
+  | 'FORGOT';
 
 export interface StaffAttendanceRecord {
   id: number;
@@ -136,7 +141,11 @@ export interface StaffAttendanceRecord {
 
 export interface TodayAttendanceStatus {
   todayRecord: StaffAttendanceRecord | null;
-  pendingCheckOut: { date: string; checkInTime: string; daysAgo: number } | null;
+  pendingCheckOut: {
+    date: string;
+    checkInTime: string;
+    daysAgo: number;
+  } | null;
   canCheckIn: boolean;
   canCheckOut: boolean;
 }
@@ -362,6 +371,7 @@ export const hrApi = {
       clientTimestamp?: string;
       checkInTime?: string;
       status?: 'PRESENT' | 'LATE' | 'HALF_DAY';
+      webauthnAssertion: any;
     }) =>
       req<StaffAttendanceRecord>(
         'POST',
@@ -375,6 +385,7 @@ export const hrApi = {
       checkOutTime?: string;
       reason: CheckOutReason;
       statusOverride?: 'PRESENT' | 'LATE' | 'HALF_DAY';
+      webauthnAssertion: any;
     }) =>
       req<StaffAttendanceRecord>(
         'POST',
@@ -388,10 +399,7 @@ export const hrApi = {
         data,
       ),
     todayStatus: () =>
-      req<TodayAttendanceStatus>(
-        'GET',
-        '/hr/staff-attendance/me/today-status',
-      ),
+      req<TodayAttendanceStatus>('GET', '/hr/staff-attendance/me/today-status'),
     myMonthly: (month: number, year: number) =>
       req<StaffAttendanceRecord[]>(
         'GET',
@@ -402,13 +410,16 @@ export const hrApi = {
         'GET',
         `/hr/staff-attendance/monthly?staffId=${staffId}&month=${month}&year=${year}`,
       ),
-    daily: (date: string, opts?: {
-      page?: number;
-      limit?: number;
-      search?: string;
-      employeeCode?: string;
-      staffId?: string;
-    }) => {
+    daily: (
+      date: string,
+      opts?: {
+        page?: number;
+        limit?: number;
+        search?: string;
+        employeeCode?: string;
+        staffId?: string;
+      },
+    ) => {
       const p = new URLSearchParams({ date });
       if (opts?.page) p.set('page', String(opts.page));
       if (opts?.limit) p.set('limit', String(opts.limit));
@@ -445,6 +456,7 @@ export const hrApi = {
           '/hr/staff-attendance/bypass',
           data,
         ),
+      close: () => req<void>('DELETE', '/hr/staff-attendance/bypass'),
     },
     webauthn: {
       // HR: register on behalf of staff
@@ -495,6 +507,18 @@ export const hrApi = {
         req<WebauthnPermitStatus>(
           'GET',
           '/hr/staff-attendance/webauthn/my-permit-status',
+        ),
+      /**
+       * Step 1 before self-check-in or self-check-out: fetch a one-time
+       * WebAuthn auth challenge bound to the current user's enrolled credentials.
+       * Pass the result to startAuthentication({ optionsJSON }) from
+       * @simplewebauthn/browser, then include the assertion in the check-in/out body.
+       */
+      selfGetAuthChallenge: () =>
+        req<any>(
+          'POST',
+          '/hr/staff-attendance/webauthn/self/auth-challenge',
+          {},
         ),
       selfGetRegOptions: () =>
         req<any>(

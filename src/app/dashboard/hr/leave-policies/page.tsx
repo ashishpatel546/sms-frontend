@@ -79,6 +79,15 @@ export default function LeavePoliciesPage() {
     catch (e: any) { toast.error(e?.info?.message ?? "Delete failed"); }
   };
 
+  const handleToggleActive = async (p: StaffLeavePolicy) => {
+    const next = !p.isActive;
+    try {
+      await hrApi.leavePolicies.update(p.id, { isActive: next });
+      toast.success(next ? `${p.name} activated` : `${p.name} suspended`);
+      load();
+    } catch (e: any) { toast.error(e?.info?.message ?? "Update failed"); }
+  };
+
   const handleApplyDefaults = async () => {
     try {
       const result = await hrApi.leavePolicies.seedDefaults();
@@ -271,6 +280,12 @@ export default function LeavePoliciesPage() {
                 {rbac.canManageHR && (
                   <div className="flex gap-3">
                     <button onClick={() => openEdit(p)} className="text-blue-600 hover:underline text-xs">Edit</button>
+                    <button
+                      onClick={() => handleToggleActive(p)}
+                      className={p.isActive ? "text-amber-600 hover:underline text-xs" : "text-green-600 hover:underline text-xs"}
+                    >
+                      {p.isActive ? "Suspend" : "Activate"}
+                    </button>
                     <button onClick={() => handleDelete(p.id)} className="text-red-600 hover:underline text-xs">Delete</button>
                   </div>
                 )}
@@ -278,7 +293,7 @@ export default function LeavePoliciesPage() {
             ))}
           </div>
 
-          {/* Tablet+ table */}
+          {/* Tablet+ table */
           <div className="hidden sm:block overflow-x-auto rounded-xl border border-gray-200">
             <table className="min-w-full text-sm">
               <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
@@ -312,6 +327,12 @@ export default function LeavePoliciesPage() {
                     {rbac.canManageHR && (
                       <td className="px-4 py-3 flex gap-2">
                         <button onClick={() => openEdit(p)} className="text-blue-600 hover:underline text-xs">Edit</button>
+                        <button
+                          onClick={() => handleToggleActive(p)}
+                          className={p.isActive ? "text-amber-600 hover:underline text-xs" : "text-green-600 hover:underline text-xs"}
+                        >
+                          {p.isActive ? "Suspend" : "Activate"}
+                        </button>
                         <button onClick={() => handleDelete(p.id)} className="text-red-600 hover:underline text-xs">Delete</button>
                       </td>
                     )}
@@ -319,7 +340,7 @@ export default function LeavePoliciesPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </div>}
         </>
       )}
 

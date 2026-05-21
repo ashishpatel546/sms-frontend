@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import DashboardDatePicker from "./DashboardDatePicker";
 import QuickActions from "./QuickActions";
 import DashboardStats from "./DashboardStats";
+import RecentActivity from "@/components/RecentActivity";
 
 export const metadata: Metadata = {
     title: "Dashboard",
@@ -35,12 +36,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                 <DashboardStats selectedDate={selectedDate} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-                        <h3 className="text-lg font-semibold text-slate-800 mb-4">Recent Activity</h3>
-                        <div className="flex items-center justify-center h-48 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
-                            <p className="text-slate-400 text-sm">No recent activity to display</p>
-                        </div>
-                    </div>
+                    <RecentActivity />
                     <QuickActions />
                 </div>
             </div>

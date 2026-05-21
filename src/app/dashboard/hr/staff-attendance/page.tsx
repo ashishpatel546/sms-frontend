@@ -75,7 +75,7 @@ export default function StaffAttendancePage() {
 
   // Bypass form
   const [showBypass, setShowBypass] = useState(false);
-  const [bypassForm, setBypassForm] = useState({ reason: "", durationHours: 8 });
+  const [bypassForm, setBypassForm] = useState<{ reason: string; durationHours: number | string }>({ reason: "", durationHours: 8 });
 
   // Biometric management
   const [showBiometrics, setShowBiometrics] = useState(false);
@@ -137,11 +137,20 @@ export default function StaffAttendancePage() {
 
   const handleBypass = async () => {
     try {
-      const bp = await hrApi.attendance.bypass.create(bypassForm);
+      const bp = await hrApi.attendance.bypass.create({ ...bypassForm, durationHours: Math.min(Math.max(Number(bypassForm.durationHours) || 1, 1), 24) });
       setBypass(bp);
       toast.success("Bypass window created");
       setShowBypass(false);
     } catch (e: any) { toast.error(e?.info?.message ?? "Failed"); }
+  };
+
+  const handleCloseBypass = async () => {
+    if (!confirm("Close the active bypass window? Geofence enforcement will resume immediately.")) return;
+    try {
+      await hrApi.attendance.bypass.close();
+      setBypass(null);
+      toast.success("Bypass window closed");
+    } catch (e: any) { toast.error(e?.info?.message ?? "Failed to close bypass window"); }
   };
 
   const loadBiometrics = useCallback(async () => {
@@ -243,8 +252,13 @@ export default function StaffAttendancePage() {
                 Biometrics
               </button>
               <button onClick={() => setShowBypass(true)} className="border border-amber-400 text-amber-700 px-3 py-2 rounded-lg text-sm hover:bg-amber-50">
-                {bypass ? "Bypass Active" : "Open Bypass Window"}
+                {bypass ? "Bypass Active — Open New" : "Open Bypass Window"}
               </button>
+              {bypass && (
+                <button onClick={handleCloseBypass} className="border border-red-300 text-red-600 px-3 py-2 rounded-lg text-sm hover:bg-red-50">
+                  Close Bypass Window
+                </button>
+              )}
               <button onClick={() => { setMarkDate(today); setShowMark(true); }} className="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
                 + Mark Manually
               </button>
@@ -672,7 +686,26 @@ export default function StaffAttendancePage() {
             <p className="text-sm text-gray-600">During a bypass window, staff can mark attendance without biometrics (e.g., device maintenance).</p>
             <div>
               <label className="text-sm font-medium">Duration (hours)</label>
-              <input type="number" min={1} max={24} value={bypassForm.durationHours} onChange={(e) => setBypassForm((f) => ({ ...f, durationHours: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
+              <input
+                type="number"
+                min={1}
+                max={24}
+                value={bypassForm.durationHours}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === "") {
+                    setBypassForm((f) => ({ ...f, durationHours: "" }));
+                  } else {
+                    const num = parseInt(raw, 10);
+                    if (!isNaN(num)) setBypassForm((f) => ({ ...f, durationHours: num }));
+                  }
+                }}
+                onBlur={() => {
+                  const num = Number(bypassForm.durationHours);
+                  setBypassForm((f) => ({ ...f, durationHours: Math.min(Math.max(num || 1, 1), 24) }));
+                }}
+                className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
+              />
             </div>
             <div>
               <label className="text-sm font-medium">Reason (optional)</label>

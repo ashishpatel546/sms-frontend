@@ -6,13 +6,39 @@ import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
 
-const EMPTY: Partial<AttendanceZone> = { name: "", lat: 0, lng: 0, radiusMeters: 100, isActive: true };
+// Form state keeps numeric fields as strings while the user is typing
+// so empty values are valid (avoids NaN warnings) and the leading "0"
+// can be cleared cleanly on mobile keyboards.
+type ZoneFormState = {
+  name: string;
+  latStr: string;
+  lngStr: string;
+  radiusStr: string;
+  isActive: boolean;
+};
+
+type ZoneFormErrors = {
+  name?: string;
+  lat?: string;
+  lng?: string;
+  radius?: string;
+};
+
+const EMPTY_FORM: ZoneFormState = {
+  name: "",
+  latStr: "",
+  lngStr: "",
+  radiusStr: "",
+  isActive: true,
+};
 
 export default function AttendanceZonesPage() {
   const rbac = useRbac();
   const [zones, setZones] = useState<AttendanceZone[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState<Partial<AttendanceZone>>(EMPTY);
+  const [form, setForm] = useState<ZoneFormState>(EMPTY_FORM);
+  const [formErrors, setFormErrors] = useState<ZoneFormErrors>({});
+  const [locationWarning, setLocationWarning] = useState<string | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
 
@@ -25,14 +51,52 @@ export default function AttendanceZonesPage() {
 
   useEffect(() => { load(); }, []);
 
-  const openCreate = () => { setForm(EMPTY); setEditId(null); setShowForm(true); };
-  const openEdit = (z: AttendanceZone) => { setForm({ ...z }); setEditId(z.id); setShowForm(true); };
+  const openCreate = () => { setForm(EMPTY_FORM); setFormErrors({}); setLocationWarning(null); setEditId(null); setShowForm(true); };
+  const openEdit = (z: AttendanceZone) => {
+    setForm({
+      name: z.name ?? "",
+      latStr: z.lat !== undefined && z.lat !== null ? String(z.lat) : "",
+      lngStr: z.lng !== undefined && z.lng !== null ? String(z.lng) : "",
+      radiusStr: z.radiusMeters !== undefined && z.radiusMeters !== null ? String(z.radiusMeters) : "",
+      isActive: z.isActive ?? true,
+    });
+    setFormErrors({});
+    setLocationWarning(null);
+    setEditId(z.id);
+    setShowForm(true);
+  };
 
   const handleSave = async () => {
-    if (!form.name || form.lat === undefined || form.lng === undefined) { toast.error("Name, lat, lng required"); return; }
+    const name = form.name.trim();
+    const lat = form.latStr.trim() === "" ? NaN : parseFloat(form.latStr);
+    const lng = form.lngStr.trim() === "" ? NaN : parseFloat(form.lngStr);
+    const radius = form.radiusStr.trim() === "" ? undefined : Number(form.radiusStr);
+
+    const errors: ZoneFormErrors = {};
+    if (!name) errors.name = "Zone name is required";
+    if (form.latStr.trim() === "") errors.lat = "Latitude is required";
+    else if (!Number.isFinite(lat) || lat < -90 || lat > 90) errors.lat = "Must be a number between -90 and 90";
+    if (form.lngStr.trim() === "") errors.lng = "Longitude is required";
+    else if (!Number.isFinite(lng) || lng < -180 || lng > 180) errors.lng = "Must be a number between -180 and 180";
+    if (radius !== undefined && (!Number.isFinite(radius) || radius < 10)) errors.radius = "Radius must be at least 10 metres";
+
+    if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
+    setFormErrors({});
+
     try {
-      if (editId) { await hrApi.attendance.zones.update(editId, form); toast.success("Zone updated"); }
-      else { await hrApi.attendance.zones.create({ name: form.name!, lat: form.lat!, lng: form.lng!, radiusMeters: form.radiusMeters }); toast.success("Zone created"); }
+      if (editId) {
+        await hrApi.attendance.zones.update(editId, {
+          name,
+          lat,
+          lng,
+          radiusMeters: radius,
+          isActive: form.isActive,
+        });
+        toast.success("Zone updated");
+      } else {
+        await hrApi.attendance.zones.create({ name, lat, lng, radiusMeters: radius });
+        toast.success("Zone created");
+      }
       setShowForm(false); load();
     } catch (e: any) { toast.error(e?.info?.message ?? "Save failed"); }
   };
@@ -44,10 +108,32 @@ export default function AttendanceZonesPage() {
   };
 
   const useCurrentLocation = () => {
-    if (!navigator.geolocation) { toast.error("Geolocation not supported"); return; }
+    if (!navigator.geolocation) {
+      setLocationWarning("Geolocation is not supported by this browser.");
+      return;
+    }
+    setLocationWarning(null);
     navigator.geolocation.getCurrentPosition(
-      (pos) => setForm((f) => ({ ...f, lat: pos.coords.latitude, lng: pos.coords.longitude })),
-      () => toast.error("Could not get location"),
+      (pos) => {
+        setLocationWarning(null);
+        setForm((f) => ({
+          ...f,
+          latStr: String(pos.coords.latitude),
+          lngStr: String(pos.coords.longitude),
+        }));
+        setFormErrors((e) => ({ ...e, lat: undefined, lng: undefined }));
+      },
+      (err) => {
+        if (err.code === 1 /* PERMISSION_DENIED */) {
+          setLocationWarning(
+            "Location permission denied. To use this feature, allow location access in your browser settings (usually the lock icon in the address bar), then reload the page.",
+          );
+        } else if (err.code === 2 /* POSITION_UNAVAILABLE */) {
+          setLocationWarning("Location unavailable. Make sure your device's GPS/location service is turned on.");
+        } else {
+          setLocationWarning("Could not get your location. Please try again or enter coordinates manually.");
+        }
+      },
     );
   };
 
@@ -149,27 +235,66 @@ export default function AttendanceZonesPage() {
             <h2 className="font-semibold text-lg">{editId ? "Edit" : "New"} Geo-Zone</h2>
             <div>
               <label className="text-sm font-medium">Zone Name</label>
-              <input value={form.name ?? ""} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
+              <input
+                value={form.name}
+                onChange={(e) => { setForm((f) => ({ ...f, name: e.target.value })); setFormErrors((er) => ({ ...er, name: undefined })); }}
+                className={`w-full border rounded-lg px-3 py-2 text-sm mt-1 ${formErrors.name ? "border-red-400" : ""}`}
+              />
+              {formErrors.name && <p className="text-xs text-red-500 mt-1">{formErrors.name}</p>}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium">Latitude</label>
-                <input type="number" step="any" value={form.lat ?? 0} onChange={(e) => setForm((f) => ({ ...f, lat: parseFloat(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1 font-mono" />
+                <input
+                  type="number"
+                  step="any"
+                  inputMode="decimal"
+                  placeholder="e.g. 28.6139"
+                  value={form.latStr}
+                  onChange={(e) => { setForm((f) => ({ ...f, latStr: e.target.value })); setFormErrors((er) => ({ ...er, lat: undefined })); }}
+                  className={`w-full border rounded-lg px-3 py-2 text-sm mt-1 font-mono ${formErrors.lat ? "border-red-400" : ""}`}
+                />
+                {formErrors.lat && <p className="text-xs text-red-500 mt-1">{formErrors.lat}</p>}
               </div>
               <div>
                 <label className="text-sm font-medium">Longitude</label>
-                <input type="number" step="any" value={form.lng ?? 0} onChange={(e) => setForm((f) => ({ ...f, lng: parseFloat(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1 font-mono" />
+                <input
+                  type="number"
+                  step="any"
+                  inputMode="decimal"
+                  placeholder="e.g. 77.2090"
+                  value={form.lngStr}
+                  onChange={(e) => { setForm((f) => ({ ...f, lngStr: e.target.value })); setFormErrors((er) => ({ ...er, lng: undefined })); }}
+                  className={`w-full border rounded-lg px-3 py-2 text-sm mt-1 font-mono ${formErrors.lng ? "border-red-400" : ""}`}
+                />
+                {formErrors.lng && <p className="text-xs text-red-500 mt-1">{formErrors.lng}</p>}
               </div>
             </div>
-            <button onClick={useCurrentLocation} className="text-sm text-blue-600 hover:underline">
-              📍 Use my current location
-            </button>
+            <div>
+              <button onClick={useCurrentLocation} className="text-sm text-blue-600 hover:underline">
+                📍 Use my current location
+              </button>
+              {locationWarning && (
+                <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+                  {locationWarning}
+                </div>
+              )}
+            </div>
             <div>
               <label className="text-sm font-medium">Radius (metres)</label>
-              <input type="number" min={10} value={form.radiusMeters ?? 100} onChange={(e) => setForm((f) => ({ ...f, radiusMeters: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
+              <input
+                type="number"
+                min={10}
+                inputMode="numeric"
+                placeholder="100"
+                value={form.radiusStr}
+                onChange={(e) => { setForm((f) => ({ ...f, radiusStr: e.target.value })); setFormErrors((er) => ({ ...er, radius: undefined })); }}
+                className={`w-full border rounded-lg px-3 py-2 text-sm mt-1 ${formErrors.radius ? "border-red-400" : ""}`}
+              />
+              {formErrors.radius && <p className="text-xs text-red-500 mt-1">{formErrors.radius}</p>}
             </div>
             <div className="flex items-center gap-2">
-              <input id="za" type="checkbox" checked={form.isActive ?? true} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} className="rounded" />
+              <input id="za" type="checkbox" checked={form.isActive} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} className="rounded" />
               <label htmlFor="za" className="text-sm">Active</label>
             </div>
             <div className="flex gap-2 justify-end pt-2">
