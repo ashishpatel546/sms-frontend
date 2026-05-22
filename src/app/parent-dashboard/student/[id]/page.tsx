@@ -561,7 +561,7 @@ export default function StudentDashboardPage() {
             <div
                 role="tablist"
                 aria-label="Student sections"
-                className="flex flex-wrap gap-2 bg-surface border border-slate-200 rounded-2xl p-2.5 animate-slide-up shadow-soft"
+                className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-10 gap-2 bg-surface border border-slate-200 rounded-2xl p-2.5 animate-slide-up shadow-soft"
                 style={{ animationDelay: '50ms' }}
             >
                 {([
@@ -597,10 +597,10 @@ export default function StudentDashboardPage() {
                                 if (section !== 'info' && section !== 'exam-schedule' && section !== 'pickup' && section !== 'home') setSectionLoading(true);
                             }
                         }}
-                        className={`flex items-center shrink-0 gap-2 py-3 px-4 min-h-[44px] rounded-xl text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${activeSection === key ? "bg-brand text-white shadow-md shadow-brand/20 dark:bg-white dark:text-slate-900 dark:shadow-slate-900/20" : "text-ink-muted hover:text-ink hover:bg-brand/5 bg-white border border-slate-200 hover:border-brand/30 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20"}`}
+                        className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2 sm:py-3 px-1.5 sm:px-2 min-h-[52px] sm:min-h-[44px] rounded-xl text-xs sm:text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${activeSection === key ? "bg-brand text-white shadow-md shadow-brand/20 dark:bg-white dark:text-slate-900 dark:shadow-slate-900/20" : "text-ink-muted hover:text-ink hover:bg-brand/5 bg-white border border-slate-200 hover:border-brand/30 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20"}`}
                     >
-                        <span className="text-base leading-none" aria-hidden="true">{icon}</span>
-                        <span className="leading-tight">{label}</span>
+                        <span className="text-base leading-none shrink-0" aria-hidden="true">{icon}</span>
+                        <span className="leading-tight text-center whitespace-nowrap">{label}</span>
                     </button>
                 ))}
             </div>
