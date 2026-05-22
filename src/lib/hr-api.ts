@@ -7,14 +7,34 @@ import { getEnv } from './env';
 
 const base = () => getEnv('API_URL') || 'http://localhost:3000';
 
+/**
+ * Returns true when the app is running as an installed PWA (standalone mode).
+ * Covers: iOS Safari Add-to-Home-Screen, Android Chrome/Edge PWA, desktop PWA.
+ */
+function isPwa(): boolean {
+  if (typeof window === 'undefined') return false;
+  // iOS Safari
+  if ((window.navigator as any).standalone === true) return true;
+  // Chrome / Android / Desktop
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia('(display-mode: fullscreen)').matches ||
+    window.matchMedia('(display-mode: minimal-ui)').matches
+  );
+}
+
 async function req<T>(
   method: string,
   path: string,
   body?: unknown,
 ): Promise<T> {
+  const extraHeaders: Record<string, string> = {};
+  if (isPwa()) extraHeaders['X-PWA-Context'] = '1';
+
   const res = await authFetch(`${base()}${path}`, {
     method,
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers: extraHeaders,
   });
   if (!res.ok) {
     const err: any = new Error('HR API error');
@@ -240,12 +260,24 @@ export interface StaffBiometric {
   credentialId: string;
   deviceName: string;
   registeredAt: string;
+  devicePublicKey?: string | null;
   staffId?: number;
   staff?: {
     id: number;
     employeeCode: number;
     user: { firstName: string; lastName: string };
   };
+}
+
+export interface DeviceRegistrationRow {
+  staffId: number;
+  employeeCode: number | null;
+  name: string;
+  mobile: string | null;
+  isRegistered: boolean;
+  deviceName: string | null;
+  registeredAt: string | null;
+  biometricId: number | null;
 }
 
 export interface WebauthnRegistrationPermit {
@@ -482,6 +514,25 @@ export const hrApi = {
           'GET',
           '/hr/staff-attendance/webauthn/all-credentials',
         ),
+      deviceRegistrations: (params: {
+        page?: number; limit?: number;
+        name?: string; mobile?: string;
+        employeeCode?: string; staffId?: string;
+        status?: 'registered' | 'unregistered' | 'all';
+      } = {}) => {
+        const q = new URLSearchParams();
+        if (params.page)         q.set('page', String(params.page));
+        if (params.limit)        q.set('limit', String(params.limit));
+        if (params.name)         q.set('name', params.name);
+        if (params.mobile)       q.set('mobile', params.mobile);
+        if (params.employeeCode) q.set('employeeCode', params.employeeCode);
+        if (params.staffId)      q.set('staffId', params.staffId);
+        if (params.status)       q.set('status', params.status);
+        return req<{
+          data: DeviceRegistrationRow[];
+          total: number; page: number; totalPages: number;
+        }>('GET', `/hr/staff-attendance/webauthn/device-registrations?${q}`);
+      },
 
       // HR: permit management
       grantPermit: (staffId: number) =>
@@ -520,17 +571,22 @@ export const hrApi = {
           '/hr/staff-attendance/webauthn/self/auth-challenge',
           {},
         ),
-      selfGetRegOptions: () =>
+      selfGetRegOptions: (devicePublicKey?: string) =>
         req<any>(
           'POST',
           '/hr/staff-attendance/webauthn/self/register-options',
-          {},
+          { devicePublicKey },
         ),
-      selfVerifyReg: (response: any, deviceName?: string) =>
+      selfVerifyReg: (
+        response: any,
+        deviceName?: string,
+        devicePublicKey?: string,
+        deviceSignature?: string,
+      ) =>
         req<StaffBiometric>(
           'POST',
           '/hr/staff-attendance/webauthn/self/register-verify',
-          { response, deviceName },
+          { response, deviceName, devicePublicKey, deviceSignature },
         ),
       myCredentials: () =>
         req<StaffBiometric[]>(

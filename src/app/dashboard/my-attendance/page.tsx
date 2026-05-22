@@ -1,9 +1,13 @@
 "use client";
+// React Compiler opt-out: this page is too large and complex for the compiler
+// to analyse without crashing (OOM in babel-plugin-react-compiler worker).
+"use no memo";
 
 import { useState, useEffect } from "react";
 import { hrApi, StaffAttendanceRecord, StaffBiometric, WebauthnPermitStatus, CheckOutReason, TodayAttendanceStatus } from "@/lib/hr-api";
 import toast, { Toaster } from "react-hot-toast";
 import { startRegistration, startAuthentication } from "@simplewebauthn/browser";
+import { getOrCreateDeviceKeyPair, signChallenge, getDevicePublicKey, clearDeviceKeyPair } from "@/lib/device-crypto";
 import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
@@ -99,6 +103,33 @@ export default function MyAttendancePage() {
   const [regMsg, setRegMsg] = useState("");
   const [deviceName, setDeviceName] = useState("");
   const [showRegPanel, setShowRegPanel] = useState(false);
+  const [inPwa, setInPwa] = useState<boolean | null>(null); // null = not yet detected
+
+  // Detect PWA mode on client only (avoids SSR mismatch)
+  useEffect(() => {
+    const standalone =
+      (window.navigator as any).standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: fullscreen)').matches ||
+      window.matchMedia('(display-mode: minimal-ui)').matches;
+    setInPwa(standalone);
+  }, []);
+
+  // null  = indeterminate (no biometrics yet, or biometric has no devicePublicKey stored)
+  // true  = this device's key matches the registered biometric
+  // false = this device is NOT the registered device
+  const [isOwnDevice, setIsOwnDevice] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const registeredKey = biometrics[0]?.devicePublicKey;
+    if (!registeredKey) {
+      setIsOwnDevice(null); // can't determine without a stored key (old credential)
+      return;
+    }
+    getDevicePublicKey().then((currentKey) => {
+      setIsOwnDevice(currentKey === registeredKey);
+    });
+  }, [biometrics]);
 
   async function refreshBiometrics() {
     try {
@@ -194,25 +225,55 @@ export default function MyAttendancePage() {
     setRegState("registering");
     setRegMsg("Follow the prompt to scan your fingerprint or face…");
     try {
-      const options = await hrApi.attendance.webauthn.selfGetRegOptions();
+      // Get or generate the device's ECDSA key pair from IndexedDB.
+      // The private key is non-extractable — it never leaves this browser.
+      const { publicKeySpki, privateKey } = await getOrCreateDeviceKeyPair();
+
+      // Check for cross-user device conflict and obtain the WebAuthn challenge.
+      const options = await hrApi.attendance.webauthn.selfGetRegOptions(publicKeySpki);
+
+      // Sign the WebAuthn challenge with the device private key.
+      // The server verifies this signature to confirm we own the private key.
+      const deviceSignature = await signChallenge(options.challenge, privateKey);
+
+      // Run the actual WebAuthn registration (biometric prompt).
       const regResponse = await startRegistration({ optionsJSON: options });
-      await hrApi.attendance.webauthn.selfVerifyReg(regResponse, deviceName || undefined);
+
+      // Submit everything: WebAuthn response + device public key + signature.
+      await hrApi.attendance.webauthn.selfVerifyReg(
+        regResponse,
+        deviceName || undefined,
+        publicKeySpki,
+        deviceSignature,
+      );
       setRegState("done");
       setRegMsg("Device registered successfully! You can now use the kiosk.");
       toast.success("Device registered for kiosk attendance");
       refreshBiometrics();
     } catch (e: any) {
-      const msg = e?.info?.message ?? e?.message ?? "Registration failed";
+      const info = e?.info ?? {};
+      if (info.code === 'DEVICE_TAKEN' || info.statusCode === 409) {
+        setRegState("error");
+        setRegMsg(
+          info.message ??
+          "Another staff profile is already registered on this device. " +
+          "That user must remove their device profile first before you can register here."
+        );
+        return;
+      }
+      const msg = info.message ?? e?.message ?? "Registration failed";
       setRegState("error");
       setRegMsg(msg);
     }
   };
 
   const handleDeleteBiometric = async (id: number) => {
-    if (!confirm("Remove this device?")) return;
+    if (!confirm("Remove this device? You will be given a registration permit so you can register a new device immediately.")) return;
     try {
       await hrApi.attendance.webauthn.deleteMyCredential(id);
-      toast.success("Device removed");
+      // Wipe the local ECDSA key pair — old identity is now invalid
+      await clearDeviceKeyPair().catch(() => {});
+      toast.success("Device removed. You can now register a new device — a registration permit has been granted automatically.");
       refreshBiometrics();
     } catch { toast.error("Failed to remove device"); }
   };
@@ -456,6 +517,21 @@ export default function MyAttendancePage() {
           </div>
         </div>
 
+        {/* Wrong-device warning — shown whenever a different device is registered */}
+        {!biometricsLoading && isOwnDevice === false && (
+          <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-800">
+            <span className="text-base shrink-0 mt-0.5">🚫</span>
+            <div>
+              <p className="font-semibold">This is not your registered device</p>
+              <p className="mt-0.5 text-red-700">
+                Your biometric is linked to <strong>{biometrics[0]?.deviceName || "another device"}</strong>.
+                Self check-in and check-out must be done from that device.
+                If you&apos;re using a new device, register it from the <em>Device Registration</em> panel below.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Check-In row — shown when device registered, not yet checked in, no pending block */}
         {!biometricsLoading && biometrics.length > 0 && !todayRecord && !pendingCheckOut && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -473,7 +549,7 @@ export default function MyAttendancePage() {
             </div>
             <button
               onClick={handleCheckIn}
-              disabled={checkInState === "locating" || checkInState === "authenticating" || checkInState === "submitting"}
+              disabled={isOwnDevice === false || checkInState === "locating" || checkInState === "authenticating" || checkInState === "submitting"}
               className="shrink-0 flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow transition-colors"
             >
               {(checkInState === "locating" || checkInState === "authenticating" || checkInState === "submitting") ? <span className="animate-spin">⏳</span> : <span>📍</span>}
@@ -523,7 +599,7 @@ export default function MyAttendancePage() {
             </div>
             <button
               onClick={handleCheckOut}
-              disabled={checkOutState === "locating" || checkOutState === "authenticating" || checkOutState === "submitting"}
+              disabled={isOwnDevice === false || checkOutState === "locating" || checkOutState === "authenticating" || checkOutState === "submitting"}
               className="shrink-0 flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow transition-colors"
             >
               {(checkOutState === "locating" || checkOutState === "authenticating" || checkOutState === "submitting") ? <span className="animate-spin">⏳</span> : <span>📍</span>}
@@ -641,6 +717,23 @@ export default function MyAttendancePage() {
                 <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
                   {biometrics.length > 0 ? "Replace Device" : "Register This Device"}
                 </p>
+
+                {/* PWA-only restriction banner */}
+                {inPwa === false && (
+                  <div className="bg-amber-50 border border-amber-300 rounded-lg px-4 py-3 text-xs text-amber-900 space-y-2">
+                    <p className="font-semibold">📱 Install the app to register this device</p>
+                    <p>
+                      Device registration is only available from the <strong>installed School App</strong>, not a browser tab.
+                      This prevents fake attendance from untrusted devices.
+                    </p>
+                    <div className="space-y-1 pt-1">
+                      <p className="font-semibold text-amber-800">How to install:</p>
+                      <p><strong>Android Chrome:</strong> tap ⋮ (menu) → <em>Add to Home Screen</em> → Install</p>
+                      <p><strong>iOS Safari:</strong> tap <em>Share</em> (⎙) → <em>Add to Home Screen</em> → Add</p>
+                    </div>
+                    <p className="text-amber-700">Once installed, open the app from your home screen and come back here.</p>
+                  </div>
+                )}
                 {biometrics.length > 0 && (
                   <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 text-xs text-amber-800">
                     ⚠ Registering will replace <strong>{biometrics[0]?.deviceName || "your current device"}</strong>. The old device will no longer work at the kiosk.
@@ -659,7 +752,7 @@ export default function MyAttendancePage() {
                 />
                 <button
                   onClick={handleRegisterDevice}
-                  disabled={regState === "registering"}
+                  disabled={regState === "registering" || inPwa === false}
                   className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors"
                 >
                   {regState === "registering" ? "Follow browser prompt…" : biometrics.length > 0 ? "Replace & Register This Device" : "Register This Device"}

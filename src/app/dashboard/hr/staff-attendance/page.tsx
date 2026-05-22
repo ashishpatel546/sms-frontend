@@ -243,6 +243,9 @@ export default function StaffAttendancePage() {
           <Link href="/dashboard/hr/staff-attendance/zones" className="border border-gray-300 px-3 py-2 rounded-lg text-sm hover:bg-gray-50">
             Geo-Zones
           </Link>
+          <Link href="/dashboard/hr/staff-attendance/devices" className="border border-gray-300 px-3 py-2 rounded-lg text-sm hover:bg-gray-50">
+            Device Registrations
+          </Link>
           {rbac.canManageHR && (
             <>
               <button
