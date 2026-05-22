@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getUser, getRefreshToken, setTokens, removeToken, authFetch } from "@/lib/auth";
+import { getUser, getRefreshToken, setTokens, removeToken, authFetch, logout } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
 
 type Session = {
@@ -179,15 +179,44 @@ export default function ParentProfilePage() {
 
     return (
         <div className="max-w-4xl mx-auto">
-            <h1 className="text-2xl font-bold text-white mb-6">Account Settings</h1>
+            <h1 className="text-2xl font-bold text-ink mb-6">Account Settings</h1>
+
+            {/* Sign Out card — quick logout for the current device.
+                Works on tenant-aware logout() helper (clears tokens for this user only). */}
+            <div className="bg-white/80 dark:bg-surface/80 backdrop-blur-sm border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-5 mb-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-10 w-10 rounded-xl bg-red-50 dark:bg-accent-danger/10 text-accent-danger flex items-center justify-center flex-shrink-0">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                    </div>
+                    <div className="min-w-0">
+                        <h2 className="text-base font-semibold text-ink">Signed in as {user.firstName} {user.lastName}</h2>
+                        <p className="text-xs text-ink-muted truncate">Sign out from this device. Use “Log out of all sessions” below to sign out everywhere.</p>
+                    </div>
+                </div>
+                <button
+                    onClick={() => {
+                        if (window.confirm("Are you sure you want to sign out?")) {
+                            logout();
+                        }
+                    }}
+                    className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-accent-danger hover:bg-accent-danger/90 text-white text-sm font-semibold rounded-xl shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-danger focus-visible:ring-offset-2"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Sign Out
+                </button>
+            </div>
 
             {/* Tabs */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-1.5 flex gap-1.5 mb-6">
+            <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-1.5 flex gap-1.5 mb-6">
                 <button
                     onClick={() => setActiveTab("general")}
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === "general"
-                        ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/20"
-                        : "text-slate-500 hover:text-slate-300"
+                        ? "bg-brand text-white shadow-md shadow-brand/20"
+                        : "text-ink-muted hover:text-ink"
                     }`}
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -198,8 +227,8 @@ export default function ParentProfilePage() {
                 <button
                     onClick={() => setActiveTab("security")}
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === "security"
-                        ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/20"
-                        : "text-slate-500 hover:text-slate-300"
+                        ? "bg-brand text-white shadow-md shadow-brand/20"
+                        : "text-ink-muted hover:text-ink"
                     }`}
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -211,34 +240,34 @@ export default function ParentProfilePage() {
 
             {/* General Tab */}
             {activeTab === "general" && (
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6">
                     <div className="flex items-center gap-5 mb-8">
                         <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg shadow-indigo-500/20 flex-shrink-0">
                             {user.firstName[0]}{user.lastName[0]}
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-white">{user.firstName} {user.lastName}</h2>
-                            <p className="text-slate-400 text-sm mt-0.5">Linked Parent Account</p>
+                            <h2 className="text-xl font-bold text-ink">{user.firstName} {user.lastName}</h2>
+                            <p className="text-ink-muted text-sm mt-0.5">Linked Parent Account</p>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
-                            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1.5">First Name</label>
-                            <div className="px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white min-h-11">
+                            <label className="block text-xs font-medium text-ink-muted uppercase tracking-wider mb-1.5">First Name</label>
+                            <div className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-ink min-h-11">
                                 {user.firstName || '\u00A0'}
                             </div>
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1.5">Last Name</label>
-                            <div className="px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white min-h-11">
+                            <label className="block text-xs font-medium text-ink-muted uppercase tracking-wider mb-1.5">Last Name</label>
+                            <div className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-ink min-h-11">
                                 {user.lastName || '\u00A0'}
                             </div>
                         </div>
                         {user.mobile && (
                             <div className="sm:col-span-2">
-                                <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1.5">Registered Mobile Number</label>
-                                <div className="px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white">
+                                <label className="block text-xs font-medium text-ink-muted uppercase tracking-wider mb-1.5">Registered Mobile Number</label>
+                                <div className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-ink">
                                     +91 {user.mobile}
                                 </div>
                             </div>
@@ -251,53 +280,53 @@ export default function ParentProfilePage() {
             {activeTab === "security" && (
                 <div className="space-y-6">
                     {/* Change Password */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                        <h3 className="text-lg font-bold text-white mb-1">Change Password</h3>
-                        <p className="text-sm text-slate-400 mb-6">Update your account password to stay secure.</p>
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6">
+                        <h3 className="text-lg font-bold text-ink mb-1">Change Password</h3>
+                        <p className="text-sm text-ink-muted mb-6">Update your account password to stay secure.</p>
 
                         <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-1.5">Current Password</label>
+                                <label className="block text-sm font-medium text-ink-muted mb-1.5">Current Password</label>
                                 <div className="relative">
                                     <input
                                         type={showCurrent ? "text" : "password"}
                                         value={currentPassword}
                                         onChange={e => setCurrentPassword(e.target.value)}
                                         required
-                                        className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 pr-10 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none placeholder-slate-500 transition-colors"
+                                        className="w-full bg-slate-50 border border-slate-200 text-ink rounded-lg px-4 py-2.5 pr-10 focus:ring-2 focus:ring-brand focus:border-transparent outline-none placeholder:text-ink-muted/50 transition-colors"
                                         placeholder="••••••••"
                                     />
-                                    <button type="button" onClick={() => setShowCurrent(!showCurrent)} className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 transition-colors">
+                                    <button type="button" onClick={() => setShowCurrent(!showCurrent)} className="absolute right-3 top-2.5 text-ink-muted hover:text-ink transition-colors">
                                         👁️‍🗨️
                                     </button>
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-1.5">New Password</label>
+                                <label className="block text-sm font-medium text-ink-muted mb-1.5">New Password</label>
                                 <div className="relative">
                                     <input
                                         type={showNew ? "text" : "password"}
                                         value={newPassword}
                                         onChange={e => setNewPassword(e.target.value)}
                                         required minLength={6}
-                                        className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 pr-10 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none placeholder-slate-500 transition-colors"
+                                        className="w-full bg-slate-50 border border-slate-200 text-ink rounded-lg px-4 py-2.5 pr-10 focus:ring-2 focus:ring-brand focus:border-transparent outline-none placeholder:text-ink-muted/50 transition-colors"
                                         placeholder="Min. 6 characters"
                                     />
-                                    <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 transition-colors">
+                                    <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-2.5 text-ink-muted hover:text-ink transition-colors">
                                         👁️‍🗨️
                                     </button>
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-1.5">Confirm Password</label>
+                                <label className="block text-sm font-medium text-ink-muted mb-1.5">Confirm Password</label>
                                 <input
                                     type="password"
                                     value={confirmPassword}
                                     onChange={e => setConfirmPassword(e.target.value)}
                                     required
-                                    className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none placeholder-slate-500 transition-colors"
+                                    className="w-full bg-slate-50 border border-slate-200 text-ink rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-brand focus:border-transparent outline-none placeholder:text-ink-muted/50 transition-colors"
                                     placeholder="Re-enter password"
                                 />
                             </div>
@@ -318,7 +347,7 @@ export default function ParentProfilePage() {
                             <button
                                 type="submit"
                                 disabled={pwLoading}
-                                className="px-5 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+                                className="px-5 py-2.5 bg-brand text-white font-medium rounded-lg hover:bg-brand-light disabled:opacity-50 transition-colors"
                             >
                                 {pwLoading ? "Updating…" : "Update Password"}
                             </button>
@@ -326,16 +355,16 @@ export default function ParentProfilePage() {
                     </div>
 
                     {/* Active Sessions Block */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-                        <div className="p-6 border-b border-slate-800">
-                            <h3 className="text-lg font-bold text-white mb-1">Active Sessions</h3>
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl overflow-hidden">
+                        <div className="p-6 border-b border-slate-200">
+                            <h3 className="text-lg font-bold text-ink mb-1">Active Sessions</h3>
                             <p className="text-sm text-slate-400">You&apos;re currently logged in on these devices. If you don&apos;t recognize a device, log out of it immediately.</p>
                         </div>
 
                         {loadingSessions ? (
                             <div className="p-8 flex flex-col items-center gap-3">
-                                <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                                <p className="text-sm text-slate-500">Loading sessions…</p>
+                                <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                                <p className="text-sm text-ink-muted">Loading sessions…</p>
                             </div>
                         ) : sessionError ? (
                             <div className="p-8 text-center">
@@ -343,25 +372,25 @@ export default function ParentProfilePage() {
                                     <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                 </div>
                                 <p className="text-sm text-red-400 mb-4">{sessionError}</p>
-                                <button onClick={fetchSessions} className="px-4 py-2 text-sm font-medium text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-lg transition-colors">
+                                <button onClick={fetchSessions} className="px-4 py-2 text-sm font-medium text-brand bg-brand/5 hover:bg-brand/10 border border-brand/20 rounded-lg transition-colors">
                                     Retry
                                 </button>
                             </div>
                         ) : sessions.length === 0 ? (
                             <div className="p-8 text-center text-slate-500 text-sm">No active sessions found.</div>
                         ) : (
-                            <ul className="divide-y divide-slate-800">
+                            <ul className="divide-y divide-slate-200">
                                 {sessions.map((session) => {
                                     const isCurrent = !!session.isCurrent;
                                     const isLoggingOut = logoutingDevices.has(session.id);
                                     return (
-                                        <li key={session.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-800/40 transition-colors">
+                                        <li key={session.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-brand/5 transition-colors">
                                             <div className="flex items-start gap-4">
-                                                <div className="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-xl text-lg flex-shrink-0">
+                                                <div className="p-2.5 bg-brand/10 text-brand rounded-xl text-lg flex-shrink-0">
                                                     {session.deviceInfo?.toLowerCase().includes("mobile") || session.deviceInfo?.toLowerCase().includes("android") || session.deviceInfo?.toLowerCase().includes("iphone") ? '📱' : '💻'}
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <p className="font-semibold text-white flex flex-wrap items-center gap-2">
+                                                    <p className="font-semibold text-ink flex flex-wrap items-center gap-2">
                                                         <span className="truncate">{session.deviceInfo || "Unknown Device"}</span>
                                                         {isCurrent && (
                                                             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/20 text-green-400 border border-green-500/30 uppercase tracking-wide flex-shrink-0">
@@ -369,7 +398,7 @@ export default function ParentProfilePage() {
                                                             </span>
                                                         )}
                                                     </p>
-                                                    <div className="text-xs text-slate-500 mt-1 space-y-0.5">
+                                                    <div className="text-xs text-ink-muted mt-1 space-y-0.5">
                                                         <p>IP: {session.ipAddress || "Unknown"}</p>
                                                         <p>Last active: {new Date(session.lastActive).toLocaleString()}</p>
                                                     </div>
@@ -390,9 +419,9 @@ export default function ParentProfilePage() {
                             </ul>
                         )}
 
-                        <div className="p-6 bg-slate-800/50 border-t border-slate-800">
-                            <h4 className="text-white font-semibold mb-1">Log out of all devices</h4>
-                            <p className="text-sm text-slate-400 mb-4">
+                        <div className="p-6 bg-slate-50 border-t border-slate-200">
+                            <h4 className="text-ink font-semibold mb-1">Log out of all devices</h4>
+                            <p className="text-sm text-ink-muted mb-4">
                                 If you lost your device or notice suspicious activity, you can log out everywhere immediately. You will need to log back in on this device.
                             </p>
                             {logoutError && (

@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
     'https://myrealapp.appme.in',
     '*.appme.in',
   ],
-  reactCompiler: true,
+  reactCompiler: false,
 };
 
 export default nextConfig;

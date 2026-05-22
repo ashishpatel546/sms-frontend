@@ -1,8 +1,85 @@
 @import 'tailwindcss';
 
+/* Make Tailwind's dark: prefix work with our data-theme="dark" attribute */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Theme Tokens — Aurora Violet (default) */
+  --brand: #7c3aed;
+  --brand-light: #8b5cf6;
+  --surface: #ffffff;
+  --surface-glass: rgba(255, 255, 255, 0.75);
+  --surface-secondary: #f5f3ff;
+  --ink: #1e1b4b;
+  --ink-muted: #6b7280;
+  --accent-success: #10b981;
+  --accent-warn: #f59e0b;
+  --accent-danger: #ef4444;
+  --accent-info: #3b82f6;
+
+  --shadow-soft-base: 0 4px 20px -2px rgba(124, 58, 237, 0.06);
+  --shadow-glass-base: 0 8px 32px 0 rgba(124, 58, 237, 0.08);
+
+  /* Layout gradient colors for theme-bg utility */
+  --page-bg-start: #ddd6fe; /* violet-200 — saturated enough for glass effect */
+  --page-bg-mid: #ede9fe; /* violet-100 */
+  --page-bg-end: #fefcff; /* near-white */
+}
+
+/* ── Dark Theme — Midnight Navy / Ocean Blue ─────────────────── */
+[data-theme='dark'] {
+  --background: #030e1c;
+  --foreground: #cde4ff;
+
+  --brand: #60a5fa; /* blue-400 — vivid & readable on navy */
+  --brand-light: #93c5fd; /* blue-300 */
+  --surface: #082032; /* dark navy card / modal surface */
+  --surface-glass: rgba(8, 32, 50, 0.88); /* glassmorphic navy */
+  --surface-secondary: #0d2942; /* slightly lighter navy — inputs, rows */
+  --ink: #eef5ff; /* near-white — clearly white, not blue, on navy */
+  --ink-muted: #7ca8c9; /* steel-blue muted — readable & clearly secondary */
+  --accent-success: #34d399;
+  --accent-warn: #fbbf24;
+  --accent-danger: #f87171;
+  --accent-info: #38bdf8; /* sky-400 */
+
+  --shadow-soft-base: 0 4px 20px -2px rgba(0, 0, 0, 0.7);
+  --shadow-glass-base:
+    0 8px 32px -4px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+  --page-bg-start: #030e1c; /* very dark navy */
+  --page-bg-mid: #06182f;
+  --page-bg-end: #0a2040; /* slightly brighter at bottom-right */
+}
+
+/* ── Teal / Ocean Theme (3rd option) ──────────────────────────── */
+[data-theme='teal'] {
+  --background: #f0fdf9;
+  --foreground: #042f2e;
+
+  --brand: #0d9488;
+  --brand-light: #14b8a6;
+  --surface: #ffffff;
+  --surface-glass: rgba(255, 255, 255, 0.82);
+  --surface-secondary: #ccfbf1;
+  --ink: #042f2e;
+  --ink-muted: #4b7c78;
+  --accent-success: #059669;
+  --accent-warn: #d97706;
+  --accent-danger: #dc2626;
+  --accent-info: #0284c7;
+
+  --shadow-soft-base: 0 4px 20px -2px rgba(13, 148, 136, 0.1);
+  --shadow-glass-base:
+    0 8px 32px -4px rgba(13, 148, 136, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  --page-bg-start: #99f6e4; /* teal-200 — saturated for glass effect */
+  --page-bg-mid: #ccfbf1; /* teal-100 */
+  --page-bg-end: #f0fdf9; /* near white */
 }
 
 @theme inline {
@@ -10,6 +87,21 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --color-brand: var(--brand);
+  --color-brand-light: var(--brand-light);
+  --color-surface: var(--surface);
+  --color-surface-glass: var(--surface-glass);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-accent-success: var(--accent-success);
+  --color-accent-warn: var(--accent-warn);
+  --color-accent-danger: var(--accent-danger);
+  --color-accent-info: var(--accent-info);
+
+  --shadow-soft: var(--shadow-soft-base);
+  --shadow-glass: var(--shadow-glass-base);
 
   /* Custom Animations */
   --animate-fade-in: fade-in 0.4s ease-out forwards;
@@ -46,12 +138,72 @@
       transform: scale(1);
     }
   }
+
+  /* Discoverability hint keyframes — used by .theme-toggle-hint defined outside @theme */
+  @keyframes theme-hint-wiggle {
+    0%,
+    60%,
+    100% {
+      transform: rotate(0deg);
+    }
+    65% {
+      transform: rotate(-10deg);
+    }
+    70% {
+      transform: rotate(10deg);
+    }
+    75% {
+      transform: rotate(-8deg);
+    }
+    80% {
+      transform: rotate(8deg);
+    }
+    85% {
+      transform: rotate(-4deg);
+    }
+    90% {
+      transform: rotate(0deg);
+    }
+  }
+  @keyframes theme-hint-glow {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.45);
+    }
+    50% {
+      box-shadow: 0 0 0 6px rgba(124, 58, 237, 0);
+    }
+  }
+}
+
+/* Discoverability hint for first-time theme toggle visitors —
+   gentle wiggle + glowing ring; auto-dismissed after 8s or on interaction */
+.theme-toggle-hint {
+  animation:
+    theme-hint-wiggle 2.4s ease-in-out infinite,
+    theme-hint-glow 2.4s ease-in-out infinite;
+}
+/* Respect reduced-motion preference — no jiggle, just keep the ping dot */
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle-hint {
+    animation: none;
+  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Theme-aware page background gradient — used by parent-dashboard layout */
+.theme-bg {
+  background: linear-gradient(
+    135deg,
+    var(--page-bg-start) 0%,
+    var(--page-bg-mid) 50%,
+    var(--page-bg-end) 100%
+  );
 }
 
 /* Hide scrollbar but keep scroll behaviour */
@@ -61,4 +213,66 @@ body {
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/*
+ * ── Dark mode: auto-adapt hardcoded Tailwind light-only utilities ──────────
+ * Components across the app use bg-white/80, bg-slate-50, bg-slate-100,
+ * border-slate-200 without dark: variants.  These rules rewrite them
+ * automatically so every page inherits dark-mode support for free.
+ */
+
+/* solid white → dark surface */
+[data-theme='dark'] .bg-white {
+  background-color: var(--surface);
+}
+
+/* semi-transparent white card containers → glassmorphic dark surface */
+[data-theme='dark'] .bg-white\/50,
+[data-theme='dark'] .bg-white\/60,
+[data-theme='dark'] .bg-white\/70,
+[data-theme='dark'] .bg-white\/80,
+[data-theme='dark'] .bg-white\/90 {
+  background-color: var(--surface-glass);
+}
+
+/* slate input/info backgrounds → dark secondary surface */
+[data-theme='dark'] .bg-slate-50,
+[data-theme='dark'] .bg-slate-100,
+[data-theme='dark'] .bg-slate-100\/50,
+[data-theme='dark'] .bg-slate-100\/60,
+[data-theme='dark'] .bg-slate-100\/80 {
+  background-color: var(--surface-secondary);
+}
+
+/* slate borders → subtle white border */
+[data-theme='dark'] .border-slate-200,
+[data-theme='dark'] .border-b-slate-200,
+[data-theme='dark'] .border-t-slate-200 {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+[data-theme='dark'] .border-slate-200\/50 {
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+/* hover overrides */
+[data-theme='dark'] .hover\:border-slate-300:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+[data-theme='dark'] .hover\:bg-slate-100:hover,
+[data-theme='dark'] .hover\:bg-slate-50:hover,
+[data-theme='dark'] .hover\:bg-slate-200:hover {
+  background-color: var(--surface-secondary);
+}
+
+/* slate text → use theme ink-muted token */
+[data-theme='dark'] .text-slate-400,
+[data-theme='dark'] .text-slate-500,
+[data-theme='dark'] .text-slate-600 {
+  color: var(--ink-muted);
+}
+
+/* dividers */
+[data-theme='dark'] .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(255, 255, 255, 0.1);
 }

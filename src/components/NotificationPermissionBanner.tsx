@@ -82,23 +82,24 @@ export default function NotificationPermissionBanner() {
   // Push service blocked (Brave FCM, Firefox, etc.)
   if (state === 'push_blocked') {
     return (
-      <div className="bg-amber-500 text-white px-4 py-3 sm:px-6 animate-in slide-in-from-top duration-500">
+      <div className="bg-amber-50 border-b border-amber-200 text-amber-900 px-4 py-3 sm:px-6 animate-in slide-in-from-top duration-500">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-sm font-medium">
           <div className="flex items-start gap-2">
-            <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 shrink-0 mt-0.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span>
               <strong>Push notifications blocked by your browser.</strong>
               {" "}If using <strong>Brave</strong>: go to{" "}
-              <code className="bg-amber-600 px-1 rounded text-xs">brave://settings/privacy</code>
+              <code className="bg-amber-100 border border-amber-300 px-1 rounded text-xs">brave://settings/privacy</code>
               {" "}and enable <em>"Use Google services for push messaging"</em>.
               You will still see notifications in the bell icon when using the app.
             </span>
           </div>
           <button
             onClick={() => setState('hidden')}
-            className="text-xs underline whitespace-nowrap hover:no-underline shrink-0"
+            aria-label="Dismiss notification"
+            className="text-xs text-amber-700 underline whitespace-nowrap hover:no-underline shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded"
           >
             Dismiss
           </button>
@@ -110,15 +111,19 @@ export default function NotificationPermissionBanner() {
   // Permission denied in browser settings
   if (state === 'denied') {
     return (
-      <div className="bg-amber-500 text-white px-4 py-2.5 sm:px-6 animate-in slide-in-from-top duration-500">
+      <div className="bg-red-50 border-b border-red-200 text-red-900 px-4 py-2.5 sm:px-6 animate-in slide-in-from-top duration-500">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-sm font-medium">
           <div className="flex items-center gap-2 text-center sm:text-left">
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 shrink-0 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Notifications are blocked. To receive alerts, click the lock icon in your browser address bar and allow notifications for this site.
           </div>
-          <button onClick={() => setState('hidden')} className="text-xs underline whitespace-nowrap hover:no-underline">
+          <button
+            onClick={() => setState('hidden')}
+            aria-label="Dismiss notification"
+            className="text-xs text-red-700 underline whitespace-nowrap hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded"
+          >
             Dismiss
           </button>
         </div>
@@ -128,10 +133,10 @@ export default function NotificationPermissionBanner() {
 
   // Default: prompt user to enable
   return (
-    <div className="bg-indigo-600 text-white px-4 py-3 sm:px-6 lg:px-8 relative animate-in slide-in-from-top duration-500">
+    <div className="bg-brand/5 border-b border-brand/15 px-4 py-3 sm:px-6 lg:px-8 relative animate-in slide-in-from-top duration-500">
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 font-medium">
-        <div className="flex items-center gap-2 text-sm sm:text-base text-center sm:text-left">
-          <svg className="w-5 h-5 shrink-0 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="flex items-center gap-2 text-sm sm:text-base text-center sm:text-left text-ink">
+          <svg className="w-5 h-5 shrink-0 animate-pulse text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
           </svg>
           <span>
@@ -142,16 +147,18 @@ export default function NotificationPermissionBanner() {
           <button
             onClick={handleEnable}
             disabled={isSubscribing}
-            className="bg-white text-indigo-600 px-5 py-1.5 rounded-lg text-sm font-bold shadow hover:bg-indigo-50 transition-colors disabled:opacity-50 whitespace-nowrap"
+            aria-label={isSubscribing ? "Enabling notifications…" : "Enable push notifications"}
+            className="bg-brand text-white px-5 py-1.5 rounded-lg text-sm font-bold shadow hover:bg-brand-light transition-colors disabled:opacity-50 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
           >
-            {isSubscribing ? "Enabling..." : "🔔 Enable Alerts"}
+            {isSubscribing ? "Enabling…" : "🔔 Enable Alerts"}
           </button>
           <button
             onClick={() => setState('hidden')}
-            className="p-1 hover:bg-indigo-700 rounded-full transition-colors opacity-70 hover:opacity-100"
+            aria-label="Dismiss notification banner"
             title="Dismiss (you can enable later from the bell icon)"
+            className="p-1 text-ink-muted hover:text-ink hover:bg-surface-secondary rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>

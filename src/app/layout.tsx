@@ -4,6 +4,7 @@ import "./globals.css";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import ServiceUnavailableBanner from "@/components/ServiceUnavailableBanner";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 
 // Force dynamic rendering so process.env is read at request time (from SSM-loaded runtime env),
 // not baked in at build time when env vars are not available.
@@ -20,7 +21,7 @@ const geistMono = Geist_Mono({
 });
 
 export const viewport: Viewport = {
-  themeColor: "#1e3a5f",
+  themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -67,7 +68,7 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -78,10 +79,18 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        <PWAInstallBanner />
-        <ServiceWorkerRegistrar />
-        <ServiceUnavailableBanner />
+        <ThemeProvider
+          attribute="data-theme"
+          defaultTheme="light"
+          enableSystem
+          themes={["light", "dark", "teal"]}
+          disableTransitionOnChange
+        >
+          {children}
+          <PWAInstallBanner />
+          <ServiceWorkerRegistrar />
+          <ServiceUnavailableBanner />
+        </ThemeProvider>
       </body>
     </html>
   );

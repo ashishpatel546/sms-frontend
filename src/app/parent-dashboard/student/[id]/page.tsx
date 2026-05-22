@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -13,15 +13,18 @@ import ExamScheduleParentView from "./ExamScheduleParentView";
 import PickupQRGenerator from "@/components/PickupQRGenerator";
 import ApplyLeaveModal from "@/components/ApplyLeaveModal";
 import LeaveTimeline from "@/components/LeaveTimeline";
+import { HomeSection } from "./components/HomeSection";
+import { StudentBanner } from "./components/StudentBanner";
+import { AnimatedLoader } from "@/components/ui/AnimatedLoader";
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 const LEAVE_STATUS_STYLES: Record<string, string> = {
-    PENDING: "bg-amber-500/15 text-amber-400 border border-amber-500/25",
-    FIRST_APPROVED: "bg-blue-500/15 text-blue-400 border border-blue-500/25",
-    APPROVED: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25",
-    REJECTED: "bg-red-500/15 text-red-400 border border-red-500/25",
-    CANCELLED: "bg-slate-700 text-slate-400 border border-slate-600",
+    PENDING: "bg-amber-50 text-amber-700 border border-amber-200",
+    FIRST_APPROVED: "bg-blue-50 text-blue-700 border border-blue-200",
+    APPROVED: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+    REJECTED: "bg-red-50 text-red-700 border border-red-200",
+    CANCELLED: "bg-slate-100 text-slate-500 border border-slate-200",
 };
 const LEAVE_STATUS_LABELS: Record<string, string> = {
     PENDING: "Pending",
@@ -37,7 +40,7 @@ const LEAVE_TYPE_LABELS: Record<string, string> = {
 };
 const fmtDate = (d: string) => { const [y, m, day] = d.split("-"); return `${day}/${m}/${y}`; };
 
-type ActiveSection = "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework" | "pickup" | "leaves";
+type ActiveSection = "home" | "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework" | "pickup" | "leaves";
 
 declare global {
     interface Window {
@@ -56,7 +59,7 @@ export default function StudentDashboardPage() {
     const currentMonth = parseInt(attendanceMonth.split('-')[1]);
     const [academicSessionId, setAcademicSessionId] = useState<number | null>(null);
     const [academicYearString, setAcademicYearString] = useState<string>("");
-    const [activeSection, setActiveSection] = useState<ActiveSection>("fees");
+    const [activeSection, setActiveSection] = useState<ActiveSection>("home");
 
     const [info, setInfo] = useState<any>(null);
     const [attendance, setAttendance] = useState<any>(null);
@@ -436,8 +439,7 @@ export default function StudentDashboardPage() {
 
     if (loading || !info) return (
         <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-slate-400 text-sm">Loading student dashboard...</p>
+            <AnimatedLoader size="lg" text="Loading student dashboard..." />
         </div>
     );
 
@@ -474,8 +476,8 @@ export default function StudentDashboardPage() {
             case 'LEAVE': return 'bg-blue-500 border-blue-600 text-white shadow-sm shadow-blue-500/20';
             case 'ABSENT': return 'bg-red-500 border-red-600 text-white shadow-sm shadow-red-500/20';
             case 'HOLIDAY': return 'bg-sky-500 border-sky-600 text-white shadow-sm shadow-sky-500/20';
-            case 'SUNDAY': return 'bg-orange-500/20 border-orange-500/40 text-orange-300';
-            default: return 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700/50';
+            case 'SUNDAY': return 'bg-orange-100 border-orange-300 text-orange-700';
+            default: return 'bg-slate-100 border-slate-200 text-ink hover:bg-slate-100/50';
         }
     };
 
@@ -501,7 +503,7 @@ export default function StudentDashboardPage() {
 
             {/* Back — only when multi-student (single-student parents never see the card grid) */}
             {siblings.length > 0 && (
-                <Link href="/parent-dashboard" className="inline-flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm animate-fade-in">
+                <Link href="/parent-dashboard" className="inline-flex items-center gap-1.5 text-ink-muted hover:text-brand transition-colors text-sm animate-fade-in">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                     All Students
                 </Link>
@@ -510,34 +512,41 @@ export default function StudentDashboardPage() {
             {/* ── Student Switcher (shown when parent has 2+ students) ── */}
             {siblings.length > 0 && (
                 <div className="animate-fade-in">
-                    <p className="text-slate-500 text-xs mb-2 px-0.5">Switch student</p>
-                    <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar snap-x snap-mandatory">
-                        {siblings.map((s) => {
+                    <p className="text-ink-muted text-xs font-medium mb-2 px-0.5 uppercase tracking-wide">Switch Student</p>
+                    <div className="flex gap-2.5 overflow-x-auto pb-1 no-scrollbar snap-x snap-mandatory">
+                        {siblings.map((s, idx) => {
                             const isActive = String(s.id) === String(studentId);
                             const initials = `${s.firstName?.[0] ?? ""}${s.lastName?.[0] ?? ""}`;
+                            const palettes = [
+                                { grad: "from-violet-500 to-purple-600", active: "bg-violet-50 border-violet-300 shadow-sm shadow-violet-200", dot: "bg-violet-500", nameActive: "text-violet-700" },
+                                { grad: "from-teal-500 to-cyan-500",     active: "bg-teal-50 border-teal-300 shadow-sm shadow-teal-200",     dot: "bg-teal-500",   nameActive: "text-teal-700"   },
+                                { grad: "from-rose-500 to-pink-500",     active: "bg-rose-50 border-rose-300 shadow-sm shadow-rose-200",     dot: "bg-rose-500",   nameActive: "text-rose-700"   },
+                                { grad: "from-amber-500 to-orange-500",  active: "bg-amber-50 border-amber-300 shadow-sm shadow-amber-200",  dot: "bg-amber-500",  nameActive: "text-amber-700"  },
+                                { grad: "from-green-500 to-emerald-500", active: "bg-green-50 border-green-300 shadow-sm shadow-green-200", dot: "bg-green-500",  nameActive: "text-green-700"  },
+                            ];
+                            const p = palettes[idx % palettes.length];
                             return (
                                 <button
                                     key={s.id}
                                     onClick={() => !isActive && router.push(`/parent-dashboard/student/${s.id}`)}
-                                    className={`shrink-0 snap-start flex items-center gap-2.5 px-3 py-2 rounded-xl border transition-all text-left
+                                    className={`shrink-0 snap-start flex items-center gap-3 px-3.5 py-2.5 rounded-2xl border-2 transition-all text-left min-w-[160px]
                                         ${isActive
-                                            ? "bg-indigo-600/20 border-indigo-500/50 text-white shadow-sm shadow-indigo-500/20"
-                                            : "bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-white hover:bg-slate-800/70"
+                                            ? `${p.active}`
+                                            : "bg-white/80 border-slate-200 hover:border-slate-300 hover:shadow-sm"
                                         }`}
                                 >
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0
-                                        ${isActive ? "bg-indigo-500 text-white" : "bg-slate-700 text-slate-300"}`}>
+                                    <div className={`w-10 h-10 rounded-xl bg-linear-to-br ${p.grad} flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-md`}>
                                         {initials}
                                     </div>
-                                    <div className="min-w-0">
-                                        <p className={`text-sm font-semibold leading-tight truncate max-w-[120px] ${isActive ? "text-white" : "text-slate-300"}`}>
+                                    <div className="min-w-0 flex-1">
+                                        <p className={`text-sm font-bold leading-tight truncate ${isActive ? p.nameActive : "text-ink"}`}>
                                             {s.firstName} {s.lastName}
                                         </p>
-                                        <p className="text-[10px] text-slate-500 leading-tight truncate">
+                                        <p className="text-[11px] text-ink-muted leading-tight truncate mt-0.5">
                                             {[s.className, s.sectionName ? `Sec ${s.sectionName}` : null].filter(Boolean).join(" · ")}
                                         </p>
                                     </div>
-                                    {isActive && <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0 ml-0.5" />}
+                                    {isActive && <div className={`w-2 h-2 rounded-full ${p.dot} shrink-0 ring-2 ring-white`} />}
                                 </button>
                             );
                         })}
@@ -546,38 +555,33 @@ export default function StudentDashboardPage() {
             )}
 
             {/* ── Student Header Card ── */}
-            <div className="bg-linear-to-r from-indigo-600/20 to-purple-600/20 border border-indigo-500/30 rounded-xl sm:rounded-2xl p-3 sm:p-5 animate-slide-up">
-                <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-lg sm:text-2xl font-bold shadow-lg shrink-0">
-                        {info.firstName?.[0]}{info.lastName?.[0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <h1 className="text-white text-lg sm:text-2xl font-bold truncate">{info.firstName} {info.lastName}</h1>
-                        <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-1 sm:mt-2">
-                            {info.className && <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-indigo-500/20 text-indigo-300 text-[10px] sm:text-xs rounded-full whitespace-nowrap">{info.className}</span>}
-                            {info.sectionName && <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-purple-500/20 text-purple-300 text-[10px] sm:text-xs rounded-full whitespace-nowrap">Sec {info.sectionName}</span>}
-                            {info.rollNo && <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-slate-700 text-slate-300 text-[10px] sm:text-xs rounded-full whitespace-nowrap">Roll: {info.rollNo}</span>}
-                            {academicYearString && <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-emerald-500/20 text-emerald-300 text-[10px] sm:text-xs rounded-full whitespace-nowrap hidden sm:inline-block">{academicYearString}</span>}
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <StudentBanner studentId={studentId as string} />
 
             {/* ── Section Nav Tabs ── */}
-            <div className="grid grid-cols-4 gap-1 bg-slate-900/80 border border-slate-800 rounded-xl p-1.5 animate-slide-up" style={{ animationDelay: '50ms' }}>
+            <div
+                role="tablist"
+                aria-label="Student sections"
+                className="flex flex-wrap gap-2 bg-surface border border-slate-200 rounded-2xl p-2.5 animate-slide-up shadow-soft"
+                style={{ animationDelay: '50ms' }}
+            >
                 {([
+                    ["home",          "🏠", "Home"],
                     ["fees",          "💰", "Fees"],
                     ["attendance",    "📊", "Attendance"],
                     ["results",       "📝", "Results"],
-                    ["exam-schedule", "📅", "Schedule"],
                     ["homework",      "📚", "Homework"],
                     ["leaves",        "🗓️", "Leaves"],
-                    ["pickup",        "🚗", "Pickup QR"],
+                    ["pickup",        "📱", "Pickup QR"],
+                    ["exam-schedule", "📅", "Schedule"],
                     ["holidays",      "🏝️", "Holidays"],
-                    ["info",          "👤", "Student Info"],
+                    ["info",          "👤", "Profile"],
                 ] as const).map(([key, icon, label]) => (
                     <button
                         key={key}
+                        role="tab"
+                        aria-selected={activeSection === key}
+                        aria-controls={`tabpanel-${key}`}
+                        id={`tab-${key}`}
                         onClick={() => {
                             const section = key as ActiveSection;
                             if (section === activeSection) {
@@ -590,35 +594,48 @@ export default function StudentDashboardPage() {
                                 else if (section === "homework") { setSectionLoading(true); fetchHomework(); }
                             } else {
                                 setActiveSection(section);
-                                if (section !== 'info' && section !== 'exam-schedule' && section !== 'pickup') setSectionLoading(true);
+                                if (section !== 'info' && section !== 'exam-schedule' && section !== 'pickup' && section !== 'home') setSectionLoading(true);
                             }
                         }}
-                        className={`flex flex-col items-center gap-0.5 py-2.5 px-1 rounded-lg text-xs font-medium transition-all ${activeSection === key ? "bg-indigo-600 text-white shadow" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
+                        className={`flex items-center shrink-0 gap-2 py-3 px-4 min-h-[44px] rounded-xl text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${activeSection === key ? "bg-brand text-white shadow-md shadow-brand/20 dark:bg-white dark:text-slate-900 dark:shadow-slate-900/20" : "text-ink-muted hover:text-ink hover:bg-brand/5 bg-white border border-slate-200 hover:border-brand/30 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20"}`}
                     >
-                        <span className="text-lg leading-none">{icon}</span>
-                        <span className="leading-tight text-center">{label}</span>
+                        <span className="text-base leading-none" aria-hidden="true">{icon}</span>
+                        <span className="leading-tight">{label}</span>
                     </button>
                 ))}
             </div>
 
             {sectionLoading ? (
-                <div className="flex flex-col items-center justify-center py-24 gap-4 animate-fade-in">
-                    <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-slate-400 text-sm">Loading data...</p>
+                <div role="status" aria-label="Loading section" className="flex flex-col items-center justify-center py-24 gap-4 animate-fade-in">
+                    <AnimatedLoader size="md" text="Loading data..." />
                 </div>
             ) : (
                 <>
                     {/* ════════════════════════════════
+                        HOME TAB
+                    ════════════════════════════════ */}
+                    {activeSection === "home" && (
+                        <div
+                            id="tabpanel-home"
+                            role="tabpanel"
+                            aria-labelledby="tab-home"
+                            className="animate-scale-in"
+                        >
+                            <HomeSection studentId={studentId as string} academicYearString={academicYearString} sessionId={academicSessionId} onChangeSection={(sec) => setActiveSection(sec as ActiveSection)} />
+                        </div>
+                    )}
+
+                    {/* ════════════════════════════════
                         FEE & DUES TAB
                     ════════════════════════════════ */}
                     {activeSection === "fees" && (
-                        <div className="space-y-4 animate-scale-in">
+                        <div id="tabpanel-fees" role="tabpanel" aria-labelledby="tab-fees" className="space-y-4 animate-scale-in">
                             {/* Academic year selector + summary */}
-                            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+                            <div className="flex flex-wrap items-center justify-between gap-3 bg-white/80 backdrop-blur-sm border border-slate-200 p-4 rounded-2xl">
                         <div className="flex items-center gap-3">
-                            <label className="text-slate-400 text-sm">Academic Year:</label>
+                            <label className="text-ink-muted text-sm font-medium">Academic Year:</label>
                             <select value={academicSessionId || ""} onChange={handleSessionChange}
-                                className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                className="bg-slate-100 border border-slate-200 text-ink text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand">
                                 {sessions.map(s => <option key={s.id} value={s.id}>{s.name} {s.isActive && "(Current)"}</option>)}
                             </select>
                         </div>
@@ -634,14 +651,14 @@ export default function StudentDashboardPage() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* ── Due Months (Selectable checkboxes to pay) ── */}
-                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col h-full">
+                        <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-5 flex flex-col h-full">
                             <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-white font-bold flex items-center gap-2">
+                                <h2 className="text-ink font-bold flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-red-400 inline-block"></span>
                                     Pending Dues ({allDueItems.length})
                                 </h2>
                                 {allDueItems.length > 0 && (
-                                    <button onClick={() => setSelectedMonths2Pay(allDueItems.map((m: any) => m.key))} className="text-xs text-indigo-400 hover:text-indigo-300">
+                                    <button onClick={() => setSelectedMonths2Pay(allDueItems.map((m: any) => m.key))} className="text-xs text-brand hover:text-brand-light font-medium">
                                         Select All
                                     </button>
                                 )}
@@ -665,15 +682,15 @@ export default function StudentDashboardPage() {
                                                         <input type="checkbox"
                                                             checked={selectedMonths2Pay.includes(m.key)}
                                                             onChange={() => toggleMonthPay(m.key)}
-                                                            className="w-4 h-4 rounded border-slate-600 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-900 bg-slate-800" />
+                                                            className="w-4 h-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-white bg-slate-100" />
                                                         <div>
-                                                            <span className="text-amber-300 text-sm font-semibold">{m.label}</span>
-                                                            <span className="ml-2 text-[9px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-full font-bold uppercase tracking-wider">Annual</span>
+                                                            <span className="text-amber-700 text-sm font-semibold">{m.label}</span>
+                                                            <span className="ml-2 text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold uppercase tracking-wider">Annual</span>
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-3">
                                                         <div className="text-right">
-                                                            <div className="text-white font-bold text-sm">₹{Number(m.amount).toLocaleString()}</div>
+                                                            <div className="text-ink font-bold text-sm">₹{Number(m.amount).toLocaleString()}</div>
                                                             {m.status === 'PARTIAL' && m.totalPaid > 0 && (
                                                                 <div className="text-yellow-400 text-[10px]">₹{Number(m.totalPaid).toLocaleString()} paid of ₹{Number(m.totalDue).toLocaleString()}</div>
                                                             )}
@@ -748,18 +765,18 @@ export default function StudentDashboardPage() {
 
                                     {/* Monthly dues */}
                                     {dueMonths.map((m: any) => (
-                                        <div key={m.key} className={`flex flex-col p-3 rounded-xl transition-all border ${selectedMonths2Pay.includes(m.key) ? "bg-indigo-600/20 border-indigo-500/50 cursor-pointer" : m.status === 'PARTIAL' ? "bg-yellow-500/5 border-yellow-500/30 hover:border-yellow-500/50 cursor-pointer" : "bg-slate-800/50 border-slate-700/50 hover:border-slate-600 cursor-pointer"}`}>
+                                        <div key={m.key} className={`flex flex-col p-3 rounded-xl transition-all border ${selectedMonths2Pay.includes(m.key) ? "bg-indigo-600/20 border-indigo-500/50 cursor-pointer" : m.status === 'PARTIAL' ? "bg-yellow-500/5 border-yellow-500/30 hover:border-yellow-500/50 cursor-pointer" : "bg-slate-100/60 border-slate-200/50 hover:border-slate-300 cursor-pointer"}`}>
                                             <label className="flex justify-between items-center cursor-pointer w-full">
                                                 <div className="flex items-center gap-3">
                                                     <input type="checkbox"
                                                         checked={selectedMonths2Pay.includes(m.key)}
                                                         onChange={() => toggleMonthPay(m.key)}
-                                                        className="w-4 h-4 rounded border-slate-600 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-900 bg-slate-800" />
-                                                    <span className="text-white text-sm font-medium">{m.label}</span>
+                                                        className="w-4 h-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-white bg-slate-100" />
+                                                    <span className="text-ink text-sm font-medium">{m.label}</span>
                                                 </div>
                                                 <div className="flex items-center gap-3">
                                                     <div className="text-right">
-                                                        <div className="text-white font-bold text-sm">₹{Number(m.amount).toLocaleString()}</div>
+                                                        <div className="text-ink font-bold text-sm">₹{Number(m.amount).toLocaleString()}</div>
                                                         {m.status === 'PARTIAL' && m.totalPaid > 0 && (
                                                             <div className="text-yellow-400 text-[10px]">₹{Number(m.totalPaid).toLocaleString()} paid of ₹{Number(m.totalDue).toLocaleString()}</div>
                                                         )}
@@ -774,7 +791,7 @@ export default function StudentDashboardPage() {
                                                 </div>
                                             </label>
                                             {(m.categoryBreakdown?.length > 0 || m.discount > 0 || m.lateFee > 0) && (
-                                                <div className="mt-2 ml-7 pl-3 border-l-2 border-slate-700/50 space-y-1">
+                                                <div className="mt-2 ml-7 pl-3 border-l-2 border-slate-200/50 space-y-1">
                                                     {m.categoryBreakdown?.map((cat: any, i: number) => (
                                                         <div key={i} className="flex justify-between text-xs text-slate-400">
                                                             <span>{cat.categoryName}</span>
@@ -840,13 +857,13 @@ export default function StudentDashboardPage() {
 
                             {/* Pay button pinned to bottom */}
                             {selectedMonths2Pay.length > 0 && (
-                                <div className="mt-4 pt-4 border-t border-slate-800">
+                                <div className="mt-4 pt-4 border-t border-slate-200">
                                     <div className="flex items-center justify-between mb-3 text-sm">
                                         <span className="text-slate-400">Selected ({selectedMonths2Pay.length} item{selectedMonths2Pay.length !== 1 ? 's' : ''})</span>
-                                        <span className="text-white font-bold text-xl">₹{selectedAmountTotal.toLocaleString()}</span>
+                                        <span className="text-ink font-bold text-xl">₹{selectedAmountTotal.toLocaleString()}</span>
                                     </div>
                                     <button onClick={handleConfirmPay}
-                                        className="w-full py-3 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-indigo-500/25">
+                                        className="w-full py-3 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-ink font-semibold rounded-xl transition-all shadow-lg shadow-indigo-500/25">
                                         Proceed to Pay
                                     </button>
                                 </div>
@@ -854,8 +871,8 @@ export default function StudentDashboardPage() {
                         </div>
 
                         {/* ── Paid Months (with receipt) ── */}
-                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col h-full">
-                            <h2 className="text-white font-bold mb-4 flex items-center gap-2">
+                        <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-5 flex flex-col h-full">
+                            <h2 className="text-ink font-bold mb-4 flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
                                 Payment History ({paidMonths.length + (paidOneTimeFee ? 1 : 0)})
                             </h2>
@@ -869,8 +886,8 @@ export default function StudentDashboardPage() {
                                         return (
                                             <div key={m.key} className="flex items-center gap-3 p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl">
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-amber-300 text-sm font-semibold">{m.label}</p>
-                                                    <span className="text-[9px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-full font-bold uppercase tracking-wider">Annual</span>
+                                                    <p className="text-amber-700 text-sm font-semibold">{m.label}</p>
+                                                    <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold uppercase tracking-wider">Annual</span>
                                                 </div>
                                                 <div className="text-right whitespace-nowrap">
                                                     <div className="text-emerald-400 text-sm font-bold block mb-1">₹{(m.payments && m.payments.length > 1 ? m.payments.reduce((sum: number, p: any) => sum + Number(p.amountPaid || 0), 0) : Number(m.payment?.amountPaid || 0)).toLocaleString()}</div>
@@ -901,7 +918,7 @@ export default function StudentDashboardPage() {
                                                             });
                                                         }
                                                     }}
-                                                        className="text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors border border-slate-700 hover:border-slate-500">
+                                                        className="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-100 text-ink rounded-lg transition-colors border border-slate-200 hover:border-brand/40">
                                                         Receipt
                                                     </button>
                                                 </div>
@@ -912,7 +929,7 @@ export default function StudentDashboardPage() {
                                     {paidMonths.map((m: any) => (
                                         <div key={m.key} className="flex items-center gap-3 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-white text-sm font-medium">{m.label}</p>
+                                                <p className="text-ink text-sm font-medium">{m.label}</p>
                                             </div>
                                             <div className="text-right whitespace-nowrap">
                                                 <div className="text-emerald-400 text-sm font-bold block mb-1">₹{(m.payments && m.payments.length > 1 ? m.payments.reduce((sum: number, p: any) => sum + Number(p.amountPaid || 0), 0) : Number(m.payment?.amountPaid || 0)).toLocaleString()}</div>
@@ -945,7 +962,7 @@ export default function StudentDashboardPage() {
                                                         });
                                                     }
                                                 }}
-                                                    className="text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors border border-slate-700 hover:border-slate-500">
+                                                    className="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-100 text-ink rounded-lg transition-colors border border-slate-200 hover:border-brand/40">
                                                     Receipt
                                                 </button>
                                             </div>
@@ -962,23 +979,23 @@ export default function StudentDashboardPage() {
                 ATTENDANCE TAB
             ════════════════════════════════ */}
             {activeSection === "attendance" && (
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 animate-scale-in">
+                <div id="tabpanel-attendance" role="tabpanel" aria-labelledby="tab-attendance" className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-6 animate-scale-in">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-                        <h2 className="text-white font-bold text-lg">📊 Attendance</h2>
+                        <h2 className="text-ink font-bold text-lg">📊 Attendance</h2>
                         <div className="flex gap-2">
                             <input
                                 type="month"
                                 value={attendanceMonth}
                                 onChange={e => setAttendanceMonth(e.target.value)}
-                                className="bg-slate-800 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
+                                className="bg-slate-50 border border-slate-200 text-ink text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand"
                             />
                         </div>
                     </div>
 
                     {attendance && attendance.total > 0 ? (
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                            <div className="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50">
-                                <h3 className="text-white font-semibold text-center mb-4">{MONTH_NAMES[currentMonth - 1]} {currentYear}</h3>
+                            <div className="bg-slate-100/60 rounded-2xl p-5 border border-slate-200/50">
+                                <h3 className="text-ink font-semibold text-center mb-4">{MONTH_NAMES[currentMonth - 1]} {currentYear}</h3>
                                 <div className="grid grid-cols-7 gap-1 text-center mb-2">
                                     {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
                                         <div key={day} className="text-slate-400 text-xs font-medium py-1">{day}</div>
@@ -1003,7 +1020,7 @@ export default function StudentDashboardPage() {
                                         ));
                                     })}
                                 </div>
-                                <div className="flex flex-wrap justify-center gap-4 mt-6 text-xs text-slate-300">
+                                <div className="flex flex-wrap justify-center gap-4 mt-6 text-xs text-ink">
                                     <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-green-500 shadow-sm shadow-green-500/30"></span> Present</div>
                                     <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-yellow-400 shadow-sm shadow-yellow-400/30"></span> Late</div>
                                     <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-purple-500 shadow-sm shadow-purple-500/30"></span> Half Day</div>
@@ -1020,38 +1037,38 @@ export default function StudentDashboardPage() {
                                         <ResponsiveContainer width={220} height={220}>
                                             <PieChart>
                                                 <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value" />
-                                                <Tooltip formatter={(val: any, name: any) => [`${val} days`, name]} contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }} />
+                                                <Tooltip formatter={(val: any, name: any) => [`${val} days`, name]} contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.1)' }} />
                                             </PieChart>
                                         </ResponsiveContainer>
                                         <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
-                                            <span className="text-white text-3xl font-bold">{attendance.percentage}%</span>
-                                            <span className="text-slate-400 text-xs mt-1 uppercase tracking-wider font-semibold">Present</span>
+                                            <span className="text-ink text-3xl font-bold">{attendance.percentage}%</span>
+                                            <span className="text-ink-muted text-xs mt-1 uppercase tracking-wider font-semibold">Present</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
                                     {[
-                                        { label: "Present", value: attendance.present, color: "text-green-400", bg: "bg-green-500/10 border-green-500/20" },
-                                        { label: "Late", value: attendance.late || 0, color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/20" },
-                                        { label: "Half Day", value: attendance.halfDay || 0, color: "text-purple-400", bg: "bg-purple-500/10 border-purple-500/20" },
-                                        { label: "Leave", value: attendance.leave || 0, color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
-                                        { label: "Absent", value: attendance.absent, color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
-                                        { label: "Holiday", value: attendance.holiday || 0, color: "text-sky-400", bg: "bg-sky-500/10 border-sky-500/20" },
+                                        { label: "Present", value: attendance.present, color: "text-green-600", bg: "bg-green-50 border-green-200" },
+                                        { label: "Late", value: attendance.late || 0, color: "text-yellow-600", bg: "bg-yellow-50 border-yellow-200" },
+                                        { label: "Half Day", value: attendance.halfDay || 0, color: "text-purple-600", bg: "bg-purple-50 border-purple-200" },
+                                        { label: "Leave", value: attendance.leave || 0, color: "text-blue-600", bg: "bg-blue-50 border-blue-200" },
+                                        { label: "Absent", value: attendance.absent, color: "text-red-600", bg: "bg-red-50 border-red-200" },
+                                        { label: "Holiday", value: attendance.holiday || 0, color: "text-sky-600", bg: "bg-sky-50 border-sky-200" },
                                     ].map(item => (
                                         <div key={item.label} className={`border rounded-xl p-3 text-center shadow-sm ${item.bg}`}>
                                             <div className={`text-2xl font-bold ${item.color} mb-1`}>{item.value}</div>
-                                            <div className="text-slate-400 font-medium text-[10px] uppercase">{item.label}</div>
+                                            <div className="text-ink-muted font-medium text-[10px] uppercase">{item.label}</div>
                                         </div>
                                     ))}
                                 </div>
-                                <div className="mt-2 bg-slate-800 border border-slate-700 rounded-xl p-3 text-center">
-                                    <div className="text-slate-300 font-medium text-xs">Total Working Days</div>
-                                    <div className="text-xl font-bold text-white mt-1">{attendance.total - (attendance.holiday || 0)}</div>
+                                <div className="mt-2 bg-brand/5 border border-brand/20 rounded-xl p-3 text-center">
+                                    <div className="text-ink-muted font-medium text-xs">Total Working Days</div>
+                                    <div className="text-xl font-bold text-ink mt-1">{attendance.total - (attendance.holiday || 0)}</div>
                                 </div>
                             </div>
                         </div>
                     ) : (
-                        <div className="py-16 text-center border-2 border-dashed border-slate-800 rounded-xl">
+                        <div className="py-16 text-center border-2 border-dashed border-slate-200 rounded-xl">
                             <div className="text-4xl mb-3 opacity-60">📅</div>
                             <p className="text-slate-400 font-medium">No attendance data for {MONTH_NAMES[currentMonth - 1]} {currentYear}</p>
                             <p className="text-slate-500 text-sm mt-1">There are no records found for this month.</p>
@@ -1064,12 +1081,12 @@ export default function StudentDashboardPage() {
                 EXAM RESULTS TAB
             ════════════════════════════════ */}
             {activeSection === "results" && (
-                <div className="space-y-4 animate-scale-in">
-                    <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+                <div id="tabpanel-results" role="tabpanel" aria-labelledby="tab-results" className="space-y-4 animate-scale-in">
+                    <div className="flex flex-wrap items-center justify-between gap-3 bg-white/80 backdrop-blur-sm border border-slate-200 p-4 rounded-2xl">
                         <div className="flex items-center gap-3">
                             <label className="text-slate-400 text-sm">Session:</label>
                             <select value={academicSessionId || ""} onChange={handleSessionChange}
-                                className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                className="bg-slate-100 border border-slate-200 text-ink text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand">
                                 {sessions.map(s => <option key={s.id} value={s.id}>{s.name} {s.isActive && "(Current)"}</option>)}
                             </select>
                         </div>
@@ -1078,14 +1095,14 @@ export default function StudentDashboardPage() {
                                 <button
                                     type="button"
                                     onClick={() => setShowCatDropdown(prev => !prev)}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-700 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-slate-100 hover:bg-slate-100 text-ink"
                                 >
                                     <span>Categories ({selectedExamCats.size}/{examResults.categories.length})</span>
                                     <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                                 </button>
                                 {showCatDropdown && (
-                                    <div className="absolute right-0 z-30 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1.5 min-w-[190px]">
-                                        <label className="flex items-center gap-2 px-4 py-2 text-sm cursor-pointer hover:bg-slate-700 border-b border-slate-700">
+                                    <div className="absolute right-0 z-30 mt-1 bg-slate-100 border border-slate-200 rounded-lg shadow-xl py-1.5 min-w-[190px]">
+                                        <label className="flex items-center gap-2 px-4 py-2 text-sm cursor-pointer hover:bg-slate-100 border-b border-slate-200">
                                             <input
                                                 type="checkbox"
                                                 checked={selectedExamCats.size === examResults.categories.length}
@@ -1096,12 +1113,12 @@ export default function StudentDashboardPage() {
                                                         setSelectedExamCats(new Set(examResults.categories));
                                                     }
                                                 }}
-                                                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-500"
+                                                className="w-4 h-4 rounded border-slate-300 bg-slate-100 text-brand focus:ring-brand"
                                             />
-                                            <span className="font-medium text-slate-200">Show All</span>
+                                            <span className="font-medium text-ink">Show All</span>
                                         </label>
                                         {examResults.categories.map((cat: string) => (
-                                            <label key={cat} className="flex items-center gap-2 px-4 py-2 text-sm cursor-pointer hover:bg-slate-700">
+                                            <label key={cat} className="flex items-center gap-2 px-4 py-2 text-sm cursor-pointer hover:bg-slate-100">
                                                 <input
                                                     type="checkbox"
                                                     checked={selectedExamCats.has(cat)}
@@ -1117,9 +1134,9 @@ export default function StudentDashboardPage() {
                                                             return next;
                                                         });
                                                     }}
-                                                    className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-500"
+                                                    className="w-4 h-4 rounded border-slate-300 bg-slate-100 text-indigo-500 focus:ring-indigo-500"
                                                 />
-                                                <span className="text-slate-300">{cat}</span>
+                                                <span className="text-ink">{cat}</span>
                                             </label>
                                         ))}
                                     </div>
@@ -1128,26 +1145,26 @@ export default function StudentDashboardPage() {
                         )}
                     </div>
 
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                        <h2 className="text-white font-bold text-lg mb-4">📝 Examination Dashboard</h2>
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-6">
+                        <h2 className="text-ink font-bold text-lg mb-4">📝 Examination Dashboard</h2>
 
                         {(!examResults || examResults.subjects?.length === 0) ? (
-                            <div className="text-center py-16 border-2 border-dashed border-slate-800 rounded-xl">
+                            <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
                                 <div className="text-4xl mb-3 opacity-50">📑</div>
                                 <p className="text-slate-400 text-sm font-medium">No results published for {academicYearString}</p>
                             </div>
                         ) : (
-                            <div className="relative overflow-x-auto rounded-lg border border-slate-700 shadow-sm">
+                            <div className="relative overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
                                 {/* derive the visible (filtered) category list inline */}
                                 {(() => {
                                     const visibleCats: string[] = examResults.categories.filter((c: string) => selectedExamCats.has(c));
                                     return (
-                                <table className="w-full text-sm text-left text-slate-300 min-w-[500px]">
+                                <table className="w-full text-sm text-left text-ink min-w-[500px]">
                                     <thead className="text-xs text-slate-400 uppercase">
                                         <tr>
-                                            <th className="px-4 py-3 bg-slate-800 sticky left-0 z-10 w-40 sm:w-48 align-bottom border-b border-slate-700" rowSpan={2}>Subject</th>
+                                            <th className="px-4 py-3 bg-slate-100 sticky left-0 z-10 w-40 sm:w-48 align-bottom border-b border-slate-200" rowSpan={2}>Subject</th>
                                             {visibleCats.map((cat: string) => (
-                                                <th key={cat} className="px-4 py-3 text-center border-l border-b border-slate-700 bg-slate-800" colSpan={6}>
+                                                <th key={cat} className="px-4 py-3 text-center border-l border-b border-slate-200 bg-slate-100" colSpan={6}>
                                                     {cat}
                                                 </th>
                                             ))}
@@ -1155,20 +1172,20 @@ export default function StudentDashboardPage() {
                                         <tr>
                                             {visibleCats.map((cat: string) => (
                                                 <React.Fragment key={`sub-${cat}`}>
-                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-700 bg-slate-800/80">Th. Marks</th>
-                                                    <th className="px-2 py-2 text-center text-[10px] text-purple-400 border-l border-b border-slate-700 bg-purple-900/20">Pr. Marks</th>
-                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-700 bg-slate-800/80">Total</th>
-                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-700 bg-slate-800/80">Obtained</th>
-                                                    <th className="px-2 py-2 text-center text-[10px] text-indigo-400 border-l border-b border-slate-700 bg-indigo-900/20">%</th>
-                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-700 bg-slate-800/80">Grade</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-200 bg-slate-100/80">Th. Marks</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-purple-400 border-l border-b border-slate-200 bg-purple-900/20">Pr. Marks</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-200 bg-slate-100/80">Total</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-200 bg-slate-100/80">Obtained</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-indigo-400 border-l border-b border-slate-200 bg-indigo-900/20">%</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-200 bg-slate-100/80">Grade</th>
                                                 </React.Fragment>
                                             ))}
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {examResults.subjects.map((sub: any, idx: number) => (
-                                            <tr key={idx} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
-                                                <td className="px-4 py-3 font-semibold text-white bg-slate-900 sticky left-0 z-10 text-xs sm:text-sm">{sub.subjectName}</td>
+                                            <tr key={idx} className="border-b border-slate-200 hover:bg-slate-50/30 transition-colors">
+                                                <td className="px-4 py-3 font-semibold text-ink bg-surface sticky left-0 z-10 text-xs sm:text-sm border-r border-slate-200">{sub.subjectName}</td>
                                                 {visibleCats.map((cat: string) => {
                                                     const m = sub.marks[cat];
                                                     const isSplit = sub.hasTheory && sub.hasPractical;
@@ -1181,36 +1198,36 @@ export default function StudentDashboardPage() {
                                                     return (
                                                         <React.Fragment key={`td-${cat}`}>
                                                             {/* Theory Marks */}
-                                                            <td className="px-2 py-2 border-l border-slate-700 text-center">
+                                                            <td className="px-2 py-2 border-l border-slate-200 text-center">
                                                                 {isSplit && m?.theoryTotalMarks
-                                                                    ? <div className="text-[10px]">Obt: <span className="font-bold text-white">{m.theoryObtainedMarks ?? '-'}</span><br />Tot: {m.theoryTotalMarks}</div>
-                                                                    : <span className="text-slate-600">—</span>}
+                                                                    ? <div className="text-[10px] text-ink-muted">Obt: <span className="font-bold text-ink">{m.theoryObtainedMarks ?? '-'}</span><br />Tot: {m.theoryTotalMarks}</div>
+                                                                    : <span className="text-ink-muted">—</span>}
                                                             </td>
                                                             {/* Practical Marks */}
-                                                            <td className="px-2 py-2 border-l border-slate-700 text-center bg-purple-900/10">
+                                                            <td className="px-2 py-2 border-l border-slate-200 text-center bg-purple-500/10">
                                                                 {isSplit && m?.practicalTotalMarks
-                                                                    ? <div className="text-[10px] text-purple-300">Obt: <span className="font-bold">{m.practicalObtainedMarks ?? '-'}</span><br />Tot: {m.practicalTotalMarks}</div>
-                                                                    : <span className="text-slate-600">—</span>}
+                                                                    ? <div className="text-[10px] text-purple-600">Obt: <span className="font-bold">{m.practicalObtainedMarks ?? '-'}</span><br />Tot: {m.practicalTotalMarks}</div>
+                                                                    : <span className="text-ink-muted">—</span>}
                                                             </td>
                                                             {/* Total */}
-                                                            <td className="px-2 py-2 border-l border-slate-700 text-center">
-                                                                <span className="font-bold text-slate-300">{calcTotal > 0 ? calcTotal : (m?.totalMarks ?? '-')}</span>
+                                                            <td className="px-2 py-2 border-l border-slate-200 text-center">
+                                                                <span className="font-bold text-ink">{calcTotal > 0 ? calcTotal : (m?.totalMarks ?? '-')}</span>
                                                             </td>
                                                             {/* Obtained */}
-                                                            <td className="px-2 py-2 border-l border-slate-700 text-center">
-                                                                <span className="font-bold text-white">{m ? (calcTotal > 0 ? calcObtained : (m.obtainedMarks ?? '-')) : '-'}</span>
+                                                            <td className="px-2 py-2 border-l border-slate-200 text-center">
+                                                                <span className="font-bold text-ink">{m ? (calcTotal > 0 ? calcObtained : (m.obtainedMarks ?? '-')) : '-'}</span>
                                                             </td>
                                                             {/* Percentage */}
-                                                            <td className="px-2 py-2 border-l border-slate-700 text-center bg-indigo-900/10">
-                                                                <span className="font-bold text-indigo-300">
+                                                            <td className="px-2 py-2 border-l border-slate-200 text-center bg-brand/10">
+                                                                <span className="font-bold text-brand">
                                                                     {m?.percentage != null ? `${Number(m.percentage).toFixed(1)}%` : '-'}
                                                                 </span>
                                                             </td>
                                                             {/* Grade / Status */}
-                                                            <td className="px-2 py-2 border-l border-slate-700 text-center">
+                                                            <td className="px-2 py-2 border-l border-slate-200 text-center">
                                                                 {m ? (
                                                                     <div className="flex flex-col items-center gap-1">
-                                                                        <span className="font-bold text-slate-200">{m.grade || '-'}</span>
+                                                                        <span className="font-bold text-ink-muted">{m.grade || '-'}</span>
                                                                         {m.isPass === true && <span className="px-1.5 py-0.5 text-[9px] font-bold rounded uppercase bg-emerald-500/20 text-emerald-400">Pass</span>}
                                                                         {m.isPass === false && <span className="px-1.5 py-0.5 text-[9px] font-bold rounded uppercase bg-red-500/20 text-red-400">Fail</span>}
                                                                     </div>
@@ -1222,9 +1239,9 @@ export default function StudentDashboardPage() {
                                             </tr>
                                         ))}
                                     </tbody>
-                                    <tfoot className="border-t-2 border-slate-700 bg-slate-800/70 font-bold">
+                                    <tfoot className="border-t-2 border-slate-200 bg-slate-100/70 font-bold">
                                         <tr>
-                                            <td className="px-4 py-4 sticky left-0 z-10 bg-slate-800 text-slate-300 uppercase tracking-wider text-xs">Overall / Total</td>
+                                            <td className="px-4 py-4 sticky left-0 z-10 bg-slate-100 text-ink uppercase tracking-wider text-xs">Overall / Total</td>
                                             {visibleCats.map((cat: string) => {
                                                 let sumTotal = 0;
                                                 let sumObtained = 0;
@@ -1255,13 +1272,13 @@ export default function StudentDashboardPage() {
 
                                                 return (
                                                     <React.Fragment key={`tfoot-${cat}`}>
-                                                        <td className="px-2 py-3 border-l border-slate-700 text-center text-slate-600" colSpan={2}>—</td>
-                                                        <td className="px-2 py-3 border-l border-slate-700 text-center text-slate-300">{sumTotal || '-'}</td>
-                                                        <td className="px-2 py-3 border-l border-slate-700 text-center text-slate-300">{sumObtained || '-'}</td>
-                                                        <td className="px-2 py-3 border-l border-slate-700 text-center font-bold text-indigo-300 bg-indigo-900/20">{percStr}</td>
-                                                        <td className="px-2 py-3 border-l border-slate-700 text-center">
+                                                        <td className="px-2 py-3 border-l border-slate-200 text-center text-ink-muted" colSpan={2}>—</td>
+                                                        <td className="px-2 py-3 border-l border-slate-200 text-center text-ink font-semibold">{sumTotal || '-'}</td>
+                                                        <td className="px-2 py-3 border-l border-slate-200 text-center text-ink font-semibold">{sumObtained || '-'}</td>
+                                                        <td className="px-2 py-3 border-l border-slate-200 text-center font-bold text-brand bg-brand/10">{percStr}</td>
+                                                        <td className="px-2 py-3 border-l border-slate-200 text-center">
                                                             <div className="flex flex-col items-center gap-1">
-                                                                <span className="font-bold text-slate-200">{overallGrade}</span>
+                                                                <span className="font-bold text-ink">{overallGrade}</span>
                                                                 {isPassText !== '-' && (
                                                                     <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded uppercase ${isPassColor}`}>{isPassText}</span>
                                                                 )}
@@ -1285,20 +1302,20 @@ export default function StudentDashboardPage() {
                 HOLIDAYS TAB
             ════════════════════════════════ */}
             {activeSection === "holidays" && (
-                <div className="space-y-4 animate-scale-in">
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <div id="tabpanel-holidays" role="tabpanel" aria-labelledby="tab-holidays" className="space-y-4 animate-scale-in">
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-6">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-xl">
                                 🏝️
                             </div>
                             <div>
-                                <h2 className="text-white font-bold text-lg">School Holidays</h2>
+                                <h2 className="text-ink font-bold text-lg">School Holidays</h2>
                                 <p className="text-slate-400 text-sm">Upcoming and past holidays applicable for {info?.firstName}</p>
                             </div>
                         </div>
 
                         {holidays.length === 0 ? (
-                            <div className="text-center py-16 border-2 border-dashed border-slate-800 rounded-xl">
+                            <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
                                 <div className="text-4xl mb-3 opacity-50">📅</div>
                                 <p className="text-slate-400 text-sm font-medium">No holidays declared at this moment.</p>
                             </div>
@@ -1311,17 +1328,17 @@ export default function StudentDashboardPage() {
                                     const isUpcoming = end >= now;
 
                                     return (
-                                        <div key={h.id} className={`p-5 rounded-2xl border transition-colors ${isUpcoming ? 'bg-sky-500/10 border-sky-500/30 hover:border-sky-500/50' : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'}`}>
+                                        <div key={h.id} className={`p-5 rounded-2xl border transition-colors ${isUpcoming ? 'bg-sky-500/10 border-sky-500/30 hover:border-sky-500/50' : 'bg-slate-100/60 border-slate-200 hover:border-slate-300'}`}>
                                             <div className="flex justify-between items-start mb-3">
-                                                <h3 className="text-white font-bold">{h.description}</h3>
+                                                <h3 className="text-ink font-bold">{h.description}</h3>
                                                 {isUpcoming ? (
                                                     <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-sky-500/20 text-sky-400 tracking-wider">Upcoming</span>
                                                 ) : (
-                                                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-slate-700 text-slate-400 tracking-wider">Past</span>
+                                                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-slate-100 text-slate-400 tracking-wider">Past</span>
                                                 )}
                                             </div>
 
-                                            <div className="flex items-center text-sm text-slate-300 gap-2 mb-3">
+                                            <div className="flex items-center text-sm text-ink gap-2 mb-3">
                                                 <svg className="w-4 h-4 opacity-70 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                                 <span>
                                                     {start.toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -1354,21 +1371,21 @@ export default function StudentDashboardPage() {
                 PERSONAL INFO TAB
             ════════════════════════════════ */}
             {activeSection === "info" && (
-                <div className="space-y-4 animate-scale-in">
+                <div id="tabpanel-info" role="tabpanel" aria-labelledby="tab-info" className="space-y-4 animate-scale-in">
                     {/* Subjects */}
                     {info.subjects?.length > 0 && (
-                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                            <h2 className="text-white font-bold mb-3">📚 Enrolled Subjects</h2>
+                        <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-5">
+                            <h2 className="text-ink font-bold mb-3">📚 Enrolled Subjects</h2>
                             <div className="flex flex-wrap gap-2">
                                 {info.subjects.map((s: string, i: number) => (
-                                    <span key={i} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors text-sm rounded-lg border border-slate-700">{s}</span>
+                                    <span key={i} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-100 text-ink transition-colors text-sm rounded-lg border border-slate-200">{s}</span>
                                 ))}
                             </div>
                         </div>
                     )}
                     {/* Personal details */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                        <h2 className="text-white font-bold mb-4">👤 Student Information</h2>
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-5">
+                        <h2 className="text-ink font-bold mb-4">👤 Student Information</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {[
                                 { label: "Father's Name", value: info.fathersName },
@@ -1381,9 +1398,9 @@ export default function StudentDashboardPage() {
                                 { label: "Roll No", value: info.rollNo },
                                 { label: "Academic Session", value: academicYearString },
                             ].filter(f => f.value).map(field => (
-                                <div key={field.label} className="flex gap-3 p-3 bg-slate-800/50 rounded-xl border border-transparent hover:border-slate-700 transition-colors">
+                                <div key={field.label} className="flex gap-3 p-3 bg-slate-100/60 rounded-xl border border-transparent hover:border-slate-200 transition-colors">
                                     <span className="text-slate-500 text-sm min-w-[130px]">{field.label}</span>
-                                    <span className="text-white text-sm font-medium">{field.value}</span>
+                                    <span className="text-ink text-sm font-medium">{field.value}</span>
                                 </div>
                             ))}
                         </div>
@@ -1395,7 +1412,7 @@ export default function StudentDashboardPage() {
                 EXAM SCHEDULE TAB
             ════════════════════════════════ */}
             {activeSection === "exam-schedule" && info?.classId && academicSessionId && (
-                <div className="animate-scale-in">
+                <div id="tabpanel-exam-schedule" role="tabpanel" aria-labelledby="tab-exam-schedule" className="animate-scale-in">
                     <ExamScheduleParentView classId={info.classId} sessionId={academicSessionId} />
                 </div>
             )}
@@ -1404,18 +1421,18 @@ export default function StudentDashboardPage() {
                 HOMEWORK TAB
             ════════════════════════════════ */}
             {activeSection === "homework" && (
-                <div className="space-y-4 animate-scale-in">
+                <div id="tabpanel-homework" role="tabpanel" aria-labelledby="tab-homework" className="space-y-4 animate-scale-in">
                     {(() => {
                         // ── Homework helpers ──────────────────────────────────────────
                         const subjectPalette = [
-                            { border: 'border-l-violet-500',  bg: 'bg-violet-500/10',  text: 'text-violet-300',  dot: 'bg-violet-400' },
-                            { border: 'border-l-sky-500',     bg: 'bg-sky-500/10',     text: 'text-sky-300',     dot: 'bg-sky-400' },
-                            { border: 'border-l-emerald-500', bg: 'bg-emerald-500/10', text: 'text-emerald-300', dot: 'bg-emerald-400' },
-                            { border: 'border-l-amber-500',   bg: 'bg-amber-500/10',   text: 'text-amber-300',   dot: 'bg-amber-400' },
-                            { border: 'border-l-rose-500',    bg: 'bg-rose-500/10',    text: 'text-rose-300',    dot: 'bg-rose-400' },
-                            { border: 'border-l-cyan-500',    bg: 'bg-cyan-500/10',    text: 'text-cyan-300',    dot: 'bg-cyan-400' },
-                            { border: 'border-l-fuchsia-500', bg: 'bg-fuchsia-500/10', text: 'text-fuchsia-300', dot: 'bg-fuchsia-400' },
-                            { border: 'border-l-orange-500',  bg: 'bg-orange-500/10',  text: 'text-orange-300',  dot: 'bg-orange-400' },
+                            { border: 'border-l-violet-500',  bg: 'bg-violet-500/10',  text: 'text-violet-600',  dot: 'bg-violet-500' },
+                            { border: 'border-l-sky-500',     bg: 'bg-sky-500/10',     text: 'text-sky-600',     dot: 'bg-sky-500' },
+                            { border: 'border-l-emerald-500', bg: 'bg-emerald-500/10', text: 'text-emerald-600', dot: 'bg-emerald-500' },
+                            { border: 'border-l-amber-500',   bg: 'bg-amber-500/10',   text: 'text-amber-600',   dot: 'bg-amber-500' },
+                            { border: 'border-l-rose-500',    bg: 'bg-rose-500/10',    text: 'text-rose-600',    dot: 'bg-rose-500' },
+                            { border: 'border-l-cyan-500',    bg: 'bg-cyan-500/10',    text: 'text-cyan-600',    dot: 'bg-cyan-500' },
+                            { border: 'border-l-fuchsia-500', bg: 'bg-fuchsia-500/10', text: 'text-fuchsia-600', dot: 'bg-fuchsia-500' },
+                            { border: 'border-l-orange-500',  bg: 'bg-orange-500/10',  text: 'text-orange-600',  dot: 'bg-orange-500' },
                         ];
                         const subjectColorMap = new Map<string, typeof subjectPalette[0]>();
                         let paletteIdx = 0;
@@ -1457,18 +1474,18 @@ export default function StudentDashboardPage() {
                                 <div className="flex items-center gap-3 mb-5">
                                     <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl shrink-0">📚</div>
                                     <div>
-                                        <h2 className="text-white font-bold text-lg leading-tight">Homework</h2>
+                                        <h2 className="text-ink font-bold text-lg leading-tight">Homework</h2>
                                         <p className="text-slate-400 text-sm">{info?.firstName}&apos;s class assignments</p>
                                     </div>
                                 </div>
 
                                 {/* ── Day navigator ── */}
                                 <div className="flex justify-center mb-5">
-                                    <div className="inline-flex items-center bg-slate-800/70 border border-slate-700 rounded-2xl p-1 gap-1 shadow-lg">
+                                    <div className="inline-flex items-center bg-slate-100/70 border border-slate-200 rounded-2xl p-1 gap-1 shadow-lg">
                                         {/* Previous day */}
                                         <button
                                             onClick={() => shiftDate(-1)}
-                                            className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 active:scale-90 transition-all text-lg font-bold"
+                                            className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-ink hover:bg-slate-100 active:scale-90 transition-all text-lg font-bold"
                                             title="Previous day"
                                         >
                                             ‹
@@ -1479,11 +1496,11 @@ export default function StudentDashboardPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => homeworkDateInputRef.current?.showPicker()}
-                                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-slate-700 active:scale-95 transition-all group"
+                                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-slate-100 active:scale-95 transition-all group"
                                                 title="Pick a date"
                                             >
                                                 <div className="text-center min-w-[72px]">
-                                                    <p className="text-white font-semibold text-sm group-hover:text-indigo-300 transition-colors leading-tight">{displayDate}</p>
+                                                    <p className="text-ink font-semibold text-sm group-hover:text-indigo-300 transition-colors leading-tight">{displayDate}</p>
                                                     {displayDate !== 'Today' && displayDate !== 'Yesterday' && (
                                                         <p className="text-slate-500 text-[10px] leading-tight">{homeworkDate}</p>
                                                     )}
@@ -1505,7 +1522,7 @@ export default function StudentDashboardPage() {
                                         <button
                                             onClick={() => shiftDate(1)}
                                             disabled={isToday}
-                                            className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 active:scale-90 transition-all disabled:opacity-25 disabled:cursor-not-allowed text-lg font-bold"
+                                            className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-ink hover:bg-slate-100 active:scale-90 transition-all disabled:opacity-25 disabled:cursor-not-allowed text-lg font-bold"
                                             title="Next day"
                                         >
                                             ›
@@ -1520,8 +1537,8 @@ export default function StudentDashboardPage() {
                                     </div>
                                 ) : homework.length === 0 ? (
                                     <div className="text-center py-16">
-                                        <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center text-3xl mx-auto mb-4">🎉</div>
-                                        <p className="text-slate-300 font-medium">No homework for {displayDate.toLowerCase()}!</p>
+                                        <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-3xl mx-auto mb-4">🎉</div>
+                                        <p className="text-ink font-medium">No homework for {displayDate.toLowerCase()}!</p>
                                         <p className="text-slate-500 text-sm mt-1">Check another date or enjoy the break.</p>
                                     </div>
                                 ) : (
@@ -1529,14 +1546,14 @@ export default function StudentDashboardPage() {
                                         {homework.map((h: any) => {
                                             const color = getSubjectColor(h.subject || 'general');
                                             return (
-                                                <div key={h.id} className={`bg-slate-800/50 border border-slate-700/60 border-l-4 ${color.border} rounded-xl p-4 hover:bg-slate-800 transition-colors`}>
+                                                <div key={h.id} className={`bg-surface-glass backdrop-blur-sm border border-white/30 border-l-4 ${color.border} rounded-xl p-4 hover:shadow-md transition-all`}>
                                                     {h.subject && (
                                                         <div className="flex items-center gap-1.5 mb-2">
                                                             <span className={`w-2 h-2 rounded-full shrink-0 ${color.dot}`} />
                                                             <span className={`text-xs font-bold uppercase tracking-wide ${color.text}`}>{h.subject}</span>
                                                         </div>
                                                     )}
-                                                    <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-line">{h.message}</p>
+                                                    <p className="text-ink text-sm leading-relaxed whitespace-pre-line">{h.message}</p>
                                                 </div>
                                             );
                                         })}
@@ -1555,11 +1572,11 @@ export default function StudentDashboardPage() {
                 PICKUP QR TAB
             ════════════════════════════════ */}
             {activeSection === "pickup" && (
-                <div className="space-y-4 animate-scale-in">
+                <div id="tabpanel-pickup" role="tabpanel" aria-labelledby="tab-pickup" className="space-y-4 animate-scale-in">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl shrink-0">🚗</div>
                         <div>
-                            <h2 className="text-white font-bold text-lg leading-tight">Pickup QR</h2>
+                            <h2 className="text-ink font-bold text-lg leading-tight">Pickup QR</h2>
                             <p className="text-slate-400 text-sm">Authorise someone to collect {info?.firstName}</p>
                         </div>
                     </div>
@@ -1571,12 +1588,12 @@ export default function StudentDashboardPage() {
                 LEAVES TAB
             ════════════════════════════════ */}
             {activeSection === "leaves" && (
-                <div className="space-y-4 animate-scale-in">
+                <div id="tabpanel-leaves" role="tabpanel" aria-labelledby="tab-leaves" className="space-y-4 animate-scale-in">
                     <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl shrink-0">🗓️</div>
                             <div>
-                                <h2 className="text-white font-bold text-lg leading-tight">Leave Requests</h2>
+                                <h2 className="text-ink font-bold text-lg leading-tight">Leave Requests</h2>
                                 <p className="text-slate-400 text-sm">Track and apply for leaves</p>
                             </div>
                         </div>
@@ -1591,10 +1608,10 @@ export default function StudentDashboardPage() {
                     {leaves && leaves.data && leaves.data.length > 0 ? (
                         <div className="space-y-3">
                             {leaves.data.map((leave: any) => (
-                                <div key={leave.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                                <div key={leave.id} className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4">
                                     <div className="flex items-start justify-between gap-2">
                                         <div>
-                                            <p className="text-white font-medium text-sm">{LEAVE_TYPE_LABELS[leave.leaveType] ?? leave.leaveType}</p>
+                                            <p className="text-ink font-medium text-sm">{LEAVE_TYPE_LABELS[leave.leaveType] ?? leave.leaveType}</p>
                                             <p className="text-slate-400 text-xs mt-0.5">
                                                 {fmtDate(leave.fromDate)}{leave.fromDate !== leave.toDate ? ` → ${fmtDate(leave.toDate)}` : ""} · {leave.leaveDuration === "HALF_DAY" ? "Half Day" : "Full Day"}
                                             </p>
@@ -1622,7 +1639,7 @@ export default function StudentDashboardPage() {
                                             )}
                                             <button
                                                 onClick={() => setViewLeave(leave)}
-                                                className="px-2.5 py-1 text-xs font-medium text-slate-300 border border-slate-700 rounded-lg hover:bg-slate-800 transition-colors"
+                                                className="px-2.5 py-1 text-xs font-medium text-ink border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
                                             >
                                                 View Details
                                             </button>
@@ -1632,7 +1649,7 @@ export default function StudentDashboardPage() {
                             ))}
                         </div>
                     ) : (
-                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center">
+                        <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-8 text-center">
                             <div className="text-4xl mb-3">🗓️</div>
                             <p className="text-slate-400 text-sm">No leave requests yet</p>
                             <p className="text-slate-600 text-xs mt-1">Tap &quot;Apply Leave&quot; to submit a new request</p>
@@ -1645,13 +1662,13 @@ export default function StudentDashboardPage() {
                             <button
                                 onClick={() => setLeavesPage(p => Math.max(1, p - 1))}
                                 disabled={leavesPage === 1}
-                                className="px-3 py-1.5 text-xs border border-slate-700 text-slate-400 rounded-lg disabled:opacity-40 hover:bg-slate-800 transition-colors"
+                                className="px-3 py-1.5 text-xs border border-slate-200 text-slate-400 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition-colors"
                             >← Prev</button>
                             <span className="text-xs text-slate-500">{leavesPage} / {Math.ceil((leaves.total ?? 0) / 10)}</span>
                             <button
                                 onClick={() => setLeavesPage(p => p + 1)}
                                 disabled={leavesPage >= Math.ceil((leaves.total ?? 0) / 10)}
-                                className="px-3 py-1.5 text-xs border border-slate-700 text-slate-400 rounded-lg disabled:opacity-40 hover:bg-slate-800 transition-colors"
+                                className="px-3 py-1.5 text-xs border border-slate-200 text-slate-400 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition-colors"
                             >Next →</button>
                         </div>
                     )}
@@ -1661,26 +1678,26 @@ export default function StudentDashboardPage() {
             {/* ── Payment Confirmation Modal ── */}
             {showConfirmModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
                         <div className="mb-5 text-center">
                             <div className="w-16 h-16 bg-indigo-500/20 text-indigo-400 rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
                                 💳
                             </div>
-                            <h3 className="text-white font-bold text-xl">Confirm Payment</h3>
+                            <h3 className="text-ink font-bold text-xl">Confirm Payment</h3>
                             <p className="text-slate-400 text-sm mt-1">You are paying for {selectedMonths2Pay.length} months</p>
                         </div>
 
-                        <div className="bg-slate-800 rounded-xl p-4 mb-5 space-y-2">
+                        <div className="bg-slate-100 rounded-xl p-4 mb-5 space-y-2">
                             {selectedMonths2Pay.map(key => {
                                 const m = allDueItems.find((x: any) => x.key === key);
                                 return (
                                     <div key={key} className="flex justify-between text-sm">
-                                        <span className="text-slate-300">{m?.label}</span>
-                                        <span className="text-white font-medium">₹{Number(m?.amount).toLocaleString()}</span>
+                                        <span className="text-ink">{m?.label}</span>
+                                        <span className="text-ink font-medium">₹{Number(m?.amount).toLocaleString()}</span>
                                     </div>
                                 );
                             })}
-                            <div className="border-t border-slate-700 pt-2 mt-2 flex justify-between">
+                            <div className="border-t border-slate-200 pt-2 mt-2 flex justify-between">
                                 <span className="text-slate-400">Total Amount</span>
                                 <span className="text-indigo-400 font-bold text-lg">₹{selectedAmountTotal.toLocaleString()}</span>
                             </div>
@@ -1688,7 +1705,7 @@ export default function StudentDashboardPage() {
 
                         <div className="flex gap-3">
                             <button onClick={() => setShowConfirmModal(false)} disabled={payProcessing}
-                                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl transition-colors text-sm disabled:opacity-50">
+                                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-100 text-ink font-medium rounded-xl transition-colors text-sm disabled:opacity-50">
                                 Cancel
                             </button>
                             <button onClick={processPayment} disabled={payProcessing}
@@ -1703,10 +1720,10 @@ export default function StudentDashboardPage() {
             {/* ── Receipt Selection Modal ── */}
             {showReceiptsListModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-                        <div className="bg-slate-800 px-5 py-4 flex justify-between items-center">
-                            <h3 className="text-white font-bold text-lg">Multiple Receipts</h3>
-                            <button onClick={() => setShowReceiptsListModal(null)} className="text-slate-400 hover:text-white transition-colors">
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+                        <div className="bg-slate-100 px-5 py-4 flex justify-between items-center">
+                            <h3 className="text-ink font-bold text-lg">Multiple Receipts</h3>
+                            <button onClick={() => setShowReceiptsListModal(null)} className="text-slate-400 hover:text-ink transition-colors">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
@@ -1732,10 +1749,10 @@ export default function StudentDashboardPage() {
                                                 totalPayable: showReceiptsListModal.totalDue ?? null,
                                             });
                                         }}
-                                        className="w-full text-left p-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-indigo-500/50 transition-all flex justify-between items-center group"
+                                        className="w-full text-left p-3 rounded-xl bg-slate-100/60 hover:bg-slate-50 border border-slate-200 hover:border-indigo-500/50 transition-all flex justify-between items-center group"
                                     >
                                         <div>
-                                            <div className="text-white font-medium text-sm mb-1">{p.receiptNumber}</div>
+                                            <div className="text-ink font-medium text-sm mb-1">{p.receiptNumber}</div>
                                             <div className="text-slate-500 text-xs">{new Date(p.paymentDate).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })} · {p.paymentMethod}</div>
                                         </div>
                                         <div className="text-right">
@@ -1761,7 +1778,7 @@ export default function StudentDashboardPage() {
             {/* ── In-app Document Viewer ── */}
             {viewerDoc && (
                 <div className="fixed inset-0 z-[60] flex flex-col bg-black/90" onClick={e => { if (e.target === e.currentTarget) setViewerDoc(null); }}>
-                    <div className="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-700 shrink-0">
+                    <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200 shrink-0">
                         <span className="text-white text-sm font-medium truncate max-w-xs">{viewerDoc.fileName}</span>
                         <div className="flex items-center gap-2 shrink-0">
                             <a
@@ -1772,7 +1789,7 @@ export default function StudentDashboardPage() {
                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                                 Download
                             </a>
-                            <button onClick={() => setViewerDoc(null)} className="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors">
+                            <button onClick={() => setViewerDoc(null)} className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-200 transition-colors">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
@@ -1790,11 +1807,11 @@ export default function StudentDashboardPage() {
             {/* ── Leave Detail Modal ── */}
             {viewLeave && (
                 <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) setViewLeave(null); }}>
-                    <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl">
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl">
                         {/* Header */}
-                        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-700 shrink-0">
+                        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-200 shrink-0">
                             <div>
-                                <p className="text-white font-bold text-base">{LEAVE_TYPE_LABELS[viewLeave.leaveType] ?? viewLeave.leaveType}</p>
+                                <p className="text-ink font-bold text-base">{LEAVE_TYPE_LABELS[viewLeave.leaveType] ?? viewLeave.leaveType}</p>
                                 <p className="text-slate-400 text-xs mt-0.5">
                                     {fmtDate(viewLeave.fromDate)}{viewLeave.fromDate !== viewLeave.toDate ? ` \u2192 ${fmtDate(viewLeave.toDate)}` : ""} &middot; {viewLeave.leaveDuration === "HALF_DAY" ? "Half Day" : "Full Day"}
                                 </p>
@@ -1803,7 +1820,7 @@ export default function StudentDashboardPage() {
                                 <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${LEAVE_STATUS_STYLES[viewLeave.status] ?? ""}`}>
                                     {LEAVE_STATUS_LABELS[viewLeave.status] ?? viewLeave.status}
                                 </span>
-                                <button onClick={() => setViewLeave(null)} className="p-1 rounded-lg text-slate-400 hover:text-white transition-colors">
+                                <button onClick={() => setViewLeave(null)} className="p-1 rounded-lg text-slate-400 hover:text-ink transition-colors">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
                             </div>
@@ -1814,7 +1831,7 @@ export default function StudentDashboardPage() {
                             {viewLeave.reason && (
                                 <div>
                                     <p className="text-slate-500 text-xs font-medium mb-1">Reason</p>
-                                    <p className="text-slate-300 text-sm">{viewLeave.reason}</p>
+                                    <p className="text-ink text-sm">{viewLeave.reason}</p>
                                 </div>
                             )}
                             {/* Chronological timeline of events */}
@@ -1837,7 +1854,7 @@ export default function StudentDashboardPage() {
                                             <button
                                                 key={doc.id}
                                                 onClick={() => handleOpenDoc(viewLeave.id, doc)}
-                                                className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg border border-slate-700 hover:border-slate-500 hover:bg-slate-800/50 transition-colors text-xs text-slate-300"
+                                                className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg border border-slate-200 hover:border-brand/40 hover:bg-slate-100/60 transition-colors text-xs text-ink"
                                             >
                                                 <span className="shrink-0">{doc.mimeType === 'application/pdf' ? '\uD83D\uDCC4' : '\uD83D\uDDBC\uFE0F'}</span>
                                                 <span className="truncate">{doc.fileName}</span>
@@ -1851,7 +1868,7 @@ export default function StudentDashboardPage() {
                         </div>
                         {/* Footer — cancel button for PENDING */}
                         {viewLeave.status === "PENDING" && (
-                            <div className="px-5 py-4 border-t border-slate-700 shrink-0">
+                            <div className="px-5 py-4 border-t border-slate-200 shrink-0">
                                 <button
                                     onClick={() => { setViewLeave(null); setCancelLeaveId(viewLeave.id); }}
                                     className="w-full py-2.5 text-sm font-medium text-red-400 border border-red-500/30 rounded-xl hover:bg-red-500/10 transition-colors"
@@ -1867,10 +1884,10 @@ export default function StudentDashboardPage() {
             {/* ── Reply to Action-Required Modal ── */}
             {replyLeaveId !== null && (
                 <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-md shadow-2xl">
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-5 w-full max-w-md shadow-2xl">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-white font-bold text-base">Reply to School</h3>
-                            <button onClick={() => setReplyLeaveId(null)} className="p-1 rounded-lg text-slate-400 hover:text-white transition-colors">
+                            <h3 className="text-ink font-bold text-base">Reply to School</h3>
+                            <button onClick={() => setReplyLeaveId(null)} className="p-1 rounded-lg text-slate-400 hover:text-ink transition-colors">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
@@ -1880,17 +1897,17 @@ export default function StudentDashboardPage() {
                             onChange={e => setReplyNote(e.target.value)}
                             rows={4}
                             placeholder="Type your reply here…"
-                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-orange-500/60 resize-none mb-3"
+                            className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-ink placeholder-ink-muted/50 focus:outline-none focus:border-orange-500/60 resize-none mb-3"
                         />
                         {/* File attachment */}
                         <div className="mb-4">
                             {replyFile ? (
-                                <div className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl">
-                                    <span className="text-xs text-slate-300 truncate flex-1">{replyFile.name}</span>
+                                <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl">
+                                    <span className="text-xs text-ink truncate flex-1">{replyFile.name}</span>
                                     <button onClick={() => setReplyFile(null)} className="shrink-0 text-slate-500 hover:text-red-400 text-xs transition-colors">Remove</button>
                                 </div>
                             ) : (
-                                <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-400 hover:text-slate-300 transition-colors">
+                                <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-400 hover:text-ink transition-colors">
                                     <input
                                         type="file"
                                         accept="image/jpeg,image/png,image/webp,application/pdf"
@@ -1906,7 +1923,7 @@ export default function StudentDashboardPage() {
                             <button
                                 onClick={() => setReplyLeaveId(null)}
                                 disabled={replySending}
-                                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl transition-colors text-sm disabled:opacity-50"
+                                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-100 text-ink font-medium rounded-xl transition-colors text-sm disabled:opacity-50"
                             >
                                 Cancel
                             </button>
@@ -1925,17 +1942,17 @@ export default function StudentDashboardPage() {
             {/* ── Cancel Leave Confirm Modal ── */}
             {cancelLeaveId && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
                         <div className="mb-4 text-center">
                             <div className="w-12 h-12 bg-red-500/15 text-red-400 rounded-full flex items-center justify-center text-xl mx-auto mb-3">✕</div>
-                            <h3 className="text-white font-bold text-lg">Cancel Leave</h3>
+                            <h3 className="text-ink font-bold text-lg">Cancel Leave</h3>
                             <p className="text-slate-400 text-sm mt-1">Are you sure you want to cancel this leave request?</p>
                         </div>
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setCancelLeaveId(null)}
                                 disabled={cancelLeaving}
-                                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl transition-colors text-sm disabled:opacity-50"
+                                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-100 text-ink font-medium rounded-xl transition-colors text-sm disabled:opacity-50"
                             >
                                 Keep it
                             </button>

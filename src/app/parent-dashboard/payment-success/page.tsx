@@ -52,11 +52,11 @@ function PaymentSuccessContent() {
 
     if (verifying) {
         return (
-            <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-md w-full shadow-2xl text-center flex flex-col items-center justify-center">
-                    <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-6" />
-                    <h2 className="text-white text-xl font-bold mb-2">Verifying Payment...</h2>
-                    <p className="text-slate-400 text-sm">Please do not close or refresh this page.</p>
+            <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex flex-col items-center justify-center p-4">
+                <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-2xl p-8 max-w-md w-full shadow-xl text-center flex flex-col items-center justify-center">
+                    <div className="w-16 h-16 border-4 border-brand border-t-transparent rounded-full animate-spin mb-6" />
+                    <h2 className="text-ink text-xl font-bold mb-2">Verifying Payment...</h2>
+                    <p className="text-ink-muted text-sm">Please do not close or refresh this page.</p>
                 </div>
             </div>
         );
@@ -64,16 +64,16 @@ function PaymentSuccessContent() {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-md w-full shadow-2xl text-center">
+            <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex flex-col items-center justify-center p-4">
+                <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-2xl p-8 max-w-md w-full shadow-xl text-center">
                     <div className="w-20 h-20 bg-red-500/20 text-red-400 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
                         <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </div>
-                    <h1 className="text-white text-2xl font-bold mb-2">Verification Failed</h1>
+                    <h1 className="text-ink text-2xl font-bold mb-2">Verification Failed</h1>
                     <p className="text-red-400 mb-8">{error}</p>
-                    <Link href="/parent-dashboard" className="w-full inline-flex justify-center items-center py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl transition-all shadow-lg">
+                    <Link href="/parent-dashboard" className="w-full inline-flex justify-center items-center py-3 px-4 bg-slate-100 hover:bg-slate-200 text-ink font-semibold rounded-xl transition-all shadow-lg">
                         Return to Dashboard
                     </Link>
                 </div>
@@ -82,29 +82,29 @@ function PaymentSuccessContent() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-md w-full shadow-2xl text-center">
+        <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex flex-col items-center justify-center p-4">
+            <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-2xl p-8 max-w-md w-full shadow-xl text-center">
                 <div className="w-20 h-20 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
                     <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
                 </div>
-                <h1 className="text-white text-3xl font-bold mb-2">Payment Successful!</h1>
-                <p className="text-slate-400 mb-8">
+                <h1 className="text-ink text-3xl font-bold mb-2">Payment Successful!</h1>
+                <p className="text-ink-muted mb-8">
                     Thank you for your payment. Your transaction has been securely processed and recorded.
                 </p>
 
-                <div className="bg-slate-800/50 rounded-xl p-4 text-left mb-8 space-y-3">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left mb-8 space-y-3">
                     {orderId && (
                         <div className="flex justify-between items-center text-sm">
-                            <span className="text-slate-500">Order ID:</span>
-                            <span className="text-slate-300 font-mono text-xs bg-slate-800 px-2 py-1 rounded">{orderId}</span>
+                            <span className="text-ink-muted">Order ID:</span>
+                            <span className="text-ink font-mono text-xs bg-slate-100 px-2 py-1 rounded">{orderId}</span>
                         </div>
                     )}
                     {paymentId && (
                         <div className="flex justify-between items-center text-sm">
-                            <span className="text-slate-500">Payment ID:</span>
-                            <span className="text-slate-300 font-mono text-xs bg-slate-800 px-2 py-1 rounded">{paymentId}</span>
+                            <span className="text-ink-muted">Payment ID:</span>
+                            <span className="text-ink font-mono text-xs bg-slate-100 px-2 py-1 rounded">{paymentId}</span>
                         </div>
                     )}
                 </div>
@@ -120,8 +120,8 @@ function PaymentSuccessContent() {
 export default function PaymentSuccessPage() {
     return (
         <Suspense fallback={
-            <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-                <div className="w-10 h-10 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex flex-col items-center justify-center p-4">
+                <div className="w-10 h-10 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
             </div>
         }>
             <PaymentSuccessContent />

@@ -11,6 +11,7 @@ export interface SchoolInfo {
   phone?: string | null;
   email?: string | null;
   logoUrl?: string | null;
+  logoDataUrl?: string | null;
   logoUpdatedAt?: string | null;
 }
 
@@ -37,7 +38,14 @@ export function useSchoolInfo(): SchoolInfo | null {
 
   useEffect(() => {
     const slug = getSchoolSlug() || '';
-    const lsKey = `school_info:${slug}`;
+    // v2: schema now includes `logoDataUrl`. The key bump abandons older entries
+    // that may have been written with a quota-failing payload (huge base64 logo).
+    const lsKey = `school_info_v2:${slug}`;
+    // Always remove the legacy entry to free localStorage space, since it can be
+    // hundreds of KB of base64 that we no longer persist (see below).
+    try {
+      localStorage.removeItem(`school_info:${slug}`);
+    } catch {}
 
     // 1. In-memory hit — seed state immediately so there's no flicker,
     //    but still fall through to revalidate below.
@@ -45,20 +53,22 @@ export function useSchoolInfo(): SchoolInfo | null {
       setInfo(_cache);
     }
 
-    // 2. localStorage hit (persists across page refreshes) — serve immediately,
-    //    but always revalidate in background so logo changes are picked up.
-    let servedFromCache = false;
+    // 2. localStorage hit — only the lightweight metadata is stored here
+    //    (no `logoDataUrl`, which can be hundreds of KB and blow the quota).
+    //    The data URL is restored from the in-memory cache or refetched.
     try {
       const raw = localStorage.getItem(lsKey);
       if (raw) {
         const parsed: SchoolInfo = JSON.parse(raw);
-        _cache = parsed;
-        _cacheKey = lsKey;
-        setInfo(parsed);
-        servedFromCache = true;
+        // If we have a richer in-memory cache (with logoDataUrl), prefer it.
+        if (!(_cache && _cache.logoDataUrl)) {
+          _cache = parsed;
+          _cacheKey = lsKey;
+          setInfo(parsed);
+        }
       }
     } catch {
-      // localStorage unavailable (e.g. private mode with storage blocked)
+      // localStorage unavailable or corrupt — ignore.
     }
 
     // 3. HTTP fetch — always run (stale-while-revalidate).
@@ -74,12 +84,16 @@ export function useSchoolInfo(): SchoolInfo | null {
               phone: data.phone ?? null,
               email: data.email ?? null,
               logoUrl: data.logoUrl ?? null,
+              logoDataUrl: data.logoDataUrl ?? null,
               logoUpdatedAt: data.logoUpdatedAt ?? null,
             };
             _cache = result;
             _cacheKey = lsKey;
+            // Persist WITHOUT the data URL so we never hit the quota.
+            // The data URL stays in _cache for the lifetime of the tab.
             try {
-              localStorage.setItem(lsKey, JSON.stringify(result));
+              const { logoDataUrl: _drop, ...lightweight } = result;
+              localStorage.setItem(lsKey, JSON.stringify(lightweight));
             } catch {}
             return result;
           }
@@ -91,9 +105,10 @@ export function useSchoolInfo(): SchoolInfo | null {
         });
     }
 
-    // Always update state when fresh data arrives
+    // Always update state when fresh data arrives. Use a fresh object reference
+    // so React always re-renders, even if the user previously saw a stale copy.
     _inflight.then((data) => {
-      if (data) setInfo(data);
+      if (data) setInfo({ ...data });
     });
   }, []);
 
