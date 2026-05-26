@@ -1,222 +1,197 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { getUser, logout, isAuthenticated, getDashboardRoute, getToken, setToken, setTokens, authFetch, resetRefreshState, isTokenExpired, silentRefresh } from "@/lib/auth";
+import Link from "next/link";
+import { getUser, resetRefreshState, isTokenExpired, silentRefresh } from "@/lib/auth";
+import { TopBar } from "@/components/dashboard/TopBar";
+import { Sidebar } from "@/components/dashboard/Sidebar";
+import { BottomTabBar } from "@/components/dashboard/BottomTabBar";
 import { useRbac } from "@/lib/rbac";
-import { API_BASE_URL } from "@/lib/api";
-import { NotificationBell } from "@/components/NotificationBell";
-import { useSchoolInfo } from "@/lib/useSchoolInfo";
+import {
+    Users, IndianRupee, CalendarCheck, GraduationCap, Pencil,
+    QrCode, BarChart2, Bell, X, Plus, Minus, type LucideIcon,
+} from "lucide-react";
+import { usePinnedActions } from "@/hooks/usePinnedActions";
+
+// ── Quick Actions Sheet ─────────────────────────────────────────────────────
+// Shown from the "+" bottom tab. Lists role-aware action tiles in a bottom sheet.
+function QuickActionsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+    const rbac = useRbac();
+    const { pinned, togglePin } = usePinnedActions();
+
+    type Tile = { label: string; href: string; icon: LucideIcon; color: string; bg: string };
+    const tiles: Tile[] = [
+        { label: 'Take Attendance', href: '/dashboard/attendance',    icon: CalendarCheck, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900/50' },
+        { label: 'Notifications',   href: '/dashboard/notifications', icon: Bell,          color: 'text-sky-700 dark:text-sky-300',         bg: 'bg-sky-50 dark:bg-sky-950/40 border-sky-100 dark:border-sky-900/50' },
+        { label: 'Homework',        href: '/dashboard/homework',      icon: Pencil,        color: 'text-pink-700 dark:text-pink-300',       bg: 'bg-pink-50 dark:bg-pink-950/40 border-pink-100 dark:border-pink-900/50' },
+        { label: 'Students',        href: '/dashboard/students',      icon: Users,         color: 'text-blue-700 dark:text-blue-300',       bg: 'bg-blue-50 dark:bg-blue-950/40 border-blue-100 dark:border-blue-900/50' },
+        ...(rbac.canManageStudents ? [{ label: 'Add Student', href: '/dashboard/students/new', icon: GraduationCap, color: 'text-cyan-700 dark:text-cyan-300', bg: 'bg-cyan-50 dark:bg-cyan-950/40 border-cyan-100 dark:border-cyan-900/50' }] : []),
+        ...(rbac.canAccessFees     ? [{ label: 'Collect Fee',  href: '/dashboard/fees',         icon: IndianRupee,   color: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-50 dark:bg-purple-950/40 border-purple-100 dark:border-purple-900/50' }] : []),
+        ...(rbac.canManageTeachers ? [{ label: 'Add Staff',    href: '/dashboard/staff/new',    icon: Users,         color: 'text-orange-700 dark:text-orange-300', bg: 'bg-orange-50 dark:bg-orange-950/40 border-orange-100 dark:border-orange-900/50' }] : []),
+        ...(rbac.isTeacher         ? [{ label: 'Scan QR',      href: '/dashboard/pickup/scan',  icon: QrCode,        color: 'text-teal-700 dark:text-teal-300',     bg: 'bg-teal-50 dark:bg-teal-950/40 border-teal-100 dark:border-teal-900/50' }] : []),
+        ...(rbac.isAdmin           ? [{ label: 'Reports',      href: '/dashboard/reports',      icon: BarChart2,     color: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100 dark:border-indigo-900/50' }] : []),
+    ];
+
+    if (!open) return null;
+
+    return (
+        <>
+            {/* Backdrop */}
+            <div
+                className="fixed inset-0 z-60 bg-black/40 backdrop-blur-sm md:hidden"
+                onClick={onClose}
+                aria-hidden
+            />
+            {/* Sheet */}
+            <div className="fixed bottom-0 left-0 right-0 z-70 md:hidden bg-surface/98 backdrop-blur-xl rounded-t-2xl shadow-2xl border-t border-slate-200/60 dark:border-white/10 pb-[calc(env(safe-area-inset-bottom)+60px)]">
+                <div className="flex flex-col px-4 pt-4 pb-2">
+                    <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-base font-semibold text-ink">Customize Dashboard</h3>
+                        <button onClick={onClose} className="p-1.5 rounded-lg text-ink-muted hover:bg-surface-secondary transition-colors" aria-label="Close">
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+                    <p className="text-xs text-ink-muted mb-2">Add or remove quick action items on your dashboard page using the +/- icons.</p>
+                </div>
+                {/* Drag handle */}
+                <div className="w-10 h-1 bg-slate-300 dark:bg-white/20 rounded-full mx-auto mb-3" />
+                <div className="grid grid-cols-1 gap-2 px-4 pb-4 max-h-[50vh] overflow-y-auto no-scrollbar">
+                    {tiles.map(tile => {
+                        const Icon = tile.icon;
+                        const isPinned = pinned.includes(tile.href);
+                        return (
+                            <div
+                                key={tile.href}
+                                className={`flex items-center justify-between p-3 rounded-xl border transition-all ${tile.bg} ${isPinned ? 'border-brand/30' : 'opacity-80'}`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <Icon className={`w-5 h-5 ${tile.color}`} aria-hidden />
+                                    <span className={`text-sm font-medium ${tile.color}`}>{tile.label}</span>
+                                </div>
+                                <button
+                                    onClick={() => togglePin(tile.href)}
+                                    className={`p-1.5 rounded-full transition-colors ${
+                                        isPinned 
+                                            ? 'bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400' 
+                                            : 'bg-brand/10 text-brand hover:bg-brand/20'
+                                    }`}
+                                    aria-label={isPinned ? "Remove action" : "Add action"}
+                                >
+                                    {isPinned ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                                </button>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        </>
+    );
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [user, setUser] = useState<any>(null);
-    const [features, setFeatures] = useState<Record<string, boolean>>({});
-    const schoolInfo = useSchoolInfo();
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+    const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
 
+    // ── Auth bootstrap ──────────────────────────────────────────────────────
     useEffect(() => {
         const initAuth = async () => {
             const u = getUser();
             if (!u) { router.replace("/"); return; }
             if (u.mustChangePassword) { router.replace("/change-password"); return; }
             if (u.role === "PARENT") { router.replace("/parent-dashboard"); return; }
-
-            // Proactively refresh expired token before any API calls fire.
-            // IMPORTANT: never log the user out from here. If the refresh fails
-            // (transient server error, race with another tab/hook rotating the
-            // refresh token, etc.), authFetch's global 401 handler will retry
-            // on the next real API call. Hard-logging out here causes spurious
-            // sign-outs when the user returns to the tab after a while.
             if (isTokenExpired()) {
-                try { await silentRefresh(); } catch { /* network error — ignore */ }
+                try { await silentRefresh(); } catch { /* transient — ignore */ }
             }
-
             setUser(u);
-
-            // Load feature flags for sidebar visibility
-            try {
-                const res = await authFetch(`${API_BASE_URL}/school/features`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setFeatures(data ?? {});
-                }
-            } catch { /* non-critical — sidebar falls back to showing all links */ }
         };
         initAuth();
     }, [router]);
 
-    // When the PWA returns from background, reset any stuck refresh state
     useEffect(() => {
-        const handleVisibility = () => {
-            if (document.visibilityState === 'visible') resetRefreshState();
-        };
-        document.addEventListener('visibilitychange', handleVisibility);
-        return () => document.removeEventListener('visibilitychange', handleVisibility);
+        try {
+            const saved = localStorage.getItem("dashboard-sidebar-collapsed");
+            if (saved !== null) setSidebarCollapsed(JSON.parse(saved));
+        } catch { /* localStorage unavailable — use default */ }
     }, []);
 
-    // Close sidebar when route changes
-    useEffect(() => { setIsSidebarOpen(false); }, [pathname]);
+    useEffect(() => {
+        const onVisibility = () => {
+            if (document.visibilityState === "visible") resetRefreshState();
+        };
+        document.addEventListener("visibilitychange", onVisibility);
+        return () => document.removeEventListener("visibilitychange", onVisibility);
+    }, []);
 
-    const isActive = (path: string) => {
-        if (path === '/dashboard') return pathname === '/dashboard';
-        if (path === '/dashboard/hr') return pathname === '/dashboard/hr';
-        return pathname === path || pathname.startsWith(`${path}/`);
+    // Close drawers on route change
+    useEffect(() => {
+        setIsMobileNavOpen(false);
+        setIsQuickActionsOpen(false);
+    }, [pathname]);
+
+    const toggleSidebar = () => {
+        setSidebarCollapsed(prev => {
+            const next = !prev;
+            try { localStorage.setItem("dashboard-sidebar-collapsed", JSON.stringify(next)); } catch { /* no-op */ }
+            return next;
+        });
     };
-
-    const getLinkClass = (path: string) => {
-        const base = "flex items-center p-2 rounded-lg group transition-colors";
-        return isActive(path) ? `${base} bg-blue-100 text-blue-700` : `${base} text-gray-900 hover:bg-gray-100`;
-    };
-
-    const isAdmin = user && ["SUPER_ADMIN", "ADMIN"].includes(user.role);
-    const isSuperAdmin = user?.role === "SUPER_ADMIN";
-    const rbac = useRbac();
-
-    const handleLogout = () => { logout(); };
-
-
 
     if (!user) return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="min-h-screen bg-surface flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin" />
         </div>
     );
 
     return (
-        <div className="min-h-screen bg-slate-50">
-            <nav className="bg-white border-b border-slate-200 px-4 py-2.5 fixed left-0 right-0 top-0 z-50">
-                <div className="flex justify-between items-center w-full">
-                    <div className="flex items-center">
-                        <button
-                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            className="p-2 mr-2 text-gray-600 rounded-lg cursor-pointer sm:hidden hover:text-gray-900 hover:bg-gray-100"
-                        >
-                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                            </svg>
-                        </button>
-                        <span className="self-center text-lg sm:text-xl font-semibold whitespace-nowrap text-slate-900 truncate max-w-[140px] xs:max-w-xs sm:max-w-none">
-                            {schoolInfo?.name || 'School'} <span className="hidden sm:inline">Dashboard</span>
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-3 lg:order-2">
-                        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg">
-                            <div className="w-6 h-6 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
-                                {user.firstName?.[0]}{user.lastName?.[0]}
-                            </div>
-                            <span className="text-slate-700 text-sm font-medium">{user.firstName} {user.lastName}</span>
-                            <span className="text-xs text-slate-400 border-l border-slate-300 pl-2">{user.role?.replace("_", " ")}</span>
-                        </div>
-                        {/* Notification Bell */}
-                        <NotificationBell variant="light" />
-                        {/* Profile Button */}
-                        <Link
-                            href="/dashboard/profile"
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-sm ${pathname === '/dashboard/profile' ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
-                            title="My Profile"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span className="hidden sm:block font-medium">Profile</span>
-                        </Link>
-                        <button
-                            onClick={handleLogout}
-                            title="Logout"
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all text-sm"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                            </svg>
-                            <span className="hidden sm:block font-medium">Logout</span>
-                        </button>
-                    </div>
-                </div>
-            </nav>
+        <div className="theme-bg min-h-screen text-ink">
 
-            <div className="flex pt-16 overflow-hidden bg-gray-50">
-                {isSidebarOpen && (
-                    <div className="fixed inset-0 z-30 bg-gray-900/50 sm:hidden" onClick={() => setIsSidebarOpen(false)} />
-                )}
+            <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-100 focus:px-4 focus:py-2 focus:bg-brand focus:text-white focus:rounded-lg focus:text-sm focus:font-semibold"
+            >
+                Skip to main content
+            </a>
 
-                <aside className={`fixed top-0 left-0 z-40 w-64 h-dvh pt-20 transition-transform bg-white border-r border-gray-200 sm:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                    <div className="h-full px-3 pb-6 overflow-y-auto bg-white">
-                        <ul className="space-y-2 font-medium">
-                            <li><Link href="/dashboard" className={getLinkClass("/dashboard")}><span className="ml-3">🏠 Dashboard</span></Link></li>
-                            <li><Link href="/dashboard/notifications" className={getLinkClass("/dashboard/notifications")}><span className="ml-3">🔔 Notifications</span></Link></li>
-                            <li><Link href="/dashboard/students" className={getLinkClass("/dashboard/students")}><span className="ml-3">👨‍🎓 Students</span></Link></li>
-                            <li><Link href="/dashboard/staff" className={getLinkClass("/dashboard/staff")}><span className="ml-3">👩‍🏫 Staff</span></Link></li>
-                            <li><Link href="/dashboard/subjects" className={getLinkClass("/dashboard/subjects")}><span className="ml-3">📚 Subjects</span></Link></li>
-                            <li><Link href="/dashboard/classes" className={getLinkClass("/dashboard/classes")}><span className="ml-3">🏫 Classes</span></Link></li>
-                            {rbac.canManageEnrollments && (
-                                <li><Link href="/dashboard/enrollment" className={getLinkClass("/dashboard/enrollment")}><span className="ml-3">📋 Enrollment</span></Link></li>
-                            )}
-                            <li><Link href="/dashboard/attendance" className={getLinkClass("/dashboard/attendance")}><span className="ml-3">📅 Attendance</span></Link></li>
-                            <li><Link href="/dashboard/leaves" className={getLinkClass("/dashboard/leaves")}><span className="ml-3">🗓️ Leave Requests</span></Link></li>
-                            {rbac.canAccessFees && (
-                                <li><Link href="/dashboard/fees" className={getLinkClass("/dashboard/fees")}><span className="ml-3">💰 Fees</span></Link></li>
-                            )}
-                            <li><Link href="/dashboard/examinations" className={getLinkClass("/dashboard/examinations")}><span className="ml-3">📝 Examinations</span></Link></li>
-                            <li><Link href="/dashboard/homework" className={getLinkClass("/dashboard/homework")}><span className="ml-3">📚 Homework</span></Link></li>
-                            <li>
-                                <p className="px-2 pt-3 pb-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">Pickup</p>
-                                <ul className="space-y-1">
-                                    <li><Link href="/dashboard/pickup/scan" className={getLinkClass("/dashboard/pickup/scan")}><span className="ml-3">📷 Scan QR</span></Link></li>
-                                    <li><Link href="/dashboard/pickup/history" className={getLinkClass("/dashboard/pickup/history")}><span className="ml-3">📋 Pickup History</span></Link></li>
-                                </ul>
-                            </li>
-                            {rbac.isAdmin && (
-                                <li><Link href="/dashboard/reports" className={getLinkClass("/dashboard/reports")}><span className="ml-3">📊 Reports</span></Link></li>
-                            )}
-                            {rbac.canAccessHR && (
-                                <>
-                                    <li className="pt-4 border-t border-gray-200">
-                                        <p className="px-2 pb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">HR Portal</p>
-                                    </li>
-                                    <li><Link href="/dashboard/hr" className={getLinkClass("/dashboard/hr")}><span className="ml-3">🏢 HR Overview</span></Link></li>
-                                    <li><Link href="/dashboard/hr/staff-attendance" className={getLinkClass("/dashboard/hr/staff-attendance")}><span className="ml-3">🕐 Staff Attendance</span></Link></li>
-                                    <li><Link href="/dashboard/hr/leaves" className={getLinkClass("/dashboard/hr/leaves")}><span className="ml-3">📋 Staff Leaves</span></Link></li>
-                                    <li><Link href="/dashboard/hr/leave-policies" className={getLinkClass("/dashboard/hr/leave-policies")}><span className="ml-3">📜 Leave Policies</span></Link></li>
-                                    {rbac.canManagePayroll && (
-                                        <li><Link href="/dashboard/hr/payroll" className={getLinkClass("/dashboard/hr/payroll")}><span className="ml-3">💵 Payroll</span></Link></li>
-                                    )}
-                                    <li><Link href="/dashboard/hr/salary-config" className={getLinkClass("/dashboard/hr/salary-config")}><span className="ml-3">⚙️ Salary Config</span></Link></li>
-                                    <li><Link href="/dashboard/hr/staff-attendance/zones" className={getLinkClass("/dashboard/hr/staff-attendance/zones")}><span className="ml-3">📍 Attendance Zones</span></Link></li>
-                                </>
-                            )}
-                            {rbac.canAccessHRSelfService && (
-                                <>
-                                    <li className="pt-4 border-t border-gray-200">
-                                        <p className="px-2 pb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">My HR</p>
-                                    </li>
-                                    <li><Link href="/dashboard/my-attendance" className={getLinkClass("/dashboard/my-attendance")}><span className="ml-3">🕐 My Attendance</span></Link></li>
-                                    <li><Link href="/dashboard/my-leaves" className={getLinkClass("/dashboard/my-leaves")}><span className="ml-3">🗓️ My Leaves</span></Link></li>
-                                    <li><Link href="/dashboard/my-salary" className={getLinkClass("/dashboard/my-salary")}><span className="ml-3">💵 My Salary</span></Link></li>
-                                </>
-                            )}
-                            {rbac.canAccessAdminPanel && (
-                                <>
-                                    <li className="pt-4 border-t border-gray-200">
-                                        <p className="px-2 pb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Administration</p>
-                                    </li>
-                                    <li><Link href="/dashboard/admin" className={getLinkClass("/dashboard/admin")}><span className="ml-3">🛡️ {rbac.isSuperAdmin ? "Super Admin Panel" : "Admin Panel"}</span></Link></li>
-                                </>
-                            )}
-                            <li className="pt-4 mt-4 space-y-2 border-t border-gray-200">
-                                <Link href="/dashboard/support" className={getLinkClass("/dashboard/support")}><span className="ml-3">❓ Help / Support</span></Link>
-                                <Link href="/dashboard/settings" className={getLinkClass("/dashboard/settings")}><span className="ml-3">⚙️ Settings</span></Link>
-                            </li>
-                        </ul>
-                    </div>
-                </aside>
+            <TopBar
+                user={user}
+                sidebarCollapsed={sidebarCollapsed}
+                onToggleSidebar={toggleSidebar}
+            />
 
-                <div id="main-content" className="relative w-full h-full overflow-y-auto bg-gray-50 sm:ml-64">
+            <div className="flex pt-14">
+                <Sidebar
+                    collapsed={sidebarCollapsed}
+                    isMobileOpen={isMobileNavOpen}
+                    onMobileClose={() => setIsMobileNavOpen(false)}
+                />
+
+                <main
+                    id="main-content"
+                    className={[
+                        "flex-1 min-w-0 transition-all duration-300",
+                        sidebarCollapsed ? "md:ml-16" : "md:ml-64",
+                        "pb-[calc(env(safe-area-inset-bottom)+64px)] md:pb-0",
+                    ].join(" ")}
+                >
                     {children}
-                </div>
+                </main>
             </div>
+
+            <BottomTabBar
+                onMoreClick={() => setIsMobileNavOpen(v => !v)}
+                onPlusClick={() => setIsQuickActionsOpen(v => !v)}
+            />
+
+            <QuickActionsSheet
+                open={isQuickActionsOpen}
+                onClose={() => setIsQuickActionsOpen(false)}
+            />
         </div>
     );
 }
+

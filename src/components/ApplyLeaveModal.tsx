@@ -4,6 +4,7 @@ import { useState } from "react";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import toast from "react-hot-toast";
+import { AppDatePicker } from "@/components/ui/AppDatePicker";
 
 type LeaveType = "SICK_LEAVE" | "CASUAL_LEAVE" | "OTHER_LEAVE";
 type LeaveDuration = "FULL_DAY" | "HALF_DAY";
@@ -172,26 +173,22 @@ export default function ApplyLeaveModal({ studentId, studentName, onClose, onSuc
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">From Date <span className="text-red-500">*</span></label>
-                            <input
-                                type="date"
+                            <AppDatePicker
                                 value={fromDate}
                                 min={minFromDate}
                                 max={maxDate}
-                                onChange={e => handleFromDateChange(e.target.value)}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                onChange={(v) => handleFromDateChange(v)}
                                 required
                             />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">To Date <span className="text-red-500">*</span></label>
-                            <input
-                                type="date"
+                            <AppDatePicker
                                 value={toDate}
                                 min={fromDate || minFromDate}
                                 max={maxDate}
-                                onChange={e => setToDate(e.target.value)}
+                                onChange={(v) => setToDate(v)}
                                 disabled={leaveDuration === "HALF_DAY"}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-50 disabled:text-gray-400"
                                 required
                             />
                             {leaveDuration === "HALF_DAY" && <p className="text-xs text-gray-400 mt-1">Auto-set for half day</p>}

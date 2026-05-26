@@ -7,6 +7,7 @@ import { API_BASE_URL, fetcher } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
+import { AppDatePicker } from "@/components/ui/AppDatePicker";
 
 export default function ExamScheduleList({ onView }: { onView: (id: number) => void }) {
     const rbac = useRbac();
@@ -303,25 +304,21 @@ function CreateScheduleModal({
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Start Date <span className="text-red-500">*</span>
                                 </label>
-                                <input
+                                <AppDatePicker
                                     required
-                                    type="date"
                                     value={startDate}
-                                    onChange={e => setStartDate(e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                    onChange={(v) => setStartDate(v)}
                                 />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     End Date <span className="text-red-500">*</span>
                                 </label>
-                                <input
+                                <AppDatePicker
                                     required
-                                    type="date"
                                     value={endDate}
                                     min={startDate}
-                                    onChange={e => setEndDate(e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                    onChange={(v) => setEndDate(v)}
                                 />
                             </div>
                         </div>

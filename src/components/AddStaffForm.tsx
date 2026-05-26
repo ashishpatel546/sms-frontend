@@ -5,6 +5,7 @@ import { API_BASE_URL } from "@/lib/api";
 import { Country, State, City } from "country-state-city";
 import toast from "react-hot-toast";
 import { authFetch } from "@/lib/auth";
+import { AppDatePicker } from "@/components/ui/AppDatePicker";
 
 const ROLE_LABELS: Record<string, string> = {
     ADMIN: "Admin",
@@ -330,8 +331,12 @@ export default function AddStaffForm({
                         </div>
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Date of Birth <span className="text-red-500">*</span></label>
-                            <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} required
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                            <AppDatePicker
+                                name="dateOfBirth"
+                                value={formData.dateOfBirth}
+                                onChange={(v) => handleChange({ target: { name: 'dateOfBirth', value: v } } as React.ChangeEvent<HTMLInputElement>)}
+                                required
+                            />
                         </div>
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Blood Group</label>
@@ -531,13 +536,20 @@ export default function AddStaffForm({
                         )}
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Joining Date <span className="text-red-500">*</span></label>
-                            <input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleChange} required
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                            <AppDatePicker
+                                name="joiningDate"
+                                value={formData.joiningDate}
+                                onChange={(v) => handleChange({ target: { name: 'joiningDate', value: v } } as React.ChangeEvent<HTMLInputElement>)}
+                                required
+                            />
                         </div>
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Exit Date</label>
-                            <input type="date" name="exitDate" value={formData.exitDate} onChange={handleChange}
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                            <AppDatePicker
+                                name="exitDate"
+                                value={formData.exitDate}
+                                onChange={(v) => handleChange({ target: { name: 'exitDate', value: v } } as React.ChangeEvent<HTMLInputElement>)}
+                            />
                         </div>
                     </div>
                 </div>

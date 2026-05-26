@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
+import { AppMonthPicker } from "@/components/ui/AppDatePicker";
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -115,11 +116,9 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
                             Attendance Data
                         </h3>
                         <div className="flex gap-2">
-                            <input
-                                type="month"
+                            <AppMonthPicker
                                 value={attendanceMonth}
-                                onChange={e => setAttendanceMonth(e.target.value)}
-                                className="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                                onChange={(v) => setAttendanceMonth(v)}
                             />
                         </div>
                     </div>

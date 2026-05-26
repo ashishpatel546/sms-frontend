@@ -8,6 +8,7 @@ import { API_BASE_URL } from "@/lib/api";
 import { Country, State, City } from "country-state-city";
 import { useRbac } from "@/lib/rbac";
 import { authFetch } from "@/lib/auth";
+import { AppDatePicker } from "@/components/ui/AppDatePicker";
 
 export default function AddStudentPage() {
     const router = useRouter();
@@ -377,7 +378,12 @@ export default function AddStudentPage() {
                             </div>
                             <div>
                                 <label htmlFor="dateOfBirth" className="block mb-2 text-sm font-medium text-gray-900">Date of Birth <span className="text-red-500">*</span></label>
-                                <input type="date" id="dateOfBirth" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required />
+                                <AppDatePicker
+                                    name="dateOfBirth"
+                                    value={formData.dateOfBirth}
+                                    onChange={(v) => handleChange({ target: { name: 'dateOfBirth', value: v } } as React.ChangeEvent<HTMLInputElement>)}
+                                    required
+                                />
                             </div>
                             <div>
                                 <label htmlFor="bloodGroup" className="block mb-2 text-sm font-medium text-gray-900">Blood Group</label>

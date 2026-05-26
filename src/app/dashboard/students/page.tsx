@@ -313,10 +313,8 @@ export default function StudentsPage() {
         },
         {
             header: "Actions",
-            render: (row: any) => rbac.canManageStudents ? (
-                <Link href={`/dashboard/students/${row.id}/edit`} className="font-medium text-blue-600 hover:underline">Edit</Link>
-            ) : (
-                <Link href={`/dashboard/students/${row.id}/edit`} className="font-medium text-slate-400 text-xs">View</Link>
+            render: (row: any) => (
+                <Link href={`/dashboard/students/${row.id}`} className="font-medium text-blue-600 hover:underline">View</Link>
             )
         }
     ];

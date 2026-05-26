@@ -6,6 +6,7 @@ import { useRbac } from "@/lib/rbac";
 import { getUser } from "@/lib/auth";
 import toast, { Toaster } from "react-hot-toast";
 import StaffPicker, { StaffResult } from "@/components/StaffPicker";
+import { InfoBanner } from "@/components/ui/InfoBanner";
 
 const STATUS_STYLES: Record<StaffLeaveStatus, string> = {
   PENDING: "bg-amber-100 text-amber-700 border-amber-200",
@@ -106,15 +107,12 @@ export default function StaffLeavesPage() {
       </div>
 
       {/* Info Banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h2 className="text-sm font-semibold text-blue-900 mb-1">About Staff Leave Management</h2>
-        <p className="text-xs text-blue-800 leading-relaxed">
-          This page lets HR admins view, approve, reject, or cancel leave applications for all staff.
-          Staff apply for leave themselves via <strong>My Leaves</strong>; HR admins can also apply on their behalf using the button above.
-          If a staff member exhausts their leave balance, the excess days are automatically marked as <strong>Loss of Pay (LOP)</strong> and deducted from payroll.
-          Use the month/year filter to view historical records.
-        </p>
-      </div>
+      <InfoBanner title="About Staff Leave Management">
+        This page lets HR admins view, approve, reject, or cancel leave applications for all staff.
+        Staff apply for leave themselves via <strong>My Leaves</strong>; HR admins can also apply on their behalf using the button above.
+        If a staff member exhausts their leave balance, the excess days are automatically marked as <strong>Loss of Pay (LOP)</strong> and deducted from payroll.
+        Use the month/year filter to view historical records.
+      </InfoBanner>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">

@@ -7,6 +7,7 @@ import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
 import LeaveCancellationModal from "@/components/LeaveCancellationModal";
 import LeaveTimeline from "@/components/LeaveTimeline";
+import { AppDatePicker } from "@/components/ui/AppDatePicker";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -528,12 +529,12 @@ export default function LeavesPage() {
                     {/* From Date */}
                     <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">From Date</label>
-                        <input type="date" value={filterFromDate} onChange={e => setFilterFromDate(e.target.value)} className={inputCls} />
+                        <AppDatePicker value={filterFromDate} onChange={(v) => setFilterFromDate(v)} />
                     </div>
                     {/* To Date */}
                     <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">To Date</label>
-                        <input type="date" value={filterToDate} onChange={e => setFilterToDate(e.target.value)} className={inputCls} />
+                        <AppDatePicker value={filterToDate} onChange={(v) => setFilterToDate(v)} />
                     </div>
                 </div>
                 <div className="flex gap-3">

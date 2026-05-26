@@ -11,6 +11,7 @@ import { TimePicker } from "@mui/x-date-pickers/TimePicker";
 import { renderTimeViewClock } from "@mui/x-date-pickers/timeViewRenderers";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import dayjs from "dayjs";
+import { Car, KeyRound, XCircle, Eye, History, QrCode } from "lucide-react";
 
 interface PickupQRGeneratorProps {
   studentId: number | string;
@@ -334,7 +335,10 @@ export default function PickupQRGenerator({ studentId, studentName }: PickupQRGe
               : "text-ink-muted hover:text-ink"
               }`}
           >
-            {t === "form" ? "🚗 Generate QR" : `📋 History${historyTotal > 0 ? ` (${historyTotal})` : ""}`}
+            {t === "form"
+              ? <span className="flex items-center justify-center gap-1.5"><Car className="w-3.5 h-3.5" /> Generate QR</span>
+              : <span className="flex items-center justify-center gap-1.5"><History className="w-3.5 h-3.5" /> History{historyTotal > 0 ? ` (${historyTotal})` : ""}</span>
+            }
           </button>
         ))}
       </div>
@@ -344,7 +348,7 @@ export default function PickupQRGenerator({ studentId, studentName }: PickupQRGe
         <form onSubmit={handleGenerate} className="space-y-4">
           <div className="bg-white/90 backdrop-blur-sm border border-slate-200 rounded-2xl p-5 space-y-4 shadow-soft">
             <h3 className="text-ink font-semibold text-base flex items-center gap-2">
-              <span className="text-xl">🚗</span> Authorise Pickup
+              <Car className="w-5 h-5 text-brand" /> Authorise Pickup
             </h3>
 
             {/* Authorized person name */}
@@ -448,7 +452,7 @@ export default function PickupQRGenerator({ studentId, studentName }: PickupQRGe
               {submitting ? (
                 <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Generating…</>
               ) : (
-                <><span>🔑</span> Generate Pickup QR</>
+                <><KeyRound className="w-4 h-4" /> Generate Pickup QR</>
               )}
             </button>
           </div>
@@ -520,7 +524,7 @@ export default function PickupQRGenerator({ studentId, studentName }: PickupQRGe
                 disabled={cancelling === generated.id}
                 className="flex-1 py-2.5 bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 rounded-xl text-sm font-medium transition-all border border-red-200"
               >
-                {cancelling === generated.id ? "Cancelling…" : "🚫 Cancel QR"}
+                {cancelling === generated.id ? "Cancelling\u2026" : <><XCircle className="w-3.5 h-3.5" /> Cancel QR</>}
               </button>
             </div>
           </div>
@@ -576,7 +580,7 @@ export default function PickupQRGenerator({ studentId, studentName }: PickupQRGe
                           onClick={() => setViewingToken(r)}
                           className="flex-1 py-1.5 bg-brand/10 hover:bg-brand/20 text-brand rounded-lg text-xs font-medium transition-all border border-brand/20"
                         >
-                          👁 View QR
+                          <span className="flex items-center justify-center gap-1"><Eye className="w-3 h-3" /> View QR</span>
                         </button>
                       )}
                       <button
@@ -584,7 +588,7 @@ export default function PickupQRGenerator({ studentId, studentName }: PickupQRGe
                         disabled={cancelling === r.id}
                         className="flex-1 py-1.5 bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 rounded-lg text-xs font-medium transition-all border border-red-200"
                       >
-                        {cancelling === r.id ? "Cancelling…" : "🚫 Cancel"}
+                        {cancelling === r.id ? "Cancelling\u2026" : <><XCircle className="w-3.5 h-3.5" /> Cancel</>}
                       </button>
                     </div>
                   )}
@@ -623,7 +627,7 @@ export default function PickupQRGenerator({ studentId, studentName }: PickupQRGe
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setViewingToken(null)}>
           <div className="bg-white/90 backdrop-blur-sm border border-slate-200 rounded-2xl p-5 shadow-soft w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h3 className="text-ink font-semibold text-base">🚗 Active Pickup QR</h3>
+              <h3 className="text-ink font-semibold text-base flex items-center gap-2"><QrCode className="w-4 h-4 text-brand" /> Active Pickup QR</h3>
               <button onClick={() => setViewingToken(null)} className="text-ink-muted hover:text-ink text-xl leading-none">✕</button>
             </div>
 

@@ -6,6 +6,7 @@ import { API_BASE_URL } from "@/lib/api";
 import { getEnv, getSchoolSlug } from "@/lib/env";
 import { setToken, setTokens, getDashboardRoute, getUser, authFetch, markMustChangePasswordFlow } from "@/lib/auth";
 import SplashScreen from "@/components/SplashScreen";
+import { BarChart2, CalendarCheck2, IndianRupee, FileText, Users, Info } from "lucide-react";
 
 type Tab = "parent" | "staff";
 
@@ -164,9 +165,16 @@ export default function LoginPage() {
         <div className="relative z-10">
           {/* Feature pills */}
           <div className="flex flex-wrap gap-3">
-            {['📊 Report & Analytics', '📋 Attendance', '💰 Fee Management', '📝 Examinations', '👥 Parent Portal'].map(f => (
-              <span key={f} className="px-4 py-2 cursor-pointer bg-white/10 hover:bg-white/20 hover:scale-105 hover:-translate-y-1 transition-all duration-300 backdrop-blur-md text-white font-medium text-sm rounded-xl border border-indigo-500/30 shadow-lg hover:shadow-indigo-500/40">
-                {f}
+            {[
+              { Icon: BarChart2,      label: 'Report & Analytics', color: 'text-violet-300' },
+              { Icon: CalendarCheck2, label: 'Attendance',          color: 'text-sky-300'    },
+              { Icon: IndianRupee,    label: 'Fee Management',      color: 'text-emerald-300'},
+              { Icon: FileText,       label: 'Examinations',        color: 'text-amber-300'  },
+              { Icon: Users,          label: 'Parent Portal',       color: 'text-pink-300'   },
+            ].map(({ Icon, label, color }) => (
+              <span key={label} className="flex items-center gap-2 px-4 py-2 cursor-pointer bg-white/10 hover:bg-white/20 hover:scale-105 hover:-translate-y-1 transition-all duration-300 backdrop-blur-md text-white font-medium text-sm rounded-xl border border-indigo-500/30 shadow-lg hover:shadow-indigo-500/40">
+                <Icon className={`w-4 h-4 ${color}`} aria-hidden />
+                {label}
               </span>
             ))}
           </div>
@@ -306,8 +314,9 @@ export default function LoginPage() {
             ) : (
               <>
                 <form onSubmit={handleParentLogin} className="space-y-5">
-                  <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-sm text-indigo-300">
-                    <span className="font-semibold">ℹ️ Parent / Student Login:</span> Use the mobile number registered for your child&apos;s account.
+                  <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-sm text-indigo-300 flex items-start gap-2">
+                    <Info className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />
+                    <span><span className="font-semibold">Parent / Student Login:</span> Use the mobile number registered for your child&apos;s account.</span>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">Registered Mobile Number</label>

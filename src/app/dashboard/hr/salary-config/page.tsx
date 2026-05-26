@@ -5,6 +5,7 @@ import { hrApi, SalaryComponentDef, EmployeeSalaryConfig } from "@/lib/hr-api";
 import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
 import StaffPicker from "@/components/StaffPicker";
+import { InfoBanner } from "@/components/ui/InfoBanner";
 
 type ComponentTab = "components" | "ctc";
 
@@ -97,15 +98,12 @@ export default function SalaryConfigPage() {
       {tab === "ctc" && (
         <>
           {/* CTC Info Banner */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-blue-900 mb-1">Employee CTC (Cost to Company)</h2>
-            <p className="text-xs text-blue-800 leading-relaxed">
-              Set the <strong>monthly gross salary</strong> for each staff member here. The system uses salary components (defined in the Components tab)
-              to automatically calculate earnings (Basic, HRA, TA, etc.) and deductions (PF, PT, TDS). Each CTC record has an
-              effective date, so you can track salary revisions over time. You can optionally override specific component amounts
-              using the JSON overrides field (e.g. <code className="bg-blue-100 px-1 rounded">{'{"HRA": 15000}'}</code>).
-            </p>
-          </div>
+          <InfoBanner title="Employee CTC (Cost to Company)">
+            Set the <strong>monthly gross salary</strong> for each staff member here. The system uses salary components (defined in the Components tab)
+            to automatically calculate earnings (Basic, HRA, TA, etc.) and deductions (PF, PT, TDS). Each CTC record has an
+            effective date, so you can track salary revisions over time. You can optionally override specific component amounts
+            using the JSON overrides field (e.g. <code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">{'\{"HRA": 15000\}'}</code>).
+          </InfoBanner>
           {rbac.canManagePayroll && (
             <div className="flex justify-end">
               <button onClick={() => setShowCtcForm(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">+ Set CTC</button>
@@ -170,16 +168,13 @@ export default function SalaryConfigPage() {
       {tab === "components" && (
         <>
           {/* Components Info Banner */}
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-amber-900 mb-1">Salary Components</h2>
-            <p className="text-xs text-amber-800 leading-relaxed">
-              Salary components define <strong>how gross CTC is split</strong> into individual line items on salary slips.
-              <strong>Earnings</strong> (Basic, HRA, TA, Special Allowance) add to take-home pay.
-              <strong>Deductions</strong> (PF — Provident Fund, PT — Professional Tax, TDS) are subtracted.
-              Click <strong>Seed Defaults</strong> to add standard Indian payroll components automatically.
-              Components with <em>% of Basic</em> or <em>% of Gross</em> calculation are recomputed each payroll run.
-            </p>
-          </div>
+          <InfoBanner title="Salary Components" variant="amber">
+            Salary components define <strong>how gross CTC is split</strong> into individual line items on salary slips.
+            <strong>Earnings</strong> (Basic, HRA, TA, Special Allowance) add to take-home pay.
+            <strong>Deductions</strong> (PF — Provident Fund, PT — Professional Tax, TDS) are subtracted.
+            Click <strong>Seed Defaults</strong> to add standard Indian payroll components automatically.
+            Components with <em>% of Basic</em> or <em>% of Gross</em> calculation are recomputed each payroll run.
+          </InfoBanner>
           {rbac.canManagePayroll && (
             <div className="flex gap-2 justify-end">
               <button onClick={handleSeedComps} className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">Seed Defaults</button>

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import toast from "react-hot-toast";
+import { GraduationCap, ClipboardCheck, Hash } from "lucide-react";
 
 // idle → requesting (camera perm) → scanning → verifying → confirming (step 1 & 2) → success | error
 type ScanState = "idle" | "requesting" | "scanning" | "verifying" | "confirming" | "success" | "error";
@@ -288,7 +289,9 @@ export default function PickupScanner() {
     const studentCard = (
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center text-xl shrink-0">👨‍🎓</div>
+          <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center shrink-0">
+            <GraduationCap className="w-5 h-5 text-indigo-400" aria-hidden />
+          </div>
           <div>
             <h3 className="text-white font-bold text-base">{verifyResult.studentName}</h3>
             <p className="text-slate-400 text-sm">
@@ -338,7 +341,10 @@ export default function PickupScanner() {
           {studentCard}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
             <div>
-              <p className="text-white font-semibold text-sm mb-1">📋 Step 1 — Confirm the person&apos;s name</p>
+              <p className="text-white font-semibold text-sm mb-1 flex items-center gap-1.5">
+                <ClipboardCheck className="w-4 h-4 text-indigo-400" aria-hidden />
+                Step 1 — Confirm the person&apos;s name
+              </p>
               <p className="text-slate-400 text-xs">Ask the person to state their full name. Confirm it matches the authorised name.</p>
             </div>
             <div>
@@ -383,7 +389,10 @@ export default function PickupScanner() {
         {studentCard}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
           <div>
-            <p className="text-white font-semibold text-sm mb-1">🔢 Step 2 — Enter their 4-digit PIN</p>
+            <p className="text-white font-semibold text-sm mb-1 flex items-center gap-1.5">
+                <Hash className="w-4 h-4 text-indigo-400" aria-hidden />
+                Step 2 — Enter their 4-digit PIN
+              </p>
             <p className="text-slate-400 text-xs">Ask the person to verbally state the 4-digit PIN the parent shared with them. Enter it below.</p>
           </div>
           <div>

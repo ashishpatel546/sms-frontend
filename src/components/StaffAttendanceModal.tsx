@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { hrApi, StaffAttendanceRecord } from "@/lib/hr-api";
+import { AppMonthPicker } from "@/components/ui/AppDatePicker";
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -90,11 +91,9 @@ export default function StaffAttendanceModal({ staffId, staffLabel, onClose }: P
                 <div className="p-6 overflow-y-auto flex-1">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
                         <h3 className="font-bold text-slate-800">{MONTH_NAMES[month - 1]} {year}</h3>
-                        <input
-                            type="month"
+                        <AppMonthPicker
                             value={yyMm}
-                            onChange={(e) => setYyMm(e.target.value)}
-                            className="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg px-3 py-1.5"
+                            onChange={(v) => setYyMm(v)}
                         />
                     </div>
 

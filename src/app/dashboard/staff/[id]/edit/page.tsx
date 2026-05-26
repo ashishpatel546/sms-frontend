@@ -7,6 +7,7 @@ import { API_BASE_URL } from "@/lib/api";
 import { Country, State, City } from "country-state-city";
 import { authFetch, getUser } from "@/lib/auth";
 import toast from "react-hot-toast";
+import { useRbac } from "@/lib/rbac";
 
 export default function EditStaffPage() {
     const router = useRouter();
@@ -14,6 +15,14 @@ export default function EditStaffPage() {
     const id = params?.id as string;
     const currentUser = getUser();
     const isAdmin = currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "ADMIN";
+    const rbac = useRbac();
+
+    // Redirect if user cannot manage staff (only view)
+    useEffect(() => {
+        if (!rbac.canManageTeachers) {
+            router.replace(`/dashboard/staff/${id}`);
+        }
+    }, [rbac.canManageTeachers, id, router]);
 
     const [formData, setFormData] = useState({
         firstName: "",

@@ -13,6 +13,7 @@ import ExamScheduleParentView from "./ExamScheduleParentView";
 import PickupQRGenerator from "@/components/PickupQRGenerator";
 import ApplyLeaveModal from "@/components/ApplyLeaveModal";
 import LeaveTimeline from "@/components/LeaveTimeline";
+import { AppMonthPicker } from "@/components/ui/AppDatePicker";
 import { HomeSection } from "./components/HomeSection";
 import { StudentBanner } from "./components/StudentBanner";
 import { AnimatedLoader } from "@/components/ui/AnimatedLoader";
@@ -983,11 +984,9 @@ export default function StudentDashboardPage() {
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
                         <h2 className="text-ink font-bold text-lg">📊 Attendance</h2>
                         <div className="flex gap-2">
-                            <input
-                                type="month"
+                            <AppMonthPicker
                                 value={attendanceMonth}
-                                onChange={e => setAttendanceMonth(e.target.value)}
-                                className="bg-slate-50 border border-slate-200 text-ink text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand"
+                                onChange={(v) => setAttendanceMonth(v)}
                             />
                         </div>
                     </div>

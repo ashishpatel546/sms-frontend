@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { hrApi, StaffLeaveBalance, StaffLeaveApplication, StaffLeavePolicy } from "@/lib/hr-api";
 import toast, { Toaster } from "react-hot-toast";
+import { AppDatePicker } from "@/components/ui/AppDatePicker";
 
 const now = new Date();
 
@@ -237,20 +238,16 @@ export default function MyLeavesPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium">From</label>
-                <input
-                  type="date"
+                <AppDatePicker
                   value={form.fromDate}
-                  onChange={(e) => setForm((f) => ({ ...f, fromDate: e.target.value }))}
-                  className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
+                  onChange={(v) => setForm((f) => ({ ...f, fromDate: v }))}
                 />
               </div>
               <div>
                 <label className="text-sm font-medium">To</label>
-                <input
-                  type="date"
+                <AppDatePicker
                   value={form.toDate}
-                  onChange={(e) => setForm((f) => ({ ...f, toDate: e.target.value }))}
-                  className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
+                  onChange={(v) => setForm((f) => ({ ...f, toDate: v }))}
                 />
               </div>
             </div>

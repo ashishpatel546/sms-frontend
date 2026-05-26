@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Table from "../../../components/Table";
 import { API_BASE_URL } from "@/lib/api";
 import { useRbac } from "@/lib/rbac";
 import { authFetch } from "@/lib/auth";
 import Papa from "papaparse";
+import { MoreVertical, Eye, Pencil, UserMinus } from "lucide-react";
+import toast from "react-hot-toast";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -15,12 +17,21 @@ export default function TeachersPage() {
     const [loading, setLoading] = useState(true);
     const rbac = useRbac();
 
+    const [openActionRowId, setOpenActionRowId] = useState<number | null>(null);
+    const actionMenuRef = useRef<HTMLDivElement>(null);
+
+    // Exit Modal States
+    const [showExitModal, setShowExitModal] = useState(false);
+    const [selectedStaffForExit, setSelectedStaffForExit] = useState<any>(null);
+    const [exitDate, setExitDate] = useState(new Date().toISOString().split('T')[0]);
+    const [isExiting, setIsExiting] = useState(false);
+
     // Search Params
     const [searchId, setSearchId] = useState("");
     const [searchFirstName, setSearchFirstName] = useState("");
     const [searchLastName, setSearchLastName] = useState("");
     const [searchEmail, setSearchEmail] = useState("");
-    const [searchStatus, setSearchStatus] = useState("");
+    const [searchStatus, setSearchStatus] = useState("true");
     const [searchCategory, setSearchCategory] = useState("");
     const [searchDesignation, setSearchDesignation] = useState("");
 
@@ -85,6 +96,17 @@ export default function TeachersPage() {
             .catch(() => setDesignations([]));
     }, []);
 
+    // Close action menu on outside click
+    useEffect(() => {
+        const handleOutsideClick = (e: MouseEvent) => {
+            if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
+                setOpenActionRowId(null);
+            }
+        };
+        document.addEventListener('mousedown', handleOutsideClick);
+        return () => document.removeEventListener('mousedown', handleOutsideClick);
+    }, []);
+
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         setPage(1);
@@ -96,11 +118,40 @@ export default function TeachersPage() {
         setSearchFirstName("");
         setSearchLastName("");
         setSearchEmail("");
-        setSearchStatus("");
+        setSearchStatus("true");
         setSearchCategory("");
         setSearchDesignation("");
         setPage(1);
         setTimeout(() => fetchTeachers(1), 0);
+    };
+
+    const handleConfirmExit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedStaffForExit) return;
+        setIsExiting(true);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/staff/${selectedStaffForExit.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    exitDate: exitDate,
+                    isActive: false
+                })
+            });
+            if (res.ok) {
+                toast.success("Staff exit marked successfully");
+                setShowExitModal(false);
+                setSelectedStaffForExit(null);
+                fetchTeachers(page, pageSize);
+            } else {
+                const err = await res.json();
+                toast.error(err.message || "Failed to mark exit");
+            }
+        } catch (error) {
+            toast.error("An error occurred while marking exit");
+        } finally {
+            setIsExiting(false);
+        }
     };
 
     const handlePageChange = (newPage: number) => {
@@ -227,10 +278,51 @@ export default function TeachersPage() {
         },
         {
             header: "Actions",
-            render: (row: any) => rbac.canManageTeachers ? (
-                <Link href={`/dashboard/staff/${row.id}/edit`} className="font-medium text-blue-600 hover:underline">Edit</Link>
-            ) : (
-                <Link href={`/dashboard/staff/${row.id}/edit`} className="font-medium text-slate-400 text-xs">View</Link>
+            render: (row: any) => (
+                <div className="relative" ref={openActionRowId === row.id ? actionMenuRef : undefined}>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setOpenActionRowId(openActionRowId === row.id ? null : row.id); }}
+                        className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                        title="Actions"
+                    >
+                        <MoreVertical className="w-4 h-4 text-gray-500" />
+                    </button>
+                    {openActionRowId === row.id && (
+                        <div className="absolute right-0 z-20 mt-1 w-32 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
+                            <Link
+                                href={`/dashboard/staff/${row.id}`}
+                                className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            >
+                                <Eye className="w-4 h-4 text-gray-400" />
+                                View
+                            </Link>
+                            {rbac.canManageTeachers && (
+                                <Link
+                                    href={`/dashboard/staff/${row.id}/edit`}
+                                    className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                >
+                                    <Pencil className="w-4 h-4 text-gray-400" />
+                                    Edit
+                                </Link>
+                            )}
+                            {rbac.canManageTeachers && row.isActive && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSelectedStaffForExit(row);
+                                        setExitDate(new Date().toISOString().split('T')[0]);
+                                        setShowExitModal(true);
+                                        setOpenActionRowId(null);
+                                    }}
+                                    className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 border-t border-gray-100"
+                                >
+                                    <UserMinus className="w-4 h-4 text-red-400" />
+                                    Mark Exit
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
             )
         }
     ];
@@ -480,6 +572,44 @@ export default function TeachersPage() {
                                 </div>
                             </form>
                         )}
+                    </div>
+                </div>
+            )}
+            {showExitModal && selectedStaffForExit && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+                        <h3 className="text-lg font-bold text-gray-900 mb-4">Mark Staff Exit</h3>
+                        <p className="text-sm text-gray-600 mb-4">
+                            You are marking exit for staff member: <span className="font-semibold text-gray-800">{selectedStaffForExit.firstName} {selectedStaffForExit.lastName}</span> (ID: {selectedStaffForExit.id}). This will also deactivate their user account.
+                        </p>
+                        <form onSubmit={handleConfirmExit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Exit Date <span className="text-red-500">*</span></label>
+                                <input
+                                    type="date"
+                                    required
+                                    value={exitDate}
+                                    onChange={e => setExitDate(e.target.value)}
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowExitModal(false); setSelectedStaffForExit(null); }}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-200"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isExiting}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-300 disabled:opacity-50"
+                                >
+                                    {isExiting ? "Marking Exit..." : "Confirm Exit"}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

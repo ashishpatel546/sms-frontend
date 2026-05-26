@@ -10,6 +10,7 @@ import StaffLookupForm from "@/components/StaffLookupForm";
 import StaffAttendanceModal from "@/components/StaffAttendanceModal";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
+import { InfoBanner } from "@/components/ui/InfoBanner";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 dayjs.extend(duration);
@@ -271,15 +272,12 @@ export default function StaffAttendancePage() {
       </div>
 
       {/* Info Banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h2 className="text-sm font-semibold text-blue-900 mb-1">About Staff Attendance</h2>
-        <p className="text-xs text-blue-800 leading-relaxed">
-          View daily attendance records for all staff. Staff can mark attendance via the <strong>WebAuthn Kiosk</strong> (fingerprint/face at main entrance) or through <strong>Geo-Fence check-in</strong> from their mobile.
-          Use <strong>Mark Manually</strong> to record or override attendance (e.g., for a field visit).
-          Open a <strong>Bypass Window</strong> to temporarily allow PIN-based marking when biometric devices are offline.
-          Configure the allowed campus geo-zones via <strong>Geo-Zones</strong>.
-        </p>
-      </div>
+      <InfoBanner title="About Staff Attendance">
+        View daily attendance records for all staff. Staff can mark attendance via the <strong>WebAuthn Kiosk</strong> (fingerprint/face at main entrance) or through <strong>Geo-Fence check-in</strong> from their mobile.
+        Use <strong>Mark Manually</strong> to record or override attendance (e.g., for a field visit).
+        Open a <strong>Bypass Window</strong> to temporarily allow PIN-based marking when biometric devices are offline.
+        Configure the allowed campus geo-zones via <strong>Geo-Zones</strong>.
+      </InfoBanner>
 
       {/* Bypass info */}
       {bypass && (

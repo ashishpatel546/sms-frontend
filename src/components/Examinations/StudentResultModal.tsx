@@ -8,6 +8,7 @@ import { Loader } from "@/components/ui/Loader";
 import toast from "react-hot-toast";
 import { getEnv, getSchoolSlug } from "@/lib/env";
 import type { ResultDataForPDF } from "@/lib/result-pdf-document";
+import { Settings2, Pencil } from "lucide-react";
 
 interface Props {
     studentId: number | null;
@@ -546,10 +547,10 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
 
                 {/* Mode badge */}
                 {mode !== 'view' && (
-                    <div className={`px-4 sm:px-6 py-2 text-xs font-medium shrink-0 ${mode === 'admin-edit' ? 'bg-amber-50 text-amber-700 border-b border-amber-200' : 'bg-blue-50 text-blue-700 border-b border-blue-200'}`}>
+                    <div className={`px-4 sm:px-6 py-2 text-xs font-medium shrink-0 flex items-center gap-1.5 ${mode === 'admin-edit' ? 'bg-amber-50 text-amber-700 border-b border-amber-200' : 'bg-blue-50 text-blue-700 border-b border-blue-200'}`}>
                         {mode === 'admin-edit'
-                            ? '⚙ Admin Edit Mode — all marks for the selected category are editable'
-                            : '✏ Enter Marks Mode — only subjects without saved marks can be entered'}
+                            ? <><Settings2 className="w-3.5 h-3.5 shrink-0" aria-hidden /> Admin Edit Mode — all marks for the selected category are editable</>
+                            : <><Pencil className="w-3.5 h-3.5 shrink-0" aria-hidden /> Enter Marks Mode — only subjects without saved marks can be entered</>}
                         {defaultCategoryId && categories.find((c: any) => c.id === defaultCategoryId)
                             ? ` · Category: ${categories.find((c: any) => c.id === defaultCategoryId).name}`
                             : ''}

@@ -7,11 +7,21 @@ import toast from "react-hot-toast";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { Country, State, City } from "country-state-city";
+import { AppDatePicker } from "@/components/ui/AppDatePicker";
+import { useRbac } from "@/lib/rbac";
 
 export default function EditStudentPage() {
     const router = useRouter();
     const params = useParams();
     const id = params?.id as string;
+    const rbac = useRbac();
+
+    // Redirect if user cannot manage students (only view)
+    useEffect(() => {
+        if (!rbac.canManageStudents) {
+            router.replace(`/dashboard/students/${id}`);
+        }
+    }, [rbac.canManageStudents, id, router]);
     const [formData, setFormData] = useState({
         firstName: "",
         lastName: "",
@@ -380,7 +390,11 @@ export default function EditStudentPage() {
                             </div>
                             <div>
                                 <label htmlFor="dateOfBirth" className="block mb-2 text-sm font-medium text-gray-900">Date of Birth</label>
-                                <input type="date" id="dateOfBirth" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                                <AppDatePicker
+                                    name="dateOfBirth"
+                                    value={formData.dateOfBirth}
+                                    onChange={(v) => handleChange({ target: { name: 'dateOfBirth', value: v } } as React.ChangeEvent<HTMLInputElement>)}
+                                />
                             </div>
                             <div>
                                 <label htmlFor="bloodGroup" className="block mb-2 text-sm font-medium text-gray-900">Blood Group</label>

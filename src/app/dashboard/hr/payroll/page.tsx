@@ -5,6 +5,7 @@ import { hrApi, PayrollRun } from "@/lib/hr-api";
 import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
+import { InfoBanner } from "@/components/ui/InfoBanner";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const now = new Date();
@@ -55,16 +56,13 @@ export default function PayrollPage() {
       </div>
 
       {/* Info Banner */}
-      <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-        <h2 className="text-sm font-semibold text-indigo-900 mb-1">About Payroll Runs</h2>
-        <p className="text-xs text-indigo-800 leading-relaxed">
-          Payroll is processed in two steps: <strong>1. Generate Draft</strong> — computes gross pay, LOP deductions (based on approved leaves), PF, PT, and TDS for all staff for a given month.
-          <strong>2. Finalize</strong> — locks the payroll so no further changes can be made and makes salary slips available to staff.
-          You can <strong>recalculate</strong> a draft run if attendance or leave data changes before finalizing.
-          Once finalized, each staff member can download their salary slip from <em>My Salary</em>.
-          <strong>LOP (Loss of Pay)</strong> days are automatically deducted from gross salary based on approved leave applications that exceeded the leave balance.
-        </p>
-      </div>
+      <InfoBanner title="About Payroll Runs" variant="indigo">
+        Payroll is processed in two steps: <strong>1. Generate Draft</strong> — computes gross pay, LOP deductions (based on approved leaves), PF, PT, and TDS for all staff for a given month.
+        <strong>2. Finalize</strong> — locks the payroll so no further changes can be made and makes salary slips available to staff.
+        You can <strong>recalculate</strong> a draft run if attendance or leave data changes before finalizing.
+        Once finalized, each staff member can download their salary slip from <em>My Salary</em>.
+        <strong>LOP (Loss of Pay)</strong> days are automatically deducted from gross salary based on approved leave applications that exceeded the leave balance.
+      </InfoBanner>
 
       {loading ? (
         <p className="text-sm text-gray-500">Loading…</p>

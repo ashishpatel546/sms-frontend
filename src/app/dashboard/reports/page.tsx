@@ -11,6 +11,7 @@ import {
     PieChart, Pie, LineChart, Line 
 } from 'recharts';
 import { Wallet, AlertCircle, ClipboardList, CalendarCheck, Users, UserCircle, Download } from "lucide-react";
+import { AppDatePicker } from "@/components/ui/AppDatePicker";
 
 const COLORS = ['#0ea5e9', '#f43f5e', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'];
 
@@ -700,39 +701,36 @@ export default function ReportsDashboard() {
                                     <p className="text-sm text-gray-500">Log of recent records from the fee_adjustment table.</p>
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <input 
-                                        type="date" 
-                                        className="border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
-                                        value={feeAdjustmentsFromDate}
-                                        onChange={(e) => {
-                                            const from = e.target.value;
-                                            setFeeAdjustmentsFromDate(from);
-                                            // Auto-clamp toDate if it exceeds 31 days from new fromDate
-                                            if (from) {
-                                                const maxTo = new Date(from);
-                                                maxTo.setDate(maxTo.getDate() + 31);
-                                                const maxToStr = maxTo.toISOString().split('T')[0];
-                                                if (feeAdjustmentsToDate > maxToStr) setFeeAdjustmentsToDate(maxToStr);
-                                                if (feeAdjustmentsToDate < from) setFeeAdjustmentsToDate(from);
-                                            }
-                                        }}
-                                    />
+                                    <div className="w-40">
+                                        <AppDatePicker
+                                            value={feeAdjustmentsFromDate}
+                                            onChange={(from) => {
+                                                setFeeAdjustmentsFromDate(from);
+                                                if (from) {
+                                                    const maxTo = new Date(from);
+                                                    maxTo.setDate(maxTo.getDate() + 31);
+                                                    const maxToStr = maxTo.toISOString().split('T')[0];
+                                                    if (feeAdjustmentsToDate > maxToStr) setFeeAdjustmentsToDate(maxToStr);
+                                                    if (feeAdjustmentsToDate < from) setFeeAdjustmentsToDate(from);
+                                                }
+                                            }}
+                                        />
+                                    </div>
                                     <span className="text-slate-500 text-sm">to</span>
-                                    <input 
-                                        type="date" 
-                                        className="border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
-                                        min={feeAdjustmentsFromDate}
-                                        max={(() => { const d = new Date(feeAdjustmentsFromDate); d.setDate(d.getDate() + 31); return d.toISOString().split('T')[0]; })()}
-                                        value={feeAdjustmentsToDate}
-                                        onChange={(e) => {
-                                            const to = e.target.value;
-                                            const from = feeAdjustmentsFromDate;
-                                            const diffDays = (new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24);
-                                            if (diffDays > 31) { toast.error('Date range cannot exceed 31 days'); return; }
-                                            if (to < from) { toast.error('End date cannot be before start date'); return; }
-                                            setFeeAdjustmentsToDate(to);
-                                        }}
-                                    />
+                                    <div className="w-40">
+                                        <AppDatePicker
+                                            value={feeAdjustmentsToDate}
+                                            min={feeAdjustmentsFromDate}
+                                            max={feeAdjustmentsFromDate ? (() => { const d = new Date(feeAdjustmentsFromDate); d.setDate(d.getDate() + 31); return d.toISOString().split('T')[0]; })() : undefined}
+                                            onChange={(to) => {
+                                                const from = feeAdjustmentsFromDate;
+                                                const diffDays = (new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24);
+                                                if (diffDays > 31) { toast.error('Date range cannot exceed 31 days'); return; }
+                                                if (to < from) { toast.error('End date cannot be before start date'); return; }
+                                                setFeeAdjustmentsToDate(to);
+                                            }}
+                                        />
+                                    </div>
                                     <span className="text-xs text-slate-400">Max 31 days</span>
                                     {feeAdjustments.length > 0 && (
                                         <button
@@ -1263,12 +1261,9 @@ export default function ReportsDashboard() {
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">From Date</label>
-                                <input
-                                    type="date"
-                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                <AppDatePicker
                                     value={receivedFromDate}
-                                    onChange={(e) => {
-                                        const from = e.target.value;
+                                    onChange={(from) => {
                                         setReceivedFromDate(from);
                                         if (from && receivedToDate) {
                                             const maxTo = new Date(from);
@@ -1282,14 +1277,11 @@ export default function ReportsDashboard() {
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">To Date <span className="text-slate-400 font-normal normal-case">(max 31 days)</span></label>
-                                <input
-                                    type="date"
-                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                <AppDatePicker
+                                    value={receivedToDate}
                                     min={receivedFromDate || undefined}
                                     max={receivedFromDate ? (() => { const d = new Date(receivedFromDate); d.setDate(d.getDate() + 31); return d.toISOString().split('T')[0]; })() : undefined}
-                                    value={receivedToDate}
-                                    onChange={(e) => {
-                                        const to = e.target.value;
+                                    onChange={(to) => {
                                         if (receivedFromDate) {
                                             const diffDays = (new Date(to).getTime() - new Date(receivedFromDate).getTime()) / (1000 * 60 * 60 * 24);
                                             if (diffDays > 31) { toast.error('Date range cannot exceed 31 days'); return; }
@@ -1572,19 +1564,19 @@ export default function ReportsDashboard() {
                             <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
                                 <h2 className="text-lg font-bold text-slate-800">School-Wide Daily Trend</h2>
                                 <div className="flex items-center gap-2">
-                                    <input 
-                                        type="date" 
-                                        className="border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
-                                        value={attendanceFromDate}
-                                        onChange={(e) => setAttendanceFromDate(e.target.value)}
-                                    />
+                                    <div className="w-40">
+                                        <AppDatePicker
+                                            value={attendanceFromDate}
+                                            onChange={(v) => setAttendanceFromDate(v)}
+                                        />
+                                    </div>
                                     <span className="text-slate-500 text-sm">to</span>
-                                    <input 
-                                        type="date" 
-                                        className="border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
-                                        value={attendanceToDate}
-                                        onChange={(e) => setAttendanceToDate(e.target.value)}
-                                    />
+                                    <div className="w-40">
+                                        <AppDatePicker
+                                            value={attendanceToDate}
+                                            onChange={(v) => setAttendanceToDate(v)}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                             <div className="h-72">
