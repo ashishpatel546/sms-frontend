@@ -16,6 +16,8 @@
 import { useMemo } from "react";
 import { useTheme } from "next-themes";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { TimePicker } from "@mui/x-date-pickers/TimePicker";
+import { renderTimeViewClock } from "@mui/x-date-pickers/timeViewRenderers";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
@@ -332,6 +334,79 @@ export function AppMonthPicker({
                 required,
                 name,
                 placeholder: placeholder ?? "Select month",
+                size: "small",
+                fullWidth: true,
+                sx: buildTextFieldSx(palette),
+              },
+              popper: { sx: popperSx(palette.border) },
+              dialog: {
+                sx: {
+                  "& .MuiDialog-paper": { borderRadius: "1.25rem", overflow: "hidden" },
+                },
+              },
+            }}
+          />
+        </div>
+      </ThemeProvider>
+    </LocalizationProvider>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AppTimePicker
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface AppTimePickerProps {
+  /** Controlled time string in HH:mm format, or '' when unset */
+  value: string;
+  /** Called with the selected HH:mm string, or '' when cleared */
+  onChange: (value: string) => void;
+  required?: boolean;
+  disabled?: boolean;
+  name?: string;
+  placeholder?: string;
+  /** Optional Tailwind class applied to the outer wrapper div (for layout) */
+  className?: string;
+}
+
+export function AppTimePicker({
+  value,
+  onChange,
+  required,
+  disabled,
+  name,
+  placeholder,
+  className,
+}: AppTimePickerProps) {
+  const { resolvedTheme } = useTheme();
+  const key = toThemeKey(resolvedTheme);
+  const palette = PALETTES[key];
+  const muiTheme = useMemo(() => buildMuiTheme(palette), [palette]);
+
+  const dayjsValue = value ? dayjs(`2000-01-01T${value}`) : null;
+
+  const handleChange = (newVal: Dayjs | null) => {
+    onChange(newVal?.isValid() ? newVal.format("HH:mm") : "");
+  };
+
+  return (
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <ThemeProvider theme={muiTheme}>
+        <div className={className} style={{ width: "100%" }}>
+          <TimePicker
+            value={dayjsValue}
+            onChange={handleChange}
+            disabled={disabled}
+            ampm={false}
+            viewRenderers={{
+              hours: renderTimeViewClock,
+              minutes: renderTimeViewClock,
+            }}
+            slotProps={{
+              textField: {
+                required,
+                name,
+                placeholder: placeholder ?? "--:--",
                 size: "small",
                 fullWidth: true,
                 sx: buildTextFieldSx(palette),

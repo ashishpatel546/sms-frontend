@@ -10,7 +10,7 @@ import { BottomTabBar } from "@/components/dashboard/BottomTabBar";
 import { useRbac } from "@/lib/rbac";
 import {
     Users, IndianRupee, CalendarCheck, GraduationCap, Pencil,
-    QrCode, BarChart2, Bell, X, Plus, Minus, type LucideIcon,
+    QrCode, BarChart2, Bell, X, Plus, Minus, type LucideIcon, Clock
 } from "lucide-react";
 import { usePinnedActions } from "@/hooks/usePinnedActions";
 
@@ -31,6 +31,7 @@ function QuickActionsSheet({ open, onClose }: { open: boolean; onClose: () => vo
         ...(rbac.canManageTeachers ? [{ label: 'Add Staff',    href: '/dashboard/staff/new',    icon: Users,         color: 'text-orange-700 dark:text-orange-300', bg: 'bg-orange-50 dark:bg-orange-950/40 border-orange-100 dark:border-orange-900/50' }] : []),
         ...(rbac.isTeacher         ? [{ label: 'Scan QR',      href: '/dashboard/pickup/scan',  icon: QrCode,        color: 'text-teal-700 dark:text-teal-300',     bg: 'bg-teal-50 dark:bg-teal-950/40 border-teal-100 dark:border-teal-900/50' }] : []),
         ...(rbac.isAdmin           ? [{ label: 'Reports',      href: '/dashboard/reports',      icon: BarChart2,     color: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100 dark:border-indigo-900/50' }] : []),
+        ...(rbac.canAccessHRSelfService ? [{ label: 'My Attendance', href: '/dashboard/my-attendance', icon: Clock, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-950/40 border-amber-100 dark:border-amber-900/50' }] : []),
     ];
 
     if (!open) return null;

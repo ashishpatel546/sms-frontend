@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import {
     Users, IndianRupee, CalendarCheck, GraduationCap, Pencil,
-    QrCode, BarChart2, Bell, type LucideIcon, Plus, Minus, Settings, X
+    QrCode, BarChart2, Bell, type LucideIcon, Plus, Minus, Settings, X, Clock
 } from 'lucide-react';
 import { useRbac } from '@/lib/rbac';
 import { usePinnedActions, defaultPinnedActions } from '@/hooks/usePinnedActions';
@@ -96,6 +96,13 @@ export default function QuickActions() {
             icon: BarChart2,
             color: 'text-indigo-700 dark:text-indigo-300',
             bg: 'bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 border-indigo-100 dark:border-indigo-900/50',
+        }] : []),
+        ...(rbac.canAccessHRSelfService ? [{
+            label: 'My Attendance',
+            href: '/dashboard/my-attendance',
+            icon: Clock,
+            color: 'text-amber-700 dark:text-amber-300',
+            bg: 'bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 border-amber-100 dark:border-amber-900/50',
         }] : []),
     ];
 

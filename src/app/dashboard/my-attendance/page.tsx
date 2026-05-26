@@ -294,6 +294,7 @@ export default function MyAttendancePage() {
           navigator.geolocation.getCurrentPosition(resolve, reject, {
             enableHighAccuracy: true,
             timeout: 15000,
+            maximumAge: 0, // never use a cached position — always fetch live GPS
           })
         ),
         hrApi.attendance.webauthn.selfGetAuthChallenge(),
@@ -363,6 +364,7 @@ export default function MyAttendancePage() {
           navigator.geolocation.getCurrentPosition(resolve, reject, {
             enableHighAccuracy: true,
             timeout: 15000,
+            maximumAge: 0, // never use a cached position — always fetch live GPS
           })
         ),
         hrApi.attendance.webauthn.selfGetAuthChallenge(),
@@ -416,7 +418,28 @@ export default function MyAttendancePage() {
     if (!pendingCheckOut) return;
     setResolvingPending(true);
     try {
-      await hrApi.attendance.resolvePending({ pendingDate: pendingCheckOut.date });
+      // Require WebAuthn device proof before resolving a pending checkout.
+      // This prevents anyone without the registered device from manipulating attendance.
+      let challengeOpts: any;
+      try {
+        challengeOpts = await hrApi.attendance.webauthn.selfGetAuthChallenge();
+      } catch (e: any) {
+        const msg = e?.info?.message ?? "Failed to get verification challenge. Please try again.";
+        toast.error(msg);
+        setResolvingPending(false);
+        return;
+      }
+
+      let assertion: any;
+      try {
+        assertion = await startAuthentication({ optionsJSON: challengeOpts });
+      } catch {
+        toast.error("Biometric verification failed. Please use your registered device.");
+        setResolvingPending(false);
+        return;
+      }
+
+      await hrApi.attendance.resolvePending({ pendingDate: pendingCheckOut.date, webauthnAssertion: assertion });
       setPendingCheckOut(null);
       toast.success(`Checkout resolved for ${pendingCheckOut.date} (marked as end-of-day 17:00)`);
     } catch (e: any) {
@@ -465,27 +488,59 @@ export default function MyAttendancePage() {
 
       {/* ── Pending checkout banner — blocks new check-in ── */}
       {pendingCheckOut && (
-        <div className="rounded-xl border-2 border-red-300 bg-red-50 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex-1">
+        <div className="rounded-xl border-2 border-red-300 bg-red-50 p-4 flex flex-col gap-3">
+          <div>
             <p className="text-sm font-bold text-red-800">⚠️ Unclosed Check-In from {pendingCheckOut.date}</p>
             <p className="text-xs text-red-600 mt-0.5">
               You checked in at {pendingCheckOut.checkInTime} but never checked out.
               Please resolve this before checking in today.
             </p>
           </div>
-          <div className="flex gap-2 shrink-0">
-            <button
-              onClick={handleResolvePending}
-              disabled={resolvingPending}
-              className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow transition-colors"
-            >
-              {resolvingPending ? <span className="animate-spin">⏳</span> : <span>🔒</span>}
-              {resolvingPending ? "Resolving…" : "Mark Checkout (End of Day)"}
-            </button>
-            <span className="text-xs text-red-700 bg-red-100 border border-red-200 rounded-lg px-3 py-2">
-              Or contact HR to resolve manually.
-            </span>
-          </div>
+
+          {/* Device gate — resolve requires the registered device */}
+          {biometricsLoading ? (
+            <p className="text-xs text-gray-500">Checking device registration…</p>
+          ) : biometrics.length === 0 ? (
+            /* No device registered at all */
+            <div className="flex items-start gap-2 bg-red-100 border border-red-300 rounded-lg px-3 py-2.5 text-xs text-red-800">
+              <span className="shrink-0 mt-0.5">🚫</span>
+              <div>
+                <p className="font-semibold">No registered device found</p>
+                <p className="mt-0.5">
+                  Resolving a pending checkout requires biometric verification from your registered device.
+                  Your device registration has been removed. Please contact HR to resolve this manually.
+                </p>
+              </div>
+            </div>
+          ) : isOwnDevice === false ? (
+            /* Device registered but this is not it */
+            <div className="flex items-start gap-2 bg-red-100 border border-red-300 rounded-lg px-3 py-2.5 text-xs text-red-800">
+              <span className="shrink-0 mt-0.5">🚫</span>
+              <div>
+                <p className="font-semibold">This is not your registered device</p>
+                <p className="mt-0.5">
+                  Resolving a pending checkout requires biometric verification from{" "}
+                  <strong>{biometrics[0]?.deviceName || "your registered device"}</strong>.
+                  Open this page on that device to resolve, or ask HR to resolve manually.
+                </p>
+              </div>
+            </div>
+          ) : (
+            /* Correct registered device — show resolve button */
+            <div className="flex flex-wrap gap-2 items-center">
+              <button
+                onClick={handleResolvePending}
+                disabled={resolvingPending}
+                className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow transition-colors"
+              >
+                {resolvingPending ? <span className="animate-spin">⏳</span> : <span>🔒</span>}
+                {resolvingPending ? "Verifying &amp; Resolving…" : "Mark Checkout (End of Day)"}
+              </button>
+              <span className="text-xs text-red-700 bg-red-100 border border-red-200 rounded-lg px-3 py-2">
+                Or contact HR to resolve manually.
+              </span>
+            </div>
+          )}
         </div>
       )}
 

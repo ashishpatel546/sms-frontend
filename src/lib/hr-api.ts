@@ -170,6 +170,15 @@ export interface TodayAttendanceStatus {
   canCheckOut: boolean;
 }
 
+export interface HrPendingCheckoutItem {
+  staffId: number;
+  employeeCode: number | null;
+  name: string;
+  date: string;
+  checkInTime: string;
+  daysAgo: number;
+}
+
 export interface DailyAttendanceSummary {
   PRESENT: number;
   LATE: number;
@@ -424,10 +433,27 @@ export const hrApi = {
         '/hr/staff-attendance/self-checkout',
         data,
       ),
-    resolvePending: (data: { pendingDate: string }) =>
+    resolvePending: (data: { pendingDate: string; webauthnAssertion: any }) =>
       req<StaffAttendanceRecord>(
         'POST',
         '/hr/staff-attendance/resolve-pending',
+        data,
+      ),
+    pendingCheckouts: () =>
+      req<HrPendingCheckoutItem[]>(
+        'GET',
+        '/hr/staff-attendance/pending-checkouts',
+      ),
+    hrResolvePending: (data: {
+      staffId: number;
+      pendingDate: string;
+      checkOutTime?: string;
+      reason?: string;
+      hrNote?: string;
+    }) =>
+      req<StaffAttendanceRecord>(
+        'POST',
+        '/hr/staff-attendance/hr-resolve-pending',
         data,
       ),
     todayStatus: () =>
@@ -514,23 +540,30 @@ export const hrApi = {
           'GET',
           '/hr/staff-attendance/webauthn/all-credentials',
         ),
-      deviceRegistrations: (params: {
-        page?: number; limit?: number;
-        name?: string; mobile?: string;
-        employeeCode?: string; staffId?: string;
-        status?: 'registered' | 'unregistered' | 'all';
-      } = {}) => {
+      deviceRegistrations: (
+        params: {
+          page?: number;
+          limit?: number;
+          name?: string;
+          mobile?: string;
+          employeeCode?: string;
+          staffId?: string;
+          status?: 'registered' | 'unregistered' | 'all';
+        } = {},
+      ) => {
         const q = new URLSearchParams();
-        if (params.page)         q.set('page', String(params.page));
-        if (params.limit)        q.set('limit', String(params.limit));
-        if (params.name)         q.set('name', params.name);
-        if (params.mobile)       q.set('mobile', params.mobile);
+        if (params.page) q.set('page', String(params.page));
+        if (params.limit) q.set('limit', String(params.limit));
+        if (params.name) q.set('name', params.name);
+        if (params.mobile) q.set('mobile', params.mobile);
         if (params.employeeCode) q.set('employeeCode', params.employeeCode);
-        if (params.staffId)      q.set('staffId', params.staffId);
-        if (params.status)       q.set('status', params.status);
+        if (params.staffId) q.set('staffId', params.staffId);
+        if (params.status) q.set('status', params.status);
         return req<{
           data: DeviceRegistrationRow[];
-          total: number; page: number; totalPages: number;
+          total: number;
+          page: number;
+          totalPages: number;
         }>('GET', `/hr/staff-attendance/webauthn/device-registrations?${q}`);
       },
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { hrApi, StaffAttendanceRecord, AttendanceBypassWindow, StaffBiometric, WebauthnRegistrationPermit, DailyAttendanceSummary } from "@/lib/hr-api";
+import { hrApi, StaffAttendanceRecord, AttendanceBypassWindow, StaffBiometric, WebauthnRegistrationPermit, DailyAttendanceSummary, HrPendingCheckoutItem } from "@/lib/hr-api";
 import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
@@ -11,6 +11,7 @@ import StaffAttendanceModal from "@/components/StaffAttendanceModal";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { InfoBanner } from "@/components/ui/InfoBanner";
+import { AppTimePicker } from "@/components/ui/AppDatePicker";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 dayjs.extend(duration);
@@ -84,6 +85,14 @@ export default function StaffAttendancePage() {
   const [permits, setPermits] = useState<WebauthnRegistrationPermit[]>([]);
   const [permitTargetId, setPermitTargetId] = useState<number | null>(null);
   const [bioLoading, setBioLoading] = useState(false);
+
+  // Pending checkouts
+  const [showPendingCheckouts, setShowPendingCheckouts] = useState(false);
+  const [pendingCheckoutsList, setPendingCheckoutsList] = useState<HrPendingCheckoutItem[]>([]);
+  const [pendingCheckoutsLoading, setPendingCheckoutsLoading] = useState(false);
+  const [resolveTarget, setResolveTarget] = useState<HrPendingCheckoutItem | null>(null);
+  const [resolveForm, setResolveForm] = useState({ checkOutTime: "17:00", reason: "FORGOT", hrNote: "" });
+  const [resolving, setResolving] = useState(false);
 
   const loadRecords = useCallback(async () => {
     setLoading(true);
@@ -194,6 +203,38 @@ export default function StaffAttendancePage() {
     } catch { toast.error("Failed to delete"); }
   };
 
+  const loadPendingCheckouts = useCallback(async () => {
+    setPendingCheckoutsLoading(true);
+    try {
+      const items = await hrApi.attendance.pendingCheckouts();
+      setPendingCheckoutsList(items);
+    } catch { /* non-HR users receive 403 — silently ignore */ }
+    finally { setPendingCheckoutsLoading(false); }
+  }, []);
+
+  useEffect(() => { loadPendingCheckouts(); }, [loadPendingCheckouts]);
+
+  const handleHrResolve = async () => {
+    if (!resolveTarget) return;
+    setResolving(true);
+    try {
+      const checkOutTime = resolveForm.checkOutTime ? resolveForm.checkOutTime + ":00" : undefined;
+      await hrApi.attendance.hrResolvePending({
+        staffId: resolveTarget.staffId,
+        pendingDate: resolveTarget.date,
+        checkOutTime,
+        reason: resolveForm.reason,
+        hrNote: resolveForm.hrNote || undefined,
+      });
+      toast.success(`Checkout closed for ${resolveTarget.name}`);
+      setResolveTarget(null);
+      loadPendingCheckouts();
+      if (resolveTarget.date === date) loadRecords();
+    } catch (e: any) {
+      toast.error(e?.info?.message ?? "Failed to resolve checkout");
+    } finally { setResolving(false); }
+  };
+
   const present = summary.PRESENT + summary.LATE;
   const absent = summary.ABSENT;
   const hasActiveSearch = Boolean(activeSearch.name || activeSearch.mobile || activeSearch.employeeCode || activeSearch.staffId);
@@ -235,35 +276,50 @@ export default function StaffAttendancePage() {
   return (
     <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="space-y-2 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
         <h1 className="text-xl font-bold text-gray-900">Staff Attendance</h1>
-        <div className="flex gap-2 flex-wrap">
-          <Link href="/dashboard/hr/staff-attendance/kiosk" className="border border-gray-300 px-3 py-2 rounded-lg text-sm hover:bg-gray-50">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+          <Link href="/dashboard/hr/staff-attendance/kiosk" className="bg-slate-700 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 text-center">
             Kiosk Mode
           </Link>
-          <Link href="/dashboard/hr/staff-attendance/zones" className="border border-gray-300 px-3 py-2 rounded-lg text-sm hover:bg-gray-50">
+          <Link href="/dashboard/hr/staff-attendance/zones" className="bg-teal-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 text-center">
             Geo-Zones
           </Link>
-          <Link href="/dashboard/hr/staff-attendance/devices" className="border border-gray-300 px-3 py-2 rounded-lg text-sm hover:bg-gray-50">
+          <Link href="/dashboard/hr/staff-attendance/devices" className="bg-violet-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-violet-700 text-center">
             Device Registrations
           </Link>
           {rbac.canManageHR && (
             <>
               <button
                 onClick={() => { setShowBiometrics((v) => !v); if (!showBiometrics) loadBiometrics(); }}
-                className="border border-indigo-300 text-indigo-700 px-3 py-2 rounded-lg text-sm hover:bg-indigo-50"
+                className="bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
               >
                 Biometrics
               </button>
-              <button onClick={() => setShowBypass(true)} className="border border-amber-400 text-amber-700 px-3 py-2 rounded-lg text-sm hover:bg-amber-50">
-                {bypass ? "Bypass Active — Open New" : "Open Bypass Window"}
+              <button
+                onClick={() => setShowPendingCheckouts((v) => !v)}
+                className={`relative px-3 py-2 rounded-lg text-sm font-medium text-white ${
+                  pendingCheckoutsList.length > 0
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "bg-orange-500 hover:bg-orange-600"
+                }`}
+              >
+                Pending Checkouts
+                {pendingCheckoutsList.length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-white text-red-600 text-[10px] font-bold leading-none rounded-full w-5 h-5 flex items-center justify-center border border-red-200">
+                    {pendingCheckoutsList.length}
+                  </span>
+                )}
+              </button>
+              <button onClick={() => setShowBypass(true)} className="bg-amber-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-amber-600">
+                {bypass ? "Bypass Active — New" : "Open Bypass Window"}
               </button>
               {bypass && (
-                <button onClick={handleCloseBypass} className="border border-red-300 text-red-600 px-3 py-2 rounded-lg text-sm hover:bg-red-50">
+                <button onClick={handleCloseBypass} className="bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-700">
                   Close Bypass Window
                 </button>
               )}
-              <button onClick={() => { setMarkDate(today); setShowMark(true); }} className="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+              <button onClick={() => { setMarkDate(today); setShowMark(true); }} className="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 col-span-2 sm:col-auto">
                 + Mark Manually
               </button>
             </>
@@ -362,7 +418,90 @@ export default function StaffAttendancePage() {
           </div>
         </div>
       )}
-
+      {/* Pending checkouts panel */}
+      {showPendingCheckouts && rbac.canManageHR && (
+        <div className="border border-orange-200 rounded-xl overflow-hidden">
+          <div className="bg-orange-50 px-5 py-3 flex items-center justify-between">
+            <p className="text-sm font-semibold text-orange-900">
+              Pending Checkouts{pendingCheckoutsList.length > 0 ? ` (${pendingCheckoutsList.length})` : ""}
+            </p>
+            <button onClick={() => setShowPendingCheckouts(false)} className="text-orange-400 hover:text-orange-700 text-xs">Close ✕</button>
+          </div>
+          <div className="p-5 bg-white">
+            {pendingCheckoutsLoading ? (
+              <p className="text-sm text-gray-500">Loading…</p>
+            ) : pendingCheckoutsList.length === 0 ? (
+              <p className="text-sm text-gray-500">No pending checkouts — all staff check-ins are resolved.</p>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-xs text-gray-500">
+                  {pendingCheckoutsList.length} staff member{pendingCheckoutsList.length !== 1 ? "s" : ""} have an open check-in with no checkout recorded.
+                </p>
+                {/* Desktop table */}
+                <div className="hidden sm:block overflow-x-auto rounded-lg border border-gray-200">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
+                      <tr>
+                        <th className="px-4 py-2.5 text-left">Staff</th>
+                        <th className="px-4 py-2.5 text-left">Date</th>
+                        <th className="px-4 py-2.5 text-left">Checked In At</th>
+                        <th className="px-4 py-2.5 text-left">Days Open</th>
+                        <th className="px-4 py-2.5 text-left">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {pendingCheckoutsList.map((item) => (
+                        <tr key={`${item.staffId}-${item.date}`} className="hover:bg-gray-50">
+                          <td className="px-4 py-3">
+                            <p className="font-medium text-gray-900">{item.name}</p>
+                            {item.employeeCode && <p className="text-xs text-gray-500">EMP-{item.employeeCode}</p>}
+                          </td>
+                          <td className="px-4 py-3 tabular-nums text-gray-700">{item.date}</td>
+                          <td className="px-4 py-3 tabular-nums text-gray-700">{item.checkInTime}</td>
+                          <td className="px-4 py-3">
+                            <span className={`text-xs font-semibold ${item.daysAgo > 1 ? "text-red-600" : "text-amber-600"}`}>
+                              {item.daysAgo}d
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => { setResolveTarget(item); setResolveForm({ checkOutTime: "17:00", reason: "FORGOT", hrNote: "" }); }}
+                              className="text-xs bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded-lg font-medium"
+                            >
+                              Close Checkout
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {/* Mobile cards */}
+                <div className="sm:hidden space-y-2">
+                  {pendingCheckoutsList.map((item) => (
+                    <div key={`${item.staffId}-${item.date}`} className="border border-gray-200 rounded-xl p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium text-gray-900 text-sm">{item.name}</p>
+                          {item.employeeCode && <p className="text-xs text-gray-500">EMP-{item.employeeCode}</p>}
+                        </div>
+                        <span className={`text-xs font-semibold shrink-0 ${item.daysAgo > 1 ? "text-red-600" : "text-amber-600"}`}>{item.daysAgo}d ago</span>
+                      </div>
+                      <p className="text-xs text-gray-600">{item.date} · checked in {item.checkInTime}</p>
+                      <button
+                        onClick={() => { setResolveTarget(item); setResolveForm({ checkOutTime: "17:00", reason: "FORGOT", hrNote: "" }); }}
+                        className="text-xs bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded-lg font-medium"
+                      >
+                        Close Checkout
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {/* Date picker + stats */}
       <div className="flex flex-wrap items-center gap-3">
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="border rounded-lg px-3 py-2 text-sm" />
@@ -595,6 +734,61 @@ export default function StaffAttendancePage() {
         />
       )}
 
+      {/* HR resolve pending checkout modal */}
+      {resolveTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-sm space-y-4 max-h-[90vh] overflow-y-auto">
+            <h2 className="font-semibold text-lg">Close Pending Checkout</h2>
+            <div className="bg-orange-50 border border-orange-100 rounded-lg p-3">
+              <p className="text-sm font-medium text-orange-900">{resolveTarget.name}</p>
+              <p className="text-xs text-orange-700 mt-0.5">
+                Checked in on {resolveTarget.date} at {resolveTarget.checkInTime}
+                {resolveTarget.daysAgo > 0 ? ` (${resolveTarget.daysAgo} day${resolveTarget.daysAgo !== 1 ? "s" : ""} ago)` : ""} — never checked out.
+              </p>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Checkout Time</label>
+              <div className="mt-1">
+                <AppTimePicker value={resolveForm.checkOutTime} onChange={(v) => setResolveForm((f) => ({ ...f, checkOutTime: v }))} />
+              </div>
+              <p className="text-[11px] text-gray-500 mt-1">Defaults to 17:00. Adjust if you know the actual departure time.</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Reason</label>
+              <select
+                value={resolveForm.reason}
+                onChange={(e) => setResolveForm((f) => ({ ...f, reason: e.target.value }))}
+                className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
+              >
+                <option value="FORGOT">Forgot to check out</option>
+                <option value="REGULAR">Regular checkout</option>
+                <option value="EARLY_LEAVE">Early leave</option>
+                <option value="OVERTIME">Overtime</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">HR Note <span className="text-gray-400 font-normal">(optional)</span></label>
+              <input
+                value={resolveForm.hrNote}
+                onChange={(e) => setResolveForm((f) => ({ ...f, hrNote: e.target.value }))}
+                placeholder="e.g. Staff reported leaving early due to illness"
+                className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setResolveTarget(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
+              <button
+                onClick={handleHrResolve}
+                disabled={resolving}
+                className="px-4 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-60"
+              >
+                {resolving ? "Closing…" : "Close Checkout"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Manual mark modal */}
       {showMark && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -660,11 +854,15 @@ export default function StaffAttendancePage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium">Check-In</label>
-                <input type="time" value={markForm.checkInTime} onChange={(e) => setMarkForm((f) => ({ ...f, checkInTime: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
+                <div className="mt-1">
+                  <AppTimePicker value={markForm.checkInTime} onChange={(v) => setMarkForm((f) => ({ ...f, checkInTime: v }))} />
+                </div>
               </div>
               <div>
                 <label className="text-sm font-medium">Check-Out</label>
-                <input type="time" value={markForm.checkOutTime} onChange={(e) => setMarkForm((f) => ({ ...f, checkOutTime: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
+                <div className="mt-1">
+                  <AppTimePicker value={markForm.checkOutTime} onChange={(v) => setMarkForm((f) => ({ ...f, checkOutTime: v }))} />
+                </div>
               </div>
             </div>
             <div>
