@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { hrApi, SalaryComponentDef, EmployeeSalaryConfig } from "@/lib/hr-api";
+import { todayLocalDate } from "@/lib/utils";
 import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
 import StaffPicker from "@/components/StaffPicker";
@@ -25,7 +26,7 @@ export default function SalaryConfigPage() {
   // CTC form
   const [showCtcForm, setShowCtcForm] = useState(false);
   const [ctcStaffId, setCtcStaffId] = useState<number | null>(null);
-  const [ctcForm, setCtcForm] = useState({ grossCTC: "", effectiveFrom: new Date().toISOString().slice(0, 10), componentOverrides: "" });
+  const [ctcForm, setCtcForm] = useState({ grossCTC: "", effectiveFrom: todayLocalDate(), componentOverrides: "" });
 
   const load = async () => {
     setLoading(true);

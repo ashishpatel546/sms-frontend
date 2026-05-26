@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { useRbac } from "@/lib/rbac";
+import { todayLocalDate } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
@@ -28,8 +29,8 @@ export default function ReportsDashboard() {
     const [feeCollectionSession, setFeeCollectionSession] = useState('');
     const [collectionStatusSession, setCollectionStatusSession] = useState('');
     const [collectionPendingMonth, setCollectionPendingMonth] = useState((new Date().getMonth() + 1).toString());
-    const [feeAdjustmentsFromDate, setFeeAdjustmentsFromDate] = useState(new Date().toISOString().split('T')[0]);
-    const [feeAdjustmentsToDate, setFeeAdjustmentsToDate] = useState(new Date().toISOString().split('T')[0]);
+    const [feeAdjustmentsFromDate, setFeeAdjustmentsFromDate] = useState(todayLocalDate());
+    const [feeAdjustmentsToDate, setFeeAdjustmentsToDate] = useState(todayLocalDate());
     const [waivedOffTrendSession, setWaivedOffTrendSession] = useState('');
 
     const [selectedExamYear, setSelectedExamYear] = useState('');
@@ -41,8 +42,8 @@ export default function ReportsDashboard() {
 
     const [attendanceSession, setAttendanceSession] = useState('');
     const [attendanceMonth, setAttendanceMonth] = useState((new Date().getMonth() + 1).toString());
-    const [attendanceFromDate, setAttendanceFromDate] = useState(new Date().toISOString().split('T')[0]);
-    const [attendanceToDate, setAttendanceToDate] = useState(new Date().toISOString().split('T')[0]);
+    const [attendanceFromDate, setAttendanceFromDate] = useState(todayLocalDate());
+    const [attendanceToDate, setAttendanceToDate] = useState(todayLocalDate());
 
     const [enrollmentFromSession, setEnrollmentFromSession] = useState('');
     const [admissionsFromSession, setAdmissionsFromSession] = useState('');
@@ -79,8 +80,8 @@ export default function ReportsDashboard() {
 
     // Fee Received Filters
     const [receivedSessionId, setReceivedSessionId] = useState('');
-    const [receivedFromDate, setReceivedFromDate] = useState(new Date().toISOString().split('T')[0]);
-    const [receivedToDate, setReceivedToDate] = useState(new Date().toISOString().split('T')[0]);
+    const [receivedFromDate, setReceivedFromDate] = useState(todayLocalDate());
+    const [receivedToDate, setReceivedToDate] = useState(todayLocalDate());
     const [receivedClassId, setReceivedClassId] = useState('');
     const [receivedAvailableSections, setReceivedAvailableSections] = useState<any[]>([]);
     const [receivedSectionId, setReceivedSectionId] = useState('');

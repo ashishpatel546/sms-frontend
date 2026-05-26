@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { hrApi, StaffAttendanceRecord, AttendanceBypassWindow, StaffBiometric, WebauthnRegistrationPermit, DailyAttendanceSummary, HrPendingCheckoutItem } from "@/lib/hr-api";
 import { useRbac } from "@/lib/rbac";
+import { todayLocalDate } from "@/lib/utils";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
 import StaffPicker from "@/components/StaffPicker";
@@ -49,7 +50,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function StaffAttendancePage() {
   const rbac = useRbac();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayLocalDate();
 
   const [date, setDate] = useState(today);
   const [records, setRecords] = useState<StaffAttendanceRecord[]>([]);

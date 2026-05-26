@@ -8,6 +8,7 @@ import { hrApi, StaffAttendanceRecord, StaffBiometric, WebauthnPermitStatus, Che
 import toast, { Toaster } from "react-hot-toast";
 import { startRegistration, startAuthentication } from "@simplewebauthn/browser";
 import { getOrCreateDeviceKeyPair, signChallenge, getDevicePublicKey, clearDeviceKeyPair } from "@/lib/device-crypto";
+import { todayLocalDate } from "@/lib/utils";
 import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
@@ -67,7 +68,7 @@ const DURATION_STYLES: Record<string, string> = {
   HOLIDAY: "text-sky-600",
 };
 const now = new Date();
-const todayStr = now.toISOString().slice(0, 10);
+const todayStr = todayLocalDate();
 
 type CheckInState = "idle" | "locating" | "authenticating" | "submitting" | "done" | "error";
 

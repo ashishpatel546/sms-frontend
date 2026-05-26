@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { hrApi, PayrollRun, StaffLeaveApplication, StaffAttendanceRecord } from "@/lib/hr-api";
+import { todayLocalDate } from "@/lib/utils";
 import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
@@ -13,7 +14,7 @@ export default function HrOverviewPage() {
   const [todayAttendance, setTodayAttendance] = useState<StaffAttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayLocalDate();
 
   useEffect(() => {
     const load = async () => {

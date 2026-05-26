@@ -17,6 +17,9 @@ import { AppMonthPicker } from "@/components/ui/AppDatePicker";
 import { HomeSection } from "./components/HomeSection";
 import { StudentBanner } from "./components/StudentBanner";
 import { AnimatedLoader } from "@/components/ui/AnimatedLoader";
+import { AttendanceBottomSheet } from "./components/AttendanceBottomSheet";
+import { HomeworkBottomSheet } from "./components/HomeworkBottomSheet";
+import FeesBottomSheet from "./components/FeesBottomSheet";
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -90,6 +93,11 @@ export default function StudentDashboardPage() {
     const [sessions, setSessions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [sectionLoading, setSectionLoading] = useState(false);
+
+    // Quick-view bottom sheets
+    const [showAttendanceSheet, setShowAttendanceSheet] = useState(false);
+    const [showHomeworkSheet, setShowHomeworkSheet] = useState(false);
+    const [showFeesSheet, setShowFeesSheet] = useState(false);
 
     // Sibling students (for the top student-switcher tab strip)
     const [siblings, setSiblings] = useState<any[]>([]);
@@ -345,11 +353,13 @@ export default function StudentDashboardPage() {
         });
     };
 
-    const processPayment = async () => {
+    const processPayment = async (keysOverride?: string[], itemsOverride?: any[]) => {
+        const keys = keysOverride ?? selectedMonths2Pay;
+        const items = itemsOverride ?? allDueItems;
         setPayProcessing(true);
         try {
-            const amount = selectedMonths2Pay.reduce((sum, key) => {
-                const m = allDueItems.find((x: any) => x.key === key);
+            const amount = keys.reduce((sum, key) => {
+                const m = items.find((x: any) => x.key === key);
                 return sum + (m ? m.amount : 0);
             }, 0);
 
@@ -359,8 +369,8 @@ export default function StudentDashboardPage() {
             let lateFeeTotal = 0;
             const discountNames: string[] = [];
 
-            selectedMonths2Pay.forEach(key => {
-                const m = allDueItems.find((x: any) => x.key === key);
+            keys.forEach(key => {
+                const m = items.find((x: any) => x.key === key);
                 if (m) {
                     baseFeeAmount += m.baseFee || 0;
                     discountAmount += m.discount || 0;
@@ -381,7 +391,7 @@ export default function StudentDashboardPage() {
                 body: JSON.stringify({
                     studentId: Number(studentId),
                     academicYear: academicYearString,
-                    feeMonths: selectedMonths2Pay,
+                    feeMonths: keys,
                 })
             });
 
@@ -406,7 +416,7 @@ export default function StudentDashboardPage() {
                 amount: order.amount,
                 currency: order.currency,
                 name: "School Management System",
-                description: `Fee Payment for ${selectedMonths2Pay.length} months`,
+                description: `Fee Payment for ${keys.length} months`,
                 order_id: order.id,
                 prefill: {
                     name: `${info.firstName} ${info.lastName}`,
@@ -562,15 +572,15 @@ export default function StudentDashboardPage() {
             <div
                 role="tablist"
                 aria-label="Student sections"
-                className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-10 gap-2 bg-surface border border-slate-200 rounded-2xl p-2.5 animate-slide-up shadow-soft"
+                className="grid grid-cols-5 lg:grid-cols-10 gap-2 bg-surface border border-slate-200 rounded-2xl p-2.5 animate-slide-up shadow-soft"
                 style={{ animationDelay: '50ms' }}
             >
                 {([
                     ["home",          "🏠", "Home"],
-                    ["fees",          "💰", "Fees"],
                     ["attendance",    "📊", "Attendance"],
-                    ["results",       "📝", "Results"],
                     ["homework",      "📚", "Homework"],
+                    ["fees",          "💰", "Fees"],
+                    ["results",       "📝", "Results"],
                     ["leaves",        "🗓️", "Leaves"],
                     ["pickup",        "📱", "Pickup QR"],
                     ["exam-schedule", "📅", "Schedule"],
@@ -585,23 +595,35 @@ export default function StudentDashboardPage() {
                         id={`tab-${key}`}
                         onClick={() => {
                             const section = key as ActiveSection;
+                            // Attendance, Homework and Fees open a bottom sheet on mobile/tablet only
+                            const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+                            if (isMobile && section === "attendance") {
+                                setShowAttendanceSheet(true);
+                                return;
+                            }
+                            if (isMobile && section === "homework") {
+                                setShowHomeworkSheet(true);
+                                return;
+                            }
+                            if (isMobile && section === "fees") {
+                                setShowFeesSheet(true);
+                                return;
+                            }
                             if (section === activeSection) {
                                 // Already on this tab — re-fetch directly
                                 if (section === "leaves") fetchLeaves(leavesPage);
                                 else if (section === "fees") { setSectionLoading(true); fetchFees(); }
-                                else if (section === "attendance") { setSectionLoading(true); fetchAttendance(); }
                                 else if (section === "results") { setSectionLoading(true); fetchExamResults(); }
                                 else if (section === "holidays") { setSectionLoading(true); fetchHolidays(); }
-                                else if (section === "homework") { setSectionLoading(true); fetchHomework(); }
                             } else {
                                 setActiveSection(section);
                                 if (section !== 'info' && section !== 'exam-schedule' && section !== 'pickup' && section !== 'home') setSectionLoading(true);
                             }
                         }}
-                        className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2 sm:py-3 px-1.5 sm:px-2 min-h-[52px] sm:min-h-[44px] rounded-xl text-xs sm:text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${activeSection === key ? "bg-brand text-white shadow-md shadow-brand/20 dark:bg-white dark:text-slate-900 dark:shadow-slate-900/20" : "text-ink-muted hover:text-ink hover:bg-brand/5 bg-white border border-slate-200 hover:border-brand/30 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20"}`}
+                        className={`flex flex-col items-center justify-center gap-1 py-2 px-1 min-h-[56px] rounded-xl font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${activeSection === key ? "bg-brand text-white shadow-md shadow-brand/20 dark:bg-white dark:text-slate-900 dark:shadow-slate-900/20" : "text-ink-muted hover:text-ink hover:bg-brand/5 bg-white border border-slate-200 hover:border-brand/30 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20"}`}
                     >
-                        <span className="text-base leading-none shrink-0" aria-hidden="true">{icon}</span>
-                        <span className="leading-tight text-center whitespace-nowrap">{label}</span>
+                        <span className="text-[15px] leading-none shrink-0" aria-hidden="true">{icon}</span>
+                        <span className="text-[10px] leading-tight text-center whitespace-nowrap overflow-hidden w-full">{label}</span>
                     </button>
                 ))}
             </div>
@@ -1707,7 +1729,7 @@ export default function StudentDashboardPage() {
                                 className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-100 text-ink font-medium rounded-xl transition-colors text-sm disabled:opacity-50">
                                 Cancel
                             </button>
-                            <button onClick={processPayment} disabled={payProcessing}
+                            <button onClick={() => processPayment()} disabled={payProcessing}
                                 className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                                 {payProcessing ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Processing...</> : "Confirm Pay"}
                             </button>
@@ -1975,6 +1997,54 @@ export default function StudentDashboardPage() {
                     onClose={() => setShowApplyLeave(false)}
                     onSuccess={() => { setShowApplyLeave(false); fetchLeaves(leavesPage); }}
                 />)}
+
+            {/* ── Attendance Quick-View Bottom Sheet ── */}
+            <AttendanceBottomSheet
+                studentId={studentId as string}
+                isOpen={showAttendanceSheet}
+                onClose={() => setShowAttendanceSheet(false)}
+                onViewFull={() => {
+                    setShowAttendanceSheet(false);
+                    setActiveSection("attendance");
+                    setSectionLoading(true);
+                    fetchAttendance();
+                }}
+            />
+
+            {/* ── Homework Quick-View Bottom Sheet ── */}
+            <HomeworkBottomSheet
+                studentId={studentId as string}
+                isOpen={showHomeworkSheet}
+                onClose={() => setShowHomeworkSheet(false)}
+                onViewFull={() => {
+                    setShowHomeworkSheet(false);
+                    setActiveSection("homework");
+                    setSectionLoading(true);
+                    fetchHomework();
+                }}
+            />
+
+            {/* ── Fees Quick-View Bottom Sheet ── */}
+            <FeesBottomSheet
+                studentId={studentId as string}
+                isOpen={showFeesSheet}
+                onClose={() => setShowFeesSheet(false)}
+                academicYearString={academicYearString}
+                studentInfo={info}
+                onInitiatePayment={(keys, items) => processPayment(keys, items)}
+                onViewReceipt={(data) => setShowReceipt(data)}
+                onViewReceiptsList={(data) => setShowReceiptsListModal({
+                    ...data,
+                    studentName: info ? `${info.firstName} ${info.lastName}` : undefined,
+                    studentClass: info?.className,
+                    studentSection: info?.sectionName,
+                })}
+                onViewFull={() => {
+                    setShowFeesSheet(false);
+                    setActiveSection("fees");
+                    setSectionLoading(true);
+                }}
+            />
         </div>
     );
 }

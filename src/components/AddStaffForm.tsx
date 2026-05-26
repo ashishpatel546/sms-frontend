@@ -5,6 +5,7 @@ import { API_BASE_URL } from "@/lib/api";
 import { Country, State, City } from "country-state-city";
 import toast from "react-hot-toast";
 import { authFetch } from "@/lib/auth";
+import { todayLocalDate } from "@/lib/utils";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -44,7 +45,7 @@ const EMPTY_FORM = {
     mothersName: "",
     staffCategory: "",
     designationId: "" as string | number,
-    joiningDate: new Date().toISOString().split('T')[0],
+    joiningDate: todayLocalDate(),
     exitDate: "",
     isActive: true,
     role: "TEACHER",

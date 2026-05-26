@@ -13,6 +13,7 @@
  * Change once here → all pickers in the app update.
  */
 
+import type {} from "@mui/x-date-pickers/themeAugmentation";
 import { useMemo } from "react";
 import { useTheme } from "next-themes";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
@@ -92,7 +93,7 @@ function buildMuiTheme(p: Palette) {
           },
         },
       },
-      MuiPickersDay: {
+      MuiPickerDay: {
         styleOverrides: {
           root: {
             color: p.ink,
@@ -100,7 +101,7 @@ function buildMuiTheme(p: Palette) {
             /* eslint-disable @typescript-eslint/naming-convention */
             "&.Mui-selected": { backgroundColor: p.brand, color: "#fff" },
             "&.Mui-selected:hover": { backgroundColor: p.brand },
-            "&.MuiPickersDay-today:not(.Mui-selected)": {
+            "&.MuiPickerDay-today:not(.Mui-selected)": {
               borderColor: p.brand,
               borderWidth: 2,
             },
@@ -129,20 +130,18 @@ function buildMuiTheme(p: Palette) {
         },
       },
       MuiYearCalendar: {
-        styleOverrides: { root: { color: p.ink } },
-      },
-      MuiPickersYear: {
         styleOverrides: {
-          yearButton: {
+          root: { color: p.ink },
+          button: {
             color: p.ink,
             "&.Mui-selected": { backgroundColor: p.brand, color: "#fff" },
             "&:hover:not(.Mui-selected)": { backgroundColor: p.surfaceSec },
           },
         },
       },
-      MuiPickersMonth: {
+      MuiMonthCalendar: {
         styleOverrides: {
-          monthButton: {
+          button: {
             color: p.ink,
             "&.Mui-selected": { backgroundColor: p.brand, color: "#fff" },
             "&:hover:not(.Mui-selected)": { backgroundColor: p.surfaceSec },
@@ -262,10 +261,12 @@ export function AppDatePicker({
               textField: {
                 required,
                 name,
-                placeholder: placeholder ?? "DD/MM/YYYY",
                 size: "small",
                 fullWidth: true,
                 sx: buildTextFieldSx(palette),
+                slotProps: {
+                  htmlInput: { placeholder: placeholder ?? "DD/MM/YYYY" },
+                },
               },
               popper: { sx: popperSx(palette.border) },
               dialog: {
@@ -333,10 +334,12 @@ export function AppMonthPicker({
               textField: {
                 required,
                 name,
-                placeholder: placeholder ?? "Select month",
                 size: "small",
                 fullWidth: true,
                 sx: buildTextFieldSx(palette),
+                slotProps: {
+                  htmlInput: { placeholder: placeholder ?? "Select month" },
+                },
               },
               popper: { sx: popperSx(palette.border) },
               dialog: {
@@ -406,10 +409,12 @@ export function AppTimePicker({
               textField: {
                 required,
                 name,
-                placeholder: placeholder ?? "--:--",
                 size: "small",
                 fullWidth: true,
                 sx: buildTextFieldSx(palette),
+                slotProps: {
+                  htmlInput: { placeholder: placeholder ?? "--:--" },
+                },
               },
               popper: { sx: popperSx(palette.border) },
               dialog: {

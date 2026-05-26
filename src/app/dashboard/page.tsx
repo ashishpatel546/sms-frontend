@@ -4,6 +4,7 @@ import QuickActions from "./QuickActions";
 import DashboardStats from "./DashboardStats";
 import RecentActivity from "@/components/RecentActivity";
 import GreetingCard from "./GreetingCardDynamic";
+import { todayLocalDate } from "@/lib/utils";
 
 export const metadata: Metadata = {
     title: "Dashboard",
@@ -11,8 +12,9 @@ export const metadata: Metadata = {
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
     const resolvedSearchParams = await searchParams;
-    const selectedDate = resolvedSearchParams.date || new Date().toISOString().split('T')[0];
-    const isToday = selectedDate === new Date().toISOString().split('T')[0];
+    const todayIST = todayLocalDate();
+    const selectedDate = resolvedSearchParams.date || todayIST;
+    const isToday = selectedDate === todayIST;
 
     return (
         <div className="min-h-screen p-4 sm:p-6">

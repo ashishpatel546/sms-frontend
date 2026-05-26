@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { hrApi } from "@/lib/hr-api";
+import { todayLocalDate } from "@/lib/utils";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
 import StaffLookupForm from "@/components/StaffLookupForm";
@@ -20,7 +21,7 @@ export default function AttendanceKioskPage() {
   const [lastRecord, setLastRecord] = useState<any>(null);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayLocalDate();
 
   // Auto-focus input when idle or entering
   useEffect(() => {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
+import { todayLocalDate } from "@/lib/utils";
 import toast from "react-hot-toast";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
 
@@ -31,7 +32,7 @@ export default function ApplyLeaveModal({ studentId, studentName, onClose, onSuc
     const [file, setFile] = useState<File | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = todayLocalDate();
 
     const handleFromDateChange = (val: string) => {
         setFromDate(val);
