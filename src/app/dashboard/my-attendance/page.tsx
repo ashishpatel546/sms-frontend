@@ -94,7 +94,7 @@ export default function MyAttendancePage() {
 
   // Pending prior-day checkout
   const [pendingCheckOut, setPendingCheckOut] = useState<TodayAttendanceStatus["pendingCheckOut"]>(null);
-  const [resolvingPending, setResolvingPending] = useState(false);
+
 
   // Biometric registration state
   const [biometrics, setBiometrics] = useState<StaffBiometric[]>([]);
@@ -415,41 +415,6 @@ export default function MyAttendancePage() {
     }
   };
 
-  const handleResolvePending = async () => {
-    if (!pendingCheckOut) return;
-    setResolvingPending(true);
-    try {
-      // Require WebAuthn device proof before resolving a pending checkout.
-      // This prevents anyone without the registered device from manipulating attendance.
-      let challengeOpts: any;
-      try {
-        challengeOpts = await hrApi.attendance.webauthn.selfGetAuthChallenge();
-      } catch (e: any) {
-        const msg = e?.info?.message ?? "Failed to get verification challenge. Please try again.";
-        toast.error(msg);
-        setResolvingPending(false);
-        return;
-      }
-
-      let assertion: any;
-      try {
-        assertion = await startAuthentication({ optionsJSON: challengeOpts });
-      } catch {
-        toast.error("Biometric verification failed. Please use your registered device.");
-        setResolvingPending(false);
-        return;
-      }
-
-      await hrApi.attendance.resolvePending({ pendingDate: pendingCheckOut.date, webauthnAssertion: assertion });
-      setPendingCheckOut(null);
-      toast.success(`Checkout resolved for ${pendingCheckOut.date} (marked as end-of-day 17:00)`);
-    } catch (e: any) {
-      toast.error(e?.info?.message ?? "Failed to resolve pending checkout");
-    } finally {
-      setResolvingPending(false);
-    }
-  };
-
   // ── Compute month-level stats including auto-derived holidays (Sundays + school-wide holidays) ──
   const daysInMonth = new Date(year, month, 0).getDate();
   const recordByDate = new Map(records.map((r) => [r.date, r]));
@@ -498,50 +463,13 @@ export default function MyAttendancePage() {
             </p>
           </div>
 
-          {/* Device gate — resolve requires the registered device */}
-          {biometricsLoading ? (
-            <p className="text-xs text-gray-500">Checking device registration…</p>
-          ) : biometrics.length === 0 ? (
-            /* No device registered at all */
-            <div className="flex items-start gap-2 bg-red-100 border border-red-300 rounded-lg px-3 py-2.5 text-xs text-red-800">
-              <span className="shrink-0 mt-0.5">🚫</span>
-              <div>
-                <p className="font-semibold">No registered device found</p>
-                <p className="mt-0.5">
-                  Resolving a pending checkout requires biometric verification from your registered device.
-                  Your device registration has been removed. Please contact HR to resolve this manually.
-                </p>
-              </div>
-            </div>
-          ) : isOwnDevice === false ? (
-            /* Device registered but this is not it */
-            <div className="flex items-start gap-2 bg-red-100 border border-red-300 rounded-lg px-3 py-2.5 text-xs text-red-800">
-              <span className="shrink-0 mt-0.5">🚫</span>
-              <div>
-                <p className="font-semibold">This is not your registered device</p>
-                <p className="mt-0.5">
-                  Resolving a pending checkout requires biometric verification from{" "}
-                  <strong>{biometrics[0]?.deviceName || "your registered device"}</strong>.
-                  Open this page on that device to resolve, or ask HR to resolve manually.
-                </p>
-              </div>
-            </div>
-          ) : (
-            /* Correct registered device — show resolve button */
-            <div className="flex flex-wrap gap-2 items-center">
-              <button
-                onClick={handleResolvePending}
-                disabled={resolvingPending}
-                className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow transition-colors"
-              >
-                {resolvingPending ? <span className="animate-spin">⏳</span> : <span>🔒</span>}
-                {resolvingPending ? "Verifying &amp; Resolving…" : "Mark Checkout (End of Day)"}
-              </button>
-              <span className="text-xs text-red-700 bg-red-100 border border-red-200 rounded-lg px-3 py-2">
-                Or contact HR to resolve manually.
-              </span>
-            </div>
-          )}
+          <div className="flex items-start gap-2 bg-red-100 border border-red-300 rounded-lg px-3 py-2.5 text-xs text-red-800">
+            <span className="shrink-0 mt-0.5">📞</span>
+            <p>
+              Please <strong>contact HR or Admin</strong> to mark your checkout for{" "}
+              {pendingCheckOut.date}. You cannot check in again until this is resolved.
+            </p>
+          </div>
         </div>
       )}
 
