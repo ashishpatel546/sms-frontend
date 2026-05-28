@@ -142,7 +142,17 @@ export default function StaffLeavesPage() {
               <div key={l.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-medium text-gray-900 text-sm">{rbac.canAccessHR ? `Staff #${l.staffId} — ` : ""}{l.leavePolicy?.name ?? `#${l.leavePolicyId}`}</p>
+                    <p className="font-medium text-gray-900 text-sm">
+                      {rbac.canAccessHR
+                        ? l.staff
+                          ? `${l.staff.user.firstName} ${l.staff.user.lastName}`
+                          : `Staff #${l.staffId}`
+                        : ""}
+                      {rbac.canAccessHR ? " — " : ""}{l.leavePolicy?.name ?? `#${l.leavePolicyId}`}
+                    </p>
+                    {rbac.canAccessHR && l.staff?.user?.mobile && (
+                      <p className="text-xs text-gray-400">{l.staff.user.mobile}</p>
+                    )}
                     <p className="text-xs text-gray-500 mt-0.5">{l.fromDate} → {l.toDate} · {l.leaveDays}d{l.isLop ? ` (LOP:${l.lopDays}d)` : ""}</p>
                   </div>
                   <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[l.status]}`}>{l.status}</span>
@@ -183,7 +193,12 @@ export default function StaffLeavesPage() {
               <tbody className="divide-y divide-gray-100">
                 {leaves.map((l) => (
                   <tr key={l.id} className="hover:bg-gray-50">
-                    {rbac.canAccessHR && <td className="px-4 py-3">#{l.staffId}</td>}
+                    {rbac.canAccessHR && <td className="px-4 py-3">
+                      <div className="font-medium text-gray-900">
+                        {l.staff ? `${l.staff.user.firstName} ${l.staff.user.lastName}` : `#${l.staffId}`}
+                      </div>
+                      {l.staff?.user?.mobile && <div className="text-xs text-gray-400">{l.staff.user.mobile}</div>}
+                    </td>}
                     <td className="px-4 py-3">{l.leavePolicy?.name ?? `#${l.leavePolicyId}`}</td>
                     <td className="px-4 py-3">{l.fromDate} → {l.toDate}</td>
                     <td className="px-4 py-3">{l.leaveDays}{l.isLop ? <span className="ml-1 text-red-500 text-xs">(LOP:{l.lopDays}d)</span> : null}</td>

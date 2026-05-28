@@ -291,7 +291,7 @@ export const HomeSection = ({ studentId, academicYearString, sessionId, onChange
 const ActionChip = ({ title, icon, onClick }: { title: string; icon: React.ReactNode; onClick: () => void }) => (
   <button
     onClick={onClick}
-    className="flex-shrink-0 flex items-center gap-2 bg-surface border border-slate-200 dark:border-white/10 px-4 py-2.5 rounded-xl shadow-sm hover:border-brand/40 hover:shadow-md transition-all"
+    className="shrink-0 flex items-center gap-2 bg-surface border border-slate-200 dark:border-white/10 px-4 py-2.5 rounded-xl shadow-sm hover:border-brand/40 hover:shadow-md transition-all"
   >
     <span>{icon}</span>
     <span className="text-sm font-medium text-ink">{title}</span>

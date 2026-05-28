@@ -27,6 +27,7 @@ export default function SalaryConfigPage() {
   const [showCtcForm, setShowCtcForm] = useState(false);
   const [ctcStaffId, setCtcStaffId] = useState<number | null>(null);
   const [ctcForm, setCtcForm] = useState({ grossCTC: "", effectiveFrom: todayLocalDate(), componentOverrides: "" });
+  const [ctcSearch, setCtcSearch] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -110,16 +111,38 @@ export default function SalaryConfigPage() {
               <button onClick={() => setShowCtcForm(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">+ Set CTC</button>
             </div>
           )}
+          {/* Search */}
+          {!loading && configs.length > 0 && (
+            <input
+              type="text"
+              placeholder="Search by name, mobile or staff ID…"
+              value={ctcSearch}
+              onChange={(e) => setCtcSearch(e.target.value)}
+              className="w-full sm:max-w-sm border rounded-lg px-3 py-2 text-sm"
+            />
+          )}
           {loading ? <p className="text-sm text-gray-500">Loading…</p> : configs.length === 0 ? (
             <div className="text-center py-12 text-gray-500 text-sm">No CTC configurations yet.</div>
           ) : (
             <>
               {/* Mobile cards */}
               <div className="sm:hidden space-y-3">
-                {configs.map((c) => (
+                {configs.filter((c) => {
+                  if (!ctcSearch) return true;
+                  const q = ctcSearch.toLowerCase();
+                  const name = c.staff ? `${c.staff.user.firstName} ${c.staff.user.lastName}`.toLowerCase() : "";
+                  const mobile = c.staff?.user?.mobile ?? "";
+                  return name.includes(q) || mobile.includes(q) || String(c.staffId).includes(q);
+                }).map((c) => (
                   <div key={c.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-gray-900">Staff #{c.staffId}</span>
+                      <div>
+                        <span className="font-semibold text-gray-900">
+                          {c.staff ? `${c.staff.user.firstName} ${c.staff.user.lastName}` : `Staff #${c.staffId}`}
+                        </span>
+                        {c.staff?.designation && <p className="text-xs text-gray-500">{c.staff.designation}</p>}
+                        {c.staff?.user?.mobile && <p className="text-xs text-gray-400">{c.staff.user.mobile}</p>}
+                      </div>
                       <span className="font-medium text-blue-700">₹{Number(c.grossCTC).toLocaleString("en-IN")}</span>
                     </div>
                     <div className="text-xs text-gray-600 space-y-0.5">
@@ -138,7 +161,7 @@ export default function SalaryConfigPage() {
                 <table className="min-w-full text-sm">
                   <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
                     <tr>
-                      <th className="px-4 py-3 text-left">Staff ID</th>
+                      <th className="px-4 py-3 text-left">Staff</th>
                       <th className="px-4 py-3 text-left">Gross CTC (₹)</th>
                       <th className="px-4 py-3 text-left">Effective From</th>
                       <th className="px-4 py-3 text-left">Effective To</th>
@@ -146,9 +169,21 @@ export default function SalaryConfigPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {configs.map((c) => (
+                    {configs.filter((c) => {
+                      if (!ctcSearch) return true;
+                      const q = ctcSearch.toLowerCase();
+                      const name = c.staff ? `${c.staff.user.firstName} ${c.staff.user.lastName}`.toLowerCase() : "";
+                      const mobile = c.staff?.user?.mobile ?? "";
+                      return name.includes(q) || mobile.includes(q) || String(c.staffId).includes(q);
+                    }).map((c) => (
                       <tr key={c.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3">#{c.staffId}</td>
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-gray-900">
+                            {c.staff ? `${c.staff.user.firstName} ${c.staff.user.lastName}` : `#${c.staffId}`}
+                          </div>
+                          {c.staff?.designation && <div className="text-xs text-gray-500">{c.staff.designation}</div>}
+                          {c.staff?.user?.mobile && <div className="text-xs text-gray-400">{c.staff.user.mobile}</div>}
+                        </td>
                         <td className="px-4 py-3 font-medium">₹{Number(c.grossCTC).toLocaleString("en-IN")}</td>
                         <td className="px-4 py-3">{c.effectiveFrom}</td>
                         <td className="px-4 py-3">{c.effectiveTo ?? <span className="text-green-600 font-medium">Current</span>}</td>

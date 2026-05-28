@@ -119,6 +119,11 @@ export interface StaffLeaveApplication {
   approvedAt?: string;
   rejectionReason?: string;
   createdAt: string;
+  staff?: {
+    user: { firstName: string; lastName: string; mobile?: string };
+    employeeCode?: number;
+    designation?: string;
+  };
 }
 
 export type StaffAttendanceStatus =
@@ -232,6 +237,21 @@ export interface EmployeeSalaryConfig {
   effectiveFrom: string;
   effectiveTo?: string;
   componentOverrides: Record<string, number>;
+  staff?: {
+    user: { firstName: string; lastName: string; mobile?: string };
+    employeeCode?: number;
+    designation?: string;
+  };
+}
+
+export interface PayrollMonthlySummary {
+  month: number;
+  year: number;
+  monthName: string;
+  headcount: number;
+  totalGross: number;
+  totalDeductions: number;
+  totalNetPay: number;
 }
 
 export type PayrollStatus = 'DRAFT' | 'FINALIZED';
@@ -699,6 +719,27 @@ export const hrApi = {
       req<PayrollEntry>(
         'POST',
         `/hr/payroll/runs/${runId}/recalculate/${staffId}`,
+      ),
+    exportRun: async (runId: number): Promise<void> => {
+      const res = await authFetch(`${base()}/hr/payroll/runs/${runId}/export`);
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const cd = res.headers.get('Content-Disposition') ?? '';
+      const match = cd.match(/filename="([^"]+)"/);
+      const filename = match ? match[1] : `payroll-run-${runId}.csv`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+    monthlySummary: (year: number) =>
+      req<PayrollMonthlySummary[]>(
+        'GET',
+        `/hr/payroll/reports/monthly-summary?year=${year}`,
       ),
     mySlips: (staffId?: number) => {
       const q = staffId ? `?staffId=${staffId}` : '';

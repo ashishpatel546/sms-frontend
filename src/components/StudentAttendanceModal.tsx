@@ -203,7 +203,7 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
                                 
                                 <div className="bg-slate-800 rounded-xl p-4 flex items-center justify-between text-white shadow-md">
                                     <div className="font-medium text-sm text-slate-300 uppercase tracking-wider">Total Working Days</div>
-                                    <div className="text-2xl font-bold">{attendance.total - (attendance.holiday || 0)}</div>
+                                    <div className="text-2xl font-bold">{attendance.workingDaysCount ?? (attendance.total - (attendance.holiday || 0))}</div>
                                 </div>
                             </div>
                         </div>

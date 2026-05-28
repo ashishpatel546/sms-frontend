@@ -34,9 +34,11 @@ const styles = StyleSheet.create({
 interface SalarySlipProps {
   entry: PayrollEntry;
   schoolName?: string;
+  month?: number;
+  year?: number;
 }
 
-function SalarySlipDocument({ entry, schoolName = "School" }: SalarySlipProps) {
+function SalarySlipDocument({ entry, schoolName = "School", month, year }: SalarySlipProps) {
   const snapshot = entry.componentsSnapshot ?? {};
 
   const staffName = entry.staff
@@ -63,9 +65,12 @@ function SalarySlipDocument({ entry, schoolName = "School" }: SalarySlipProps) {
   const totalEarnings = earnings.reduce((s, e) => s + e.amount, 0);
   const totalDeductions = deductions.reduce((s, d) => s + d.amount, 0);
 
-  // Try to figure out month/year from the payrollRunId being passed via entry
-  // The month/year is not in PayrollEntry directly — use a prop if passed.
-  const monthYear = `${new Date().getFullYear()}`;
+  // Month/year for the slip header
+  const monthYear = month && year
+    ? `${MONTHS[month - 1]} ${year}`
+    : year
+    ? String(year)
+    : `${MONTHS[new Date().getMonth()]} ${new Date().getFullYear()}`;
 
   const fmt = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -75,7 +80,7 @@ function SalarySlipDocument({ entry, schoolName = "School" }: SalarySlipProps) {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.schoolName}>{schoolName}</Text>
-          <Text style={styles.slipTitle}>Salary Slip</Text>
+          <Text style={styles.slipTitle}>Salary Slip — {monthYear}</Text>
         </View>
 
         {/* Employee details */}
@@ -151,10 +156,10 @@ function SalarySlipDocument({ entry, schoolName = "School" }: SalarySlipProps) {
  */
 export async function generateSalarySlipPdf(
   entry: PayrollEntry,
-  opts?: { schoolName?: string; fileName?: string },
+  opts?: { schoolName?: string; fileName?: string; month?: number; year?: number },
 ) {
   const blob = await pdf(
-    <SalarySlipDocument entry={entry} schoolName={opts?.schoolName} />,
+    <SalarySlipDocument entry={entry} schoolName={opts?.schoolName} month={opts?.month} year={opts?.year} />,
   ).toBlob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

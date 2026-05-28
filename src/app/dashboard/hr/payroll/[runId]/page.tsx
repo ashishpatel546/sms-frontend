@@ -20,6 +20,8 @@ export default function PayrollRunPage() {
   const [loading, setLoading] = useState(true);
   const [recalcId, setRecalcId] = useState<number | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [exportingCsv, setExportingCsv] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
   const load = async () => {
     setLoading(true);
@@ -61,10 +63,22 @@ export default function PayrollRunPage() {
     try {
       await generateSalarySlipPdf(entry, {
         fileName: `salary-slip-${run ? `${MONTHS[run.month - 1]}-${run.year}` : `run-${runId}`}-staff-${entry.staffId}.pdf`,
+        month: run?.month,
+        year: run?.year,
       });
     } catch (e: any) { toast.error("PDF generation failed: " + (e?.message ?? "")); }
     finally { setDownloadingId(null); }
   };
+
+  const handleExportCsv = async () => {
+    setExportingCsv(true);
+    try { await hrApi.payroll.exportRun(runId); }
+    catch (e: any) { toast.error(e?.message ?? "Export failed"); }
+    finally { setExportingCsv(false); }
+  };
+
+  const toggleExpand = (id: number) =>
+    setExpandedIds((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
   const totalNet = entries.reduce((s, e) => s + Number(e.netPay), 0);
   const totalDeductions = entries.reduce((s, e) => s + Number(e.totalDeductions), 0);
@@ -111,9 +125,19 @@ export default function PayrollRunPage() {
 
       {/* Action buttons */}
       {run?.status === "DRAFT" && rbac.canManagePayroll && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <button onClick={handleExportCsv} disabled={exportingCsv} className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-60">
+            {exportingCsv ? "Exporting…" : "Export CSV"}
+          </button>
           <button onClick={handleFinalize} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700">
             Finalize Payroll
+          </button>
+        </div>
+      )}
+      {run?.status === "FINALIZED" && (
+        <div className="flex justify-end">
+          <button onClick={handleExportCsv} disabled={exportingCsv} className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-60">
+            {exportingCsv ? "Exporting…" : "Export CSV"}
           </button>
         </div>
       )}
@@ -129,6 +153,11 @@ export default function PayrollRunPage() {
           <div className="sm:hidden space-y-3">
             {entries.map((e) => {
               const staffName = e.staff ? `${e.staff.user.firstName} ${e.staff.user.lastName}` : `Staff #${e.staffId}`;
+              const snapshot = e.componentsSnapshot ?? {};
+              const isExpanded = expandedIds.has(e.id);
+              const DEDUCTION_KEYS = ["PF", "PT", "TDS", "LOP_AMOUNT"];
+              const earningEntries = Object.entries(snapshot).filter(([k, v]) => v > 0 && !DEDUCTION_KEYS.some((d) => k.toUpperCase().includes(d)));
+              const deductionEntries = Object.entries(snapshot).filter(([k, v]) => v > 0 && DEDUCTION_KEYS.some((d) => k.toUpperCase().includes(d)));
               return (
                 <div key={e.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
@@ -145,6 +174,21 @@ export default function PayrollRunPage() {
                     <div><span className="text-gray-400">Gross </span>{fmt(Number(e.grossEarnings))}</div>
                     <div className="col-span-2"><span className="text-gray-400">Deductions </span><span className="text-red-600">{fmt(Number(e.totalDeductions))}</span></div>
                   </div>
+                  {Object.keys(snapshot).length > 0 && (
+                    <button onClick={() => toggleExpand(e.id)} className="text-xs text-blue-600 hover:underline">
+                      {isExpanded ? "Hide breakdown" : "Show breakdown"}
+                    </button>
+                  )}
+                  {isExpanded && (
+                    <div className="text-xs space-y-1 border-t pt-2">
+                      {earningEntries.map(([k, v]) => (
+                        <div key={k} className="flex justify-between"><span className="text-gray-500">{k}</span><span className="text-green-700">{fmt(v)}</span></div>
+                      ))}
+                      {deductionEntries.map(([k, v]) => (
+                        <div key={k} className="flex justify-between"><span className="text-gray-500">{k}</span><span className="text-red-600">-{fmt(v)}</span></div>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex gap-3">
                     <button onClick={() => handleDownloadSlip(e)} disabled={downloadingId === e.staffId} className="text-blue-600 hover:underline text-xs disabled:opacity-50">{downloadingId === e.staffId ? "…" : "Download PDF"}</button>
                     {run?.status === "DRAFT" && rbac.canManagePayroll && (
@@ -174,6 +218,11 @@ export default function PayrollRunPage() {
               <tbody className="divide-y divide-gray-100">
                 {entries.map((e) => {
                   const staffName = e.staff ? `${e.staff.user.firstName} ${e.staff.user.lastName}` : `Staff #${e.staffId}`;
+                  const snapshot = e.componentsSnapshot ?? {};
+                  const isExpanded = expandedIds.has(e.id);
+                  const DEDUCTION_KEYS = ["PF", "PT", "TDS", "LOP_AMOUNT"];
+                  const earningEntries = Object.entries(snapshot).filter(([k, v]) => v > 0 && !DEDUCTION_KEYS.some((d) => k.toUpperCase().includes(d)));
+                  const deductionEntries = Object.entries(snapshot).filter(([k, v]) => v > 0 && DEDUCTION_KEYS.some((d) => k.toUpperCase().includes(d)));
                   return (
                     <tr key={e.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
@@ -186,10 +235,25 @@ export default function PayrollRunPage() {
                       <td className="px-4 py-3 text-right">{fmt(Number(e.grossEarnings))}</td>
                       <td className="px-4 py-3 text-right text-red-600">{fmt(Number(e.totalDeductions))}</td>
                       <td className="px-4 py-3 text-right font-semibold text-green-700">{fmt(Number(e.netPay))}</td>
-                      <td className="px-4 py-3 flex gap-2">
-                        <button onClick={() => handleDownloadSlip(e)} disabled={downloadingId === e.staffId} className="text-blue-600 hover:underline text-xs disabled:opacity-50">{downloadingId === e.staffId ? "…" : "PDF"}</button>
-                        {run?.status === "DRAFT" && rbac.canManagePayroll && (
-                          <button onClick={() => handleRecalculate(e.staffId)} disabled={recalcId === e.staffId} className="text-amber-600 hover:underline text-xs disabled:opacity-50">{recalcId === e.staffId ? "…" : "Recalc"}</button>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2 items-center">
+                          <button onClick={() => handleDownloadSlip(e)} disabled={downloadingId === e.staffId} className="text-blue-600 hover:underline text-xs disabled:opacity-50">{downloadingId === e.staffId ? "…" : "PDF"}</button>
+                          {run?.status === "DRAFT" && rbac.canManagePayroll && (
+                            <button onClick={() => handleRecalculate(e.staffId)} disabled={recalcId === e.staffId} className="text-amber-600 hover:underline text-xs disabled:opacity-50">{recalcId === e.staffId ? "…" : "Recalc"}</button>
+                          )}
+                          {Object.keys(snapshot).length > 0 && (
+                            <button onClick={() => toggleExpand(e.id)} className="text-gray-500 hover:underline text-xs">{isExpanded ? "▲" : "▼"}</button>
+                          )}
+                        </div>
+                        {isExpanded && (
+                          <div className="mt-2 text-xs space-y-0.5 border-t pt-1">
+                            {earningEntries.map(([k, v]) => (
+                              <div key={k} className="flex justify-between gap-4"><span className="text-gray-500">{k}</span><span className="text-green-700">{fmt(v)}</span></div>
+                            ))}
+                            {deductionEntries.map(([k, v]) => (
+                              <div key={k} className="flex justify-between gap-4"><span className="text-gray-500">{k}</span><span className="text-red-600">-{fmt(v)}</span></div>
+                            ))}
+                          </div>
                         )}
                       </td>
                     </tr>

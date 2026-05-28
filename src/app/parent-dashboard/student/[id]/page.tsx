@@ -540,7 +540,7 @@ export default function StudentDashboardPage() {
                                 <button
                                     key={s.id}
                                     onClick={() => !isActive && router.push(`/parent-dashboard/student/${s.id}`)}
-                                    className={`shrink-0 snap-start flex items-center gap-3 px-3.5 py-2.5 rounded-2xl border-2 transition-all text-left min-w-[160px]
+                                    className={`shrink-0 snap-start flex items-center gap-3 px-3.5 py-2.5 rounded-2xl border-2 transition-all text-left min-w-40
                                         ${isActive
                                             ? `${p.active}`
                                             : "bg-white/80 border-slate-200 hover:border-slate-300 hover:shadow-sm"
@@ -620,7 +620,7 @@ export default function StudentDashboardPage() {
                                 if (section !== 'info' && section !== 'exam-schedule' && section !== 'pickup' && section !== 'home') setSectionLoading(true);
                             }
                         }}
-                        className={`flex flex-col items-center justify-center gap-1 py-2 px-1 min-h-[56px] rounded-xl font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${activeSection === key ? "bg-brand text-white shadow-md shadow-brand/20 dark:bg-white dark:text-slate-900 dark:shadow-slate-900/20" : "text-ink-muted hover:text-ink hover:bg-brand/5 bg-white border border-slate-200 hover:border-brand/30 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20"}`}
+                        className={`flex flex-col items-center justify-center gap-1 py-2 px-1 min-h-14 rounded-xl font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${activeSection === key ? "bg-brand text-white shadow-md shadow-brand/20 dark:bg-white dark:text-slate-900 dark:shadow-slate-900/20" : "text-ink-muted hover:text-ink hover:bg-brand/5 bg-white border border-slate-200 hover:border-brand/30 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20"}`}
                     >
                         <span className="text-[15px] leading-none shrink-0" aria-hidden="true">{icon}</span>
                         <span className="text-[10px] leading-tight text-center whitespace-nowrap overflow-hidden w-full">{label}</span>
@@ -1084,7 +1084,7 @@ export default function StudentDashboardPage() {
                                 </div>
                                 <div className="mt-2 bg-brand/5 border border-brand/20 rounded-xl p-3 text-center">
                                     <div className="text-ink-muted font-medium text-xs">Total Working Days</div>
-                                    <div className="text-xl font-bold text-ink mt-1">{attendance.total - (attendance.holiday || 0)}</div>
+                                    <div className="text-xl font-bold text-ink mt-1">{attendance.workingDaysCount ?? (attendance.total - (attendance.holiday || 0))}</div>
                                 </div>
                             </div>
                         </div>
@@ -1798,7 +1798,7 @@ export default function StudentDashboardPage() {
 
             {/* ── In-app Document Viewer ── */}
             {viewerDoc && (
-                <div className="fixed inset-0 z-[60] flex flex-col bg-black/90" onClick={e => { if (e.target === e.currentTarget) setViewerDoc(null); }}>
+                <div className="fixed inset-0 z-60 flex flex-col bg-black/90" onClick={e => { if (e.target === e.currentTarget) setViewerDoc(null); }}>
                     <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200 shrink-0">
                         <span className="text-white text-sm font-medium truncate max-w-xs">{viewerDoc.fileName}</span>
                         <div className="flex items-center gap-2 shrink-0">

@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import { Wallet, AlertCircle, ClipboardList, CalendarCheck, Users, UserCircle, Download } from "lucide-react";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
+import { hrApi, PayrollMonthlySummary } from "@/lib/hr-api";
 
 const COLORS = ['#0ea5e9', '#f43f5e', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'];
 
@@ -20,7 +21,12 @@ export default function ReportsDashboard() {
     const router = useRouter();
     const rbac = useRbac();
     const [mounted, setMounted] = useState(false);
-    const [activeTab, setActiveTab] = useState<'FEES' | 'PENDING_DUES' | 'FEE_RECEIVED' | 'EXAMINATIONS' | 'ATTENDANCE' | 'STUDENTS' | 'STAFF'>('FEES');
+    const [activeTab, setActiveTab] = useState<'FEES' | 'PENDING_DUES' | 'FEE_RECEIVED' | 'EXAMINATIONS' | 'ATTENDANCE' | 'STUDENTS' | 'STAFF' | 'SALARY'>('FEES');
+
+    // HR Portal
+    const [hrPortalEnabled, setHrPortalEnabled] = useState(false);
+    const [salaryYear, setSalaryYear] = useState(new Date().getFullYear());
+    const [salaryData, setSalaryData] = useState<PayrollMonthlySummary[]>([]);
 
     // FILTERS
     const [academicSessions, setAcademicSessions] = useState<any[]>([]);
@@ -266,6 +272,22 @@ export default function ReportsDashboard() {
         };
         fetchData();
     }, [activeTab]);
+
+    // HR PORTAL feature flag
+    useEffect(() => {
+        authFetch(`${API_BASE_URL}/school/features`)
+            .then((r) => r.ok ? r.json() : null)
+            .then((data) => { if (data?.hr_portal) setHrPortalEnabled(true); })
+            .catch(() => {});
+    }, []);
+
+    // SALARY
+    useEffect(() => {
+        if (activeTab !== 'SALARY' || !hrPortalEnabled) return;
+        hrApi.payroll.monthlySummary(salaryYear)
+            .then((data) => setSalaryData(data))
+            .catch((e) => { console.error(e); toast.error('Failed to load salary data'); });
+    }, [activeTab, salaryYear, hrPortalEnabled]);
 
     // PENDING DUES - manual fetch (triggered by Apply Filters button)
     const fetchPendingDues = async () => {
@@ -622,6 +644,19 @@ export default function ReportsDashboard() {
                     <UserCircle className="w-4 h-4" />
                     Staff
                 </button>
+                {hrPortalEnabled && (
+                    <button
+                        onClick={() => setActiveTab('SALARY')}
+                        className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${
+                            activeTab === 'SALARY'
+                                ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                        }`}
+                    >
+                        <Wallet className="w-4 h-4" />
+                        Salary
+                    </button>
+                )}
             </div>
 
             {/* TAB CONTENT: FEES */}
@@ -1696,6 +1731,74 @@ export default function ReportsDashboard() {
                             </div>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {activeTab === 'SALARY' && hrPortalEnabled && (
+                <div className="space-y-6">
+                    {/* Year selector */}
+                    <div className="flex items-center gap-3">
+                        <label className="text-sm font-medium text-slate-700">Year</label>
+                        <select
+                            value={salaryYear}
+                            onChange={(e) => setSalaryYear(Number(e.target.value))}
+                            className="border-gray-300 rounded-lg shadow-sm text-sm p-2 bg-gray-50"
+                        >
+                            {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                                <option key={y} value={y}>{y}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {salaryData.length === 0 ? (
+                        <div className="text-center py-12 text-slate-500 text-sm">No finalized payroll runs found for {salaryYear}.</div>
+                    ) : (
+                        <>
+                            {/* Bar chart */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                                <h2 className="text-lg font-bold text-slate-800 mb-4">Monthly Payroll Summary — {salaryYear}</h2>
+                                <div className="h-72">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={salaryData}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                                            <XAxis dataKey="monthName" axisLine={false} tickLine={false} tick={{ fill: '#64748B' }} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748B' }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+                                            <Tooltip formatter={(v: any) => `₹${Number(v).toLocaleString('en-IN')}`} cursor={{ fill: '#F1F5F9' }} />
+                                            <Legend />
+                                            <Bar dataKey="totalGross" name="Gross Earnings" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+                                            <Bar dataKey="totalNetPay" name="Net Pay" fill="#10b981" radius={[4, 4, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            {/* Summary table */}
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+                                <table className="min-w-full text-sm">
+                                    <thead className="bg-slate-50 text-slate-600 text-xs uppercase">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left">Month</th>
+                                            <th className="px-4 py-3 text-right">Headcount</th>
+                                            <th className="px-4 py-3 text-right">Gross Earnings</th>
+                                            <th className="px-4 py-3 text-right">Total Deductions</th>
+                                            <th className="px-4 py-3 text-right">Net Pay</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {salaryData.map((row) => (
+                                            <tr key={`${row.year}-${row.month}`} className="hover:bg-slate-50">
+                                                <td className="px-4 py-3 font-medium text-slate-900">{row.monthName} {row.year}</td>
+                                                <td className="px-4 py-3 text-right">{row.headcount}</td>
+                                                <td className="px-4 py-3 text-right">₹{Number(row.totalGross).toLocaleString('en-IN')}</td>
+                                                <td className="px-4 py-3 text-right text-red-600">₹{Number(row.totalDeductions).toLocaleString('en-IN')}</td>
+                                                <td className="px-4 py-3 text-right font-semibold text-green-700">₹{Number(row.totalNetPay).toLocaleString('en-IN')}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
 

@@ -126,7 +126,7 @@ export function useRbac(): RbacPermissions {
         canAccessHRSelfService: level >= 40,
         canAccessHR: level >= 70,
         canManageHR: level >= 70,
-        canManagePayroll: level >= 80,
+        canManagePayroll: level >= 70,
         isHrAdmin: level === 70,
     };
 }
