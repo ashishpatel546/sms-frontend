@@ -128,13 +128,16 @@ export default function StaffAttendancePage() {
     if (!markStaffId) { toast.error("Please select a staff member"); return; }
     if (!markDate) { toast.error("Please select a date"); return; }
     try {
+      const checkInIso = markForm.checkInTime ? dayjs(`${markDate}T${markForm.checkInTime}`).format('YYYY-MM-DDTHH:mm:ss') : undefined;
+      const checkOutIso = markForm.checkOutTime ? dayjs(`${markDate}T${markForm.checkOutTime}`).format('YYYY-MM-DDTHH:mm:ss') : undefined;
+
       await hrApi.attendance.submit({
         staffId: markStaffId,
         date: markDate,
         method: markForm.method as any,
         status: markForm.status as any,
-        checkInTime: markForm.checkInTime || undefined,
-        checkOutTime: markForm.checkOutTime || undefined,
+        checkInTime: checkInIso,
+        checkOutTime: checkOutIso,
         overrideReason: markForm.overrideReason || undefined,
       });
       toast.success("Attendance marked");

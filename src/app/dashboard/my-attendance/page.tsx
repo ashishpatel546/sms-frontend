@@ -328,11 +328,12 @@ export default function MyAttendancePage() {
     setCheckInMsg("Verifying location and marking attendance…");
     try {
       const localTime = new Date().toTimeString().slice(0, 8);
+      const isoTime = new Date().toISOString();
       const record = await hrApi.attendance.selfCheckIn({
         lat: position.coords.latitude,
         lng: position.coords.longitude,
-        clientTimestamp: new Date().toISOString(),
-        checkInTime: localTime,
+        clientTimestamp: isoTime,
+        checkInTime: isoTime,
         status: selectedStatus,
         webauthnAssertion: assertion,
       });
@@ -395,11 +396,12 @@ export default function MyAttendancePage() {
     setCheckOutMsg("Recording check-out…");
     try {
       const localTime = new Date().toTimeString().slice(0, 8);
+      const isoTime = new Date().toISOString();
       const record = await hrApi.attendance.selfCheckOut({
         lat: position.coords.latitude,
         lng: position.coords.longitude,
-        clientTimestamp: new Date().toISOString(),
-        checkOutTime: localTime,
+        clientTimestamp: isoTime,
+        checkOutTime: isoTime,
         reason: checkOutReason,
         statusOverride: checkOutStatusOverride,
         webauthnAssertion: assertion,
