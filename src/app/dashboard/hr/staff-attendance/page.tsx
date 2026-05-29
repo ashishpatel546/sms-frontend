@@ -12,7 +12,7 @@ import StaffAttendanceModal from "@/components/StaffAttendanceModal";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { InfoBanner } from "@/components/ui/InfoBanner";
-import { AppTimePicker } from "@/components/ui/AppDatePicker";
+import { AppTimePicker, AppDatePicker } from "@/components/ui/AppDatePicker";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 dayjs.extend(duration);
@@ -21,8 +21,8 @@ const PAGE_SIZE = 20;
 
 function calcDuration(checkIn?: string, checkOut?: string): string | null {
   if (!checkIn || !checkOut) return null;
-  const inMs = dayjs(`1970-01-01T${checkIn}`).valueOf();
-  const outMs = dayjs(`1970-01-01T${checkOut}`).valueOf();
+  const inMs = dayjs(checkIn).valueOf();
+  const outMs = dayjs(checkOut).valueOf();
   if (outMs <= inMs) return null;
   const dur = dayjs.duration(outMs - inMs);
   const hh = String(Math.floor(dur.asHours())).padStart(2, "0");
@@ -92,7 +92,7 @@ export default function StaffAttendancePage() {
   const [pendingCheckoutsList, setPendingCheckoutsList] = useState<HrPendingCheckoutItem[]>([]);
   const [pendingCheckoutsLoading, setPendingCheckoutsLoading] = useState(false);
   const [resolveTarget, setResolveTarget] = useState<HrPendingCheckoutItem | null>(null);
-  const [resolveForm, setResolveForm] = useState({ checkOutTime: "17:00", reason: "FORGOT", hrNote: "" });
+  const [resolveForm, setResolveForm] = useState({ checkOutDate: "", checkOutTime: "17:00", reason: "FORGOT", hrNote: "", status: "PRESENT" });
   const [resolving, setResolving] = useState(false);
 
   const loadRecords = useCallback(async () => {
@@ -219,13 +219,16 @@ export default function StaffAttendancePage() {
     if (!resolveTarget) return;
     setResolving(true);
     try {
-      const checkOutTime = resolveForm.checkOutTime ? resolveForm.checkOutTime + ":00" : undefined;
+      const checkOutTime = resolveForm.checkOutTime && resolveForm.checkOutDate
+        ? dayjs(`${resolveForm.checkOutDate}T${resolveForm.checkOutTime}`).format('YYYY-MM-DDTHH:mm:ss')
+        : undefined;
       await hrApi.attendance.hrResolvePending({
         staffId: resolveTarget.staffId,
         pendingDate: resolveTarget.date,
         checkOutTime,
         reason: resolveForm.reason,
         hrNote: resolveForm.hrNote || undefined,
+        status: resolveForm.status as any,
       });
       toast.success(`Checkout closed for ${resolveTarget.name}`);
       setResolveTarget(null);
@@ -458,7 +461,7 @@ export default function StaffAttendancePage() {
                             {item.employeeCode && <p className="text-xs text-gray-500">EMP-{item.employeeCode}</p>}
                           </td>
                           <td className="px-4 py-3 tabular-nums text-gray-700">{item.date}</td>
-                          <td className="px-4 py-3 tabular-nums text-gray-700">{item.checkInTime}</td>
+                          <td className="px-4 py-3 tabular-nums text-gray-700">{dayjs(item.checkInTime).format('HH:mm:ss')}</td>
                           <td className="px-4 py-3">
                             <span className={`text-xs font-semibold ${item.daysAgo > 1 ? "text-red-600" : "text-amber-600"}`}>
                               {item.daysAgo}d
@@ -466,7 +469,7 @@ export default function StaffAttendancePage() {
                           </td>
                           <td className="px-4 py-3">
                             <button
-                              onClick={() => { setResolveTarget(item); setResolveForm({ checkOutTime: "17:00", reason: "FORGOT", hrNote: "" }); }}
+                              onClick={() => { setResolveTarget(item); setResolveForm({ checkOutDate: item.date, checkOutTime: "17:00", reason: "FORGOT", hrNote: "", status: "PRESENT" }); }}
                               className="text-xs bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded-lg font-medium"
                             >
                               Close Checkout
@@ -488,9 +491,9 @@ export default function StaffAttendancePage() {
                         </div>
                         <span className={`text-xs font-semibold shrink-0 ${item.daysAgo > 1 ? "text-red-600" : "text-amber-600"}`}>{item.daysAgo}d ago</span>
                       </div>
-                      <p className="text-xs text-gray-600">{item.date} · checked in {item.checkInTime}</p>
+                      <p className="text-xs text-gray-600">{item.date} · checked in {dayjs(item.checkInTime).format('HH:mm:ss')}</p>
                       <button
-                        onClick={() => { setResolveTarget(item); setResolveForm({ checkOutTime: "17:00", reason: "FORGOT", hrNote: "" }); }}
+                        onClick={() => { setResolveTarget(item); setResolveForm({ checkOutDate: item.date, checkOutTime: "17:00", reason: "FORGOT", hrNote: "", status: "PRESENT" }); }}
                         className="text-xs bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded-lg font-medium"
                       >
                         Close Checkout
@@ -743,17 +746,25 @@ export default function StaffAttendancePage() {
             <div className="bg-orange-50 border border-orange-100 rounded-lg p-3">
               <p className="text-sm font-medium text-orange-900">{resolveTarget.name}</p>
               <p className="text-xs text-orange-700 mt-0.5">
-                Checked in on {resolveTarget.date} at {resolveTarget.checkInTime}
+                Checked in on {resolveTarget.date} at {dayjs(resolveTarget.checkInTime).format('HH:mm:ss')}
                 {resolveTarget.daysAgo > 0 ? ` (${resolveTarget.daysAgo} day${resolveTarget.daysAgo !== 1 ? "s" : ""} ago)` : ""} — never checked out.
               </p>
             </div>
-            <div>
-              <label className="text-sm font-medium">Checkout Time</label>
-              <div className="mt-1">
-                <AppTimePicker value={resolveForm.checkOutTime} onChange={(v) => setResolveForm((f) => ({ ...f, checkOutTime: v }))} />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Checkout Date</label>
+                <div className="mt-1">
+                  <AppDatePicker value={resolveForm.checkOutDate} onChange={(v) => setResolveForm((f) => ({ ...f, checkOutDate: v }))} />
+                </div>
               </div>
-              <p className="text-[11px] text-gray-500 mt-1">Defaults to 17:00. Adjust if you know the actual departure time.</p>
+              <div>
+                <label className="text-sm font-medium">Checkout Time</label>
+                <div className="mt-1">
+                  <AppTimePicker value={resolveForm.checkOutTime} onChange={(v) => setResolveForm((f) => ({ ...f, checkOutTime: v }))} />
+                </div>
+              </div>
             </div>
+            <p className="text-[11px] text-gray-500">Defaults to 17:00 on the check-in date. Adjust if you know the actual departure time.</p>
             <div>
               <label className="text-sm font-medium">Reason</label>
               <select
@@ -775,6 +786,19 @@ export default function StaffAttendancePage() {
                 placeholder="e.g. Staff reported leaving early due to illness"
                 className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
               />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Attendance Status</label>
+              <select
+                value={resolveForm.status}
+                onChange={(e) => setResolveForm((f) => ({ ...f, status: e.target.value }))}
+                className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
+              >
+                <option value="PRESENT">Present</option>
+                <option value="HALF_DAY">Half Day</option>
+                <option value="LATE">Late</option>
+                <option value="ABSENT">Absent</option>
+              </select>
             </div>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setResolveTarget(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>

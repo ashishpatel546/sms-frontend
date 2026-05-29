@@ -470,6 +470,7 @@ export const hrApi = {
       checkOutTime?: string;
       reason?: string;
       hrNote?: string;
+      status?: StaffAttendanceStatus;
     }) =>
       req<StaffAttendanceRecord>(
         'POST',

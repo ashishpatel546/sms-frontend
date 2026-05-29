@@ -458,7 +458,7 @@ export default function MyAttendancePage() {
           <div>
             <p className="text-sm font-bold text-red-800">⚠️ Unclosed Check-In from {pendingCheckOut.date}</p>
             <p className="text-xs text-red-600 mt-0.5">
-              You checked in at {pendingCheckOut.checkInTime} but never checked out.
+              You checked in at {dayjs(pendingCheckOut.checkInTime).format('YYYY-MM-DD HH:mm:ss')} but never checked out.
               Please resolve this before checking in today.
             </p>
           </div>
