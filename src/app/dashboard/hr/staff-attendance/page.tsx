@@ -128,8 +128,8 @@ export default function StaffAttendancePage() {
     if (!markStaffId) { toast.error("Please select a staff member"); return; }
     if (!markDate) { toast.error("Please select a date"); return; }
     try {
-      const checkInIso = markForm.checkInTime ? dayjs(`${markDate}T${markForm.checkInTime}`).format('YYYY-MM-DDTHH:mm:ss') : undefined;
-      const checkOutIso = markForm.checkOutTime ? dayjs(`${markDate}T${markForm.checkOutTime}`).format('YYYY-MM-DDTHH:mm:ss') : undefined;
+      const checkInIso = markForm.checkInTime ? dayjs(`${markDate}T${markForm.checkInTime}`).toISOString() : undefined;
+      const checkOutIso = markForm.checkOutTime ? dayjs(`${markDate}T${markForm.checkOutTime}`).toISOString() : undefined;
 
       await hrApi.attendance.submit({
         staffId: markStaffId,
@@ -223,7 +223,7 @@ export default function StaffAttendancePage() {
     setResolving(true);
     try {
       const checkOutTime = resolveForm.checkOutTime && resolveForm.checkOutDate
-        ? dayjs(`${resolveForm.checkOutDate}T${resolveForm.checkOutTime}`).format('YYYY-MM-DDTHH:mm:ss')
+        ? dayjs(`${resolveForm.checkOutDate}T${resolveForm.checkOutTime}`).toISOString()
         : undefined;
       await hrApi.attendance.hrResolvePending({
         staffId: resolveTarget.staffId,

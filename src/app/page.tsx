@@ -16,7 +16,8 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showSplash, setShowSplash] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // Parent form
   const [mobile, setMobile] = useState("");
@@ -37,6 +38,8 @@ export default function LoginPage() {
           router.replace(getDashboardRoute(user.role));
         }
       }, 1500);
+    } else {
+      setIsCheckingAuth(false);
     }
   }, [router]);
 
@@ -103,8 +106,11 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-slate-950 selection:bg-indigo-500/30">
       {showSplash && <SplashScreen />}
-      {/* Left — Branding Panel */}
-      <div className="relative hidden md:flex md:w-1/2 flex-col justify-between p-12 overflow-hidden">
+      
+      {!isCheckingAuth && (
+        <>
+          {/* Left — Branding Panel */}
+          <div className="relative hidden md:flex md:w-1/2 flex-col justify-between p-12 overflow-hidden">
         {/* Background school image */}
         <div className="absolute inset-0"
           style={{ backgroundImage: 'url(/colegios-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}
@@ -421,6 +427,8 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
