@@ -17,6 +17,8 @@ export default function PayrollPage() {
   const [showDraft, setShowDraft] = useState(false);
   const [draftForm, setDraftForm] = useState({ month: now.getMonth() + 1, year: now.getFullYear() });
   const [drafting, setDrafting] = useState(false);
+  const [processingId, setProcessingId] = useState<number | null>(null);
+  const [unmarkedWarning, setUnmarkedWarning] = useState<any[] | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -27,13 +29,19 @@ export default function PayrollPage() {
 
   useEffect(() => { load(); }, []);
 
-  const handleGenerateDraft = async () => {
+  const handleGenerateDraft = async (force = false) => {
     setDrafting(true);
     try {
-      const run = await hrApi.payroll.generateDraft(draftForm.month, draftForm.year);
+      const run = await hrApi.payroll.generateDraft(draftForm.month, draftForm.year, force);
       toast.success(`Draft created for ${MONTHS[run.month - 1]} ${run.year}`);
-      setShowDraft(false); load();
-    } catch (e: any) { toast.error(e?.info?.message ?? "Draft generation failed"); }
+      setShowDraft(false); setUnmarkedWarning(null); load();
+    } catch (e: any) { 
+      if (e?.info?.unmarked) {
+        setUnmarkedWarning(e.info.unmarked);
+      } else {
+        toast.error(e?.info?.message ?? "Draft generation failed"); 
+      }
+    }
     finally { setDrafting(false); }
   };
 
@@ -41,6 +49,22 @@ export default function PayrollPage() {
     if (!confirm(`Finalize payroll for ${MONTHS[month - 1]} ${year}? This cannot be undone.`)) return;
     try { await hrApi.payroll.finalize(runId); toast.success("Payroll finalized"); load(); }
     catch (e: any) { toast.error(e?.info?.message ?? "Finalize failed"); }
+  };
+
+  const handleDelete = async (runId: number) => {
+    if (!confirm("Delete this draft payroll run?")) return;
+    setProcessingId(runId);
+    try { await hrApi.payroll.deleteDraft(runId); toast.success("Draft deleted"); load(); }
+    catch (e: any) { toast.error(e?.info?.message ?? "Delete failed"); }
+    finally { setProcessingId(null); }
+  };
+
+  const handleRefresh = async (runId: number) => {
+    if (!confirm("Refresh this draft? It will recalculate all entries.")) return;
+    setProcessingId(runId);
+    try { await hrApi.payroll.refreshDraft(runId); toast.success("Draft refreshed"); load(); }
+    catch (e: any) { toast.error(e?.info?.message ?? "Refresh failed"); }
+    finally { setProcessingId(null); }
   };
 
   return (
@@ -82,7 +106,11 @@ export default function PayrollPage() {
                 <div className="flex gap-3">
                   <Link href={`/dashboard/hr/payroll/${r.id}`} className="text-blue-600 hover:underline text-xs">View Entries</Link>
                   {rbac.canManagePayroll && r.status === "DRAFT" && (
-                    <button onClick={() => handleFinalize(r.id, r.month, r.year)} className="text-green-600 hover:underline text-xs">Finalize</button>
+                    <>
+                      <button onClick={() => handleRefresh(r.id)} disabled={processingId === r.id} className="text-amber-600 hover:underline text-xs disabled:opacity-50">Refresh</button>
+                      <button onClick={() => handleDelete(r.id)} disabled={processingId === r.id} className="text-red-600 hover:underline text-xs disabled:opacity-50">Delete</button>
+                      <button onClick={() => handleFinalize(r.id, r.month, r.year)} className="text-green-600 hover:underline text-xs">Finalize</button>
+                    </>
                   )}
                 </div>
               </div>
@@ -113,7 +141,11 @@ export default function PayrollPage() {
                     <td className="px-4 py-3 flex gap-2">
                       <Link href={`/dashboard/hr/payroll/${r.id}`} className="text-blue-600 hover:underline text-xs">View Entries</Link>
                       {rbac.canManagePayroll && r.status === "DRAFT" && (
-                        <button onClick={() => handleFinalize(r.id, r.month, r.year)} className="text-green-600 hover:underline text-xs">Finalize</button>
+                        <>
+                          <button onClick={() => handleRefresh(r.id)} disabled={processingId === r.id} className="text-amber-600 hover:underline text-xs disabled:opacity-50">Refresh</button>
+                          <button onClick={() => handleDelete(r.id)} disabled={processingId === r.id} className="text-red-600 hover:underline text-xs disabled:opacity-50">Delete</button>
+                          <button onClick={() => handleFinalize(r.id, r.month, r.year)} className="text-green-600 hover:underline text-xs">Finalize</button>
+                        </>
                       )}
                     </td>
                   </tr>
@@ -129,29 +161,56 @@ export default function PayrollPage() {
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 w-full sm:max-w-sm space-y-4">
             <h2 className="font-semibold text-lg">Generate Payroll Draft</h2>
-            <p className="text-sm text-gray-600">
-              This will calculate attendance-adjusted salaries for all staff with an active CTC for the selected month.
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium">Month</label>
-                <select value={draftForm.month} onChange={(e) => setDraftForm((f) => ({ ...f, month: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1">
-                  {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-                </select>
+            {unmarkedWarning ? (
+              <div className="space-y-3">
+                <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm border border-red-200">
+                  <p className="font-semibold mb-1">Unmarked Attendances Found</p>
+                  <p className="mb-2">Please ask HR/Admin to update attendance with a warning first. If you continue, these days will be treated as ABSENT (LOP).</p>
+                  <div className="max-h-32 overflow-y-auto text-xs space-y-1">
+                    {Array.from(new Set(unmarkedWarning.map((u: any) => `${u.name} (Staff ID: ${u.staffId})`)))
+                      .slice(0, 10)
+                      .map((staffText: string, i: number) => (
+                        <div key={i}>• {staffText}</div>
+                      ))}
+                    {Array.from(new Set(unmarkedWarning.map((u: any) => u.staffId))).length > 10 && (
+                      <div>and {Array.from(new Set(unmarkedWarning.map((u: any) => u.staffId))).length - 10} more staff members...</div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => setUnmarkedWarning(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Go Back</button>
+                  <button onClick={() => handleGenerateDraft(true)} disabled={drafting} className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60">
+                    {drafting ? "Generating…" : "Generate Anyway"}
+                  </button>
+                </div>
               </div>
-              <div>
-                <label className="text-sm font-medium">Year</label>
-                <select value={draftForm.year} onChange={(e) => setDraftForm((f) => ({ ...f, year: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1">
-                  {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((y) => <option key={y}>{y}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowDraft(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleGenerateDraft} disabled={drafting} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
-                {drafting ? "Generating…" : "Generate Draft"}
-              </button>
-            </div>
+            ) : (
+              <>
+                <p className="text-sm text-gray-600">
+                  This will calculate attendance-adjusted salaries for all staff with an active CTC for the selected month.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium">Month</label>
+                    <select value={draftForm.month} onChange={(e) => setDraftForm((f) => ({ ...f, month: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1">
+                      {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Year</label>
+                    <select value={draftForm.year} onChange={(e) => setDraftForm((f) => ({ ...f, year: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1">
+                      {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((y) => <option key={y}>{y}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => setShowDraft(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
+                  <button onClick={() => handleGenerateDraft(false)} disabled={drafting} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                    {drafting ? "Generating…" : "Generate Draft"}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

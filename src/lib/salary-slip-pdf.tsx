@@ -1,166 +1,258 @@
-/**
- * salary-slip-pdf.tsx
- * Client-side salary slip PDF using @react-pdf/renderer.
- * Call generateSalarySlipPdf(entry) → downloads the PDF in the browser.
- */
 import React from "react";
-import { Document, Page, View, Text, StyleSheet, pdf } from "@react-pdf/renderer";
+import { Document, Page, View, Text, Image, StyleSheet, pdf } from "@react-pdf/renderer";
 import { PayrollEntry } from "./hr-api";
+import { SchoolInfo } from "./useSchoolInfo";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 const styles = StyleSheet.create({
-  page: { fontFamily: "Helvetica", fontSize: 10, padding: 40, color: "#111" },
-  header: { borderBottomWidth: 1, borderBottomColor: "#ccc", paddingBottom: 12, marginBottom: 16 },
-  schoolName: { fontSize: 16, fontFamily: "Helvetica-Bold", textAlign: "center" },
-  slipTitle: { fontSize: 11, textAlign: "center", marginTop: 4, color: "#444" },
-  section: { marginBottom: 14 },
-  sectionTitle: { fontSize: 9, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 1, color: "#555", marginBottom: 6, borderBottomWidth: 0.5, borderBottomColor: "#ddd", paddingBottom: 3 },
-  row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
-  label: { color: "#555" },
-  value: { fontFamily: "Helvetica-Bold" },
-  tableHeader: { flexDirection: "row", backgroundColor: "#f5f5f5", borderWidth: 0.5, borderColor: "#ccc", padding: 5 },
-  tableRow: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: "#eee", padding: 5 },
-  col1: { flex: 3 },
-  col2: { flex: 1, textAlign: "right" },
-  totalRow: { flexDirection: "row", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "#aaa", paddingTop: 6, marginTop: 4 },
-  totalLabel: { fontFamily: "Helvetica-Bold", fontSize: 11 },
-  totalValue: { fontFamily: "Helvetica-Bold", fontSize: 11 },
-  netPay: { marginTop: 16, backgroundColor: "#1e3a5f", padding: 12, borderRadius: 4 },
-  netPayText: { color: "white", fontFamily: "Helvetica-Bold", fontSize: 13, textAlign: "center" },
-  footer: { marginTop: 24, borderTopWidth: 0.5, borderTopColor: "#ccc", paddingTop: 8, color: "#888", fontSize: 8, textAlign: "center" },
+  page: { fontFamily: "Helvetica", fontSize: 10, padding: 30, color: "#111" },
+  
+  // Header
+  headerContainer: { flexDirection: "row", alignItems: "center", borderBottomWidth: 1.5, borderBottomColor: "#333", paddingBottom: 10, marginBottom: 20 },
+  logo: { width: 60, height: 60, marginRight: 15 },
+  schoolInfoContainer: { flex: 1 },
+  schoolName: { fontSize: 18, fontFamily: "Helvetica-Bold", color: "#000" },
+  tagline: { fontSize: 10, color: "#555", marginTop: 2, fontStyle: "italic" },
+  address: { fontSize: 9, color: "#666", marginTop: 2 },
+  contacts: { fontSize: 9, color: "#666", marginTop: 1 },
+
+  // Title
+  titleContainer: { alignItems: "center", marginBottom: 15 },
+  slipTitle: { fontSize: 14, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 1 },
+
+  // Sections
+  section: { marginBottom: 15, borderWidth: 1, borderColor: "#ccc", borderRadius: 4 },
+  sectionTitle: { backgroundColor: "#f0f0f0", padding: 6, fontSize: 10, fontFamily: "Helvetica-Bold", borderBottomWidth: 1, borderBottomColor: "#ccc" },
+  
+  // Grid / Layouts
+  gridRow: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: "#eee" },
+  gridCol: { flex: 1, flexDirection: "row", padding: 6, borderRightWidth: 0.5, borderRightColor: "#eee" },
+  gridColNoBorder: { borderRightWidth: 0 },
+  label: { color: "#555", width: 90, fontSize: 9 },
+  value: { fontFamily: "Helvetica-Bold", fontSize: 9, flex: 1 },
+
+  // Split Tables (Earnings / Deductions)
+  splitTableContainer: { flexDirection: "row", borderWidth: 1, borderColor: "#ccc", borderRadius: 4, marginBottom: 15 },
+  halfTable: { flex: 1 },
+  halfTableLeft: { borderRightWidth: 1, borderRightColor: "#ccc" },
+  tableHeaderRow: { flexDirection: "row", backgroundColor: "#f0f0f0", borderBottomWidth: 1, borderBottomColor: "#ccc", padding: 6 },
+  tableRow: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: "#eee", padding: 6 },
+  tableColDesc: { flex: 1, fontSize: 9 },
+  tableColAmt: { width: 70, textAlign: "right", fontSize: 9 },
+  tableColHeader: { fontFamily: "Helvetica-Bold", fontSize: 9 },
+
+  // Totals
+  tableTotalRow: { flexDirection: "row", borderTopWidth: 1, borderTopColor: "#aaa", padding: 6, backgroundColor: "#fafafa" },
+  totalLabel: { flex: 1, fontFamily: "Helvetica-Bold", fontSize: 9 },
+  totalValue: { width: 70, textAlign: "right", fontFamily: "Helvetica-Bold", fontSize: 9 },
+
+  // Net Pay
+  netPayContainer: { flexDirection: "row", justifyContent: "flex-end", marginTop: 10, marginBottom: 20 },
+  netPayBox: { backgroundColor: "#f8f9fa", borderWidth: 1, borderColor: "#333", padding: 12, borderRadius: 4, alignItems: "flex-end" },
+  netPayLabel: { fontSize: 10, color: "#555" },
+  netPayValue: { fontSize: 16, fontFamily: "Helvetica-Bold", color: "#000", marginTop: 4 },
+  
+  // Footer
+  footer: { position: "absolute", bottom: 30, left: 30, right: 30, borderTopWidth: 0.5, borderTopColor: "#ccc", paddingTop: 10, textAlign: "center", color: "#888", fontSize: 8 },
 });
 
 interface SalarySlipProps {
   entry: PayrollEntry;
-  schoolName?: string;
+  schoolInfo?: SchoolInfo;
   month?: number;
   year?: number;
 }
 
-function SalarySlipDocument({ entry, schoolName = "School", month, year }: SalarySlipProps) {
+function SalarySlipDocument({ entry, schoolInfo, month, year }: SalarySlipProps) {
   const snapshot = entry.componentsSnapshot ?? {};
 
   const staffName = entry.staff
     ? `${entry.staff.user.firstName} ${entry.staff.user.lastName}`
     : `Staff #${entry.staffId}`;
-  const designation = entry.staff?.designation ?? "—";
-  const empCode = entry.staff?.employeeCode ? `EMP-${entry.staff.employeeCode}` : `#${entry.staffId}`;
+  
+  const rawDesignation = entry.staff?.designation;
+  const designation = typeof rawDesignation === 'string' 
+    ? rawDesignation 
+    : (rawDesignation as any)?.title ?? "—";
+  
+  const empCode = entry.staff?.employeeCode ? `${entry.staff.employeeCode}` : `#${entry.staffId}`;
 
-  // Separate earnings and deductions from snapshot
+  // Separate earnings and deductions
   const earnings: { label: string; amount: number }[] = [];
   const deductions: { label: string; amount: number }[] = [];
 
   Object.entries(snapshot).forEach(([key, val]) => {
-    if (typeof val !== "number") return;
-    // Heuristic: keys ending in _DED or containing DEDUCTION, PF, PT, TDS are deductions
-    const deductionKeys = ["PF", "PT", "TDS", "LOP_AMOUNT"];
+    if (typeof val !== "number" || val <= 0) return;
+    const deductionKeys = ["PF", "PT", "TDS", "LOP_AMOUNT", "_DED"];
     if (deductionKeys.some((dk) => key.toUpperCase().includes(dk))) {
-      if (val > 0) deductions.push({ label: key, amount: val });
+      deductions.push({ label: key, amount: val });
     } else {
-      if (val > 0) earnings.push({ label: key, amount: val });
+      earnings.push({ label: key, amount: val });
     }
+  });
+
+  // Sort earnings: BASIC first, then HRA, TA, DA, then rest
+  const orderMap = { "BASIC": 1, "HRA": 2, "DA": 3, "TA": 4 };
+  earnings.sort((a, b) => {
+    const oa = orderMap[a.label.toUpperCase() as keyof typeof orderMap] || 99;
+    const ob = orderMap[b.label.toUpperCase() as keyof typeof orderMap] || 99;
+    if (oa !== ob) return oa - ob;
+    return a.label.localeCompare(b.label);
   });
 
   const totalEarnings = earnings.reduce((s, e) => s + e.amount, 0);
   const totalDeductions = deductions.reduce((s, d) => s + d.amount, 0);
 
-  // Month/year for the slip header
   const monthYear = month && year
     ? `${MONTHS[month - 1]} ${year}`
     : year
     ? String(year)
     : `${MONTHS[new Date().getMonth()]} ${new Date().getFullYear()}`;
 
-  const fmt = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmt = (n: number) => `Rs. ${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const schoolName = schoolInfo?.name ?? "School";
+
+  // Balance out the table rows to make them equal height
+  const maxRows = Math.max(earnings.length, deductions.length);
+  const earningsList = [...earnings];
+  const deductionsList = [...deductions];
+  while (earningsList.length < maxRows) earningsList.push({ label: "", amount: -1 });
+  while (deductionsList.length < maxRows) deductionsList.push({ label: "", amount: -1 });
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
+        
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.schoolName}>{schoolName}</Text>
-          <Text style={styles.slipTitle}>Salary Slip — {monthYear}</Text>
-        </View>
-
-        {/* Employee details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Employee Details</Text>
-          <View style={styles.row}><Text style={styles.label}>Employee Name</Text><Text style={styles.value}>{staffName}</Text></View>
-          <View style={styles.row}><Text style={styles.label}>Employee Code</Text><Text style={styles.value}>{empCode}</Text></View>
-          <View style={styles.row}><Text style={styles.label}>Designation</Text><Text style={styles.value}>{designation}</Text></View>
-        </View>
-
-        {/* Attendance summary */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Attendance Summary</Text>
-          <View style={styles.row}><Text style={styles.label}>Working Days</Text><Text style={styles.value}>{entry.workingDays}</Text></View>
-          <View style={styles.row}><Text style={styles.label}>Present Days</Text><Text style={styles.value}>{entry.presentDays}</Text></View>
-          <View style={styles.row}><Text style={styles.label}>LOP Days</Text><Text style={styles.value}>{entry.lopDays}</Text></View>
-          <View style={styles.row}><Text style={styles.label}>Paid Days</Text><Text style={styles.value}>{entry.paidDays}</Text></View>
-        </View>
-
-        {/* Earnings table */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Earnings</Text>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.col1, { fontFamily: "Helvetica-Bold" }]}>Component</Text>
-            <Text style={[styles.col2, { fontFamily: "Helvetica-Bold" }]}>Amount</Text>
-          </View>
-          {earnings.map((e, i) => (
-            <View key={i} style={styles.tableRow}>
-              <Text style={styles.col1}>{e.label}</Text>
-              <Text style={styles.col2}>{fmt(e.amount)}</Text>
-            </View>
-          ))}
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total Earnings</Text>
-            <Text style={styles.totalValue}>{fmt(totalEarnings)}</Text>
+        <View style={styles.headerContainer}>
+          {schoolInfo?.logoDataUrl && (
+            <Image src={schoolInfo.logoDataUrl} style={styles.logo} />
+          )}
+          <View style={styles.schoolInfoContainer}>
+            <Text style={styles.schoolName}>{schoolName}</Text>
+            {schoolInfo?.tagline && <Text style={styles.tagline}>{schoolInfo.tagline}</Text>}
+            {schoolInfo?.address && <Text style={styles.address}>{schoolInfo.address}</Text>}
+            {(schoolInfo?.phone || schoolInfo?.email) && (
+              <Text style={styles.contacts}>
+                {[schoolInfo.phone, schoolInfo.email].filter(Boolean).join(" | ")}
+              </Text>
+            )}
           </View>
         </View>
 
-        {/* Deductions table */}
-        {deductions.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Deductions</Text>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.col1, { fontFamily: "Helvetica-Bold" }]}>Component</Text>
-              <Text style={[styles.col2, { fontFamily: "Helvetica-Bold" }]}>Amount</Text>
+        {/* Title */}
+        <View style={styles.titleContainer}>
+          <Text style={styles.slipTitle}>Payslip for {monthYear}</Text>
+        </View>
+
+        {/* Employee Summary Block */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Employee Summary</Text>
+          <View style={styles.gridRow}>
+            <View style={styles.gridCol}>
+              <Text style={styles.label}>Employee Name:</Text>
+              <Text style={styles.value}>{staffName}</Text>
             </View>
-            {deductions.map((d, i) => (
-              <View key={i} style={styles.tableRow}>
-                <Text style={styles.col1}>{d.label}</Text>
-                <Text style={styles.col2}>{fmt(d.amount)}</Text>
+            <View style={[styles.gridCol, styles.gridColNoBorder]}>
+              <Text style={styles.label}>Working Days:</Text>
+              <Text style={styles.value}>{entry.workingDays}</Text>
+            </View>
+          </View>
+          <View style={styles.gridRow}>
+            <View style={styles.gridCol}>
+              <Text style={styles.label}>Employee Code:</Text>
+              <Text style={styles.value}>{empCode}</Text>
+            </View>
+            <View style={[styles.gridCol, styles.gridColNoBorder]}>
+              <Text style={styles.label}>Paid Days:</Text>
+              <Text style={styles.value}>{entry.paidDays}</Text>
+            </View>
+          </View>
+          <View style={[styles.gridRow, { borderBottomWidth: 0 }]}>
+            <View style={styles.gridCol}>
+              <Text style={styles.label}>Designation:</Text>
+              <Text style={styles.value}>{designation}</Text>
+            </View>
+            <View style={[styles.gridCol, styles.gridColNoBorder]}>
+              <Text style={styles.label}>LOP Days:</Text>
+              <Text style={styles.value}>{entry.lopDays}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Earnings and Deductions Side-by-Side */}
+        <View style={styles.splitTableContainer}>
+          
+          {/* Earnings (Left) */}
+          <View style={[styles.halfTable, styles.halfTableLeft]}>
+            <View style={styles.tableHeaderRow}>
+              <Text style={[styles.tableColDesc, styles.tableColHeader]}>Earnings</Text>
+              <Text style={[styles.tableColAmt, styles.tableColHeader]}>Amount</Text>
+            </View>
+            {earningsList.map((e, i) => (
+              <View key={`earning-${i}`} style={styles.tableRow}>
+                <Text style={styles.tableColDesc}>{e.label}</Text>
+                <Text style={styles.tableColAmt}>{e.amount >= 0 ? fmt(e.amount) : ""}</Text>
               </View>
             ))}
-            <View style={styles.totalRow}>
+            <View style={styles.tableTotalRow}>
+              <Text style={styles.totalLabel}>Gross Earnings</Text>
+              <Text style={styles.totalValue}>{fmt(totalEarnings)}</Text>
+            </View>
+          </View>
+
+          {/* Deductions (Right) */}
+          <View style={styles.halfTable}>
+            <View style={styles.tableHeaderRow}>
+              <Text style={[styles.tableColDesc, styles.tableColHeader]}>Deductions</Text>
+              <Text style={[styles.tableColAmt, styles.tableColHeader]}>Amount</Text>
+            </View>
+            {deductionsList.map((d, i) => (
+              <View key={`deduction-${i}`} style={styles.tableRow}>
+                <Text style={styles.tableColDesc}>{d.label}</Text>
+                <Text style={styles.tableColAmt}>{d.amount >= 0 ? fmt(d.amount) : ""}</Text>
+              </View>
+            ))}
+            <View style={styles.tableTotalRow}>
               <Text style={styles.totalLabel}>Total Deductions</Text>
               <Text style={styles.totalValue}>{fmt(totalDeductions)}</Text>
             </View>
           </View>
-        )}
 
-        {/* Net pay */}
-        <View style={styles.netPay}>
-          <Text style={styles.netPayText}>Net Pay: {fmt(entry.netPay)}</Text>
         </View>
 
-        <Text style={styles.footer}>This is a computer-generated salary slip and does not require a signature.</Text>
+        {/* Net Pay */}
+        <View style={styles.netPayContainer}>
+          <View style={styles.netPayBox}>
+            <Text style={styles.netPayLabel}>Net Payable Amount</Text>
+            <Text style={styles.netPayValue}>{fmt(entry.netPay)}</Text>
+          </View>
+        </View>
+
+        {/* Footer */}
+        <Text style={styles.footer}>
+          This is a computer-generated document and does not require a signature.
+        </Text>
       </Page>
     </Document>
   );
 }
 
-/**
- * Generates a salary slip PDF and triggers browser download.
- */
 export async function generateSalarySlipPdf(
   entry: PayrollEntry,
-  opts?: { schoolName?: string; fileName?: string; month?: number; year?: number },
+  opts?: { schoolInfo?: SchoolInfo; fileName?: string; month?: number; year?: number },
 ) {
   const blob = await pdf(
-    <SalarySlipDocument entry={entry} schoolName={opts?.schoolName} month={opts?.month} year={opts?.year} />,
+    <SalarySlipDocument 
+      entry={entry} 
+      schoolInfo={opts?.schoolInfo} 
+      month={opts?.month} 
+      year={opts?.year} 
+    />
   ).toBlob();
+  
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

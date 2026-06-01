@@ -273,10 +273,12 @@ export interface PayrollEntry {
   presentDays: number;
   lopDays: number;
   paidDays: number;
+  monthlyGrossCTC?: number;
   grossEarnings: number;
   totalDeductions: number;
   netPay: number;
   componentsSnapshot: Record<string, number>;
+  payrollRun?: PayrollRun;
   staff?: {
     user: { firstName: string; lastName: string };
     employeeCode?: number;
@@ -470,7 +472,7 @@ export const hrApi = {
       checkOutTime?: string;
       reason?: string;
       hrNote?: string;
-      status?: StaffAttendanceStatus;
+      status?: any;
     }) =>
       req<StaffAttendanceRecord>(
         'POST',
@@ -686,6 +688,8 @@ export const hrApi = {
 
   // ── Employee Salary ───────────────────────────────────────────────────────
   employeeSalary: {
+    listAll: (status?: 'ALL' | 'ACTIVE' | 'HISTORY') => 
+      req<EmployeeSalaryConfig[]>('GET', status ? `/hr/employee-salary?status=${status}` : '/hr/employee-salary'),
     listActive: () => req<EmployeeSalaryConfig[]>('GET', '/hr/employee-salary'),
     history: (staffId: number) =>
       req<EmployeeSalaryConfig[]>(
@@ -708,8 +712,10 @@ export const hrApi = {
   // ── Payroll ───────────────────────────────────────────────────────────────
   payroll: {
     listRuns: () => req<PayrollRun[]>('GET', '/hr/payroll/runs'),
-    generateDraft: (month: number, year: number) =>
-      req<PayrollRun>('POST', '/hr/payroll/runs/draft', { month, year }),
+    generateDraft: (month: number, year: number, force?: boolean) =>
+      req<PayrollRun>('POST', '/hr/payroll/runs/draft', { month, year, force }),
+    deleteDraft: (runId: number) => req<void>('DELETE', `/hr/payroll/runs/${runId}`),
+    refreshDraft: (runId: number) => req<PayrollRun>('POST', `/hr/payroll/runs/${runId}/refresh`),
     finalize: (runId: number) =>
       req<PayrollRun>('PATCH', `/hr/payroll/runs/${runId}/finalize`),
     entries: (runId: number) =>

@@ -28,18 +28,22 @@ export default function SalaryConfigPage() {
   const [ctcStaffId, setCtcStaffId] = useState<number | null>(null);
   const [ctcForm, setCtcForm] = useState({ grossCTC: "", effectiveFrom: todayLocalDate(), componentOverrides: "" });
   const [ctcSearch, setCtcSearch] = useState("");
+  const [ctcStatusFilter, setCtcStatusFilter] = useState<'ALL' | 'ACTIVE' | 'HISTORY'>('ACTIVE');
 
   const load = async () => {
     setLoading(true);
     try {
-      const [comps, cfgs] = await Promise.allSettled([hrApi.salaryComponents.list(), hrApi.employeeSalary.listActive()]);
+      const [comps, cfgs] = await Promise.allSettled([
+        hrApi.salaryComponents.list(), 
+        hrApi.employeeSalary.listAll(ctcStatusFilter)
+      ]);
       if (comps.status === "fulfilled") setComponents(comps.value);
       if (cfgs.status === "fulfilled") setConfigs(cfgs.value);
     } catch { toast.error("Failed to load salary config"); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [ctcStatusFilter]);
 
   // Component handlers
   const handleSeedComps = async () => {
@@ -108,19 +112,31 @@ export default function SalaryConfigPage() {
           </InfoBanner>
           {rbac.canManagePayroll && (
             <div className="flex justify-end">
-              <button onClick={() => setShowCtcForm(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">+ Set CTC</button>
+              <button onClick={() => {
+                setCtcStaffId(null);
+                setCtcForm({ grossCTC: "", effectiveFrom: todayLocalDate(), componentOverrides: "" });
+                setShowCtcForm(true);
+              }} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">+ Set CTC</button>
             </div>
           )}
-          {/* Search */}
-          {!loading && configs.length > 0 && (
+          {/* Search & Filter */}
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               placeholder="Search by name, mobile or staff ID…"
               value={ctcSearch}
               onChange={(e) => setCtcSearch(e.target.value)}
-              className="w-full sm:max-w-sm border rounded-lg px-3 py-2 text-sm"
+              className="flex-1 sm:max-w-sm border rounded-lg px-3 py-2 text-sm"
             />
-          )}
+            <select
+              value={ctcStatusFilter}
+              onChange={(e) => setCtcStatusFilter(e.target.value as any)}
+              className="border rounded-lg px-3 py-2 text-sm text-gray-700"
+            >
+              <option value="ACTIVE">Active Only</option>
+              <option value="ALL">All (Including History)</option>
+            </select>
+          </div>
           {loading ? <p className="text-sm text-gray-500">Loading…</p> : configs.length === 0 ? (
             <div className="text-center py-12 text-gray-500 text-sm">No CTC configurations yet.</div>
           ) : (
@@ -152,6 +168,24 @@ export default function SalaryConfigPage() {
                         <div className="truncate"><span className="text-gray-400">Overrides: </span>{JSON.stringify(c.componentOverrides)}</div>
                       )}
                     </div>
+                    {rbac.canManagePayroll && !c.effectiveTo && (
+                      <div className="pt-2 flex justify-end">
+                        <button
+                          onClick={() => {
+                            setCtcStaffId(c.staffId);
+                            setCtcForm({
+                              grossCTC: c.grossCTC.toString(),
+                              effectiveFrom: todayLocalDate(),
+                              componentOverrides: Object.keys(c.componentOverrides ?? {}).length ? JSON.stringify(c.componentOverrides) : ""
+                            });
+                            setShowCtcForm(true);
+                          }}
+                          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          Revise CTC
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -162,10 +196,11 @@ export default function SalaryConfigPage() {
                   <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
                     <tr>
                       <th className="px-4 py-3 text-left">Staff</th>
-                      <th className="px-4 py-3 text-left">Gross CTC (₹)</th>
+                      <th className="px-4 py-3 text-left">Monthly Gross CTC (₹)</th>
                       <th className="px-4 py-3 text-left">Effective From</th>
                       <th className="px-4 py-3 text-left">Effective To</th>
                       <th className="px-4 py-3 text-left">Overrides</th>
+                      {rbac.canManagePayroll && <th className="px-4 py-3 text-right">Actions</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -186,10 +221,36 @@ export default function SalaryConfigPage() {
                         </td>
                         <td className="px-4 py-3 font-medium">₹{Number(c.grossCTC).toLocaleString("en-IN")}</td>
                         <td className="px-4 py-3">{c.effectiveFrom}</td>
-                        <td className="px-4 py-3">{c.effectiveTo ?? <span className="text-green-600 font-medium">Current</span>}</td>
+                        <td className="px-4 py-3">
+                          {c.effectiveTo ? (
+                            <span className="text-gray-600">{c.effectiveTo}</span>
+                          ) : (
+                            <span className="text-green-600 font-medium">Current</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-xs text-gray-500 max-w-xs truncate">
                           {Object.keys(c.componentOverrides ?? {}).length > 0 ? JSON.stringify(c.componentOverrides) : "—"}
                         </td>
+                        {rbac.canManagePayroll && (
+                          <td className="px-4 py-3 text-right">
+                            {!c.effectiveTo && (
+                              <button
+                                onClick={() => {
+                                  setCtcStaffId(c.staffId);
+                                  setCtcForm({
+                                    grossCTC: c.grossCTC.toString(),
+                                    effectiveFrom: todayLocalDate(),
+                                    componentOverrides: Object.keys(c.componentOverrides ?? {}).length ? JSON.stringify(c.componentOverrides) : ""
+                                  });
+                                  setShowCtcForm(true);
+                                }}
+                                className="text-blue-600 hover:text-blue-800 font-medium px-2 py-1"
+                              >
+                                Revise CTC
+                              </button>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -353,7 +414,7 @@ export default function SalaryConfigPage() {
               required
             />
             <div>
-              <label className="text-sm font-medium">Gross CTC (₹ / month)</label>
+              <label className="text-sm font-medium">Monthly Gross CTC (₹ / month)</label>
               <input type="number" min={0} value={ctcForm.grossCTC} onChange={(e) => setCtcForm((f) => ({ ...f, grossCTC: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
             </div>
             <div>

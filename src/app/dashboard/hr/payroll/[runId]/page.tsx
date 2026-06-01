@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { hrApi, PayrollEntry, PayrollRun } from "@/lib/hr-api";
 import { useRbac } from "@/lib/rbac";
 import { generateSalarySlipPdf } from "@/lib/salary-slip-pdf";
+import { useSchoolInfo } from "@/lib/useSchoolInfo";
 import toast, { Toaster } from "react-hot-toast";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -14,6 +15,7 @@ export default function PayrollRunPage() {
   const runId = Number(params.runId);
   const router = useRouter();
   const rbac = useRbac();
+  const schoolInfo = useSchoolInfo();
 
   const [run, setRun] = useState<PayrollRun | null>(null);
   const [entries, setEntries] = useState<PayrollEntry[]>([]);
@@ -61,10 +63,16 @@ export default function PayrollRunPage() {
   const handleDownloadSlip = async (entry: PayrollEntry) => {
     setDownloadingId(entry.staffId);
     try {
+      const nameParts = [];
+      if (entry.staff?.user?.firstName) nameParts.push(entry.staff.user.firstName);
+      if (entry.staff?.user?.lastName) nameParts.push(entry.staff.user.lastName);
+      const staffName = nameParts.length > 0 ? nameParts.join('-').replace(/\s+/g, '-') : 'Staff';
+      
       await generateSalarySlipPdf(entry, {
-        fileName: `salary-slip-${run ? `${MONTHS[run.month - 1]}-${run.year}` : `run-${runId}`}-staff-${entry.staffId}.pdf`,
+        fileName: `salary-slip-${run ? `${MONTHS[run.month - 1]}-${run.year}` : `run-${runId}`}-${staffName}-${entry.staffId}.pdf`,
         month: run?.month,
         year: run?.year,
+        schoolInfo: schoolInfo || undefined,
       });
     } catch (e: any) { toast.error("PDF generation failed: " + (e?.message ?? "")); }
     finally { setDownloadingId(null); }
@@ -163,16 +171,17 @@ export default function PayrollRunPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="font-semibold text-gray-900 text-sm">{staffName}</p>
-                      {e.staff?.designation && <p className="text-xs text-gray-500">{e.staff.designation}</p>}
+                      {e.staff?.designation && <p className="text-xs text-gray-500">{typeof e.staff.designation === 'string' ? e.staff.designation : (e.staff.designation as any)?.title}</p>}
                     </div>
                     <p className="font-bold text-green-700 shrink-0">{fmt(Number(e.netPay))}</p>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
-                    <div><span className="text-gray-400">Days </span>{e.workingDays}</div>
-                    <div><span className="text-gray-400">Present </span>{e.presentDays}</div>
+                    <div><span className="text-gray-400">Working </span>{e.workingDays}</div>
+                    <div><span className="text-gray-400">Paid </span>{e.paidDays}</div>
                     <div><span className="text-gray-400">LOP </span><span className={e.lopDays > 0 ? "text-red-600" : ""}>{e.lopDays}</span></div>
-                    <div><span className="text-gray-400">Gross </span>{fmt(Number(e.grossEarnings))}</div>
-                    <div className="col-span-2"><span className="text-gray-400">Deductions </span><span className="text-red-600">{fmt(Number(e.totalDeductions))}</span></div>
+                    <div><span className="text-gray-400">Gross (Monthly CTC) </span>{fmt(Number((e as any).monthlyGrossCTC ?? 0))}</div>
+                    <div><span className="text-gray-400">Earned Gross </span>{fmt(Number(e.grossEarnings))}</div>
+                    <div className="col-span-3"><span className="text-gray-400">Deductions </span><span className="text-red-600">{fmt(Number(e.totalDeductions))}</span></div>
                   </div>
                   {Object.keys(snapshot).length > 0 && (
                     <button onClick={() => toggleExpand(e.id)} className="text-xs text-blue-600 hover:underline">
@@ -207,9 +216,10 @@ export default function PayrollRunPage() {
                 <tr>
                   <th className="px-4 py-3 text-left">Staff</th>
                   <th className="px-4 py-3 text-right">Working Days</th>
-                  <th className="px-4 py-3 text-right">Present</th>
+                  <th className="px-4 py-3 text-right">Paid Days</th>
                   <th className="px-4 py-3 text-right">LOP</th>
-                  <th className="px-4 py-3 text-right">Gross (₹)</th>
+                  <th className="px-4 py-3 text-right">Monthly Gross CTC (₹)</th>
+                  <th className="px-4 py-3 text-right">Earned Gross (₹)</th>
                   <th className="px-4 py-3 text-right">Deductions (₹)</th>
                   <th className="px-4 py-3 text-right">Net Pay (₹)</th>
                   <th className="px-4 py-3 text-left">Actions</th>
@@ -227,11 +237,12 @@ export default function PayrollRunPage() {
                     <tr key={e.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
                         <div className="font-medium text-gray-900">{staffName}</div>
-                        {e.staff?.designation && <div className="text-xs text-gray-500">{e.staff.designation}</div>}
+                        {e.staff?.designation && <div className="text-xs text-gray-500">{typeof e.staff.designation === 'string' ? e.staff.designation : (e.staff.designation as any)?.title}</div>}
                       </td>
                       <td className="px-4 py-3 text-right">{e.workingDays}</td>
-                      <td className="px-4 py-3 text-right">{e.presentDays}</td>
+                      <td className="px-4 py-3 text-right">{e.paidDays}</td>
                       <td className="px-4 py-3 text-right">{e.lopDays > 0 ? <span className="text-red-600">{e.lopDays}</span> : 0}</td>
+                      <td className="px-4 py-3 text-right">{fmt(Number((e as any).monthlyGrossCTC ?? 0))}</td>
                       <td className="px-4 py-3 text-right">{fmt(Number(e.grossEarnings))}</td>
                       <td className="px-4 py-3 text-right text-red-600">{fmt(Number(e.totalDeductions))}</td>
                       <td className="px-4 py-3 text-right font-semibold text-green-700">{fmt(Number(e.netPay))}</td>

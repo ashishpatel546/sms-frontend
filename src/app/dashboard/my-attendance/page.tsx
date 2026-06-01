@@ -48,15 +48,19 @@ function findHolidayFor(dateStr: string, holidays: HolidayInfo[]): HolidayInfo |
 /** Calculates duration between two HH:mm:ss strings. Returns "HH:MM:SS" or null. */
 function calcDuration(checkIn?: string, checkOut?: string): string | null {
   if (!checkIn || !checkOut) return null;
-  const base = "1970-01-01T";
-  const inMs = dayjs(base + checkIn).valueOf();
-  const outMs = dayjs(base + checkOut).valueOf();
+  const inMs = checkIn.includes("T") ? dayjs(checkIn).valueOf() : dayjs("1970-01-01T" + checkIn).valueOf();
+  const outMs = checkOut.includes("T") ? dayjs(checkOut).valueOf() : dayjs("1970-01-01T" + checkOut).valueOf();
   if (outMs <= inMs) return null;
   const dur = dayjs.duration(outMs - inMs);
   const hh = String(Math.floor(dur.asHours())).padStart(2, "0");
   const mm = String(dur.minutes()).padStart(2, "0");
   const ss = String(dur.seconds()).padStart(2, "0");
   return `${hh}:${mm}:${ss}`;
+}
+
+function formatTime(val?: string, fallback = "—"): string {
+  if (!val) return fallback;
+  return val.includes("T") ? dayjs(val).format("YYYY-MM-DD HH:mm:ss") : val;
 }
 
 const DURATION_STYLES: Record<string, string> = {
@@ -339,7 +343,7 @@ export default function MyAttendancePage() {
       });
       setTodayRecord(record as any);
       setCheckInState("done");
-      setCheckInMsg(`Checked in as ${(record as any).status} at ${(record as any).checkInTime ?? localTime}`);
+      setCheckInMsg(`Checked in as ${(record as any).status} at ${formatTime((record as any).checkInTime, localTime)}`);
       setRefreshKey((k) => k + 1);
     } catch (e: any) {
       const info = e?.info;
@@ -408,7 +412,7 @@ export default function MyAttendancePage() {
       });
       setTodayRecord(record as any);
       setCheckOutState("done");
-      setCheckOutMsg(`Checked out at ${(record as any).checkOutTime ?? localTime}`);
+      setCheckOutMsg(`Checked out at ${formatTime((record as any).checkOutTime, localTime)}`);
       setRefreshKey((k) => k + 1);
     } catch (e: any) {
       const msg = e?.info?.message ?? "Check-out failed.";
@@ -488,8 +492,8 @@ export default function MyAttendancePage() {
               <div className="flex items-center gap-2 mt-1">
                 <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_STYLES[todayRecord.status] ?? "bg-gray-100"}`}>{todayRecord.status}</span>
                 <span className="text-xs text-gray-500">via {todayRecord.method}</span>
-                {todayRecord.checkInTime && <span className="text-xs text-gray-500">· in {todayRecord.checkInTime}</span>}
-                {todayRecord.checkOutTime && <span className="text-xs text-gray-500">out {todayRecord.checkOutTime}</span>}
+                {todayRecord.checkInTime && <span className="text-xs text-gray-500">· in {formatTime(todayRecord.checkInTime)}</span>}
+                {todayRecord.checkOutTime && <span className="text-xs text-gray-500">out {formatTime(todayRecord.checkOutTime)}</span>}
               </div>
             ) : (
               <p className="text-xs text-gray-500 mt-1">
@@ -834,8 +838,8 @@ export default function MyAttendancePage() {
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
                   </div>
                   <div className="text-xs text-gray-600 flex gap-4 flex-wrap">
-                    <span><span className="text-gray-400">In: </span>{r.checkInTime ?? "—"}</span>
-                    <span><span className="text-gray-400">Out: </span>{r.checkOutTime ?? "—"}</span>
+                    <span><span className="text-gray-400">In: </span>{formatTime(r.checkInTime)}</span>
+                    <span><span className="text-gray-400">Out: </span>{formatTime(r.checkOutTime)}</span>
                     {dur && <span className={DURATION_STYLES[r.status] ?? "text-gray-600"}>⏱ {dur}</span>}
                     <span className="text-gray-400">{r.method}</span>
                   </div>
@@ -867,8 +871,8 @@ export default function MyAttendancePage() {
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
                       </td>
                       <td className="px-4 py-3 text-gray-500">{r.method}</td>
-                      <td className="px-4 py-3">{r.checkInTime ?? "—"}</td>
-                      <td className="px-4 py-3">{r.checkOutTime ?? "—"}</td>
+                      <td className="px-4 py-3">{formatTime(r.checkInTime)}</td>
+                      <td className="px-4 py-3">{formatTime(r.checkOutTime)}</td>
                       <td className={`px-4 py-3 tabular-nums ${dur ? (DURATION_STYLES[r.status] ?? "text-gray-600") : "text-gray-400"}`}>
                         {dur ?? "—"}
                       </td>
