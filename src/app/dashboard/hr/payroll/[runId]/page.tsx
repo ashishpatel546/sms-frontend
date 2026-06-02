@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { hrApi, PayrollEntry, PayrollRun } from "@/lib/hr-api";
+import { hrApi, ComponentSnapshotItem, PayrollEntry, PayrollRun } from "@/lib/hr-api";
 import { useRbac } from "@/lib/rbac";
 import { generateSalarySlipPdf } from "@/lib/salary-slip-pdf";
 import { useSchoolInfo } from "@/lib/useSchoolInfo";
@@ -94,6 +94,25 @@ export default function PayrollRunPage() {
 
   const fmt = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
+  /**
+   * Normalises a componentsSnapshot entry into a flat list with label, amount,
+   * type, and sort order — handles both the enriched object format (new) and
+   * legacy plain-number format (old payroll entries).
+   */
+  function resolveSnapshotEntries(snapshot: Record<string, ComponentSnapshotItem | number>) {
+    const LEGACY_DEDUCTION_KEYS = ["PF", "PT", "TDS", "LOP_AMOUNT"];
+    return Object.entries(snapshot)
+      .map(([code, val]) => {
+        if (typeof val === "object") {
+          return { code, label: val.name || code, amount: val.amount, isDeduction: val.type === "DEDUCTION", order: val.displayOrder };
+        }
+        const isDeduction = LEGACY_DEDUCTION_KEYS.some((d) => code.toUpperCase().includes(d));
+        return { code, label: code, amount: val, isDeduction, order: 99 };
+      })
+      .filter((e) => e.amount > 0)
+      .sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
+  }
+
   return (
     <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
@@ -163,9 +182,9 @@ export default function PayrollRunPage() {
               const staffName = e.staff ? `${e.staff.user.firstName} ${e.staff.user.lastName}` : `Staff #${e.staffId}`;
               const snapshot = e.componentsSnapshot ?? {};
               const isExpanded = expandedIds.has(e.id);
-              const DEDUCTION_KEYS = ["PF", "PT", "TDS", "LOP_AMOUNT"];
-              const earningEntries = Object.entries(snapshot).filter(([k, v]) => v > 0 && !DEDUCTION_KEYS.some((d) => k.toUpperCase().includes(d)));
-              const deductionEntries = Object.entries(snapshot).filter(([k, v]) => v > 0 && DEDUCTION_KEYS.some((d) => k.toUpperCase().includes(d)));
+              const snapshotEntries = resolveSnapshotEntries(snapshot);
+              const earningEntries = snapshotEntries.filter((s) => !s.isDeduction);
+              const deductionEntries = snapshotEntries.filter((s) => s.isDeduction);
               return (
                 <div key={e.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
@@ -190,11 +209,11 @@ export default function PayrollRunPage() {
                   )}
                   {isExpanded && (
                     <div className="text-xs space-y-1 border-t pt-2">
-                      {earningEntries.map(([k, v]) => (
-                        <div key={k} className="flex justify-between"><span className="text-gray-500">{k}</span><span className="text-green-700">{fmt(v)}</span></div>
+                      {earningEntries.map((s) => (
+                        <div key={s.code} className="flex justify-between"><span className="text-gray-500">{s.label}</span><span className="text-green-700">{fmt(s.amount)}</span></div>
                       ))}
-                      {deductionEntries.map(([k, v]) => (
-                        <div key={k} className="flex justify-between"><span className="text-gray-500">{k}</span><span className="text-red-600">-{fmt(v)}</span></div>
+                      {deductionEntries.map((s) => (
+                        <div key={s.code} className="flex justify-between"><span className="text-gray-500">{s.label}</span><span className="text-red-600">-{fmt(s.amount)}</span></div>
                       ))}
                     </div>
                   )}
@@ -230,9 +249,9 @@ export default function PayrollRunPage() {
                   const staffName = e.staff ? `${e.staff.user.firstName} ${e.staff.user.lastName}` : `Staff #${e.staffId}`;
                   const snapshot = e.componentsSnapshot ?? {};
                   const isExpanded = expandedIds.has(e.id);
-                  const DEDUCTION_KEYS = ["PF", "PT", "TDS", "LOP_AMOUNT"];
-                  const earningEntries = Object.entries(snapshot).filter(([k, v]) => v > 0 && !DEDUCTION_KEYS.some((d) => k.toUpperCase().includes(d)));
-                  const deductionEntries = Object.entries(snapshot).filter(([k, v]) => v > 0 && DEDUCTION_KEYS.some((d) => k.toUpperCase().includes(d)));
+                  const snapshotEntries = resolveSnapshotEntries(snapshot);
+                  const earningEntries = snapshotEntries.filter((s) => !s.isDeduction);
+                  const deductionEntries = snapshotEntries.filter((s) => s.isDeduction);
                   return (
                     <tr key={e.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
@@ -258,11 +277,11 @@ export default function PayrollRunPage() {
                         </div>
                         {isExpanded && (
                           <div className="mt-2 text-xs space-y-0.5 border-t pt-1">
-                            {earningEntries.map(([k, v]) => (
-                              <div key={k} className="flex justify-between gap-4"><span className="text-gray-500">{k}</span><span className="text-green-700">{fmt(v)}</span></div>
+                            {earningEntries.map((s) => (
+                              <div key={s.code} className="flex justify-between gap-4"><span className="text-gray-500">{s.label}</span><span className="text-green-700">{fmt(s.amount)}</span></div>
                             ))}
-                            {deductionEntries.map(([k, v]) => (
-                              <div key={k} className="flex justify-between gap-4"><span className="text-gray-500">{k}</span><span className="text-red-600">-{fmt(v)}</span></div>
+                            {deductionEntries.map((s) => (
+                              <div key={s.code} className="flex justify-between gap-4"><span className="text-gray-500">{s.label}</span><span className="text-red-600">-{fmt(s.amount)}</span></div>
                             ))}
                           </div>
                         )}

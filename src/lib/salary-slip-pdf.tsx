@@ -1,6 +1,6 @@
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet, pdf } from "@react-pdf/renderer";
-import { PayrollEntry } from "./hr-api";
+import { ComponentSnapshotItem, PayrollEntry } from "./hr-api";
 import { SchoolInfo } from "./useSchoolInfo";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -79,27 +79,36 @@ function SalarySlipDocument({ entry, schoolInfo, month, year }: SalarySlipProps)
   const empCode = entry.staff?.employeeCode ? `${entry.staff.employeeCode}` : `#${entry.staffId}`;
 
   // Separate earnings and deductions
-  const earnings: { label: string; amount: number }[] = [];
-  const deductions: { label: string; amount: number }[] = [];
+  // Supports both the enriched format { amount, name, type, displayOrder }
+  // and the legacy plain-number format for entries created before the migration.
+  const earnings: { label: string; amount: number; order: number }[] = [];
+  const deductions: { label: string; amount: number; order: number }[] = [];
+  const LEGACY_DEDUCTION_KEYS = ["PF", "PT", "TDS", "LOP_AMOUNT", "_DED"];
 
   Object.entries(snapshot).forEach(([key, val]) => {
-    if (typeof val !== "number" || val <= 0) return;
-    const deductionKeys = ["PF", "PT", "TDS", "LOP_AMOUNT", "_DED"];
-    if (deductionKeys.some((dk) => key.toUpperCase().includes(dk))) {
-      deductions.push({ label: key, amount: val });
+    if (!val) return;
+    if (typeof val === "object") {
+      // Enriched format — use stored metadata
+      const item = val as ComponentSnapshotItem;
+      if (item.amount <= 0) return;
+      if (item.type === "DEDUCTION") {
+        deductions.push({ label: item.name || key, amount: item.amount, order: item.displayOrder });
+      } else {
+        earnings.push({ label: item.name || key, amount: item.amount, order: item.displayOrder });
+      }
     } else {
-      earnings.push({ label: key, amount: val });
+      // Legacy format — infer type from code heuristic
+      if (val <= 0) return;
+      if (LEGACY_DEDUCTION_KEYS.some((dk) => key.toUpperCase().includes(dk))) {
+        deductions.push({ label: key, amount: val, order: 99 });
+      } else {
+        earnings.push({ label: key, amount: val, order: 99 });
+      }
     }
   });
 
-  // Sort earnings: BASIC first, then HRA, TA, DA, then rest
-  const orderMap = { "BASIC": 1, "HRA": 2, "DA": 3, "TA": 4 };
-  earnings.sort((a, b) => {
-    const oa = orderMap[a.label.toUpperCase() as keyof typeof orderMap] || 99;
-    const ob = orderMap[b.label.toUpperCase() as keyof typeof orderMap] || 99;
-    if (oa !== ob) return oa - ob;
-    return a.label.localeCompare(b.label);
-  });
+  earnings.sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
+  deductions.sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
 
   const totalEarnings = earnings.reduce((s, e) => s + e.amount, 0);
   const totalDeductions = deductions.reduce((s, d) => s + d.amount, 0);

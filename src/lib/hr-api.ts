@@ -218,6 +218,18 @@ export interface AttendanceBypassWindow {
   createdAt: string;
 }
 
+/**
+ * Per-component value stored inside a payroll entry's componentsSnapshot.
+ * New entries use this rich format; legacy entries may have plain numbers —
+ * always check `typeof val === 'object'` before reading fields.
+ */
+export interface ComponentSnapshotItem {
+  amount: number;
+  name: string;
+  type: 'EARNING' | 'DEDUCTION';
+  displayOrder: number;
+}
+
 export interface SalaryComponentDef {
   id: number;
   name: string;
@@ -277,7 +289,7 @@ export interface PayrollEntry {
   grossEarnings: number;
   totalDeductions: number;
   netPay: number;
-  componentsSnapshot: Record<string, number>;
+  componentsSnapshot: Record<string, ComponentSnapshotItem | number>;
   payrollRun?: PayrollRun;
   staff?: {
     user: { firstName: string; lastName: string };
@@ -688,8 +700,11 @@ export const hrApi = {
 
   // ── Employee Salary ───────────────────────────────────────────────────────
   employeeSalary: {
-    listAll: (status?: 'ALL' | 'ACTIVE' | 'HISTORY') => 
-      req<EmployeeSalaryConfig[]>('GET', status ? `/hr/employee-salary?status=${status}` : '/hr/employee-salary'),
+    listAll: (status?: 'ALL' | 'ACTIVE' | 'HISTORY') =>
+      req<EmployeeSalaryConfig[]>(
+        'GET',
+        status ? `/hr/employee-salary?status=${status}` : '/hr/employee-salary',
+      ),
     listActive: () => req<EmployeeSalaryConfig[]>('GET', '/hr/employee-salary'),
     history: (staffId: number) =>
       req<EmployeeSalaryConfig[]>(
@@ -714,8 +729,10 @@ export const hrApi = {
     listRuns: () => req<PayrollRun[]>('GET', '/hr/payroll/runs'),
     generateDraft: (month: number, year: number, force?: boolean) =>
       req<PayrollRun>('POST', '/hr/payroll/runs/draft', { month, year, force }),
-    deleteDraft: (runId: number) => req<void>('DELETE', `/hr/payroll/runs/${runId}`),
-    refreshDraft: (runId: number) => req<PayrollRun>('POST', `/hr/payroll/runs/${runId}/refresh`),
+    deleteDraft: (runId: number) =>
+      req<void>('DELETE', `/hr/payroll/runs/${runId}`),
+    refreshDraft: (runId: number) =>
+      req<PayrollRun>('POST', `/hr/payroll/runs/${runId}/refresh`),
     finalize: (runId: number) =>
       req<PayrollRun>('PATCH', `/hr/payroll/runs/${runId}/finalize`),
     entries: (runId: number) =>
