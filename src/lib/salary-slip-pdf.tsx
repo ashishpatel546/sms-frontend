@@ -127,8 +127,8 @@ function SalarySlipDocument({ entry, schoolInfo, month, year }: SalarySlipProps)
   const maxRows = Math.max(earnings.length, deductions.length);
   const earningsList = [...earnings];
   const deductionsList = [...deductions];
-  while (earningsList.length < maxRows) earningsList.push({ label: "", amount: -1 });
-  while (deductionsList.length < maxRows) deductionsList.push({ label: "", amount: -1 });
+  while (earningsList.length < maxRows) earningsList.push({ label: "", amount: -1, order: 99 });
+  while (deductionsList.length < maxRows) deductionsList.push({ label: "", amount: -1, order: 99 });
 
   return (
     <Document>
