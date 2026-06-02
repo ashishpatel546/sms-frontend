@@ -11,6 +11,7 @@ const ROLE_LEVEL: Record<string, number> = {
     ADMIN: 80,
     HR_ADMIN: 70,
     SUB_ADMIN: 60,
+    LIBRARIAN: 50,
     TEACHER: 40,
     PARENT: 20,
     STUDENT: 10,
@@ -76,6 +77,10 @@ export interface RbacPermissions {
     canManagePayroll: boolean;
     /** HR Portal: is the user an HR_ADMIN specifically */
     isHrAdmin: boolean;
+    /** Library: is the user a LIBRARIAN specifically */
+    isLibrarian: boolean;
+    /** Library: can manage books, issuances, settings (LIBRARIAN, ADMIN, SUPER_ADMIN) */
+    canManageLibrary: boolean;
 }
 
 /**
@@ -128,5 +133,7 @@ export function useRbac(): RbacPermissions {
         canManageHR: level >= 70,
         canManagePayroll: level >= 70,
         isHrAdmin: level === 70,
+        isLibrarian: user?.role === 'LIBRARIAN',
+        canManageLibrary: ['LIBRARIAN', 'ADMIN', 'SUPER_ADMIN', 'SYSTEM_ADMIN'].includes(user?.role ?? ''),
     };
 }

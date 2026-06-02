@@ -17,14 +17,117 @@ import { hrApi, PayrollMonthlySummary } from "@/lib/hr-api";
 
 const COLORS = ['#0ea5e9', '#f43f5e', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'];
 
+// ── Library Fees Report (used inside reports page) ────────────────────────────
+
+function LibraryFeesReportSection() {
+    const [data, setData] = useState<any>(null);
+    const [fromDate, setFromDate] = useState('');
+    const [toDate, setToDate] = useState('');
+    const [page, setPage] = useState(1);
+    const [loading, setLoading] = useState(false);
+    const LIMIT = 20;
+    const fmtTs = (d: string) => new Date(d).toISOString().replace('T', ' ').substring(0, 19);
+
+    const load = async (p: number) => {
+        setLoading(true);
+        try {
+            const q = new URLSearchParams({ page: String(p), limit: String(LIMIT) });
+            if (fromDate) q.set('fromDate', fromDate);
+            if (toDate) q.set('toDate', toDate);
+            const res = await authFetch(`${API_BASE_URL}/library/reports/fees?${q}`);
+            if (!res.ok) throw new Error();
+            setData(await res.json());
+        } catch { toast.error('Failed to load library fees'); } finally { setLoading(false); }
+    };
+
+    useEffect(() => { load(1); }, []);
+
+    const downloadCsv = async () => {
+        const q = new URLSearchParams({ export: 'csv', limit: '10000' });
+        if (fromDate) q.set('fromDate', fromDate);
+        if (toDate) q.set('toDate', toDate);
+        const res = await authFetch(`${API_BASE_URL}/library/reports/fees?${q}`);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'library-fees.csv'; a.click();
+    };
+
+    return (
+        <div className="space-y-4">
+            {data?.summary && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {[['Total Charged', data.summary.totalCharged, 'text-slate-700'], ['Collected', data.summary.totalCollected, 'text-green-600'], ['Waived', data.summary.totalWaived, 'text-amber-600'], ['Outstanding', data.summary.totalOutstanding, 'text-red-600']].map(([l, v, c]) => (
+                        <div key={String(l)} className="bg-white border border-slate-200 rounded-xl p-4 text-center shadow-sm">
+                            <div className={`text-2xl font-bold ${c}`}>₹{Number(v).toFixed(2)}</div>
+                            <div className="text-xs text-slate-500 mt-1">{l}</div>
+                        </div>
+                    ))}
+                </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+                <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="border border-gray-300 rounded-lg text-sm p-2 bg-gray-50" />
+                <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="border border-gray-300 rounded-lg text-sm p-2 bg-gray-50" />
+                <button onClick={() => load(1)} className="px-4 py-2 rounded-lg bg-lime-600 text-white text-sm hover:bg-lime-700">Search</button>
+                <button onClick={downloadCsv} className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-300 text-sm hover:bg-slate-100">
+                    <Download className="w-4 h-4" /> Export CSV
+                </button>
+            </div>
+            {loading ? (
+                <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-lime-600 border-t-transparent rounded-full animate-spin" /></div>
+            ) : (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead className="bg-slate-50">
+                            <tr className="text-slate-500 text-left">
+                                <th className="px-4 py-3">Book</th>
+                                <th className="px-4 py-3">Borrower</th>
+                                <th className="px-4 py-3 text-right">Charged</th>
+                                <th className="px-4 py-3 text-right">Paid</th>
+                                <th className="px-4 py-3 text-right">Waived</th>
+                                <th className="px-4 py-3">Method</th>
+                                <th className="px-4 py-3">Collected At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {data?.data?.map((r: any) => (
+                                <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
+                                    <td className="px-4 py-3">{r.issuance?.book?.title ?? `#${r.issuanceId}`}</td>
+                                    <td className="px-4 py-3">
+                                        {r.issuance?.borrowerType === 'STUDENT'
+                                            ? r.issuance.student ? `${r.issuance.student.firstName} ${r.issuance.student.lastName}` : '—'
+                                            : r.issuance?.staff ? `${r.issuance.staff.firstName} ${r.issuance.staff.lastName}` : '—'}
+                                    </td>
+                                    <td className="px-4 py-3 text-right">₹{r.lateFeeCharged}</td>
+                                    <td className="px-4 py-3 text-right text-green-600">₹{r.amountPaid}</td>
+                                    <td className="px-4 py-3 text-right text-amber-600">₹{r.amountWaived}</td>
+                                    <td className="px-4 py-3">{r.paymentMethod ?? '—'}</td>
+                                    <td className="px-4 py-3 text-xs">{r.collectedAt ? fmtTs(r.collectedAt) : '—'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    {data && (
+                        <div className="flex items-center justify-center gap-1 p-3 border-t">
+                            <button disabled={page === 1} onClick={() => { setPage(p => p - 1); load(page - 1); }} className="px-2 py-1 rounded border text-sm disabled:opacity-40">‹</button>
+                            <span className="text-sm text-slate-600 px-2">Page {page} of {Math.ceil((data.total ?? 0) / LIMIT) || 1}</span>
+                            <button disabled={page >= Math.ceil((data.total ?? 0) / LIMIT)} onClick={() => { setPage(p => p + 1); load(page + 1); }} className="px-2 py-1 rounded border text-sm disabled:opacity-40">›</button>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function ReportsDashboard() {
     const router = useRouter();
     const rbac = useRbac();
     const [mounted, setMounted] = useState(false);
-    const [activeTab, setActiveTab] = useState<'FEES' | 'PENDING_DUES' | 'FEE_RECEIVED' | 'EXAMINATIONS' | 'ATTENDANCE' | 'STUDENTS' | 'STAFF' | 'SALARY'>('FEES');
+    const [activeTab, setActiveTab] = useState<'FEES' | 'PENDING_DUES' | 'FEE_RECEIVED' | 'EXAMINATIONS' | 'ATTENDANCE' | 'STUDENTS' | 'STAFF' | 'SALARY' | 'LIBRARY_FEES'>('FEES');
 
     // HR Portal
     const [hrPortalEnabled, setHrPortalEnabled] = useState(false);
+    const [libraryEnabled, setLibraryEnabled] = useState(false);
     const [salaryYear, setSalaryYear] = useState(new Date().getFullYear());
     const [salaryData, setSalaryData] = useState<PayrollMonthlySummary[]>([]);
 
@@ -277,7 +380,7 @@ export default function ReportsDashboard() {
     useEffect(() => {
         authFetch(`${API_BASE_URL}/school/features`)
             .then((r) => r.ok ? r.json() : null)
-            .then((data) => { if (data?.hr_portal) setHrPortalEnabled(true); })
+            .then((data) => { if (data?.hr_portal) setHrPortalEnabled(true); if (data?.library_management) setLibraryEnabled(true); })
             .catch(() => {});
     }, []);
 
@@ -655,6 +758,19 @@ export default function ReportsDashboard() {
                     >
                         <Wallet className="w-4 h-4" />
                         Salary
+                    </button>
+                )}
+                {libraryEnabled && (
+                    <button
+                        onClick={() => setActiveTab('LIBRARY_FEES')}
+                        className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${
+                            activeTab === 'LIBRARY_FEES'
+                                ? "bg-white text-lime-700 shadow-sm ring-1 ring-black/5"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                        }`}
+                    >
+                        <Download className="w-4 h-4" />
+                        Library Fees
                     </button>
                 )}
             </div>
@@ -1800,6 +1916,10 @@ export default function ReportsDashboard() {
                         </>
                     )}
                 </div>
+            )}
+
+            {activeTab === 'LIBRARY_FEES' && libraryEnabled && (
+                <LibraryFeesReportSection />
             )}
 
             {showNotifModal && (

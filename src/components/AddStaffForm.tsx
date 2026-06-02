@@ -11,6 +11,7 @@ import { AppDatePicker } from "@/components/ui/AppDatePicker";
 const ROLE_LABELS: Record<string, string> = {
     ADMIN: "Admin",
     SUB_ADMIN: "Sub Admin",
+    LIBRARIAN: "Librarian",
     TEACHER: "Teacher",
 };
 
@@ -295,7 +296,7 @@ export default function AddStaffForm({
         }
     };
 
-    const editableRoles = isSuperAdmin ? ["ADMIN", "SUB_ADMIN", "TEACHER"] : ["SUB_ADMIN", "TEACHER"];
+    const editableRoles = isSuperAdmin ? ["ADMIN", "SUB_ADMIN", "LIBRARIAN", "TEACHER"] : ["SUB_ADMIN", "LIBRARIAN", "TEACHER"];
 
     return (
         <>
