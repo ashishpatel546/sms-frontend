@@ -20,6 +20,7 @@ import { AnimatedLoader } from "@/components/ui/AnimatedLoader";
 import { AttendanceBottomSheet } from "./components/AttendanceBottomSheet";
 import { HomeworkBottomSheet } from "./components/HomeworkBottomSheet";
 import FeesBottomSheet from "./components/FeesBottomSheet";
+import { useLibraryIssuances } from "./hooks/useStudentData";
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -44,7 +45,7 @@ const LEAVE_TYPE_LABELS: Record<string, string> = {
 };
 const fmtDate = (d: string) => { const [y, m, day] = d.split("-"); return `${day}/${m}/${y}`; };
 
-type ActiveSection = "home" | "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework" | "pickup" | "leaves";
+type ActiveSection = "home" | "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework" | "pickup" | "leaves" | "library";
 
 declare global {
     interface Window {
@@ -572,7 +573,7 @@ export default function StudentDashboardPage() {
             <div
                 role="tablist"
                 aria-label="Student sections"
-                className="grid grid-cols-5 lg:grid-cols-10 gap-2 bg-surface border border-slate-200 rounded-2xl p-2.5 animate-slide-up shadow-soft"
+                className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-11 gap-2 bg-surface border border-slate-200 rounded-2xl p-2.5 animate-slide-up shadow-soft"
                 style={{ animationDelay: '50ms' }}
             >
                 {([
@@ -581,6 +582,7 @@ export default function StudentDashboardPage() {
                     ["homework",      "📚", "Homework"],
                     ["fees",          "💰", "Fees"],
                     ["results",       "📝", "Results"],
+                    ["library",       "📖", "Library"],
                     ["leaves",        "🗓️", "Leaves"],
                     ["pickup",        "📱", "Pickup QR"],
                     ["exam-schedule", "📅", "Schedule"],
@@ -617,7 +619,7 @@ export default function StudentDashboardPage() {
                                 else if (section === "holidays") { setSectionLoading(true); fetchHolidays(); }
                             } else {
                                 setActiveSection(section);
-                                if (section !== 'info' && section !== 'exam-schedule' && section !== 'pickup' && section !== 'home') setSectionLoading(true);
+                                if (section !== 'info' && section !== 'exam-schedule' && section !== 'pickup' && section !== 'home' && section !== 'library') setSectionLoading(true);
                             }
                         }}
                         className={`flex flex-col items-center justify-center gap-1 py-2 px-1 min-h-14 rounded-xl font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${activeSection === key ? "bg-brand text-white shadow-md shadow-brand/20 dark:bg-white dark:text-slate-900 dark:shadow-slate-900/20" : "text-ink-muted hover:text-ink hover:bg-brand/5 bg-white border border-slate-200 hover:border-brand/30 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20"}`}
@@ -645,6 +647,15 @@ export default function StudentDashboardPage() {
                             className="animate-scale-in"
                         >
                             <HomeSection studentId={studentId as string} academicYearString={academicYearString} sessionId={academicSessionId} onChangeSection={(sec) => setActiveSection(sec as ActiveSection)} />
+                        </div>
+                    )}
+
+                    {/* ════════════════════════════════
+                        LIBRARY TAB
+                    ════════════════════════════════ */}
+                    {activeSection === "library" && (
+                        <div id="tabpanel-library" role="tabpanel" aria-labelledby="tab-library" className="animate-scale-in">
+                            <StudentLibrarySection studentId={studentId as string} />
                         </div>
                     )}
 
@@ -2045,6 +2056,109 @@ export default function StudentDashboardPage() {
                     setSectionLoading(true);
                 }}
             />
+        </div>
+    );
+}
+
+// ── Student Library Section ────────────────────────────────────────────────────
+
+function StudentLibrarySection({ studentId }: { studentId: string }) {
+    const { data, isLoading, error } = useLibraryIssuances(studentId);
+
+    const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
+        ISSUED:   { label: 'Issued',   color: 'text-blue-700 dark:text-blue-300',  bg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700' },
+        OVERDUE:  { label: 'Overdue',  color: 'text-red-700 dark:text-red-300',    bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700' },
+        RETURNED: { label: 'Returned', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700' },
+    };
+
+    const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+    return (
+        <div className="space-y-4">
+            {/* Header card */}
+            <div className="flex items-center gap-3 bg-gradient-to-r from-lime-500 to-emerald-600 rounded-2xl p-5 text-white shadow-lg shadow-emerald-500/20">
+                <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl shrink-0">📖</div>
+                <div>
+                    <h2 className="font-bold text-lg leading-tight">My Library Books</h2>
+                    <p className="text-emerald-100 text-sm">Books currently issued or recently returned</p>
+                </div>
+            </div>
+
+            {isLoading ? (
+                <div className="flex justify-center py-16">
+                    <div className="w-8 h-8 border-3 border-lime-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+            ) : error ? (
+                <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-2xl p-8 text-center">
+                    <div className="text-4xl mb-3">📚</div>
+                    <p className="text-ink font-semibold">Library not available</p>
+                    <p className="text-ink-muted text-sm mt-1">Library feature may not be enabled for your school.</p>
+                </div>
+            ) : !data?.data?.length ? (
+                <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-2xl p-8 text-center">
+                    <div className="text-5xl mb-3">📚</div>
+                    <p className="text-ink font-semibold text-lg">No books issued</p>
+                    <p className="text-ink-muted text-sm mt-1">You have no books currently issued or in recent history.</p>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {data.data.map((item: any) => {
+                        const cfg = statusConfig[item.status] ?? statusConfig['ISSUED'];
+                        const isOverdue = item.status === 'OVERDUE';
+                        const daysOverdue = isOverdue
+                            ? Math.ceil((Date.now() - new Date(item.dueDate).getTime()) / 86400000)
+                            : 0;
+                        const hasLateFee = item.lateFeeCharged > 0;
+                        return (
+                            <div key={item.id} className={`bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border rounded-2xl p-4 shadow-soft transition-all ${isOverdue ? 'border-red-200 dark:border-red-700' : 'border-slate-200 dark:border-slate-700'}`}>
+                                <div className="flex items-start gap-3">
+                                    {/* Book icon */}
+                                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 border ${cfg.bg}`}>
+                                        {item.status === 'RETURNED' ? '✅' : isOverdue ? '⚠️' : '📗'}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-start justify-between gap-2 flex-wrap">
+                                            <p className="font-semibold text-ink text-sm leading-tight">{item.book?.title ?? 'Unknown Book'}</p>
+                                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border shrink-0 ${cfg.color} ${cfg.bg}`}>{cfg.label}</span>
+                                        </div>
+                                        {item.book?.author && (
+                                            <p className="text-xs text-ink-muted mt-0.5">by {item.book.author}</p>
+                                        )}
+                                        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+                                            <p className="text-xs text-ink-muted">
+                                                <span className="font-medium text-ink">Issued:</span> {fmtDate(item.issueDate)}
+                                            </p>
+                                            <p className={`text-xs ${isOverdue ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-ink-muted'}`}>
+                                                <span className={`font-medium ${isOverdue ? '' : 'text-ink'}`}>Due:</span> {fmtDate(item.dueDate)}
+                                            </p>
+                                            {item.returnDate && (
+                                                <p className="text-xs text-ink-muted">
+                                                    <span className="font-medium text-ink">Returned:</span> {fmtDate(item.returnDate)}
+                                                </p>
+                                            )}
+                                        </div>
+                                        {isOverdue && (
+                                            <div className="mt-2 flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 font-medium">
+                                                <span>⏰</span>
+                                                <span>{daysOverdue} day{daysOverdue !== 1 ? 's' : ''} overdue{hasLateFee ? ` · Late fee: ₹${item.lateFeeCharged}` : ''}</span>
+                                            </div>
+                                        )}
+                                        {hasLateFee && item.status === 'RETURNED' && (
+                                            <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                                                <span>💰</span>
+                                                <span>Late fee charged: ₹{item.lateFeeCharged} · Paid: ₹{item.lateFeePayment?.amountPaid ?? 0}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {data.total > data.data.length && (
+                        <p className="text-center text-sm text-ink-muted py-2">Showing {data.data.length} of {data.total} records</p>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
