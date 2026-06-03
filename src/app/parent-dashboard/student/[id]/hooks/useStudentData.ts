@@ -104,3 +104,13 @@ export function useNotifications() {
     },
   );
 }
+
+export function useLibraryIssuances(studentId: string, page = 1, limit = 10) {
+  return useSWR(
+    studentId
+      ? `${API_BASE_URL}/parent/student/${studentId}/library-issuances?page=${page}&limit=${limit}`
+      : null,
+    fetcher,
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  );
+}

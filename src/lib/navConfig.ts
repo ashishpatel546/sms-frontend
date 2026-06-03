@@ -175,6 +175,18 @@ export const NAV_CONFIG: NavGroup[] = [
     ],
   },
   {
+    label: 'Library',
+    items: [
+      {
+        id: 'library',
+        label: 'Library',
+        href: '/dashboard/library',
+        icon: BookOpen,
+        iconColor: 'text-lime-600',
+      },
+    ],
+  },
+  {
     label: 'HR Portal',
     items: [
       {

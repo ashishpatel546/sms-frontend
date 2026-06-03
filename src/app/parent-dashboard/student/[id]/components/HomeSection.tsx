@@ -23,7 +23,6 @@ export const HomeSection = ({ studentId, academicYearString, sessionId, onChange
   const { data: notifications, isLoading: isNotifsLoading } = useNotifications();
   const { data: allHolidays, isLoading: isHolLoading } = useHolidays(studentId);
   const { data: homeworkItems, isLoading: isHwLoading } = useHomework(studentId, todayStr);
-  // Lazy-load exam results in HomeSection itself — SWR de-dupes with Results tab's fetch
   const { data: examResults, isLoading: isExamLoading } = useExamResults(studentId, sessionId ?? null);
 
   // Upcoming holidays — sort by start date, show future ones (or today), cap at 3
