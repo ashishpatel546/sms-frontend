@@ -65,6 +65,7 @@ export default function RootLayout({
     SCHOOL_SLUG: process.env.SCHOOL_SLUG,
     FRONTEND_URL: process.env.FRONTEND_URL,
     VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY,
+    AI_API_URL: process.env.AI_API_URL,
   };
 
   return (

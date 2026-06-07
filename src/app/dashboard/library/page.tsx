@@ -666,7 +666,7 @@ function DiscardModal({ book, onClose, onDiscarded }: { book: Book; onClose: () 
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-red-500 to-rose-600 p-5 text-white">
+        <div className="bg-linear-to-r from-red-500 to-rose-600 p-5 text-white">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
               <BookX className="w-5 h-5" />
@@ -742,7 +742,7 @@ function DiscardModal({ book, onClose, onDiscarded }: { book: Book; onClose: () 
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Cancel</button>
             <button type="submit" disabled={saving || (!isAll && (copies < 1 || copies > book.availableCopies))}
-              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 text-white text-sm font-semibold hover:from-red-600 hover:to-rose-700 disabled:opacity-50 transition-all shadow-sm shadow-red-500/20">
+              className="flex-1 py-2.5 rounded-xl bg-linear-to-r from-red-500 to-rose-600 text-white text-sm font-semibold hover:from-red-600 hover:to-rose-700 disabled:opacity-50 transition-all shadow-sm shadow-red-500/20">
               {saving ? 'Discarding…' : isFullDiscard ? '⚠️ Discard All' : `Discard ${effectiveCopies || '—'} ${effectiveCopies === 1 ? 'Copy' : 'Copies'}`}
             </button>
           </div>

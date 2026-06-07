@@ -25,6 +25,7 @@ import {
   MapPin,
   Shield,
   HelpCircle,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -41,9 +42,11 @@ export interface NavItem {
 }
 
 export interface NavGroup {
-  /** Section header label. If omitted, no header is rendered. */
+  /** Section header label. If omitted, no header is rendered (always visible). */
   label?: string;
   items: NavItem[];
+  /** Whether this group starts expanded. Defaults to false (collapsed). */
+  defaultExpanded?: boolean;
 }
 
 export const NAV_CONFIG: NavGroup[] = [
@@ -305,6 +308,82 @@ export const NAV_CONFIG: NavGroup[] = [
         href: '/dashboard/settings',
         icon: Settings,
         iconColor: 'text-slate-400',
+      },
+    ],
+  },
+  {
+    label: 'AI Tools',
+    items: [
+      {
+        id: 'ai-chat',
+        label: 'AI Chat',
+        href: '/dashboard/ai/chat',
+        icon: Sparkles,
+        iconColor: 'text-violet-500',
+      },
+      {
+        id: 'ai-explain',
+        label: 'Explain Topic',
+        href: '/dashboard/ai/explain',
+        icon: Sparkles,
+        iconColor: 'text-violet-400',
+      },
+      {
+        id: 'ai-quiz',
+        label: 'Practice Quiz',
+        href: '/dashboard/ai/quiz',
+        icon: Sparkles,
+        iconColor: 'text-violet-400',
+      },
+      {
+        id: 'ai-learning-path',
+        label: 'Learning Path',
+        href: '/dashboard/ai/learning-path',
+        icon: Sparkles,
+        iconColor: 'text-violet-400',
+      },
+      {
+        id: 'ai-lesson-plan',
+        label: 'Lesson Plan',
+        href: '/dashboard/ai/lesson-plan',
+        icon: Sparkles,
+        iconColor: 'text-indigo-500',
+      },
+      {
+        id: 'ai-question-paper',
+        label: 'Question Paper',
+        href: '/dashboard/ai/question-paper',
+        icon: Sparkles,
+        iconColor: 'text-indigo-400',
+      },
+      {
+        id: 'ai-worksheet',
+        label: 'Worksheet',
+        href: '/dashboard/ai/worksheet',
+        icon: Sparkles,
+        iconColor: 'text-indigo-400',
+      },
+      {
+        id: 'ai-assignment',
+        label: 'Assignment',
+        href: '/dashboard/ai/assignment',
+        icon: Sparkles,
+        iconColor: 'text-indigo-400',
+      },
+      {
+        id: 'ai-teacher-chat',
+        label: 'Teacher Chat',
+        href: '/dashboard/ai/teacher-chat',
+        icon: Sparkles,
+        iconColor: 'text-indigo-500',
+      },
+      // ── All roles ───────────────────────────────────────────────────
+      {
+        id: 'ai-subscription',
+        label: 'My AI Plan',
+        href: '/dashboard/ai/subscription',
+        icon: Sparkles,
+        iconColor: 'text-amber-500',
       },
     ],
   },

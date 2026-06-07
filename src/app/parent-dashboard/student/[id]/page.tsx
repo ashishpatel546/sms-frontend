@@ -2076,7 +2076,7 @@ function StudentLibrarySection({ studentId }: { studentId: string }) {
     return (
         <div className="space-y-4">
             {/* Header card */}
-            <div className="flex items-center gap-3 bg-gradient-to-r from-lime-500 to-emerald-600 rounded-2xl p-5 text-white shadow-lg shadow-emerald-500/20">
+            <div className="flex items-center gap-3 bg-linear-to-r from-lime-500 to-emerald-600 rounded-2xl p-5 text-white shadow-lg shadow-emerald-500/20">
                 <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl shrink-0">📖</div>
                 <div>
                     <h2 className="font-bold text-lg leading-tight">My Library Books</h2>
