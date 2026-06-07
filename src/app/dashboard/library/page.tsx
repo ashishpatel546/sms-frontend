@@ -757,7 +757,6 @@ function DiscardModal({ book, onClose, onDiscarded }: { book: Book; onClose: () 
 function IssueReturnTab() {
   const [subTab, setSubTab] = useState<'issue' | 'active'>('issue');
   const [settings, setSettings] = useState<LibrarySettings | null>(null);
-  const [returnIssuance, setReturnIssuance] = useState<Issuance | null>(null);
 
   useEffect(() => {
     authFetch(`${API_BASE_URL}/library/settings`).then(r => r.json()).then(setSettings).catch(() => {});
@@ -785,18 +784,7 @@ function IssueReturnTab() {
         <IssueBookPanel settings={settings} onIssued={onIssued} />
       )}
       {subTab === 'active' && (
-        <ActiveIssuancesPanel
-          onReturn={(i) => setReturnIssuance(i)}
-          refreshKey={subTab}
-        />
-      )}
-
-      {returnIssuance && (
-        <ReturnModal
-          issuance={returnIssuance}
-          onClose={() => setReturnIssuance(null)}
-          onReturned={() => setReturnIssuance(null)}
-        />
+        <ActiveIssuancesPanel refreshKey={subTab} />
       )}
     </div>
   );
@@ -998,10 +986,11 @@ function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | nu
   );
 }
 
-function ActiveIssuancesPanel({ onReturn, refreshKey }: { onReturn: (i: Issuance) => void; refreshKey: string }) {
+function ActiveIssuancesPanel({ refreshKey }: { refreshKey: string }) {
   const [issuances, setIssuances] = useState<Pagination<Issuance> | null>(null);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [returnIssuance, setReturnIssuance] = useState<Issuance | null>(null);
 
   // Separate filter states
   const [filterBook, setFilterBook] = useState('');
@@ -1203,7 +1192,7 @@ function ActiveIssuancesPanel({ onReturn, refreshKey }: { onReturn: (i: Issuance
                       <td className="py-2 pr-3 text-xs">{fmtDate(i.dueDate)}</td>
                       <td className="py-2 pr-3">{statusBadge(i)}</td>
                       <td className="py-2">
-                        <button onClick={() => onReturn(i)}
+                        <button onClick={() => setReturnIssuance(i)}
                           className="px-2.5 py-1 rounded bg-slate-800 text-white text-xs hover:bg-slate-700">
                           Return
                         </button>
@@ -1216,6 +1205,17 @@ function ActiveIssuancesPanel({ onReturn, refreshKey }: { onReturn: (i: Issuance
           </div>
           {issuances && <PaginationBar page={issuances.page} total={issuances.total} limit={20} onChange={(p) => { setPage(p); load(p); }} />}
         </>
+      )}
+
+      {returnIssuance && (
+        <ReturnModal
+          issuance={returnIssuance}
+          onClose={() => setReturnIssuance(null)}
+          onReturned={() => {
+            setReturnIssuance(null);
+            load(page);
+          }}
+        />
       )}
     </div>
   );
@@ -1699,9 +1699,10 @@ function OverdueReport() {
 
 function PopularBooksReport() {
   interface PopBook { bookId: number; title: string; issuanceCount: number; }
+  const fmtDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const [data, setData] = useState<PopBook[]>([]);
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const [fromDate, setFromDate] = useState(() => { const d = new Date(); return fmtDate(new Date(d.getFullYear(), d.getMonth(), 1)); });
+  const [toDate, setToDate] = useState(() => fmtDate(new Date()));
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
