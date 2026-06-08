@@ -61,7 +61,7 @@ export default function QuizPage() {
   const stop = () => { abortRef.current?.abort(); };
 
   return (
-    <FeatureGate feature="quiz">
+    <FeatureGate feature="practice_quiz">
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">

@@ -13,6 +13,7 @@ interface PlanInfo {
   name: string;
   display_name: string;
   plan_type: string;
+  model_tier?: number;
 }
 
 interface SubStatus {
@@ -23,6 +24,9 @@ interface SubStatus {
   credits_remaining: number;
   billing_month: string;
   valid_till: string;
+  days_remaining?: number;
+  is_expiring_soon?: boolean;
+  is_expired?: boolean;
   paid_by: string;
   can_upgrade: boolean;
   upgrade_options: string[];
@@ -76,6 +80,12 @@ const PLAN_BADGE_COLOR: Record<string, string> = {
   school_basic: "bg-blue-100 text-blue-700",
   school_pro:   "bg-indigo-100 text-indigo-700",
   topup:        "bg-green-100 text-green-700",
+};
+
+const MODEL_TIERS: Record<number, string> = {
+  1: "Basic",
+  2: "Standard",
+  3: "Advanced",
 };
 
 const FEATURE_LABELS: Record<string, string> = {
@@ -299,6 +309,20 @@ export default function AiSubscriptionPage() {
         </button>
       </div>
 
+      {/* ── Expiry Warning ─────────────────────────────────────────── */}
+      {status?.is_expired && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex justify-between items-center">
+          <span><strong>Plan Expired.</strong> Subscribe again to continue using AI features. Unused credits have expired.</span>
+          <button onClick={handleShowPlans} className="bg-red-600 hover:bg-red-700 transition-colors text-white px-3 py-1.5 rounded-lg font-medium text-xs">Renew</button>
+        </div>
+      )}
+      {status?.is_expiring_soon && !status?.is_expired && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 flex justify-between items-center">
+          <span>⚠️ <strong>Plan expires in {status.days_remaining} days.</strong> Renew soon to avoid interruption.</span>
+          <button onClick={handleShowPlans} className="bg-amber-600 hover:bg-amber-700 transition-colors text-white px-3 py-1.5 rounded-lg font-medium text-xs">Renew Early</button>
+        </div>
+      )}
+
       {/* ── Error ────────────────────────────────────────────────── */}
       {error && (
         <div className="rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/20 px-4 py-3 text-sm text-red-600 dark:text-red-400">
@@ -346,6 +370,9 @@ export default function AiSubscriptionPage() {
                   <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${badgeClass}`}>
                     {status.plan?.name ?? "free"}
                   </span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide bg-white/20 px-2 py-0.5 rounded-full">
+                    AI Tier: {MODEL_TIERS[(status.plan?.model_tier as 1 | 2 | 3) ?? 1]}
+                  </span>
                   {status.paid_by === "school" && (
                     <span className="text-[10px] font-semibold uppercase tracking-wide bg-white/20 px-2 py-0.5 rounded-full">
                       School-paid
@@ -378,6 +405,10 @@ export default function AiSubscriptionPage() {
                     : "end of month"}
                 </span>
               </div>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-white/20 text-[10px] font-medium opacity-80">
+              Unused credits expire at the end of the billing period and do not carry over.
             </div>
 
             {/* Upgrade CTA */}

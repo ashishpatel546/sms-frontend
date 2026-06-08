@@ -1,12 +1,13 @@
 'use client';
 /**
  * useAiAccess — returns the user's AI subscription features from cache or API.
+ * Calls school-ai directly (same as streaming) so it works regardless of
+ * whether sms-backend has AI_PLATFORM_URL configured.
  * Caches in sessionStorage for 5 minutes so every feature page doesn't
- * independently call /ai/subscription-status.
+ * independently call the status endpoint.
  */
 import { useEffect, useState } from 'react';
-import { authFetch } from '@/lib/auth';
-import { API_BASE_URL } from '@/lib/api';
+import { getAiHeaders, getAiBackendUrl } from '@/lib/ai-auth';
 
 export interface AiAccess {
   loading: boolean;
@@ -63,7 +64,11 @@ export function useAiAccess(): AiAccess {
       return;
     }
 
-    authFetch(`${API_BASE_URL}/ai/subscription-status`)
+    // Call school-ai directly (same auth path as streaming)
+    getAiHeaders()
+      .then((headers) =>
+        fetch(`${getAiBackendUrl()}/api/v1/subscription/status`, { headers }),
+      )
       .then((r) => r.json())
       .then((json) => {
         const raw = json?.data ?? json;

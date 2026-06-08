@@ -6,6 +6,8 @@ import { Sparkles, Square, Zap } from "lucide-react";
 import { streamAiResponse, SseUsage } from "@/lib/ai-stream";
 import { useRbac } from "@/lib/rbac";
 import { FeatureGate } from "@/components/ai/FeatureGate";
+import { AiDisclaimer } from "@/components/ai/AiDisclaimer";
+import { DownloadPdfButton } from "@/components/ai/DownloadPdfButton";
 
 const GRADES = ["1","2","3","4","5","6","7","8","9","10","11","12"];
 const BOARDS = ["CBSE","ICSE","State Board","IB","IGCSE"];
@@ -14,6 +16,7 @@ const DURATIONS = [30,40,45,60,90];
 export default function LessonPlanPage() {
   const rbac = useRbac();
   const abortRef = useRef<AbortController | null>(null);
+  const outputRef = useRef<HTMLDivElement | null>(null);
 
   const [topic, setTopic] = useState("");
   const [grade, setGrade] = useState("8");
@@ -186,28 +189,41 @@ export default function LessonPlanPage() {
 
       {/* Output */}
       {(output || streaming) && (
-        <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold text-ink">Generated Lesson Plan</span>
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-ink">Generated Lesson Plan</span>
+              <div className="flex items-center gap-3">
+                {streaming && (
+                  <span className="flex items-center gap-1.5 text-xs text-indigo-500">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                    Generating...
+                  </span>
+                )}
+                {usage && (
+                  <span className="flex items-center gap-1 text-xs text-ink-muted">
+                    <Zap className="w-3 h-3 text-amber-500" />
+                    {usage.credits_charged} credits used · {usage.credits_remaining} remaining
+                  </span>
+                )}
+                <DownloadPdfButton
+                  contentRef={outputRef}
+                  title="Lesson Plan"
+                  subtitle={`${subject} · Grade ${grade} · ${topic}`}
+                  disabled={streaming || !output}
+                />
+              </div>
+            </div>
+            <div ref={outputRef} className="prose prose-sm dark:prose-invert max-w-none bg-white dark:bg-surface p-2 rounded-lg">
+              <ReactMarkdown>{output}</ReactMarkdown>
+            </div>
             {streaming && (
-              <span className="flex items-center gap-1.5 text-xs text-indigo-500">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-                Generating...
-              </span>
-            )}
-            {usage && (
-              <span className="flex items-center gap-1 text-xs text-ink-muted">
-                <Zap className="w-3 h-3 text-amber-500" />
-                {usage.credits_charged} credits used · {usage.credits_remaining} remaining
-              </span>
+              <span className="inline-block w-1 h-4 bg-indigo-500 animate-pulse ml-0.5 rounded-sm" />
             )}
           </div>
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            <ReactMarkdown>{output}</ReactMarkdown>
-          </div>
-          {streaming && (
-            <span className="inline-block w-1 h-4 bg-indigo-500 animate-pulse ml-0.5 rounded-sm" />
-          )}
+          
+          {/* Show disclaimer once output starts loading */}
+          <AiDisclaimer />
         </div>
       )}
     </div>
