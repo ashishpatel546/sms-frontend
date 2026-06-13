@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { authFetch } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
 import {
-  Sparkles, Zap, Calendar, RefreshCw, TrendingUp, ArrowUpCircle, Check, Crown,
+  Sparkles, Zap, Calendar, RefreshCw, TrendingUp, ArrowUpCircle, Check, Crown, Cpu,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -14,6 +14,7 @@ interface PlanInfo {
   display_name: string;
   plan_type: string;
   model_tier?: number;
+  model_tier_label?: string;
 }
 
 interface SubStatus {
@@ -44,6 +45,8 @@ interface AvailablePlan {
   features: Record<string, boolean>;
   is_current: boolean;
   is_upgrade: boolean;
+  model_tier?: number;
+  model_tier_label?: string;
 }
 
 // ─── Razorpay types ───────────────────────────────────────────────────────────
@@ -92,6 +95,21 @@ const MODEL_TIERS: Record<number, string> = {
   2: "Standard",
   3: "Advanced",
 };
+
+// Distinct, eye-catching colours per AI model tier so users can see at a
+// glance how plans differ in AI quality (cycles for tiers beyond 3).
+const TIER_BADGE_COLORS = [
+  "bg-slate-100 text-slate-700 ring-1 ring-slate-300",
+  "bg-blue-100 text-blue-700 ring-1 ring-blue-300",
+  "bg-violet-100 text-violet-700 ring-1 ring-violet-300",
+  "bg-amber-100 text-amber-700 ring-1 ring-amber-300",
+  "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-300",
+  "bg-pink-100 text-pink-700 ring-1 ring-pink-300",
+];
+function tierBadgeClass(tier?: number): string {
+  const t = tier ?? 1;
+  return TIER_BADGE_COLORS[(t - 1) % TIER_BADGE_COLORS.length] ?? TIER_BADGE_COLORS[0];
+}
 
 const FEATURE_LABELS: Record<string, string> = {
   chat:           "AI Chat / Tutoring",
@@ -388,8 +406,9 @@ export default function AiSubscriptionPage() {
                   <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${badgeClass}`}>
                     {status.plan?.name ?? "free"}
                   </span>
-                  <span className="text-[10px] font-semibold uppercase tracking-wide bg-white/20 px-2 py-0.5 rounded-full">
-                    AI Tier: {MODEL_TIERS[(status.plan?.model_tier as 1 | 2 | 3) ?? 1]}
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide bg-white/20 px-2 py-0.5 rounded-full">
+                    <Cpu className="w-3 h-3" />
+                    AI Tier: {status.plan?.model_tier_label ?? MODEL_TIERS[(status.plan?.model_tier as 1 | 2 | 3) ?? 1]}
                   </span>
                   {status.paid_by === "school" && (
                     <span className="text-[10px] font-semibold uppercase tracking-wide bg-white/20 px-2 py-0.5 rounded-full">
@@ -600,13 +619,14 @@ export default function AiSubscriptionPage() {
                     )}
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${PLAN_BADGE_COLOR[plan.name] ?? "bg-violet-100 text-violet-700"}`}>
                             {plan.display_name}
                           </span>
-                          {plan.is_upgrade && (
-                            <span className={`text-[10px] font-semibold uppercase tracking-wide ${accent.icon}`}>Upgrade</span>
-                          )}
+                          <span className={`inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${tierBadgeClass(plan.model_tier)}`}>
+                            <Cpu className="w-3 h-3" />
+                            {plan.model_tier_label ?? MODEL_TIERS[(plan.model_tier as 1 | 2 | 3) ?? 1] ?? `Tier ${plan.model_tier}`} AI
+                          </span>
                         </div>
                         <p className="mt-1.5 text-2xl font-bold text-ink">
                           {plan.price_inr === 0 ? "Free" : `₹${plan.price_inr.toLocaleString("en-IN")}`}
