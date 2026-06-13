@@ -30,6 +30,8 @@ interface SubStatus {
   paid_by: string;
   can_upgrade: boolean;
   upgrade_options: string[];
+  plan_monthly_credits?: number;
+  is_first_period_prorated?: boolean;
 }
 
 interface AvailablePlan {
@@ -125,6 +127,7 @@ export default function AiSubscriptionPage() {
   const [showPlans, setShowPlans]       = useState(false);
   const [showTopup, setShowTopup]       = useState(false);
   const [payingPlanId, setPayingPlanId] = useState<string | null>(null);
+  const [prorationNote, setProrationNote] = useState<string | null>(null);
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -218,6 +221,17 @@ export default function AiSubscriptionPage() {
       const orderJson = await orderRes.json();
       const orderData = orderJson?.data ?? orderJson;
 
+      // Surface proration info for mid-month signups before opening checkout
+      const preview = orderData.subscription_preview;
+      let description = `${plan.display_name} Plan — ${billingMonth}`;
+      if (preview?.is_prorated) {
+        const note = `Prorated for ${preview.days_remaining} of ${preview.days_in_month} days — ₹${orderData.amount_inr} now (full price ₹${preview.full_price_inr}/mo from the 1st)`;
+        setProrationNote(note);
+        description = `${plan.display_name} Plan — ${note}`;
+      } else {
+        setProrationNote(null);
+      }
+
       // 2. Open Razorpay checkout
       const rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? "";
       await new Promise<void>((resolve, reject) => {
@@ -226,7 +240,7 @@ export default function AiSubscriptionPage() {
           amount: orderData.amount,
           currency: orderData.currency ?? "INR",
           name: "School AI",
-          description: `${plan.display_name} Plan — ${billingMonth}`,
+          description,
           order_id: orderData.razorpay_order_id ?? orderData.order_id ?? orderData.id,
           theme: { color: "#6d28d9" },
           modal: {
@@ -266,6 +280,7 @@ export default function AiSubscriptionPage() {
       if (msg !== "Payment cancelled.") setError(msg);
     } finally {
       setPayingPlanId(null);
+      setProrationNote(null);
     }
   }, [payingPlanId, loadStatus]);
 
@@ -408,6 +423,11 @@ export default function AiSubscriptionPage() {
                     : "end of month"}
                 </span>
               </div>
+              {status.is_first_period_prorated && !!status.plan_monthly_credits && (
+                <div className="mt-1 text-[11px] opacity-80 bg-white/10 rounded-lg px-2 py-1.5">
+                  First-cycle credits prorated for the remaining days this month ({status.credits_total.toLocaleString()} of {status.plan_monthly_credits.toLocaleString()}). Full credits from the 1st.
+                </div>
+              )}
             </div>
 
             <div className="mt-4 pt-3 border-t border-white/20 text-[10px] font-medium opacity-80">
@@ -573,6 +593,11 @@ export default function AiSubscriptionPage() {
                 const isPaying = payingPlanId === plan.id;
                 return (
                   <div key={plan.id} className={`rounded-2xl ring-1 ${accent.ring} bg-white dark:bg-surface p-4 space-y-3 transition-shadow hover:shadow-md`}>
+                    {isPaying && prorationNote && (
+                      <div className="rounded-lg bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 text-xs px-3 py-2">
+                        {prorationNote}
+                      </div>
+                    )}
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
