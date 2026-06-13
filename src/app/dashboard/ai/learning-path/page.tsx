@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Sparkles, Square, Zap, Plus, X } from "lucide-react";
 import { streamAiResponse, SseUsage } from "@/lib/ai-stream";
-import { useRbac } from "@/lib/rbac";
 import { FeatureGate } from "@/components/ai/FeatureGate";
 import { AiDisclaimer } from "@/components/ai/AiDisclaimer";
 import { DownloadPdfButton } from "@/components/ai/DownloadPdfButton";
@@ -12,7 +11,6 @@ import { DownloadPdfButton } from "@/components/ai/DownloadPdfButton";
 const GRADES = ["1","2","3","4","5","6","7","8","9","10","11","12"];
 
 export default function LearningPathPage() {
-  const rbac = useRbac();
   const abortRef = useRef<AbortController | null>(null);
   const outputRef = useRef<HTMLDivElement | null>(null);
 
@@ -27,16 +25,6 @@ export default function LearningPathPage() {
   const [streaming, setStreaming] = useState(false);
   const [usage, setUsage] = useState<SseUsage | null>(null);
   const [error, setError] = useState("");
-
-  if (!rbac.isStudent) {
-    return (
-      <div className="max-w-xl mx-auto px-4 py-12 text-center">
-        <Sparkles className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-        <h2 className="text-lg font-semibold text-ink">Not available for your role</h2>
-        <p className="text-sm text-ink-muted mt-1">Learning Path is available for students and parents.</p>
-      </div>
-    );
-  }
 
   const validWeakTopics = weakTopics.filter((t) => t.trim().length > 0);
   const canGenerate = subject.trim().length > 1 && goal.trim().length > 3 && validWeakTopics.length > 0;
@@ -160,10 +148,10 @@ export default function LearningPathPage() {
           <div>
             <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">Language</label>
             <div className="flex gap-2">
-              {["en", "hi"].map((l) => (
+              {["en", "hi", "hinglish"].map((l) => (
                 <button key={l} onClick={() => setLanguage(l)}
                   className={`flex-1 py-2 rounded-xl text-xs font-medium transition-colors ${language === l ? "bg-violet-600 text-white" : "bg-slate-100 dark:bg-surface-secondary text-ink-muted hover:text-ink"}`}>
-                  {l === "en" ? "English" : "Hindi"}
+                  {l === "en" ? "English" : l === "hi" ? "Hindi" : "Hinglish"}
                 </button>
               ))}
             </div>

@@ -40,6 +40,30 @@ export function FeatureGate({ feature, children }: Props) {
     );
   }
 
+  // ── Role check (configurable from hub admin) ───────────────────────────────
+  // If the feature has an allowed-roles list and the user has none of them,
+  // show a role message instead of an upgrade prompt.
+  const allowedRoles = access.featureRoles[feature];
+  const roleBlocked =
+    Array.isArray(allowedRoles) &&
+    allowedRoles.length > 0 &&
+    access.roles.length > 0 &&
+    !access.roles.some((r) => allowedRoles.includes(r));
+
+  if (roleBlocked) {
+    const label = FEATURE_LABELS[feature] ?? feature.replace(/_/g, " ");
+    const roleText = allowedRoles
+      .map((r) => (r === "student" ? "students & parents" : `${r}s`))
+      .join(" and ");
+    return (
+      <div className="max-w-xl mx-auto px-4 py-12 text-center">
+        <Sparkles className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+        <h2 className="text-lg font-semibold text-ink">Not available for your role</h2>
+        <p className="text-sm text-ink-muted mt-1">{label} is available for {roleText}.</p>
+      </div>
+    );
+  }
+
   const hasAccess = access.hasActivePlan && access.features[feature] === true;
 
   // ── Feature available ──────────────────────────────────────────────────────

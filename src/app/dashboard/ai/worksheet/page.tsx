@@ -4,17 +4,17 @@ import { useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Sparkles, Square, Zap } from "lucide-react";
 import { streamAiResponse, SseUsage } from "@/lib/ai-stream";
-import { useRbac } from "@/lib/rbac";
 import { FeatureGate } from "@/components/ai/FeatureGate";
 import { AiDisclaimer } from "@/components/ai/AiDisclaimer";
 import { DownloadPdfButton } from "@/components/ai/DownloadPdfButton";
+import { AiValueBanner } from "@/components/ai/AiValueBanner";
+import { SmartFillBox, ExtractedFields, applyBaseFields, useAutoFillHighlight } from "@/components/ai/SmartFillBox";
 
 const GRADES = ["1","2","3","4","5","6","7","8","9","10","11","12"];
 const BOARDS = ["CBSE","ICSE","State Board","IB","IGCSE"];
 const WORKSHEET_TYPES = ["Practice","Assessment","Revision","Activity","Homework"];
 
 export default function WorksheetPage() {
-  const rbac = useRbac();
   const abortRef = useRef<AbortController | null>(null);
   const outputRef = useRef<HTMLDivElement | null>(null);
 
@@ -30,15 +30,16 @@ export default function WorksheetPage() {
   const [usage, setUsage] = useState<SseUsage | null>(null);
   const [error, setError] = useState("");
 
-  if (!rbac.isTeacher) {
-    return (
-      <div className="max-w-xl mx-auto px-4 py-12 text-center">
-        <Sparkles className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-        <h2 className="text-lg font-semibold text-ink">Not available for your role</h2>
-        <p className="text-sm text-ink-muted mt-1">Worksheet Generator is a teacher-only feature.</p>
-      </div>
-    );
-  }
+  const { ring, flash } = useAutoFillHighlight();
+
+  const applyExtracted = (f: ExtractedFields) => {
+    const applied = applyBaseFields(f, { setTopic, setSubject, setGrade, setBoard, setLanguage }, GRADES, BOARDS);
+    if (f.worksheet_type && WORKSHEET_TYPES.includes(f.worksheet_type)) {
+      setWorksheetType(f.worksheet_type);
+      applied.push("worksheetType");
+    }
+    flash(applied);
+  };
 
   const canGenerate = topic.trim().length > 3 && subject.trim().length > 1;
 
@@ -77,6 +78,10 @@ export default function WorksheetPage() {
         </div>
       </div>
 
+      <AiValueBanner />
+
+      <SmartFillBox tool="worksheet" onExtracted={applyExtracted} />
+
       <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface p-5 space-y-4">
         <div>
           <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">
@@ -87,7 +92,7 @@ export default function WorksheetPage() {
             onChange={(e) => setTopic(e.target.value)}
             placeholder="e.g. Fractions and Decimals"
             maxLength={300}
-            className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+            className={`w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-indigo-500/40${ring("topic")}`}
           />
           <p className="mt-1 text-xs text-ink-muted text-right">{topic.length}/300</p>
         </div>
@@ -99,7 +104,7 @@ export default function WorksheetPage() {
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="e.g. Mathematics"
-              className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+              className={`w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-indigo-500/40${ring("subject")}`}
             />
           </div>
           <div>
@@ -107,7 +112,7 @@ export default function WorksheetPage() {
             <select
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+              className={`w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/40${ring("grade")}`}
             >
               {GRADES.map((g) => <option key={g} value={g}>Grade {g}</option>)}
             </select>
@@ -120,7 +125,7 @@ export default function WorksheetPage() {
             <select
               value={board}
               onChange={(e) => setBoard(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+              className={`w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/40${ring("board")}`}
             >
               {BOARDS.map((b) => <option key={b}>{b}</option>)}
             </select>
@@ -130,7 +135,7 @@ export default function WorksheetPage() {
             <select
               value={worksheetType}
               onChange={(e) => setWorksheetType(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+              className={`w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/40${ring("worksheetType")}`}
             >
               {WORKSHEET_TYPES.map((t) => <option key={t}>{t}</option>)}
             </select>
@@ -139,11 +144,11 @@ export default function WorksheetPage() {
 
         <div>
           <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">Language</label>
-          <div className="flex gap-2">
-            {["en", "hi"].map((l) => (
+          <div className={`flex gap-2 w-fit rounded-xl${ring("language")}`}>
+            {["en", "hi", "hinglish"].map((l) => (
               <button key={l} onClick={() => setLanguage(l)}
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${language === l ? "bg-indigo-600 text-white" : "bg-slate-100 dark:bg-surface-secondary text-ink-muted hover:text-ink"}`}>
-                {l === "en" ? "English" : "Hindi"}
+                {l === "en" ? "English" : l === "hi" ? "Hindi" : "Hinglish"}
               </button>
             ))}
           </div>

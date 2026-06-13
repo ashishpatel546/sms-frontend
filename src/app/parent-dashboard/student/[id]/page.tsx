@@ -49,7 +49,10 @@ type ActiveSection = "home" | "fees" | "attendance" | "results" | "holidays" | "
 
 declare global {
     interface Window {
-        Razorpay: any;
+        Razorpay: new (opts: Record<string, unknown>) => {
+            open: () => void;
+            on: (event: string, handler: (response: any) => void) => void;
+        };
     }
 }
 

@@ -15,9 +15,11 @@ export interface AiAccess {
   planName: string;
   planDisplayName: string;
   features: Record<string, boolean>;
+  roles: string[]; // AI platform roles: 'teacher' | 'student'
+  featureRoles: Record<string, string[]>; // feature → allowed roles (hub-configurable)
 }
 
-const CACHE_KEY = 'ai_access_v1';
+const CACHE_KEY = 'ai_access_v2';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 function readCache(): AiAccess | null {
@@ -52,6 +54,8 @@ const DEFAULT: AiAccess = {
   planName: '',
   planDisplayName: '',
   features: {},
+  roles: [],
+  featureRoles: {},
 };
 
 export function useAiAccess(): AiAccess {
@@ -78,6 +82,8 @@ export function useAiAccess(): AiAccess {
           planName: raw.plan?.name ?? '',
           planDisplayName: raw.plan?.display_name ?? '',
           features: raw.plan?.features ?? {},
+          roles: raw.roles ?? [],
+          featureRoles: raw.feature_roles ?? {},
         };
         writeCache(result);
         setAccess(result);

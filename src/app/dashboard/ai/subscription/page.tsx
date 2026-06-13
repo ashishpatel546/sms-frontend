@@ -47,7 +47,10 @@ interface AvailablePlan {
 // ─── Razorpay types ───────────────────────────────────────────────────────────
 declare global {
   interface Window {
-    Razorpay: new (opts: Record<string, unknown>) => { open: () => void };
+    Razorpay: new (opts: Record<string, unknown>) => {
+      open: () => void;
+      on: (event: string, handler: (response: any) => void) => void;
+    };
   }
 }
 
@@ -428,7 +431,13 @@ export default function AiSubscriptionPage() {
             {[
               { label: "Credits Used",  value: status.credits_used.toLocaleString(),      icon: <Zap className="w-4 h-4 text-amber-500" /> },
               { label: "Credits Left",  value: status.credits_remaining.toLocaleString(), icon: <TrendingUp className="w-4 h-4 text-emerald-500" /> },
-              { label: "Billing Month", value: status.billing_month,                       icon: <Calendar className="w-4 h-4 text-violet-500" /> },
+              {
+                label: "Credits Expire On",
+                value: status.valid_till
+                  ? new Date(status.valid_till).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                  : status.billing_month,
+                icon: <Calendar className="w-4 h-4 text-violet-500" />,
+              },
             ].map((s) => (
               <div key={s.label} className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface p-3">
                 <div className="flex items-center gap-1.5 text-ink-muted mb-1.5">

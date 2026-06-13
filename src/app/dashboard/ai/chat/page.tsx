@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Send, Square, Sparkles, Zap, Plus } from "lucide-react";
 import { streamAiResponse } from "@/lib/ai-stream";
-import { useRbac } from "@/lib/rbac";
 import { FeatureGate } from "@/components/ai/FeatureGate";
 
 interface Message {
@@ -14,7 +13,6 @@ interface Message {
 }
 
 export default function StudentChatPage() {
-  const rbac = useRbac();
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -30,16 +28,6 @@ export default function StudentChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  if (!rbac.isStudent) {
-    return (
-      <div className="max-w-xl mx-auto px-4 py-12 text-center">
-        <Sparkles className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-        <h2 className="text-lg font-semibold text-ink">Not available for your role</h2>
-        <p className="text-sm text-ink-muted mt-1">AI Chat is available for students and parents.</p>
-      </div>
-    );
-  }
 
   const newSession = () => {
     abortRef.current?.abort();
@@ -158,6 +146,7 @@ export default function StudentChatPage() {
         >
           <option value="en">English</option>
           <option value="hi">Hindi</option>
+          <option value="hinglish">Hinglish</option>
         </select>
       </div>
 

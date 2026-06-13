@@ -4,14 +4,12 @@ import { useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Sparkles, Square, Zap } from "lucide-react";
 import { streamAiResponse, SseUsage } from "@/lib/ai-stream";
-import { useRbac } from "@/lib/rbac";
 import { FeatureGate } from "@/components/ai/FeatureGate";
 
 const GRADES = ["1","2","3","4","5","6","7","8","9","10","11","12"];
 const DIFFICULTIES = ["Easy","Medium","Hard"];
 
 export default function QuizPage() {
-  const rbac = useRbac();
   const abortRef = useRef<AbortController | null>(null);
 
   const [topic, setTopic] = useState("");
@@ -25,16 +23,6 @@ export default function QuizPage() {
   const [streaming, setStreaming] = useState(false);
   const [usage, setUsage] = useState<SseUsage | null>(null);
   const [error, setError] = useState("");
-
-  if (!rbac.isStudent) {
-    return (
-      <div className="max-w-xl mx-auto px-4 py-12 text-center">
-        <Sparkles className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-        <h2 className="text-lg font-semibold text-ink">Not available for your role</h2>
-        <p className="text-sm text-ink-muted mt-1">Practice Quiz is available for students and parents.</p>
-      </div>
-    );
-  }
 
   const canGenerate = topic.trim().length > 3 && subject.trim().length > 1;
 
@@ -144,10 +132,10 @@ export default function QuizPage() {
         <div>
           <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">Language</label>
           <div className="flex gap-2">
-            {["en", "hi"].map((l) => (
+            {["en", "hi", "hinglish"].map((l) => (
               <button key={l} onClick={() => setLanguage(l)}
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${language === l ? "bg-violet-600 text-white" : "bg-slate-100 dark:bg-surface-secondary text-ink-muted hover:text-ink"}`}>
-                {l === "en" ? "English" : "Hindi"}
+                {l === "en" ? "English" : l === "hi" ? "Hindi" : "Hinglish"}
               </button>
             ))}
           </div>
