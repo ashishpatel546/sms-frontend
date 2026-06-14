@@ -312,7 +312,7 @@ export const NAV_CONFIG: NavGroup[] = [
     ],
   },
   {
-    label: 'AI Tools',
+    label: 'AI Assist',
     items: [
       {
         id: 'ai-chat',

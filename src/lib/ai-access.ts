@@ -7,7 +7,7 @@
  * independently call the status endpoint.
  */
 import { useEffect, useState } from 'react';
-import { getAiHeaders, getAiBackendUrl } from '@/lib/ai-auth';
+import { getAiHeaders, getAiBackendUrl, clearAiToken } from '@/lib/ai-auth';
 
 export interface AiAccess {
   loading: boolean;
@@ -58,8 +58,9 @@ const DEFAULT: AiAccess = {
   featureRoles: {},
 };
 
-export function useAiAccess(): AiAccess {
+export function useAiAccess(): AiAccess & { refetch: () => void } {
   const [access, setAccess] = useState<AiAccess>(DEFAULT);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     const cached = readCache();
@@ -91,7 +92,16 @@ export function useAiAccess(): AiAccess {
       .catch(() => {
         setAccess({ ...DEFAULT, loading: false });
       });
-  }, []);
+  }, [retryCount]);
 
-  return access;
+  const refetch = () => {
+    // A manual retry forces a fully fresh check — drop any cached
+    // "no active plan" result and the cached AI session token.
+    clearAiAccessCache();
+    clearAiToken();
+    setAccess((prev) => ({ ...prev, loading: true }));
+    setRetryCount((n) => n + 1);
+  };
+
+  return { ...access, refetch };
 }

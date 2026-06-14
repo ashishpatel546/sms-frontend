@@ -5,7 +5,7 @@
  * lock screen with an upgrade prompt.
  */
 import Link from "next/link";
-import { Lock, ArrowUpCircle, Sparkles } from "lucide-react";
+import { Lock, ArrowUpCircle, Sparkles, RefreshCw } from "lucide-react";
 import { useAiAccess } from "@/lib/ai-access";
 
 const FEATURE_LABELS: Record<string, string> = {
@@ -23,9 +23,12 @@ const FEATURE_LABELS: Record<string, string> = {
 interface Props {
   feature: string;
   children: React.ReactNode;
+  /** If provided, the upgrade CTA calls this instead of linking to /dashboard/ai/subscription
+   *  (used on portals where that route isn't reachable, e.g. the parent portal). */
+  onUpgradeClick?: () => void;
 }
 
-export function FeatureGate({ feature, children }: Props) {
+export function FeatureGate({ feature, children, onUpgradeClick }: Props) {
   const access = useAiAccess();
 
   // ── Loading skeleton ───────────────────────────────────────────────────────
@@ -98,13 +101,36 @@ export function FeatureGate({ feature, children }: Props) {
       </div>
 
       {/* CTA */}
-      <Link
-        href="/dashboard/ai/subscription"
-        className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors shadow-sm"
-      >
-        <ArrowUpCircle className="w-4 h-4" />
-        {noActivePlan ? "View Plans" : "Upgrade Plan"}
-      </Link>
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        {onUpgradeClick ? (
+          <button
+            onClick={onUpgradeClick}
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors shadow-sm"
+          >
+            <ArrowUpCircle className="w-4 h-4" />
+            {noActivePlan ? "View Plans" : "Upgrade Plan"}
+          </button>
+        ) : (
+          <Link
+            href="/dashboard/ai/subscription"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors shadow-sm"
+          >
+            <ArrowUpCircle className="w-4 h-4" />
+            {noActivePlan ? "View Plans" : "Upgrade Plan"}
+          </Link>
+        )}
+
+        {/* Already subscribed but still shown as locked? Force a fresh check —
+            this clears the cached access result that may predate the
+            subscription becoming active. */}
+        <button
+          onClick={() => access.refetch()}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 text-ink-muted text-sm font-medium hover:text-ink hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Refresh status
+        </button>
+      </div>
 
       {/* Blurred preview */}
       <div className="mt-2 w-full rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-6 relative overflow-hidden">

@@ -65,5 +65,8 @@ export async function getAiHeaders(): Promise<Record<string, string>> {
   return {
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
+    // Skip localtunnel's HTML "reminder" interstitial when AI_API_URL points
+    // at a *.loca.lt tunnel, so fetch() gets JSON/SSE instead of an HTML page.
+    'Bypass-Tunnel-Reminder': 'true',
   };
 }

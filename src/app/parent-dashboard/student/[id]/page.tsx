@@ -16,6 +16,7 @@ import LeaveTimeline from "@/components/LeaveTimeline";
 import { AppMonthPicker } from "@/components/ui/AppDatePicker";
 import { HomeSection } from "./components/HomeSection";
 import { StudentBanner } from "./components/StudentBanner";
+import { AiToolsSection } from "./components/AiToolsSection";
 import { AnimatedLoader } from "@/components/ui/AnimatedLoader";
 import { AttendanceBottomSheet } from "./components/AttendanceBottomSheet";
 import { HomeworkBottomSheet } from "./components/HomeworkBottomSheet";
@@ -45,7 +46,7 @@ const LEAVE_TYPE_LABELS: Record<string, string> = {
 };
 const fmtDate = (d: string) => { const [y, m, day] = d.split("-"); return `${day}/${m}/${y}`; };
 
-type ActiveSection = "home" | "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework" | "pickup" | "leaves" | "library";
+type ActiveSection = "home" | "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework" | "pickup" | "leaves" | "library" | "ai-tutor";
 
 declare global {
     interface Window {
@@ -576,13 +577,14 @@ export default function StudentDashboardPage() {
             <div
                 role="tablist"
                 aria-label="Student sections"
-                className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-11 gap-2 bg-surface border border-slate-200 rounded-2xl p-2.5 animate-slide-up shadow-soft"
+                className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2 bg-surface border border-slate-200 rounded-2xl p-2.5 animate-slide-up shadow-soft"
                 style={{ animationDelay: '50ms' }}
             >
                 {([
                     ["home",          "🏠", "Home"],
                     ["attendance",    "📊", "Attendance"],
                     ["homework",      "📚", "Homework"],
+                    ["ai-tutor",      "✨", "AI Tutor"],
                     ["fees",          "💰", "Fees"],
                     ["results",       "📝", "Results"],
                     ["library",       "📖", "Library"],
@@ -622,7 +624,7 @@ export default function StudentDashboardPage() {
                                 else if (section === "holidays") { setSectionLoading(true); fetchHolidays(); }
                             } else {
                                 setActiveSection(section);
-                                if (section !== 'info' && section !== 'exam-schedule' && section !== 'pickup' && section !== 'home' && section !== 'library') setSectionLoading(true);
+                                if (section !== 'info' && section !== 'exam-schedule' && section !== 'pickup' && section !== 'home' && section !== 'library' && section !== 'ai-tutor') setSectionLoading(true);
                             }
                         }}
                         className={`flex flex-col items-center justify-center gap-1 py-2 px-1 min-h-14 rounded-xl font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${activeSection === key ? "bg-brand text-white shadow-md shadow-brand/20 dark:bg-white dark:text-slate-900 dark:shadow-slate-900/20" : "text-ink-muted hover:text-ink hover:bg-brand/5 bg-white border border-slate-200 hover:border-brand/30 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20"}`}
@@ -659,6 +661,15 @@ export default function StudentDashboardPage() {
                     {activeSection === "library" && (
                         <div id="tabpanel-library" role="tabpanel" aria-labelledby="tab-library" className="animate-scale-in">
                             <StudentLibrarySection studentId={studentId as string} />
+                        </div>
+                    )}
+
+                    {/* ════════════════════════════════
+                        AI TUTOR TAB
+                    ════════════════════════════════ */}
+                    {activeSection === "ai-tutor" && (
+                        <div id="tabpanel-ai-tutor" role="tabpanel" aria-labelledby="tab-ai-tutor" className="animate-scale-in">
+                            <AiToolsSection studentId={studentId as string} info={info} />
                         </div>
                     )}
 
