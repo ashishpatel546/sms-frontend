@@ -20,6 +20,10 @@ export default function RegisterParentPage() {
     const [sendingOtp, setSendingOtp] = useState(false);
     const [otpSendError, setOtpSendError] = useState("");
 
+    // Telegram linking (only relevant when the backend has TELEGRAM_ENABLED=true)
+    const [telegramEnabled, setTelegramEnabled] = useState(false);
+    const [telegramLink, setTelegramLink] = useState<{ status: "idle" | "connecting" | "waiting" | "linked" | "error"; deepLink?: string; error?: string }>({ status: "idle" });
+
     // Step 2 — OTP
     const [otp, setOtp] = useState("");
     const [otpError, setOtpError] = useState("");
@@ -118,6 +122,7 @@ export default function RegisterParentPage() {
 
     useEffect(() => {
         setOtpSendError("");
+        setTelegramLink({ status: "idle" }); // a different mobile invalidates any prior link attempt
         const t = setTimeout(() => checkMobile(mobile), 500);
         return () => clearTimeout(t);
     }, [mobile, checkMobile]);
@@ -129,7 +134,51 @@ export default function RegisterParentPage() {
         return () => clearInterval(t);
     }, [countdown]);
 
-    // ── Step 1: Send OTP ──
+    // ── Which OTP channel is live? (decides whether the Telegram step renders) ──
+    useEffect(() => {
+        fetch(`${API_BASE_URL}/auth/parent/registration-config`, { headers: schoolHeaders() })
+            .then(res => res.ok ? res.json() : { telegramEnabled: false })
+            .then(data => setTelegramEnabled(!!data.telegramEnabled))
+            .catch(() => setTelegramEnabled(false));
+    }, []);
+
+    // ── Poll Telegram link status while waiting for the parent to press Start ──
+    useEffect(() => {
+        if (telegramLink.status !== "waiting") return;
+        const poll = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/auth/parent/telegram/link-status?mobile=${encodeURIComponent(mobile)}`, {
+                    headers: schoolHeaders(),
+                });
+                const data = await res.json();
+                if (data.linked) setTelegramLink(prev => ({ ...prev, status: "linked" }));
+            } catch {
+                // transient network hiccup — keep polling
+            }
+        };
+        const t = setInterval(poll, 3000);
+        return () => clearInterval(t);
+    }, [telegramLink.status, mobile]);
+
+    // ── Step 1 (Telegram path): generate deep link and open the bot ──
+    const handleConnectTelegram = async () => {
+        setTelegramLink({ status: "connecting" });
+        try {
+            const res = await fetch(`${API_BASE_URL}/auth/parent/telegram/connect`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", ...schoolHeaders() },
+                body: JSON.stringify({ mobile }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || "Failed to generate Telegram link");
+            window.open(data.deepLink, "_blank", "noopener,noreferrer");
+            setTelegramLink({ status: "waiting", deepLink: data.deepLink });
+        } catch (err: any) {
+            setTelegramLink({ status: "error", error: err.message || "Failed to connect Telegram" });
+        }
+    };
+
+    // ── Step 1: Send OTP (via whichever channel the backend is configured for) ──
     const handleSendOtp = async () => {
         setSendingOtp(true);
         setOtpSendError("");
@@ -293,13 +342,58 @@ export default function RegisterParentPage() {
                                 </div>
                             )}
 
-                            <button
-                                onClick={handleSendOtp}
-                                disabled={mobileCheck.status !== "found" || sendingOtp}
-                                className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-                            >
-                                {sendingOtp ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Sending...</> : "Send OTP via WhatsApp →"}
-                            </button>
+                            {!telegramEnabled && (
+                                <button
+                                    onClick={handleSendOtp}
+                                    disabled={mobileCheck.status !== "found" || sendingOtp}
+                                    className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                                >
+                                    {sendingOtp ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Sending...</> : "Send OTP via WhatsApp →"}
+                                </button>
+                            )}
+
+                            {telegramEnabled && (
+                                <div className="space-y-3">
+                                    {telegramLink.status === "linked" ? (
+                                        <div className="flex items-center gap-2 text-green-400 text-sm p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
+                                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                            Telegram connected
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={handleConnectTelegram}
+                                            disabled={mobileCheck.status !== "found" || telegramLink.status === "connecting" || telegramLink.status === "waiting"}
+                                            className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-500 hover:to-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                                        >
+                                            {telegramLink.status === "connecting" ? "Opening Telegram..." : telegramLink.status === "waiting" ? "Waiting for confirmation..." : "Connect Telegram →"}
+                                        </button>
+                                    )}
+
+                                    {telegramLink.status === "waiting" && (
+                                        <p className="text-slate-400 text-xs text-center">
+                                            Press <span className="text-white font-medium">Start</span> in the Telegram chat that just opened, then come back here.{" "}
+                                            <button type="button" onClick={() => window.open(telegramLink.deepLink, "_blank", "noopener,noreferrer")} className="text-indigo-400 hover:text-indigo-300 underline">
+                                                Reopen Telegram
+                                            </button>
+                                        </p>
+                                    )}
+
+                                    {telegramLink.status === "error" && (
+                                        <div className="flex items-start gap-2 text-red-400 text-sm p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+                                            <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            <span>{telegramLink.error}</span>
+                                        </div>
+                                    )}
+
+                                    <button
+                                        onClick={handleSendOtp}
+                                        disabled={telegramLink.status !== "linked" || sendingOtp}
+                                        className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                                    >
+                                        {sendingOtp ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Sending...</> : "Send OTP via Telegram →"}
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
 
