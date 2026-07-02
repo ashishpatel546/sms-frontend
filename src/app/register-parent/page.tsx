@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { API_BASE_URL } from "@/lib/api";
-import { setToken, setTokens, authFetch } from "@/lib/auth";
+import { setToken, setTokens } from "@/lib/auth";
+import { getSchoolSlug } from "@/lib/env";
 
 type Step = "mobile" | "otp" | "students" | "details";
 
@@ -59,14 +60,11 @@ export default function RegisterParentPage() {
         if (linkedStudents.length > 0) {
             const student = linkedStudents[0]; // Assuming we fetch from the first linked student
             let nameToParse = "";
-            let aadhaarToFill = "";
 
             if (role === 'FATHER') {
                 nameToParse = student.fathersName || "";
-                aadhaarToFill = student.fatherAadhaarNumber || "";
             } else if (role === 'MOTHER') {
                 nameToParse = student.mothersName || "";
-                aadhaarToFill = student.motherAadhaarNumber || "";
             }
 
             const { first, last } = parseName(nameToParse);
@@ -76,8 +74,6 @@ export default function RegisterParentPage() {
                 parentType: role,
                 firstName: first,
                 lastName: last
-                // Note: We are currently not capturing Aadhaar on the parent registration UI itself per layout,
-                // but if we were, we could fill it here.
             }));
 
             // Only lock names if we actually found a name to auto-fill
@@ -92,13 +88,28 @@ export default function RegisterParentPage() {
         }
     };
 
+    // ── Helpers ──
+    const schoolHeaders = () => {
+        const slug = getSchoolSlug();
+        const h: Record<string, string> = {};
+        if (slug) h['X-School-Slug'] = slug;
+        return h;
+    };
+
     // ── Debounced mobile check ──
     const checkMobile = useCallback(async (num: string) => {
         if (num.length < 10) { setMobileCheck({ status: "idle", students: [] }); return; }
         setMobileCheck({ status: "checking", students: [] });
         try {
-            const res = await authFetch(`${API_BASE_URL}/auth/parent/check-mobile?mobile=${encodeURIComponent(num)}`);
+            const res = await fetch(`${API_BASE_URL}/auth/parent/check-mobile?mobile=${encodeURIComponent(num)}`, {
+                headers: schoolHeaders(),
+            });
             const data = await res.json();
+            if (!res.ok) {
+                // Server error (e.g. tenant not resolved) — treat as not found so user sees the helper text
+                setMobileCheck({ status: "not_found", students: [] });
+                return;
+            }
             setMobileCheck({ status: data.found ? "found" : "not_found", students: data.students || [] });
         } catch {
             setMobileCheck({ status: "idle", students: [] });
@@ -123,9 +134,9 @@ export default function RegisterParentPage() {
         setSendingOtp(true);
         setOtpSendError("");
         try {
-            const res = await authFetch(`${API_BASE_URL}/auth/parent/request-otp`, {
+            const res = await fetch(`${API_BASE_URL}/auth/parent/request-otp`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...schoolHeaders() },
                 body: JSON.stringify({ mobile }),
             });
             const data = await res.json();
@@ -145,9 +156,9 @@ export default function RegisterParentPage() {
         setOtpError("");
         setVerifying(true);
         try {
-            const res = await authFetch(`${API_BASE_URL}/auth/parent/verify-otp`, {
+            const res = await fetch(`${API_BASE_URL}/auth/parent/verify-otp`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...schoolHeaders() },
                 body: JSON.stringify({ mobile, otp }),
             });
             const data = await res.json();
@@ -170,9 +181,9 @@ export default function RegisterParentPage() {
         if (!form.parentType) { setSubmitError("Please select a registration role"); return; }
         setSubmitting(true);
         try {
-            const res = await authFetch(`${API_BASE_URL}/auth/parent/register`, {
+            const res = await fetch(`${API_BASE_URL}/auth/parent/register`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${registrationToken}` },
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${registrationToken}`, ...schoolHeaders() },
                 body: JSON.stringify({
                     firstName: form.firstName,
                     lastName: form.lastName,
@@ -357,12 +368,7 @@ export default function RegisterParentPage() {
                                             </div>
                                             <div>
                                                 <p className="text-white font-semibold text-sm">{s.firstName} {s.lastName}</p>
-                                                <p className="text-slate-400 text-xs">{s.className ? `Class ${s.className}${s.sectionName ? ` – ${s.sectionName}` : ""}` : "Details pending"}</p>
-
-                                                {/* Hidden temporarily - mapping parent specifics */}
-                                                <div className="hidden">
-                                                    <span data-fname={s.fathersName} data-mname={s.mothersName} data-fuid={s.fatherAadhaarNumber} data-muid={s.motherAadhaarNumber}></span>
-                                                </div>
+                                                <p className="text-slate-400 text-xs">{s.className ? `Enrolled in ${s.className}${s.sectionName ? ` – ${s.sectionName}` : ""}` : "Details pending"}</p>
                                             </div>
                                             <svg className="w-5 h-5 text-green-400 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                                         </div>

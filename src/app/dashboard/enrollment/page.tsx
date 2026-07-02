@@ -23,6 +23,7 @@ export default function EnrollmentPage() {
     const [filterClass, setFilterClass] = useState("");
     const [filterSection, setFilterSection] = useState("");
     const [availableSections, setAvailableSections] = useState<any[]>([]);
+    const [loadingFilterSections, setLoadingFilterSections] = useState(false);
 
     const [selectedStudent, setSelectedStudent] = useState("");
     const [studentData, setStudentData] = useState<any>(null); // Full student object
@@ -30,11 +31,19 @@ export default function EnrollmentPage() {
     const [selectedSection, setSelectedSection] = useState("");
     const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
 
+    const [loadingModalSections, setLoadingModalSections] = useState(false);
     const [loading, setLoading] = useState(false);
     const [searchLoading, setSearchLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [showEditModal, setShowEditModal] = useState(false);
+
+    // Bulk action state
+    const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
+    const [showBulkModal, setShowBulkModal] = useState(false);
+    const [bulkSubjects, setBulkSubjects] = useState<string[]>([]);
+    const [bulkActionType, setBulkActionType] = useState<"ADD" | "REPLACE">("REPLACE");
+    const [bulkLoading, setBulkLoading] = useState(false);
 
     // Initial Fetch
     useEffect(() => {
@@ -43,7 +52,7 @@ export default function EnrollmentPage() {
                 const [studentsRes, subjectsRes, classesRes, sessionsRes] = await Promise.all([
                     authFetch(`${API_BASE_URL}/students`),
                     authFetch(`${API_BASE_URL}/subjects`),
-                    authFetch(`${API_BASE_URL}/classes`),
+                    authFetch(`${API_BASE_URL}/classes/names-only`),
                     authFetch(`${API_BASE_URL}/academic-sessions`)
                 ]);
 
@@ -69,14 +78,19 @@ export default function EnrollmentPage() {
 
     // Update sections for filter dropdown when class filter changes
     useEffect(() => {
-        if (filterClass) {
-            const cls = classes.find((c: any) => c.id === parseInt(filterClass));
-            setAvailableSections(cls ? cls.sections : []);
-        } else {
+        if (!filterClass) {
             setAvailableSections([]);
             setFilterSection("");
+            return;
         }
-    }, [filterClass, classes]);
+        setLoadingFilterSections(true);
+        setAvailableSections([]);
+        authFetch(`${API_BASE_URL}/classes/${filterClass}/sections`)
+            .then(r => r.json())
+            .then(data => setAvailableSections(Array.isArray(data) ? data : []))
+            .catch(() => setAvailableSections([]))
+            .finally(() => setLoadingFilterSections(false));
+    }, [filterClass]);
 
     const handleSearch = () => {
         setSearchLoading(true);
@@ -140,17 +154,18 @@ export default function EnrollmentPage() {
 
     // Filter sections when class changes (for the Enrollment Form)
     useEffect(() => {
-        if (selectedClass) {
-            const cls = classes.find((c: any) => c.id === parseInt(selectedClass));
-            if (cls) {
-                setSections(cls.sections || []);
-            } else {
-                setSections([]);
-            }
-        } else {
+        if (!selectedClass) {
             setSections([]);
+            return;
         }
-    }, [selectedClass, classes]);
+        setLoadingModalSections(true);
+        setSections([]);
+        authFetch(`${API_BASE_URL}/classes/${selectedClass}/sections`)
+            .then(r => r.json())
+            .then(data => setSections(Array.isArray(data) ? data : []))
+            .catch(() => setSections([]))
+            .finally(() => setLoadingModalSections(false));
+    }, [selectedClass]);
 
     const handleSubjectToggle = (subjectId: string) => {
         setSelectedSubjects(prev =>
@@ -207,14 +222,84 @@ export default function EnrollmentPage() {
                 });
             }
 
-        } catch (err) {
+        } catch {
             setError("Failed to enroll student. Please try again.");
         } finally {
             setLoading(false);
         }
     };
 
+    const handleBulkSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setBulkLoading(true);
+
+        try {
+            const res = await authFetch(`${API_BASE_URL}/students/bulk-assign-subjects`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    studentIds: selectedStudentIds,
+                    subjectIds: bulkSubjects.map(id => parseInt(id)),
+                    action: bulkActionType,
+                }),
+            });
+
+            if (!res.ok) throw new Error("Bulk assign failed");
+
+            toast.success("Subjects assigned successfully!");
+            setShowBulkModal(false);
+            setBulkSubjects([]);
+            setSelectedStudentIds([]); // Clear selection after success
+
+            // Refresh data
+            const refreshRes = await authFetch(`${API_BASE_URL}/students`);
+            if (refreshRes.ok) {
+                const refreshedStudents = await refreshRes.json();
+                setStudents(refreshedStudents);
+                setFilteredStudents(prevFiltered => prevFiltered.map(fs => {
+                    const updated = refreshedStudents.find((rs: any) => rs.id === fs.id);
+                    return updated ? updated : fs;
+                }));
+            }
+        } catch {
+            toast.error("Failed to assign subjects in bulk.");
+        } finally {
+            setBulkLoading(false);
+        }
+    };
+
     const columns = [
+        {
+            header: (
+                <input
+                    type="checkbox"
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                    checked={filteredStudents.length > 0 && selectedStudentIds.length === filteredStudents.length}
+                    onChange={(e) => {
+                        if (e.target.checked) {
+                            setSelectedStudentIds(filteredStudents.map(s => s.id));
+                        } else {
+                            setSelectedStudentIds([]);
+                        }
+                    }}
+                />
+            ),
+            className: "w-10",
+            render: (s: any) => (
+                <input
+                    type="checkbox"
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                    checked={selectedStudentIds.includes(s.id)}
+                    onChange={(e) => {
+                        if (e.target.checked) {
+                            setSelectedStudentIds(prev => [...prev, s.id]);
+                        } else {
+                            setSelectedStudentIds(prev => prev.filter(id => id !== s.id));
+                        }
+                    }}
+                />
+            )
+        },
         { header: "ID", accessor: "id", className: "w-16", sortable: true, sortKey: "id" },
         { header: "Name", render: (s: any) => `${s.firstName} ${s.lastName}`, sortable: true, sortKey: "firstName" },
         { header: "Class / Section", render: (s: any) => s.class ? `${s.class.name} - ${s.section?.name}` : 'Not Assigned' },
@@ -265,7 +350,7 @@ export default function EnrollmentPage() {
 
                     {/* Filter Controls */}
                     <div className="mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
                             <div>
                                 <label className="block mb-2 text-sm font-medium text-gray-900">Class</label>
                                 <select
@@ -285,9 +370,9 @@ export default function EnrollmentPage() {
                                     value={filterSection}
                                     onChange={(e) => setFilterSection(e.target.value)}
                                     className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                                    disabled={!filterClass}
+                                    disabled={!filterClass || loadingFilterSections}
                                 >
-                                    <option value="">All Sections</option>
+                                    <option value="">{loadingFilterSections ? "Loading sections..." : "All Sections"}</option>
                                     {availableSections.map((s: any) => (
                                         <option key={s.id} value={s.id}>{s.name}</option>
                                     ))}
@@ -317,7 +402,22 @@ export default function EnrollmentPage() {
 
                     {/* Results Table */}
                     <div className="mb-8">
-                        <h3 className="text-lg font-semibold mb-4 text-slate-700">Student List</h3>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-semibold text-slate-700">Student List</h3>
+                            {selectedStudentIds.length > 0 && (
+                                <div className="flex items-center gap-4">
+                                    <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                                        {selectedStudentIds.length} student(s) selected
+                                    </span>
+                                    <button
+                                        onClick={() => setShowBulkModal(true)}
+                                        className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2 focus:outline-none"
+                                    >
+                                        Bulk Assign Subjects
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                         <Table
                             columns={columns}
                             data={filteredStudents}
@@ -365,9 +465,9 @@ export default function EnrollmentPage() {
                                                     onChange={(e) => setSelectedSection(e.target.value)}
                                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                                                     required
-                                                    disabled={!selectedClass}
+                                                    disabled={!selectedClass || loadingModalSections}
                                                 >
-                                                    <option value="">Choose a section</option>
+                                                    <option value="">{loadingModalSections ? "Loading sections..." : "Choose a section"}</option>
                                                     {sections.map((section: any) => (
                                                         <option key={section.id} value={section.id}>
                                                             {section.name}
@@ -453,6 +553,92 @@ export default function EnrollmentPage() {
                                             className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50"
                                         >
                                             {loading ? 'Saving Enrollment...' : 'Update Enrollment'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Bulk Assign Subjects Modal */}
+                    {showBulkModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                                <h3 className="text-xl font-bold mb-6 text-slate-800">
+                                    Bulk Assign Subjects ({selectedStudentIds.length} students)
+                                </h3>
+
+                                <form onSubmit={handleBulkSubmit}>
+                                    <div className="mb-6">
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">Action Type</label>
+                                        <div className="flex space-x-4">
+                                            <label className="flex items-center space-x-2">
+                                                <input
+                                                    type="radio"
+                                                    name="bulkActionType"
+                                                    value="REPLACE"
+                                                    checked={bulkActionType === "REPLACE"}
+                                                    onChange={(e) => setBulkActionType(e.target.value as "ADD" | "REPLACE")}
+                                                    className="text-blue-600 focus:ring-blue-500"
+                                                />
+                                                <span className="text-sm font-medium text-gray-900">Replace existing subjects</span>
+                                            </label>
+                                            <label className="flex items-center space-x-2">
+                                                <input
+                                                    type="radio"
+                                                    name="bulkActionType"
+                                                    value="ADD"
+                                                    checked={bulkActionType === "ADD"}
+                                                    onChange={(e) => setBulkActionType(e.target.value as "ADD" | "REPLACE")}
+                                                    className="text-blue-600 focus:ring-blue-500"
+                                                />
+                                                <span className="text-sm font-medium text-gray-900">Add to existing subjects</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="mb-6">
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">Subjects</label>
+                                        <div className="grid grid-cols-2 gap-4 bg-gray-50 p-6 rounded-lg border border-gray-200">
+                                            {subjects.map((subject: any) => (
+                                                <div key={subject.id} className="flex items-center">
+                                                    <input
+                                                        id={`bulk-subject-${subject.id}`}
+                                                        type="checkbox"
+                                                        value={subject.id}
+                                                        checked={bulkSubjects.includes(subject.id.toString())}
+                                                        onChange={(e) => {
+                                                            const idStr = subject.id.toString();
+                                                            setBulkSubjects(prev =>
+                                                                e.target.checked
+                                                                    ? [...prev, idStr]
+                                                                    : prev.filter(id => id !== idStr)
+                                                            );
+                                                        }}
+                                                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                                                    />
+                                                    <label htmlFor={`bulk-subject-${subject.id}`} className="ml-2 text-sm font-medium text-gray-900 cursor-pointer select-none">
+                                                        {subject.name}
+                                                    </label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-end space-x-4 border-t pt-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowBulkModal(false)}
+                                            className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={bulkLoading}
+                                            className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50"
+                                        >
+                                            {bulkLoading ? 'Applying...' : 'Apply Subjects'}
                                         </button>
                                     </div>
                                 </form>

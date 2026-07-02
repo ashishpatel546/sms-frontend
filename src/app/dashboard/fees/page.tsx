@@ -8,11 +8,12 @@ import { useRouter } from "next/navigation";
 import { useRbac } from "@/lib/rbac";
 import { authFetch, getUser } from "@/lib/auth";
 import ReceiptModal from "@/components/ReceiptModal";
+import { Settings, Layers, Wallet, BadgePercent } from "lucide-react";
 
 export default function FeesDashboardPage() {
     const router = useRouter();
     const rbac = useRbac();
-    const [activeTab, setActiveTab] = useState<'SETUP' | 'STRUCTURES' | 'COLLECTION' | 'APPLY_DISCOUNTS'>('COLLECTION');
+    const [activeTab, setActiveTab] = useState<'SETUP' | 'STRUCTURES' | 'COLLECTION' | 'APPLY_DISCOUNTS' | 'APPLY_OTHER_FEE' | 'FEE_DETAILS'>('COLLECTION');
     const [mounted, setMounted] = useState(false);
 
     // Role guard — redirect TEACHER away from fees
@@ -25,6 +26,8 @@ export default function FeesDashboardPage() {
 
     // --- Setup State ---
     const [categories, setCategories] = useState<any[]>([]);
+    const [regularCategories, setRegularCategories] = useState<any[]>([]);
+    const [addOnCategories, setAddOnCategories] = useState<any[]>([]);
     const [structures, setStructures] = useState<any[]>([]);
     const [classes, setClasses] = useState<any[]>([]);
     const [sessions, setSessions] = useState<any[]>([]);
@@ -35,9 +38,11 @@ export default function FeesDashboardPage() {
     // New Category Form
     const [newCategoryName, setNewCategoryName] = useState("");
     const [newCategoryDesc, setNewCategoryDesc] = useState("");
+    const [newCategoryType, setNewCategoryType] = useState("REGULAR");
     const [editingCategory, setEditingCategory] = useState<any>(null);
     const [editCategoryName, setEditCategoryName] = useState("");
     const [editCategoryDesc, setEditCategoryDesc] = useState("");
+    const [editCategoryType, setEditCategoryType] = useState("REGULAR");
 
     // New Structure Form
     const [formClassId, setFormClassId] = useState("");
@@ -69,6 +74,41 @@ export default function FeesDashboardPage() {
     const [applyDiscountSearchQuery, setApplyDiscountSearchQuery] = useState("");
     const [selectedDiscountsToApply, setSelectedDiscountsToApply] = useState<number[]>([]);
     const [applyingDiscounts, setApplyingDiscounts] = useState(false);
+
+    // Apply Other Fee State
+    const [applyOtherFeeStudentId, setApplyOtherFeeStudentId] = useState("");
+    const [applyOtherFeeStudentName, setApplyOtherFeeStudentName] = useState("");
+    const [applyOtherFeeCategoryId, setApplyOtherFeeCategoryId] = useState("");
+    const [applyOtherFeeAmount, setApplyOtherFeeAmount] = useState("");
+    const [applyOtherFeeFrequency, setApplyOtherFeeFrequency] = useState("MONTHLY");
+    const [applyOtherFeeDescription, setApplyOtherFeeDescription] = useState("");
+    const [applyingOtherFee, setApplyingOtherFee] = useState(false);
+
+    // Shared Student Search Form State
+    const [searchFormId, setSearchFormId] = useState("");
+    const [searchFormFirstName, setSearchFormFirstName] = useState("");
+    const [searchFormLastName, setSearchFormLastName] = useState("");
+    const [searchFormMobile, setSearchFormMobile] = useState("");
+    const [searchFormClassId, setSearchFormClassId] = useState("");
+    const [searchFormSectionId, setSearchFormSectionId] = useState("");
+    const [searchFormSessionId, setSearchFormSessionId] = useState("");
+    const [searchFormSections, setSearchFormSections] = useState<any[]>([]);
+    const [hasSearchFormSearched, setHasSearchFormSearched] = useState(false);
+    const [searchFormStudentsList, setSearchFormStudentsList] = useState<any[]>([]);
+    const [isSearchingStudents, setIsSearchingStudents] = useState(false);
+    // Pagination for student search
+    const [searchFormPage, setSearchFormPage] = useState(1);
+    const [searchFormTotal, setSearchFormTotal] = useState(0);
+    const SEARCH_PAGE_SIZE = 20;
+
+    // FEE_DETAILS tab state
+    const [feeDetailsStudentId, setFeeDetailsStudentId] = useState("");
+    const [feeDetailsStudentName, setFeeDetailsStudentName] = useState("");
+    const [feeDetailsOptionalFees, setFeeDetailsOptionalFees] = useState<any[]>([]);
+    const [feeDetailsDiscounts, setFeeDetailsDiscounts] = useState<any[]>([]);
+    const [feeDetailsFull, setFeeDetailsFull] = useState<any>(null);
+    const [loadingFeeDetails, setLoadingFeeDetails] = useState(false);
+    const [removingFeeId, setRemovingFeeId] = useState<number | null>(null);
 
     // Manage Structures State
     const [structureSearchClassId, setStructureSearchClassId] = useState("");
@@ -111,6 +151,20 @@ export default function FeesDashboardPage() {
             document.removeEventListener('scroll', handleClose, true);
         }
     }, []);
+
+    // Decouple Search: Reset search state when switching tabs
+    useEffect(() => {
+        // Reset search results for the shared student search form when tab changes
+        setSearchFormStudentsList([]);
+        setHasSearchFormSearched(false);
+        setSearchFormTotal(0);
+        setSearchFormPage(1);
+
+        // Also reset selected states for management panels
+        setApplyDiscountStudentId("");
+        setApplyOtherFeeStudentId("");
+        setFeeDetailsStudentId("");
+    }, [activeTab]);
 
     const handleDropdownClick = (e: React.MouseEvent, id: string) => {
         e.preventDefault();
@@ -167,19 +221,25 @@ export default function FeesDashboardPage() {
     const [adjType, setAdjType] = useState<'REFUND' | 'WAIVE_OFF'>('REFUND');
     const [adjModalOpen, setAdjModalOpen] = useState(false);
     const [submittingAdj, setSubmittingAdj] = useState(false);
+    const [adjPermittedBySearch, setAdjPermittedBySearch] = useState("");
+    const [adjPermittedByResults, setAdjPermittedByResults] = useState<any[]>([]);
+    const [adjPermittedByUserId, setAdjPermittedByUserId] = useState<number | null>(null);
+    const [adjPermittedByName, setAdjPermittedByName] = useState("");
 
     // Fetch Setup Data
     useEffect(() => {
         const fetchSetupData = async () => {
             try {
-                const [catRes, structRes, classRes, studentRes, settingsRes, discountRes, sessionRes] = await Promise.all([
+                const [catRes, structRes, classRes, studentRes, settingsRes, discountRes, sessionRes, regularCatRes, addOnCatRes] = await Promise.all([
                     authFetch(`${API_BASE_URL}/fees/categories`),
                     authFetch(`${API_BASE_URL}/fees/structures`),
                     authFetch(`${API_BASE_URL}/classes`),
                     authFetch(`${API_BASE_URL}/students`),
                     authFetch(`${API_BASE_URL}/fees/settings`),
                     authFetch(`${API_BASE_URL}/fees/discounts`),
-                    authFetch(`${API_BASE_URL}/academic-sessions`)
+                    authFetch(`${API_BASE_URL}/academic-sessions`),
+                    authFetch(`${API_BASE_URL}/fees/categories?type=REGULAR`),
+                    authFetch(`${API_BASE_URL}/fees/categories?type=ADD_ON`),
                 ]);
                 if (catRes.ok) setCategories(await catRes.json());
                 if (structRes.ok) setStructures(await structRes.json());
@@ -187,6 +247,8 @@ export default function FeesDashboardPage() {
                 if (studentRes.ok) setStudents(await studentRes.json());
                 if (settingsRes.ok) setGlobalSettings(await settingsRes.json());
                 if (discountRes.ok) setDiscounts(await discountRes.json());
+                if (regularCatRes.ok) setRegularCategories(await regularCatRes.json());
+                if (addOnCatRes.ok) setAddOnCategories(await addOnCatRes.json());
 
                 if (sessionRes.ok) {
                     const sessList = await sessionRes.json();
@@ -207,12 +269,16 @@ export default function FeesDashboardPage() {
 
     // Refresh Setup Data helper
     const refreshSetupData = async () => {
-        const [catRes, structRes] = await Promise.all([
+        const [catRes, structRes, regularCatRes, addOnCatRes] = await Promise.all([
             authFetch(`${API_BASE_URL}/fees/categories`),
-            authFetch(`${API_BASE_URL}/fees/structures`)
+            authFetch(`${API_BASE_URL}/fees/structures`),
+            authFetch(`${API_BASE_URL}/fees/categories?type=REGULAR`),
+            authFetch(`${API_BASE_URL}/fees/categories?type=ADD_ON`),
         ]);
         if (catRes.ok) setCategories(await catRes.json());
         if (structRes.ok) setStructures(await structRes.json());
+        if (regularCatRes.ok) setRegularCategories(await regularCatRes.json());
+        if (addOnCatRes.ok) setAddOnCategories(await addOnCatRes.json());
     };
 
     const handleSaveSettings = async (e: React.FormEvent) => {
@@ -333,12 +399,13 @@ export default function FeesDashboardPage() {
             const res = await authFetch(`${API_BASE_URL}/fees/categories`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: newCategoryName, description: newCategoryDesc })
+                body: JSON.stringify({ name: newCategoryName, description: newCategoryDesc, type: newCategoryType })
             });
             if (res.ok) {
                 toast.success("Fee Category Created!");
                 setNewCategoryName("");
                 setNewCategoryDesc("");
+                setNewCategoryType("REGULAR");
                 refreshSetupData();
             } else throw new Error("Creation failed");
         } catch (err) {
@@ -353,7 +420,7 @@ export default function FeesDashboardPage() {
             const res = await authFetch(`${API_BASE_URL}/fees/categories/${editingCategory.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: editCategoryName, description: editCategoryDesc })
+                body: JSON.stringify({ name: editCategoryName, description: editCategoryDesc, type: editCategoryType })
             });
             if (res.ok) {
                 toast.success("Fee Category Updated!");
@@ -477,6 +544,46 @@ export default function FeesDashboardPage() {
         }
     };
 
+    const handleSearchFormStudents = async (e: React.FormEvent, overridePage?: number) => {
+        e.preventDefault();
+        const pageToFetch = overridePage ?? 1;
+        setIsSearchingStudents(true);
+        setHasSearchFormSearched(true);
+        if (!overridePage) setSearchFormPage(1);
+        try {
+            const params = new URLSearchParams();
+            if (searchFormId) params.append("id", searchFormId);
+            if (searchFormFirstName) params.append("firstName", searchFormFirstName);
+            if (searchFormLastName) params.append("lastName", searchFormLastName);
+            if (searchFormMobile) params.append("mobile", searchFormMobile);
+            if (searchFormClassId) params.append("classId", searchFormClassId);
+            if (searchFormSectionId) params.append("sectionId", searchFormSectionId);
+            if (searchFormSessionId) params.append("academicSessionId", searchFormSessionId); // fixed: was "sessionId"
+            params.append("page", String(pageToFetch));
+            params.append("limit", String(SEARCH_PAGE_SIZE));
+
+            const res = await authFetch(`${API_BASE_URL}/students?${params.toString()}`);
+            if (res.ok) {
+                const data = await res.json();
+                // Backend returns { data, total, page, limit } when paginated
+                if (data && data.data) {
+                    setSearchFormStudentsList(data.data);
+                    setSearchFormTotal(data.total);
+                    setSearchFormPage(data.page);
+                } else {
+                    setSearchFormStudentsList(Array.isArray(data) ? data : []);
+                    setSearchFormTotal(Array.isArray(data) ? data.length : 0);
+                }
+            } else {
+                toast.error("Failed to fetch students");
+            }
+        } catch (error) {
+            toast.error("An error occurred while fetching students");
+        } finally {
+            setIsSearchingStudents(false);
+        }
+    };
+
     // Filter Students based on Search Query
     const filteredStudents = students.filter(s => {
         if (!searchQuery) return false;
@@ -518,6 +625,107 @@ export default function FeesDashboardPage() {
         };
         fetchStudentFees();
     }, [selectedStudentId, collectionYear]);
+
+    // Handle class change to update sections dropdown
+    useEffect(() => {
+        if (!searchFormClassId) {
+            setSearchFormSections([]);
+            setSearchFormSectionId("");
+            return;
+        }
+        const cls = classes.find(c => c.id.toString() === searchFormClassId);
+        if (cls && cls.sections) {
+            setSearchFormSections(cls.sections);
+            // Auto-select first section or clear if none
+            setSearchFormSectionId(cls.sections.length > 0 ? cls.sections[0].id.toString() : "");
+        } else {
+            setSearchFormSections([]);
+            setSearchFormSectionId("");
+        }
+    }, [searchFormClassId, classes]);
+
+    const handleApplyOtherFeeSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!applyOtherFeeStudentId || !applyOtherFeeCategoryId || !applyOtherFeeAmount) return;
+
+        setApplyingOtherFee(true);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/students/${applyOtherFeeStudentId}/optional-fees`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    feeCategoryId: parseInt(applyOtherFeeCategoryId),
+                    amount: parseFloat(applyOtherFeeAmount),
+                    frequency: applyOtherFeeFrequency,
+                    description: applyOtherFeeDescription
+                })
+            });
+            if (res.ok) {
+                toast.success("Special Fee applied successfully!");
+                // Clear form but keep student selected
+                setApplyOtherFeeCategoryId("");
+                setApplyOtherFeeAmount("");
+                setApplyOtherFeeDescription("");
+            } else {
+                throw new Error("Failed to apply fee");
+            }
+        } catch (err) {
+            toast.error("Error applying fee");
+        } finally {
+            setApplyingOtherFee(false);
+        }
+    };
+
+    const handleLoadFeeDetails = async (studentId: string, studentName: string) => {
+        setFeeDetailsStudentId(studentId);
+        setFeeDetailsStudentName(studentName);
+        setLoadingFeeDetails(true);
+        setFeeDetailsOptionalFees([]);
+        setFeeDetailsDiscounts([]);
+        setFeeDetailsFull(null);
+        try {
+            const [optFeesRes, fullFeesRes, studentRes] = await Promise.all([
+                authFetch(`${API_BASE_URL}/students/${studentId}/optional-fees`),
+                authFetch(`${API_BASE_URL}/fees/student/${studentId}?academicYear=${collectionYear}`),
+                authFetch(`${API_BASE_URL}/students?id=${studentId}&page=1&limit=1`)
+            ]);
+            if (optFeesRes.ok) setFeeDetailsOptionalFees(await optFeesRes.json());
+            if (fullFeesRes.ok) setFeeDetailsFull(await fullFeesRes.json());
+            if (studentRes.ok) {
+                const data = await studentRes.json();
+                const students = data?.data || (Array.isArray(data) ? data : []);
+                const s = students[0];
+                if (s?.studentDiscounts) {
+                    setFeeDetailsDiscounts(s.studentDiscounts.filter((sd: any) => sd.isActive));
+                }
+            }
+        } catch {
+            toast.error("Failed to load fee details");
+        } finally {
+            setLoadingFeeDetails(false);
+            setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
+        }
+    };
+
+    const handleRemoveOptionalFee = async (feeId: number) => {
+        if (!feeDetailsStudentId) return;
+        setRemovingFeeId(feeId);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/students/${feeDetailsStudentId}/optional-fees/${feeId}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                toast.success("Optional fee removed successfully");
+                setFeeDetailsOptionalFees(prev => prev.filter((f: any) => f.id !== feeId));
+            } else {
+                throw new Error("Failed to remove fee");
+            }
+        } catch {
+            toast.error("Failed to remove fee");
+        } finally {
+            setRemovingFeeId(null);
+        }
+    };
 
     const handleCollectPayment = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -631,12 +839,20 @@ export default function FeesDashboardPage() {
         setAdjReason("");
         setAdjPaymentMethod("CASH");
         setAdjType(defaultType);
+        setAdjPermittedBySearch("");
+        setAdjPermittedByResults([]);
+        setAdjPermittedByUserId(null);
+        setAdjPermittedByName("");
         setAdjModalOpen(true);
     };
 
     const handleIssueAdjustment = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedStudentId || !adjFeeMonth) return;
+        if (adjType === 'WAIVE_OFF' && !adjPermittedByUserId) {
+            toast.error('Please select who permitted this waive-off.');
+            return;
+        }
         setSubmittingAdj(true);
         try {
             const body: any = {
@@ -648,6 +864,7 @@ export default function FeesDashboardPage() {
                 type: adjType,
             };
             if (adjType === 'REFUND') body.paymentMethod = adjPaymentMethod;
+            if (adjPermittedByUserId) body.permittedByUserId = adjPermittedByUserId;
             const res = await authFetch(`${API_BASE_URL}/fees/adjustment`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -675,6 +892,19 @@ export default function FeesDashboardPage() {
         } finally {
             setSubmittingAdj(false);
         }
+    };
+
+    const searchPermittedBy = async (query: string) => {
+        setAdjPermittedBySearch(query);
+        if (!query.trim()) { setAdjPermittedByResults([]); return; }
+        try {
+            const res = await authFetch(`${API_BASE_URL}/users?staffOnly=true&name=${encodeURIComponent(query)}&limit=10`);
+            if (res.ok) {
+                const data = await res.json();
+                const users = Array.isArray(data) ? data : (data.data ?? []);
+                setAdjPermittedByResults(users);
+            }
+        } catch { /* ignore */ }
     };
 
     const handleRevertWaiveOff = async (adjustmentId: number) => {
@@ -1020,6 +1250,59 @@ export default function FeesDashboardPage() {
                                     placeholder={adjType === 'REFUND' ? 'e.g. Overpayment, Error correction...' : 'Reason for waiving dues (required)'}
                                 />
                             </div>
+                            {/* Permitted By — required for WAIVE_OFF */}
+                            {adjType === 'WAIVE_OFF' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-900 mb-1">
+                                        Permitted By <span className="text-red-500">*</span>
+                                        <span className="ml-1 text-xs text-gray-400 font-normal">Search staff by name</span>
+                                    </label>
+                                    {adjPermittedByUserId ? (
+                                        <div className="flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2">
+                                            <svg className="w-4 h-4 text-purple-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.121 17.804A7 7 0 1112 19a7 7 0 01-6.879-1.196" /></svg>
+                                            <span className="text-sm font-medium text-purple-800 flex-1">{adjPermittedByName}</span>
+                                            <button type="button" onClick={() => { setAdjPermittedByUserId(null); setAdjPermittedByName(""); setAdjPermittedBySearch(""); }} className="text-gray-400 hover:text-gray-600">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={adjPermittedBySearch}
+                                                onChange={(e) => searchPermittedBy(e.target.value)}
+                                                className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-purple-500 focus:border-purple-500"
+                                                placeholder="Type name to search..."
+                                                autoComplete="off"
+                                            />
+                                            {adjPermittedByResults.length > 0 && (
+                                                <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                                    {adjPermittedByResults.map((u: any) => (
+                                                        <button
+                                                            key={u.id}
+                                                            type="button"
+                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-purple-50 flex items-center gap-2"
+                                                            onClick={() => {
+                                                                const desig = u.designation?.title;
+                                                                const label = desig ? `${u.firstName} ${u.lastName} (${desig})` : `${u.firstName} ${u.lastName}`;
+                                                                setAdjPermittedByUserId(u.id);
+                                                                setAdjPermittedByName(label);
+                                                                setAdjPermittedBySearch("");
+                                                                setAdjPermittedByResults([]);
+                                                            }}
+                                                        >
+                                                            <span className="font-medium text-slate-800">{u.firstName} {u.lastName}</span>
+                                                            <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded ml-auto">
+                                                                {u.designation?.title || u.role?.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                                                            </span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" disabled={submittingAdj} className={`flex-1 text-white py-2.5 rounded-lg font-bold transition-colors disabled:opacity-50 ${adjType === 'REFUND' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-purple-600 hover:bg-purple-700'}`}>
                                     {submittingAdj ? 'Processing...' : adjType === 'REFUND' ? 'Confirm Refund' : 'Confirm Waive Off'}
@@ -1033,47 +1316,81 @@ export default function FeesDashboardPage() {
                 </div>
             )}
 
-            <div className="mb-6 flex flex-col md:flex-row md:justify-between md:items-center border-b border-gray-200 no-print gap-4">
-                <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
+            <div className="mb-6 flex flex-col lg:flex-row lg:justify-between lg:items-center no-print gap-4">
+                <div className="flex p-1 bg-slate-100 rounded-xl w-fit shadow-inner border border-slate-200/60 overflow-x-auto">
                     {/* Fee Setup tab — ADMIN+ only */}
                     {rbac.canConfigureFees && (
-                        <li className="mr-2">
-                            <button
-                                onClick={() => setActiveTab('SETUP')}
-                                className={`inline-block p-4 border-b-2 rounded-t-lg transition-colors ${activeTab === 'SETUP' ? 'text-blue-600 border-blue-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}
-                            >
-                                Fee Setup (Admin)
-                            </button>
-                        </li>
+                        <button
+                            onClick={() => setActiveTab('SETUP')}
+                            className={`flex items-center whitespace-nowrap gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                                activeTab === 'SETUP'
+                                    ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                            }`}
+                        >
+                            <Settings className="w-4 h-4" />
+                            Fee Setup (Admin)
+                        </button>
                     )}
                     {rbac.canConfigureFees && (
-                        <li className="mr-2">
-                            <button
-                                onClick={() => setActiveTab('STRUCTURES')}
-                                className={`inline-block p-4 border-b-2 rounded-t-lg transition-colors ${activeTab === 'STRUCTURES' ? 'text-blue-600 border-blue-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}
-                            >
-                                Manage Structures
-                            </button>
-                        </li>
+                        <button
+                            onClick={() => setActiveTab('STRUCTURES')}
+                            className={`flex items-center whitespace-nowrap gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                                activeTab === 'STRUCTURES'
+                                    ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                            }`}
+                        >
+                            <Layers className="w-4 h-4" />
+                            Manage Structures
+                        </button>
                     )}
-                    <li className="mr-2">
-                        <button
-                            onClick={() => setActiveTab('COLLECTION')}
-                            className={`inline-block p-4 border-b-2 rounded-t-lg transition-colors ${activeTab === 'COLLECTION' ? 'text-blue-600 border-blue-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}
-                        >
-                            Fee Collection
-                        </button>
-                    </li>
-                    <li className="mr-2">
-                        <button
-                            onClick={() => setActiveTab('APPLY_DISCOUNTS')}
-                            className={`inline-block p-4 border-b-2 rounded-t-lg transition-colors ${activeTab === 'APPLY_DISCOUNTS' ? 'text-blue-600 border-blue-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}
-                        >
-                            Apply Fee Discounts
-                        </button>
-                    </li>
-                </ul>
-                <div className="pb-2 w-full md:w-auto">
+                    <button
+                        onClick={() => setActiveTab('COLLECTION')}
+                        className={`flex items-center whitespace-nowrap gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                            activeTab === 'COLLECTION'
+                                ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                        }`}
+                    >
+                        <Wallet className="w-4 h-4" />
+                        Fee Collection
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('APPLY_DISCOUNTS')}
+                        className={`flex items-center whitespace-nowrap gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                            activeTab === 'APPLY_DISCOUNTS'
+                                ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                        }`}
+                    >
+                        <BadgePercent className="w-4 h-4" />
+                        Apply Fee Discounts
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('APPLY_OTHER_FEE')}
+                        className={`flex items-center whitespace-nowrap gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                            activeTab === 'APPLY_OTHER_FEE'
+                                ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                        }`}
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                        Apply Other Fee
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('FEE_DETAILS')}
+                        className={`flex items-center whitespace-nowrap gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                            activeTab === 'FEE_DETAILS'
+                                ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                        }`}
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                        Fee Details
+                    </button>
+                </div>
+                <div className="w-full md:w-auto">
                     <Link href="/dashboard/fees/reports" className="w-full md:w-auto px-4 py-2 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors shadow-sm inline-flex items-center justify-center gap-2">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                         View Fee Reports
@@ -1118,7 +1435,7 @@ export default function FeesDashboardPage() {
                         </form>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Create Category */}
                         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                             <h2 className="text-xl font-bold mb-4 text-slate-800">1. Add Fee Category</h2>
@@ -1130,6 +1447,13 @@ export default function FeesDashboardPage() {
                                 <div className="mb-4">
                                     <label className="block mb-2 text-sm font-medium text-gray-900">Description</label>
                                     <input type="text" value={newCategoryDesc} onChange={(e) => setNewCategoryDesc(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div className="mb-4">
+                                    <label className="block mb-2 text-sm font-medium text-gray-900">Type</label>
+                                    <select value={newCategoryType} onChange={(e) => setNewCategoryType(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required>
+                                        <option value="REGULAR">Regular (class-wide fee)</option>
+                                        <option value="ADD_ON">Add-On (individual student fee)</option>
+                                    </select>
                                 </div>
                                 <button type="submit" className="text-white bg-indigo-600 hover:bg-indigo-700 transition-colors py-2 px-4 rounded text-sm w-full font-medium">Create Category</button>
                             </form>
@@ -1150,7 +1474,7 @@ export default function FeesDashboardPage() {
                                                     required
                                                 />
                                             </div>
-                                            <div className="mb-6">
+                                            <div className="mb-4">
                                                 <label className="block mb-2 text-sm font-medium text-gray-900">Description</label>
                                                 <input
                                                     type="text"
@@ -1158,6 +1482,18 @@ export default function FeesDashboardPage() {
                                                     onChange={(e) => setEditCategoryDesc(e.target.value)}
                                                     className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500"
                                                 />
+                                            </div>
+                                            <div className="mb-6">
+                                                <label className="block mb-2 text-sm font-medium text-gray-900">Type</label>
+                                                <select
+                                                    value={editCategoryType}
+                                                    onChange={(e) => setEditCategoryType(e.target.value)}
+                                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500"
+                                                    required
+                                                >
+                                                    <option value="REGULAR">Regular (class-wide fee)</option>
+                                                    <option value="ADD_ON">Add-On (individual student fee)</option>
+                                                </select>
                                             </div>
                                             <div className="flex gap-3 justify-end">
                                                 <button
@@ -1185,6 +1521,7 @@ export default function FeesDashboardPage() {
                                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10">
                                         <tr>
                                             <th className="px-4 py-2">Name</th>
+                                            <th className="px-4 py-2">Type</th>
                                             <th className="px-4 py-2">Status</th>
                                             <th className="px-4 py-2 text-right">Actions</th>
                                         </tr>
@@ -1195,6 +1532,11 @@ export default function FeesDashboardPage() {
                                                 <td className="px-4 py-3 font-medium text-gray-900">
                                                     {c.name}
                                                     {c.description && <p className="text-xs text-gray-500 font-normal mt-0.5">{c.description}</p>}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`px-2 py-1 rounded text-xs font-semibold ${c.type === 'ADD_ON' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
+                                                        {c.type === 'ADD_ON' ? 'Add-On' : 'Regular'}
+                                                    </span>
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className={`px-2 py-1 rounded text-xs font-semibold ${c.isActive !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
@@ -1216,7 +1558,7 @@ export default function FeesDashboardPage() {
                                                                 style={{ top: dropdownPosition.top, left: dropdownPosition.left }}
                                                             >
                                                                 <div className="py-1">
-                                                                    <button type="button" onClick={(e) => { e.stopPropagation(); setEditingCategory(c); setEditCategoryName(c.name); setEditCategoryDesc(c.description || ""); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Edit</button>
+                                                                    <button type="button" onClick={(e) => { e.stopPropagation(); setEditingCategory(c); setEditCategoryName(c.name); setEditCategoryDesc(c.description || ""); setEditCategoryType(c.type || "REGULAR"); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Edit</button>
                                                                     <button type="button" onClick={(e) => { e.stopPropagation(); handleToggleCategoryStatus(c.id, c.isActive !== false); setOpenDropdownId(null); }} className={`block w-full text-left px-4 py-2 text-sm ${c.isActive !== false ? 'text-orange-600' : 'text-green-600'} hover:bg-gray-100`}>
                                                                         {c.isActive !== false ? 'Deactivate' : 'Activate'}
                                                                     </button>
@@ -1228,7 +1570,7 @@ export default function FeesDashboardPage() {
                                                 </td>
                                             </tr>
                                         ))}
-                                        {categories.length === 0 && <tr><td colSpan={3} className="px-4 py-4 text-center">No categories found.</td></tr>}
+                                        {categories.length === 0 && <tr><td colSpan={4} className="px-4 py-4 text-center">No categories found.</td></tr>}
                                     </tbody>
                                 </table>
                             </div>
@@ -1238,7 +1580,7 @@ export default function FeesDashboardPage() {
                         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                             <h2 className="text-xl font-bold mb-4 text-slate-800">2. Assign Fee Structure to Class</h2>
                             <form onSubmit={handleCreateStructure}>
-                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                     <div>
                                         <label className="block mb-2 text-sm font-medium text-gray-900">Class</label>
                                         <select value={formClassId} onChange={(e) => setFormClassId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required>
@@ -1250,11 +1592,11 @@ export default function FeesDashboardPage() {
                                         <label className="block mb-2 text-sm font-medium text-gray-900">Category</label>
                                         <select value={formCategoryId} onChange={(e) => setFormCategoryId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required>
                                             <option value="">Select</option>
-                                            {categories.filter(c => c.isActive !== false).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                            {regularCategories.filter(c => c.isActive !== false).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                         </select>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                                     <div>
                                         <label className="block mb-2 text-sm font-medium text-gray-900">Amount (₹)</label>
                                         <input type="number" step="0.01" value={formAmount} onChange={(e) => setFormAmount(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required />
@@ -1285,7 +1627,7 @@ export default function FeesDashboardPage() {
                                             Applicable Discounts
                                             <span className="ml-2 text-xs font-normal text-gray-500">(Only checked discounts will apply to this fee)</span>
                                         </label>
-                                        <div className="border border-gray-200 rounded-lg p-3 grid grid-cols-2 gap-2">
+                                        <div className="border border-gray-200 rounded-lg p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                                             {discounts.filter(d => d.isActive !== false).map(d => (
                                                 <label key={d.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
                                                     <input
@@ -1328,7 +1670,7 @@ export default function FeesDashboardPage() {
                     {/* Manage Discounts */}
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                         <h2 className="text-xl font-bold mb-4 text-slate-800">3. Manage Discount Categories</h2>
-                        <form onSubmit={handleCreateDiscount} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end mb-6">
+                        <form onSubmit={handleCreateDiscount} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-end mb-6">
                             <div className="col-span-2">
                                 <label className="block mb-2 text-sm font-medium text-gray-900">Discount Name</label>
                                 <input type="text" value={newDiscountName} onChange={(e) => setNewDiscountName(e.target.value)} placeholder="e.g. Sibling Discount" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required />
@@ -1781,20 +2123,20 @@ export default function FeesDashboardPage() {
                                                                 });
                                                             }
                                                         }}
-                                                        className={`p-4 border rounded-lg transition-all relative ${canPayOT || hasHistory ? 'cursor-pointer hover:shadow-md' : 'opacity-75'} ${
+                                                        className={`p-4 border rounded-lg transition-all relative overflow-hidden ${canPayOT || hasHistory ? 'cursor-pointer hover:shadow-md' : 'opacity-75'} ${
                                                             isOTSelected ? 'ring-2 ring-blue-500 border-blue-500 bg-blue-50 scale-[1.01] shadow-md' :
                                                             ot.status === 'PAID' ? 'border-green-200 bg-green-50' :
                                                             ot.status === 'PARTIAL' ? 'border-yellow-200 bg-yellow-50' :
                                                             'border-purple-200 bg-purple-50'
                                                         }`}
                                                     >
-                                                        <div className="flex justify-between items-center mb-2">
-                                                            <span className="font-bold text-slate-800 text-sm">{ot.label}</span>
-                                                            <div className="flex items-center gap-1">
+                                                        <div className="flex items-start gap-1 mb-2">
+                                                            <span className="font-bold text-slate-800 text-sm flex-1 min-w-0">{ot.label}</span>
+                                                            <div className="flex items-center gap-1 shrink-0">
                                                                 {hasHistory && (
                                                                     <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                                                                 )}
-                                                                <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${ot.status === 'PAID' ? 'bg-green-100 text-green-800' : ot.status === 'PARTIAL' ? 'bg-yellow-100 text-yellow-800' : 'bg-purple-100 text-purple-800'}`}>
+                                                                <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded whitespace-nowrap ${ot.status === 'PAID' ? 'bg-green-100 text-green-800' : ot.status === 'PARTIAL' ? 'bg-yellow-100 text-yellow-800' : 'bg-purple-100 text-purple-800'}`}>
                                                                     {ot.status}
                                                                 </span>
                                                             </div>
@@ -1813,25 +2155,52 @@ export default function FeesDashboardPage() {
                                                                     <span>₹{Number(ot.totalPaid).toFixed(2)}</span>
                                                                 </div>
                                                             )}
-                                                            <div className="flex justify-between border-t border-slate-200 pt-1 mt-1 font-semibold text-slate-800">
-                                                                <span>Balance:</span>
-                                                                <span className={ot.outstanding > 0 ? 'text-red-600' : 'text-green-600'}>₹{Number(ot.outstanding).toFixed(2)}</span>
+                                                            <div className={`border-t border-slate-200 pt-1 mt-1 font-semibold leading-snug ${ot.outstanding > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                                <span className="block text-[10px] font-medium opacity-80">{ot.outstanding > 0 ? 'Balance Due' : 'Balance'}</span>
+                                                                <span className="block">₹{Number(ot.outstanding).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                                             </div>
                                                         </div>
                                                         {/* ── PARTIAL card action buttons (matching monthly fees behaviour) ── */}
                                                         {ot.status === 'PARTIAL' && (
                                                             <div className="mt-2 grid grid-cols-2 gap-1" onClick={e => e.stopPropagation()}>
-                                                                {/* View Receipt — opens payment/adjustment history modal */}
+                                                                {/* View Receipt — opens ReceiptModal if payment exists, else history modal */}
                                                                 {hasHistory && (
                                                                     <button
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            setPaymentHistoryData({ monthKey: ot.monthKey, label: ot.label, totalDue: ot.totalDue, totalPaid: ot.totalPaid, outstanding: ot.outstanding, excess: ot.excess ?? 0, status: ot.status, payments: ot.payments || [], adjustments: ot.adjustments || [] });
+                                                                            const latestOTPayment = (ot.payments || []).at(-1);
+                                                                            const s = students.find((st: any) => st.id.toString() === selectedStudentId);
+                                                                            const lastOTAdj = (ot.adjustments || []).at(-1);
+                                                                            setReceiptData({
+                                                                                receiptNumber: latestOTPayment?.receiptNumber,
+                                                                                paymentDate: latestOTPayment?.paymentDate ?? lastOTAdj?.adjustedAt,
+                                                                                amountPaid: latestOTPayment ? latestOTPayment.amountPaid : 0,
+                                                                                paymentMethod: latestOTPayment?.paymentMethod ?? 'Fee Adjustment',
+                                                                                studentName: `${s?.firstName} ${s?.lastName}`,
+                                                                                studentClass: s?.class?.name || null,
+                                                                                studentSection: s?.section?.name || null,
+                                                                                feeCategory: ot.label,
+                                                                                academicYear: collectionYear,
+                                                                                monthsPaid: ot.label,
+                                                                                totalBaseFee: latestOTPayment?.baseFeeAmount || 0,
+                                                                                totalLateFee: latestOTPayment?.otherFeeAmount || 0,
+                                                                                components: latestOTPayment?.components ?? [],
+                                                                                appliedDiscounts: latestOTPayment?.feeBreakdown?.discounts || (latestOTPayment?.discountAmount > 0 ? [{ name: 'Discount', amount: latestOTPayment.discountAmount }] : []),
+                                                                                categoryBreakdown: latestOTPayment?.feeBreakdown?.categories || [],
+                                                                                totalPayable: ot.totalDue ?? null,
+                                                                                balanceAfterPayment: ot.outstanding,
+                                                                                excess: ot.excess ?? 0,
+                                                                                monthKey: ot.monthKey,
+                                                                                adjustments: ot.adjustments ?? [],
+                                                                                collectedByName: latestOTPayment?.collectedByName || null,
+                                                                                gatewayPaymentId: latestOTPayment?.gatewayPaymentId || null,
+                                                                                gatewayOrderId: latestOTPayment?.gatewayOrderId || null,
+                                                                            });
                                                                         }}
                                                                         className="col-span-2 text-[10px] text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded px-2 py-1 text-center transition-colors flex items-center justify-center gap-1"
                                                                     >
                                                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                                                                        View Receipt / History
+                                                                        View Receipt
                                                                     </button>
                                                                 )}
                                                                 {/* Collect Remaining */}
@@ -1906,7 +2275,7 @@ export default function FeesDashboardPage() {
                                         {/* Monthly Fee Calendar */}
                                         <div>
                                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Monthly Fees</p>
-                                            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                                            <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3">
                                         {(studentFeeDetails.feePeriods ?? studentFeeDetails.monthlyBreakdown).map((period: any) => {
                                             // Support both feePeriods objects and legacy monthlyBreakdown objects
                                             const isLegacy = !period.months;
@@ -1980,7 +2349,7 @@ export default function FeesDashboardPage() {
                                                             }
                                                         }
                                                     }}
-                                                    className={`p-4 border rounded-lg transition-all relative ${canPay || status === 'PAID' || status === 'PARTIAL' ? 'cursor-pointer hover:shadow-md' : 'opacity-75 bg-slate-50'
+                                                    className={`p-3 border rounded-lg transition-all relative overflow-hidden ${canPay || status === 'PAID' || status === 'PARTIAL' ? 'cursor-pointer hover:shadow-md' : 'opacity-75 bg-slate-50'
                                                         } ${isSelected ? 'ring-2 ring-blue-500 border-blue-500 bg-blue-50 scale-[1.02] shadow-md z-10' :
                                                             isPartiallySelected ? 'ring-1 ring-blue-300 border-blue-300 bg-blue-50/50' :
                                                             status === 'OVERDUE' ? 'border-red-200 bg-red-50' :
@@ -1995,13 +2364,13 @@ export default function FeesDashboardPage() {
                                                             {periodSize === 3 ? 'Q' : periodSize === 6 ? 'H' : 'A'}
                                                         </div>
                                                     )}
-                                                    <div className="flex justify-between items-center mb-2">
-                                                        <h3 className="font-bold text-slate-800 text-sm leading-tight">{label}</h3>
-                                                        <div className="flex items-center gap-1">
+                                                    <div className="flex items-start gap-1 mb-2">
+                                                        <h3 className="font-bold text-slate-800 text-sm leading-tight flex-1 min-w-0">{label}</h3>
+                                                        <div className="flex items-center gap-1 shrink-0">
                                                             {(status === 'PAID' || status === 'PARTIAL') && period.payments?.length > 0 && (
                                                                 <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                                                             )}
-                                                            <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${status === 'PAID' ? 'bg-green-100 text-green-800' :
+                                                            <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded whitespace-nowrap ${status === 'PAID' ? 'bg-green-100 text-green-800' :
                                                                 status === 'OVERDUE' ? 'bg-red-100 text-red-800' :
                                                                     status === 'PARTIAL' ? 'bg-yellow-100 text-yellow-800' :
                                                                         'bg-slate-100 text-slate-800'
@@ -2070,9 +2439,9 @@ export default function FeesDashboardPage() {
                                                                             </div>
                                                                         )}
                                                                         {outstanding > 0 ? (
-                                                                            <div className="flex justify-between font-semibold text-red-600">
-                                                                                <span>Balance Due:</span>
-                                                                                <span>₹{Number(outstanding).toFixed(2)}</span>
+                                                                            <div className="font-semibold text-red-600 leading-snug">
+                                                                                <span className="block text-[10px] font-medium opacity-80">Balance Due</span>
+                                                                                <span className="block">₹{Number(outstanding).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                                                             </div>
                                                                         ) : (excess === 0 && status !== 'UNPAID') ? (
                                                                             <div className="flex justify-between font-semibold text-green-600">
@@ -2088,28 +2457,46 @@ export default function FeesDashboardPage() {
                                                     {/* ── PARTIAL card action buttons ── */}
                                                     {status === 'PARTIAL' && (
                                                         <div className="mt-2 grid grid-cols-2 gap-1" onClick={e => e.stopPropagation()}>
-                                                            {/* View Receipt — opens payment history modal */}
+                                                            {/* View Receipt — opens ReceiptModal if payment exists, else history modal */}
                                                             {hasPeriodHistory && (
                                                                 <button
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        setPaymentHistoryData({
-                                                                            monthKey: periodMonths[0],
-                                                                            months: periodMonths,
-                                                                            label,
-                                                                            totalDue: period.totalDue,
-                                                                            totalPaid: period.totalPaid,
-                                                                            outstanding,
+                                                                        // Use period.payments directly (embedded in feePeriods/legacy object) as primary source
+                                                                        const allPeriodPmts: any[] = period.payments?.length > 0 ? period.payments : periodPayments;
+                                                                        const latestPeriodPayment = allPeriodPmts.at(-1);
+                                                                        const s = students.find((st: any) => st.id.toString() === selectedStudentId);
+                                                                        const lastPeriodAdj = periodAdjustments.at(-1);
+                                                                        setReceiptData({
+                                                                            receiptNumber: latestPeriodPayment?.receiptNumber,
+                                                                            paymentDate: latestPeriodPayment?.paymentDate ?? lastPeriodAdj?.adjustedAt,
+                                                                            amountPaid: latestPeriodPayment ? latestPeriodPayment.amountPaid : 0,
+                                                                            paymentMethod: latestPeriodPayment?.paymentMethod ?? 'Fee Adjustment',
+                                                                            studentName: `${s?.firstName} ${s?.lastName}`,
+                                                                            studentClass: s?.class?.name || null,
+                                                                            studentSection: s?.section?.name || null,
+                                                                            feeCategory: label,
+                                                                            academicYear: collectionYear,
+                                                                            monthsPaid: label,
+                                                                            totalBaseFee: latestPeriodPayment?.baseFeeAmount || 0,
+                                                                            totalLateFee: latestPeriodPayment?.otherFeeAmount || 0,
+                                                                            components: latestPeriodPayment?.components ?? [],
+                                                                            appliedDiscounts: latestPeriodPayment?.feeBreakdown?.discounts || (latestPeriodPayment?.discountAmount > 0 ? [{ name: 'Discount', amount: latestPeriodPayment.discountAmount }] : []),
+                                                                            categoryBreakdown: latestPeriodPayment?.feeBreakdown?.categories || [],
+                                                                            totalPayable: period.totalDue ?? null,
+                                                                            balanceAfterPayment: outstanding,
                                                                             excess: period.excess ?? 0,
-                                                                            status,
-                                                                            payments: periodPayments,
-                                                                            adjustments: periodAdjustments,
+                                                                            monthKey: periodMonths[0],
+                                                                            adjustments: periodAdjustments ?? [],
+                                                                            collectedByName: latestPeriodPayment?.collectedByName || null,
+                                                                            gatewayPaymentId: latestPeriodPayment?.gatewayPaymentId || null,
+                                                                            gatewayOrderId: latestPeriodPayment?.gatewayOrderId || null,
                                                                         });
                                                                     }}
                                                                     className="col-span-2 text-[10px] text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded px-2 py-1 text-center transition-colors flex items-center justify-center gap-1"
                                                                 >
                                                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                                                                    View Receipt / History
+                                                                    View Receipt
                                                                 </button>
                                                             )}
                                                             {/* Collect Remaining */}
@@ -2334,65 +2721,135 @@ export default function FeesDashboardPage() {
                 </div>
             )}
 
-            {/* TAB: APPLY_DISCOUNTS */}
-            {activeTab === 'APPLY_DISCOUNTS' && (
+            {/* TAB: APPLY_DISCOUNTS, APPLY_OTHER_FEE & FEE_DETAILS */}
+            {(activeTab === 'APPLY_DISCOUNTS' || activeTab === 'APPLY_OTHER_FEE' || activeTab === 'FEE_DETAILS') && (
                 <div className="no-print animate-in fade-in duration-300">
+                    {/* Shared Advanced Student Search */}
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 mb-6 relative z-20">
-                        <div className="w-full md:w-1/2">
-                            <label className="block mb-2 text-sm font-medium text-gray-900">Search Student to Apply Discounts</label>
-                            <input
-                                type="text"
-                                value={applyDiscountSearchQuery}
-                                onChange={(e) => {
-                                    setApplyDiscountSearchQuery(e.target.value);
-                                    if (applyDiscountStudentId) setApplyDiscountStudentId("");
-                                }}
-                                placeholder="Search e.g., 'John', '12'"
-                                className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-3 transition-colors focus:ring-blue-500 focus:border-blue-500 shadow-sm"
-                            />
+                        <h2 className="text-xl font-bold mb-4 text-slate-800">
+                            {activeTab === 'APPLY_DISCOUNTS' ? 'Find Students to Apply Discounts'
+                                : activeTab === 'APPLY_OTHER_FEE' ? 'Find Students to Apply Special Fee'
+                                : 'Find Student to View Fee Details'}
+                        </h2>
+                        <form onSubmit={handleSearchFormStudents} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-4">
+                            <input type="text" placeholder="Student ID" value={searchFormId} onChange={e => setSearchFormId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-blue-500 focus:border-blue-500" />
+                            <input type="text" placeholder="First Name" value={searchFormFirstName} onChange={e => setSearchFormFirstName(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-blue-500 focus:border-blue-500" />
+                            <input type="text" placeholder="Last Name" value={searchFormLastName} onChange={e => setSearchFormLastName(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-blue-500 focus:border-blue-500" />
+                            <input type="text" placeholder="Mobile" value={searchFormMobile} onChange={e => setSearchFormMobile(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-blue-500 focus:border-blue-500" />
+                            
+                            <select value={searchFormClassId} onChange={e => setSearchFormClassId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Class (All)</option>
+                                {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                            <select value={searchFormSectionId} onChange={e => setSearchFormSectionId(e.target.value)} disabled={!searchFormClassId} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Section (All)</option>
+                                {searchFormSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                            <select value={searchFormSessionId} onChange={e => setSearchFormSessionId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Session (All)</option>
+                                {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
 
-                            {/* Search Results Dropdown */}
-                            {applyDiscountSearchQuery && !applyDiscountStudentId && (
-                                <ul className="absolute z-30 mt-1 w-full md:w-1/2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                    {students.filter(s => {
-                                        const searchLower = applyDiscountSearchQuery.toLowerCase();
-                                        return s.id.toString().includes(searchLower) ||
-                                            s.firstName.toLowerCase().includes(searchLower) ||
-                                            s.lastName.toLowerCase().includes(searchLower);
-                                    }).length > 0 ? (
-                                        students.filter(s => {
-                                            const searchLower = applyDiscountSearchQuery.toLowerCase();
-                                            return s.id.toString().includes(searchLower) ||
-                                                s.firstName.toLowerCase().includes(searchLower) ||
-                                                s.lastName.toLowerCase().includes(searchLower);
-                                        }).map(s => (
-                                            <li
-                                                key={`apply-${s.id}`}
-                                                onClick={() => {
-                                                    setApplyDiscountStudentId(s.id.toString());
-                                                    setApplyDiscountSearchQuery(`${s.firstName} ${s.lastName} (ID: ${s.id})`);
-                                                    // Load existing active discounts
-                                                    setSelectedDiscountsToApply(
-                                                        s.studentDiscounts
-                                                            ? s.studentDiscounts.filter((sd: any) => sd.isActive).map((sd: any) => sd.discountCategory?.id || sd.discountCategoryId)
-                                                            : []
-                                                    );
-                                                }}
-                                                className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors"
-                                            >
-                                                <div className="font-medium text-gray-900">{s.firstName} {s.lastName}</div>
-                                                <div className="text-xs text-gray-500">ID: {s.id}</div>
-                                            </li>
-                                        ))
-                                    ) : (
-                                        <li className="px-4 py-3 text-sm text-gray-500">No students found matching your search.</li>
-                                    )}
-                                </ul>
+                            <div className="lg:col-span-7 flex justify-end gap-2">
+                                <button type="button" onClick={() => { setSearchFormId(""); setSearchFormFirstName(""); setSearchFormLastName(""); setSearchFormMobile(""); setSearchFormClassId(""); setSearchFormSectionId(""); setSearchFormSessionId(""); setHasSearchFormSearched(false); setSearchFormStudentsList([]); }} className="text-gray-700 bg-white border border-gray-300 font-medium rounded-lg text-sm px-4 py-2 hover:bg-gray-50 transition-colors">Clear</button>
+                                <button type="submit" disabled={isSearchingStudents} className="text-white bg-blue-600 font-medium rounded-lg text-sm px-6 py-2 hover:bg-blue-700 transition-colors disabled:opacity-50">
+                                    {isSearchingStudents ? 'Searching...' : 'Search'}
+                                </button>
+                            </div>
+                        </form>
+
+                        {hasSearchFormSearched && (<>
+                            <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-64 mt-4">
+                                <table className="w-full text-sm text-left text-gray-500 relative">
+                                    <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10 shadow-sm">
+                                        <tr>
+                                            <th className="px-4 py-3">ID</th>
+                                            <th className="px-4 py-3">Name</th>
+                                            <th className="px-4 py-3">Class/Section</th>
+                                            <th className="px-4 py-3">Mobile</th>
+                                            <th className="px-4 py-3 text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {searchFormStudentsList.length > 0 ? (
+                                            searchFormStudentsList.map((s: any) => {
+                                                const enr = s.enrollments?.find((e: any) => e.status === 'ACTIVE') || s.enrollments?.[0];
+                                                const classNameStr = enr?.class?.name || s.class?.name || 'N/A';
+                                                const sectionNameStr = enr?.section?.name || s.section?.name || 'N/A';
+                                                const mobile = s.user?.mobile || s.mobile || 'N/A';
+                                                return (
+                                                    <tr key={s.id} className="bg-white border-b hover:bg-slate-50 last:border-0 transition-colors">
+                                                        <td className="px-4 py-3 font-medium text-gray-900">{s.id}</td>
+                                                        <td className="px-4 py-3">{s.firstName} {s.lastName}</td>
+                                                        <td className="px-4 py-3">{classNameStr} - {sectionNameStr}</td>
+                                                        <td className="px-4 py-3">{mobile}</td>
+                                                        <td className="px-4 py-3 text-right">
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (activeTab === 'APPLY_DISCOUNTS') {
+                                                                        setApplyDiscountStudentId(s.id.toString());
+                                                                        setSelectedDiscountsToApply(
+                                                                            s.studentDiscounts
+                                                                                ? s.studentDiscounts.filter((sd: any) => sd.isActive).map((sd: any) => sd.discountCategory?.id || sd.discountCategoryId)
+                                                                                : []
+                                                                        );
+                                                                    } else if (activeTab === 'APPLY_OTHER_FEE') {
+                                                                        setApplyOtherFeeStudentId(s.id.toString());
+                                                                        setApplyOtherFeeStudentName(`${s.firstName} ${s.lastName}`);
+                                                                    } else {
+                                                                        // FEE_DETAILS
+                                                                        handleLoadFeeDetails(s.id.toString(), `${s.firstName} ${s.lastName}`);
+                                                                    }
+                                                                    setTimeout(() => {
+                                                                        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                                                                    }, 100);
+                                                                }}
+                                                                className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 font-semibold rounded hover:bg-blue-100 transition-colors border border-blue-100"
+                                                            >
+                                                                {activeTab === 'FEE_DETAILS' ? 'View Details' : 'Select'}
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
+                                                    {isSearchingStudents ? 'Loading...' : 'No students found matching filters.'}
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {/* Pagination Controls */}
+                            {searchFormTotal > SEARCH_PAGE_SIZE && (
+                                <div className="flex items-center justify-between mt-3 px-1">
+                                    <p className="text-xs text-gray-500">
+                                        Showing {(searchFormPage - 1) * SEARCH_PAGE_SIZE + 1}–{Math.min(searchFormPage * SEARCH_PAGE_SIZE, searchFormTotal)} of {searchFormTotal} students
+                                    </p>
+                                    <div className="flex gap-1">
+                                        <button
+                                            disabled={searchFormPage <= 1 || isSearchingStudents}
+                                            onClick={(e) => handleSearchFormStudents(e as any, searchFormPage - 1)}
+                                            className="px-3 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >← Prev</button>
+                                        <span className="px-3 py-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded font-semibold">
+                                            {searchFormPage} / {Math.ceil(searchFormTotal / SEARCH_PAGE_SIZE)}
+                                        </span>
+                                        <button
+                                            disabled={searchFormPage >= Math.ceil(searchFormTotal / SEARCH_PAGE_SIZE) || isSearchingStudents}
+                                            onClick={(e) => handleSearchFormStudents(e as any, searchFormPage + 1)}
+                                            className="px-3 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >Next →</button>
+                                    </div>
+                                </div>
                             )}
-                        </div>
+                        </>)}
                     </div>
 
-                    {applyDiscountStudentId && (
+                    {/* APPLY_DISCOUNTS specific content */}
+                    {activeTab === 'APPLY_DISCOUNTS' && applyDiscountStudentId && (
                         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 animate-in slide-in-from-bottom-2 duration-300 relative z-10 w-full md:w-2/3">
                             <h2 className="text-xl font-bold mb-4 text-slate-800">Assign Fee Discounts</h2>
                             <p className="text-sm text-gray-600 mb-6">Select which discounts should apply to this student's monthly fee structure. Note: Only Admin users can modify these assignments.</p>
@@ -2408,9 +2865,8 @@ export default function FeesDashboardPage() {
                                     });
                                     if (res.ok) {
                                         toast.success("Discounts applied successfully!");
-                                        // Refresh student list to get updated .discounts
-                                        const sRes = await authFetch(`${API_BASE_URL}/students`);
-                                        if (sRes.ok) setStudents(await sRes.json());
+                                        // Refresh student query
+                                        handleSearchFormStudents(e); 
                                     } else {
                                         throw new Error("Failed to apply discounts");
                                     }
@@ -2467,6 +2923,305 @@ export default function FeesDashboardPage() {
                             </form>
                         </div>
                     )}
+
+                    {/* APPLY_OTHER_FEE specific content */}
+                    {activeTab === 'APPLY_OTHER_FEE' && applyOtherFeeStudentId && (
+                        <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 animate-in slide-in-from-bottom-2 duration-300 relative z-10 w-full">
+                            <h2 className="text-xl font-bold mb-4 text-slate-800">Assign Special & Optional Fee</h2>
+                            <p className="text-sm text-gray-600 mb-6">Assign a custom fee amount and frequency distinctively to <span className="font-semibold text-blue-700">{applyOtherFeeStudentName}</span> (ID: {applyOtherFeeStudentId}). Note: Optional fees do not undergo discounts automatically unless specified directly.</p>
+
+                            <form onSubmit={handleApplyOtherFeeSubmit}>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">Fee Category</label>
+                                        <select
+                                            value={applyOtherFeeCategoryId}
+                                            onChange={(e) => setApplyOtherFeeCategoryId(e.target.value)}
+                                            required
+                                            className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500"
+                                        >
+                                            <option value="">Select Category...</option>
+                                            {addOnCategories.filter(c => c.isActive !== false).map(c => (
+                                                <option key={c.id} value={c.id}>{c.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">Amount (₹)</label>
+                                        <input
+                                            type="number" step="0.01" min="0" required
+                                            value={applyOtherFeeAmount}
+                                            onChange={(e) => setApplyOtherFeeAmount(e.target.value)}
+                                            placeholder="e.g. 500"
+                                            className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                    <div>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">Frequency</label>
+                                        <select
+                                            value={applyOtherFeeFrequency}
+                                            onChange={(e) => setApplyOtherFeeFrequency(e.target.value)}
+                                            required
+                                            className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500"
+                                        >
+                                            <option value="MONTHLY">Monthly</option>
+                                            <option value="QUARTERLY">Quarterly</option>
+                                            <option value="HALF_YEARLY">Half Yearly</option>
+                                            <option value="ANNUALLY">Annually</option>
+                                            <option value="ONE_TIME">One Time</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">Remarks / Description</label>
+                                        <input
+                                            type="text"
+                                            value={applyOtherFeeDescription}
+                                            onChange={(e) => setApplyOtherFeeDescription(e.target.value)}
+                                            placeholder="e.g. Transport fees for Route 4"
+                                            className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end pt-4 border-t">
+                                    <button
+                                        type="submit"
+                                        disabled={applyingOtherFee}
+                                        className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-6 py-2.5 transition-colors disabled:opacity-50"
+                                    >
+                                        {applyingOtherFee ? 'Applying...' : 'Apply Special Fee'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* FEE_DETAILS — Detail Panel (rendered below the shared search when a student is selected) */}
+            {activeTab === 'FEE_DETAILS' && feeDetailsStudentId && (
+                <div className="no-print mt-4 animate-in slide-in-from-bottom-2 duration-300">
+                    {loadingFeeDetails ? (
+                        <div className="bg-white p-8 rounded-lg shadow-sm border border-slate-200 text-center">
+                            <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-3"></div>
+                            <p className="text-gray-500 text-sm">Loading fee details for {feeDetailsStudentName}...</p>
+                        </div>
+                    ) : (() => {
+                            // 1. Core Summary Calculations
+                            const annualLiability = (feeDetailsFull.monthlyBreakdown?.reduce((acc: number, m: any) => acc + (m.totalDue || 0), 0) || 0) + (feeDetailsFull.oneTimeFees?.totalDue || 0);
+                            const amountPaid = (feeDetailsFull.monthlyBreakdown?.reduce((acc: number, m: any) => acc + (m.totalPaid || 0), 0) || 0) + (feeDetailsFull.oneTimeFees?.totalPaid || 0);
+                            const balanceDue = annualLiability - amountPaid;
+                            const pendingMonthsCount = feeDetailsFull.monthlyBreakdown?.filter((m: any) => m.outstanding > 0 || m.status === 'OVERDUE').length || 0;
+                            
+                            // 2. Representative Monthly Recurring (The standard expected bill)
+                            // We look for the first billing month with a baseFee > 0 and use its netFee (Core + Optional - Discounts)
+                            const recurringMonth = feeDetailsFull.monthlyBreakdown?.find((m: any) => m.baseFee > 0);
+                            const monthlyRecurring = recurringMonth?.netFee || 0;
+
+                            return (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    {/* Premium Profile Header - Glassmorphism style */}
+                                    <div className="relative overflow-hidden bg-slate-900 rounded-2xl shadow-xl border border-slate-800 p-8">
+                                        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/20 rounded-full blur-3xl -mr-20 -mt-20"></div>
+                                        <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-600/10 rounded-full blur-3xl -ml-20 -mb-20"></div>
+                                        
+                                        <div className="relative flex flex-col md:flex-row items-center gap-6">
+                                            <div className="w-24 h-24 rounded-2xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg border border-blue-400/30">
+                                                {feeDetailsStudentName.split(' ').map(n => n[0]).join('')}
+                                            </div>
+                                            <div className="text-center md:text-left flex-1">
+                                                <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
+                                                    <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-widest rounded-full border border-blue-500/20">Student Profile</span>
+                                                    <span className="px-2 py-0.5 bg-green-500/10 text-green-400 text-[10px] font-bold uppercase tracking-widest rounded-full border border-green-500/20">Active</span>
+                                                </div>
+                                                <h3 className="text-3xl font-black text-white tracking-tight">{feeDetailsStudentName}</h3>
+                                                <div className="flex items-center justify-center md:justify-start gap-4 mt-2 text-slate-400 text-sm">
+                                                    <span className="flex items-center gap-1.5 font-medium">
+                                                        <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                                        ID: <span className="text-slate-200">{feeDetailsStudentId}</span>
+                                                    </span>
+                                                    <span className="flex items-center gap-1.5 font-medium">
+                                                        <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                                        Session: <span className="text-slate-200">{collectionYear}</span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4 md:mt-0 flex flex-col items-center md:items-end">
+                                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Total Balance Due</p>
+                                                <p className="text-4xl font-black text-white drop-shadow-sm">
+                                                    ₹{Number(balanceDue).toLocaleString('en-IN')}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Stats Grid - 4 Columns */}
+                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                        {[
+                                            { 
+                                                label: "Annual Liability", 
+                                                value: annualLiability, 
+                                                icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m.599-1c.532-.1 1.01-.304 1.43-.591m-1.43.591c-1.01 0-2.08-.402-2.599-1M9.401 13c-.532.1-1.01.304-1.43.591m1.43-.591c.532.1 1.01.304 1.43.591", 
+                                                color: "blue" 
+                                            },
+                                            { 
+                                                label: "Amount Paid", 
+                                                value: amountPaid, 
+                                                icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z", 
+                                                color: "green" 
+                                            },
+                                            { 
+                                                label: "Monthly Recurring", 
+                                                value: monthlyRecurring,
+                                                icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15", 
+                                                color: "indigo" 
+                                            },
+                                            { 
+                                                label: "Pending Months", 
+                                                value: pendingMonthsCount,
+                                                isCurrency: false,
+                                                icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z", 
+                                                color: "orange" 
+                                            }
+                                        ].map((stat, i) => (
+                                            <div key={i} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300">
+                                                <div className={`w-8 h-8 rounded-lg ${stat.color === 'blue' ? 'bg-blue-50' : stat.color === 'green' ? 'bg-green-50' : stat.color === 'orange' ? 'bg-orange-50' : 'bg-indigo-50'} flex items-center justify-center mb-3`}>
+                                                    <svg className={`w-4 h-4 ${stat.color === 'blue' ? 'text-blue-600' : stat.color === 'green' ? 'text-green-600' : stat.color === 'orange' ? 'text-orange-600' : 'text-indigo-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={stat.icon}></path></svg>
+                                                </div>
+                                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{stat.label}</p>
+                                                <p className="text-xl font-black text-slate-900 mt-0.5">
+                                                    {stat.isCurrency === false ? stat.value : `₹${Number(stat.value || 0).toLocaleString('en-IN')}`}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {/* 1. Standard Fees (From Class Structure) */}
+                                        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                                            <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
+                                                <h4 className="font-bold text-slate-800 flex items-center gap-2">
+                                                    <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                                                    Standard Class Fees
+                                                </h4>
+                                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Recurring</span>
+                                            </div>
+                                            <div className="p-5">
+                                                {!feeDetailsFull ? (
+                                                    <p className="text-sm text-gray-400 italic">Finding fees...</p>
+                                                ) : (
+                                                    <div className="space-y-4">
+                                                        <ul className="space-y-3">
+                                                            {(feeDetailsFull.monthlyBreakdown?.find((m: any) => m.categoryBreakdown?.length > 0) || feeDetailsFull.monthlyBreakdown?.[0])?.categoryBreakdown?.map((cat: any, idx: number) => (
+                                                                <li key={`std-${idx}`} className="flex justify-between items-center group">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                                                                        </div>
+                                                                        <div>
+                                                                            <span className="text-sm font-semibold text-slate-700">{cat.categoryName}</span>
+                                                                            <span className="text-[10px] text-slate-400 block uppercase tracking-tight leading-none mt-0.5">{cat.frequency}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <span className="text-sm font-black text-slate-900 bg-slate-50 px-3 py-1 rounded-lg">₹{Number(cat.amount).toLocaleString('en-IN')}</span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* 2. Applied Optional/Other Fees */}
+                                        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                                            <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
+                                                <h4 className="font-bold text-slate-800 flex items-center gap-2">
+                                                    <div className="w-1.5 h-1.5 bg-orange-600 rounded-full"></div>
+                                                    Special/Opted Fees
+                                                </h4>
+                                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Custom</span>
+                                            </div>
+                                            <div className="p-5">
+                                                {feeDetailsOptionalFees.length === 0 ? (
+                                                    <div className="flex flex-col items-center py-6">
+                                                        <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mb-3">
+                                                            <svg className="w-6 h-6 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                                        </div>
+                                                        <p className="text-xs text-slate-400 italic">No extra fees opted by student.</p>
+                                                    </div>
+                                                ) : (
+                                                    <ul className="space-y-3">
+                                                        {feeDetailsOptionalFees.map((fee: any) => (
+                                                            <li key={fee.id} className="flex items-start justify-between p-3 rounded-xl bg-orange-50/50 border border-orange-100/50 hover:bg-orange-50 hover:border-orange-200 transition-all gap-3">
+                                                                <div className="flex-1 min-w-0">
+                                                                    <span className="font-bold text-sm text-slate-800 block truncate">{fee.feeCategory?.name || 'Category'}</span>
+                                                                    <div className="flex items-center gap-2 mt-1">
+                                                                        <span className="text-xs font-black text-orange-700">₹{Number(fee.amount).toLocaleString('en-IN')}</span>
+                                                                        <span className="text-[10px] text-orange-400 font-bold uppercase tracking-tighter">· {fee.frequency?.replace('_', ' ')}</span>
+                                                                    </div>
+                                                                </div>
+                                                                {rbac.canConfigureFees && (
+                                                                    <button
+                                                                        onClick={() => handleRemoveOptionalFee(fee.id)}
+                                                                        disabled={removingFeeId === fee.id}
+                                                                        className="shrink-0 text-[10px] px-3 py-1.5 text-red-600 border border-red-200 bg-white rounded-lg hover:bg-red-50 transition-all font-black uppercase tracking-tighter shadow-sm"
+                                                                    >
+                                                                        {removingFeeId === fee.id ? 'Wait...' : 'Unlink'}
+                                                                    </button>
+                                                                )}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* 3. Applied Discounts */}
+                                        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden lg:col-span-2">
+                                            <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
+                                                <h4 className="font-bold text-slate-800 flex items-center gap-2">
+                                                    <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
+                                                    Benefit Summary
+                                                </h4>
+                                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Discounts</span>
+                                            </div>
+                                            <div className="p-5">
+                                                {feeDetailsDiscounts.length === 0 ? (
+                                                    <p className="text-sm text-slate-400 italic text-center py-4">No active scholarships or discounts assigned.</p>
+                                                ) : (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        {feeDetailsDiscounts.map((sd: any) => {
+                                                            const calculatedSaving = feeDetailsFull?.monthlyBreakdown?.find((m: any) => m.baseFee > 0)?.appliedDiscounts?.find((d: any) => d.name === (sd.discountCategory?.name || sd.name))?.amount || 0;
+                                                            return (
+                                                                <div key={sd.id} className="flex items-center justify-between p-4 rounded-xl bg-green-50/50 border border-green-100/50">
+                                                                    <div className="flex items-center gap-4">
+                                                                        <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center text-green-600">
+                                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path></svg>
+                                                                        </div>
+                                                                        <div>
+                                                                            <span className="font-bold text-sm text-slate-800 block leading-tight">{sd.discountCategory?.name || 'Discount'}</span>
+                                                                            <span className="text-[10px] text-green-600 font-black uppercase tracking-widest mt-0.5">
+                                                                                {sd.discountCategory?.type === 'PERCENTAGE' ? `${sd.discountCategory.value}% Scholarship` : `Monthly Relief`}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="text-right">
+                                                                        <span className="text-lg font-black text-green-700">-{calculatedSaving > 0 ? `₹${calculatedSaving}` : '₹0'}</span>
+                                                                        <span className="block text-[10px] text-green-400 font-bold uppercase tracking-tighter">Savings / month</span>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
                 </div>
             )}
         </main>

@@ -1,0 +1,86 @@
+
+D:\Ashish\Repos\School\sms-frontend\scripts\fix-unused-catch.js
+  1:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  2:14  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\enrollment\page.tsx
+  219:10  error  Parsing error: 'try' expected
+
+D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\examinations\data-entry\page.tsx
+  99:10  error  Parsing error: 'try' expected
+
+D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\fees\page.tsx
+  261:9  error  Parsing error: ',' expected
+
+D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\notifications\new\page.tsx
+   30:10  warning  'isLoadingClasses' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  161:14  warning  'error' is defined but never used                      @typescript-eslint/no-unused-vars
+
+D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\profile\page.tsx
+  4:19  warning  'getToken' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\reports\page.tsx
+   29:12  warning  'collectionPendingMonth' is assigned a value but never used     @typescript-eslint/no-unused-vars
+   29:36  warning  'setCollectionPendingMonth' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  307:15  warning  'page' is assigned a value but never used                       @typescript-eslint/no-unused-vars
+
+D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\settings\page.tsx
+  192:10  error  Parsing error: 'try' expected
+
+D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\staff\[id]\edit\page.tsx
+  161:10  error  Parsing error: 'try' expected
+
+D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\staff\page.tsx
+  86:8  warning  React Hook useEffect has a missing dependency: 'fetchTeachers'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\students\[id]\edit\page.tsx
+  105:14  error  Parsing error: 'try' expected
+
+D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\students\[id]\promote\page.tsx
+  46:14  error  Parsing error: 'try' expected
+
+D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\students\new\page.tsx
+  312:26  warning  'enrollErr' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\students\page.tsx
+  90:10  error  Parsing error: 'try' expected
+
+D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\subjects\[id]\edit\page.tsx
+  53:14  error  Parsing error: 'try' expected
+
+D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\subjects\new\page.tsx
+  62:10  error  Parsing error: 'try' expected
+
+D:\Ashish\Repos\School\sms-frontend\src\app\parent-dashboard\page.tsx
+  10:11  warning  'router' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\Ashish\Repos\School\sms-frontend\src\app\parent-dashboard\profile\page.tsx
+  149:18  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+  172:18  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Ashish\Repos\School\sms-frontend\src\app\parent-dashboard\student\[id]\page.tsx
+   84:8   warning  React Hook useCallback has a missing dependency: 'authHeaders'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   99:8   warning  React Hook useCallback has a missing dependency: 'authHeaders'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  108:8   warning  React Hook useCallback has a missing dependency: 'authHeaders'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  121:8   warning  React Hook useCallback has a missing dependency: 'authHeaders'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  130:8   warning  React Hook useCallback has a missing dependency: 'authHeaders'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  178:19  warning  'amount' is assigned a value but never used                                                                       @typescript-eslint/no-unused-vars
+  184:17  warning  'baseFeeAmount' is assigned a value but never used                                                                @typescript-eslint/no-unused-vars
+  185:17  warning  'discountAmount' is assigned a value but never used                                                               @typescript-eslint/no-unused-vars
+  186:17  warning  'lateFeeTotal' is assigned a value but never used                                                                 @typescript-eslint/no-unused-vars
+
+D:\Ashish\Repos\School\sms-frontend\src\app\register-parent\page.tsx
+  7:10  warning  'setToken' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Ashish\Repos\School\sms-frontend\src\components\Examinations\StudentResultModal.tsx
+  384:0  error  Parsing error: '}' expected
+
+D:\Ashish\Repos\School\sms-frontend\src\components\ReceiptModal.tsx
+  205:21  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+  206:21  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+D:\Ashish\Repos\School\sms-frontend\src\lib\api.ts
+  43:10  error  Parsing error: Declaration or statement expected
+
+Γ£û 37 problems (14 errors, 23 warnings)
+

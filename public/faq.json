@@ -1,0 +1,58 @@
+[
+  {
+    "question": "How do I add a new student?",
+    "answer": "To add a new student, navigate to the **Students** menu on the left sidebar and click on the **Add Student** button. Carefully fill in the student's personal details. Next, complete the enrollment section by selecting the appropriate class and subjects for the student. Finally, click **Save** to register the student in the system."
+  },
+  {
+    "question": "How do I promote a student to the next class?",
+    "answer": "To promote a student, navigate to the **Students** menu and select **Bulk Promotion**. Enter your search criteria to find the relevant student(s). Once you have selected the student from the list, choose the target class and academic session from the right-side menu, then execute the operation to complete the promotion process."
+  },
+  {
+    "question": "How do I add new staff members?",
+    "answer": "Go to the **Staff** menu on the left sidebar and click the **Add Staff** button. Provide the required personal and professional details for the staff member, assign them a specific role and designation, and configure their account access level. Click **Save** to register the staff member."
+  },
+  {
+    "question": "How can I add new subjects to the curriculum?",
+    "answer": "Navigate to the **Subjects** menu on the left sidebar. Click on the **Add Subject** button, enter the subject name, subject code, and specify if it includes practical or theory components. Once the details are filled out, save your changes. You can then attach this subject to specific classes and sections."
+  },
+  {
+    "question": "How do I manage the fee structure and categories?",
+    "answer": "Fee configurations are managed independently from general system settings. To set up or modify fee structures, navigate to the **Fees** menu directly from the left sidebar, and then select **Fee Setup (Admin)**. Here you can define various fee categories and structures."
+  },
+  {
+    "question": "How do I configure system settings, examinations, and holidays?",
+    "answer": "Navigate to the **Settings** menu on the left sidebar. Under **System Settings**, you can manage general academic configurations. Use the **Examination Setting** section to create exam categories and define the grading system. In the **Holiday Setting** section, administrators can create and update the holiday list for the entire school or for specific classes."
+  },
+  {
+    "question": "How can I generate reports for collected fees and pending dues?",
+    "answer": "Go to the **Reports** menu on the left sidebar. Open the **Fee Received** tab to view or securely download a CSV report of fees collected over a specific period. You can also view the **Pending Dues** section to generate and download a comprehensive list of students with outstanding balances."
+  },
+  {
+    "question": "How do I send custom notifications to staff or parents?",
+    "answer": "Navigate to the **Notifications** menu on the left sidebar and click the **Send Notification** button. Fill in the Notification Title and Message. Select your Target Audience (Custom, All Staff, or All Parents) from the dropdown, and finally click **Send Broadcast Now** to push the message."
+  },
+  {
+    "question": "Can I manually send fee reminders to students?",
+    "answer": "Yes, you can send manual fee reminders right from the **Notifications** menu. Simply locate the fee reminder option on the notification tab, select the target class and section, and dispatch the reminder."
+  },
+  {
+    "question": "How do I mark attendance?",
+    "answer": "Go to the **Attendance** menu. Select the specific class, section, and date for which you want to mark attendance. A roster of enrolled students will appear. Mark the appropriate status for each student and save the record. Note: Saving the attendance record will automatically trigger an attendance notification to the parents."
+  },
+  {
+    "question": "Are fee receipts and attendance records sent automatically?",
+    "answer": "Fee receipts will not send automatically. It can be downloaded from parent portal for parents under **Fee** section. For school, school can Generate by clicking on box available under **Fee Collection** when any student is selected. There is a button **View Receipt**."
+  },
+  {
+    "question": "How can I create an exam schedule?",
+    "answer": "Go to **Examinations** -> **Exam Schedule** tab -> Click on **New Schedule** -> Fill appropriate details like select session, select category (category can be created from **Settings** -> **Examination Settings**), start date and end date -> **Create schedule**. After creation go to view on created schedule, then Enter the subjects under table available."
+  },
+  {
+    "question": "How to login?",
+    "answer": "Once staff is created. It is created with default password. when staff/admin will login first time, he will enter default password, immediately system will ask to change it. He will put his creds with new password, password will change and user will logged in immediately."
+  },
+  {
+    "question": "How to change password for user?",
+    "answer": "On both parent and staff portal we have **Profile** Section -> **Security & Login**. Here you can change password."
+  }
+]

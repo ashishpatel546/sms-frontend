@@ -1,5 +1,5 @@
 // Service Worker for School Management System PWA
-const CACHE_NAME = 'school-ms-v3';
+const CACHE_NAME = 'school-ms-v5';
 
 // App shell files to cache immediately
 const APP_SHELL = [
@@ -18,7 +18,7 @@ self.addEventListener('install', (event) => {
       .then((cache) => {
         return cache.addAll(APP_SHELL);
       })
-      .then(() => self.skipWaiting())
+      .then(() => self.skipWaiting()),
   );
 });
 
@@ -38,10 +38,10 @@ self.addEventListener('activate', (event) => {
         return Promise.all(
           cacheNames
             .filter((name) => name !== CACHE_NAME)
-            .map((name) => caches.delete(name))
+            .map((name) => caches.delete(name)),
         );
       })
-      .then(() => self.clients.claim())
+      .then(() => self.clients.claim()),
   );
 });
 
@@ -55,16 +55,9 @@ self.addEventListener('fetch', (event) => {
   // Skip API calls — always use network for fresh data.
   // Compare by origin (scheme + hostname + port) so requests to a different
   // backend port or subdomain are never served from cache.
+  // Use plain `return` (no respondWith) so the browser handles the request
+  // natively without SW thread overhead.
   if (url.pathname.startsWith('/api/') || url.origin !== self.location.origin) {
-    event.respondWith(
-      fetch(event.request).catch(() => {
-        // If offline and it's a navigation request, show the cached home page
-        if (event.request.mode === 'navigate') {
-          return caches.match('/');
-        }
-        return new Response('Offline', { status: 503 });
-      })
-    );
     return;
   }
 
@@ -94,7 +87,7 @@ self.addEventListener('fetch', (event) => {
             .then((cache) => cache.put(event.request, cloned));
           return response;
         });
-      })
+      }),
     );
     return;
   }
@@ -114,7 +107,118 @@ self.addEventListener('fetch', (event) => {
           if (cached) return cached;
           // Serve offline page fallback
           return caches.match('/');
+        }),
+      ),
+  );
+});
+
+// Setup IndexedDB for offline notifications history
+const dbPromise = new Promise((resolve) => {
+  const request = indexedDB.open('SchoolMS-Notifications', 1);
+  request.onupgradeneeded = (e) => {
+    const db = e.target.result;
+    if (!db.objectStoreNames.contains('notifications')) {
+      // Create object store with timestamp as key path for easy sorting/deletion
+      db.createObjectStore('notifications', { keyPath: 'timestamp' });
+    }
+  };
+  request.onsuccess = (e) => resolve(e.target.result);
+});
+
+// Handle incoming Web Push
+self.addEventListener('push', (event) => {
+  if (event.data) {
+    const payload = event.data.json();
+    const notificationTitle = payload.title || 'New Notification';
+    const notificationOptions = {
+      body: payload.message,
+      icon: '/icons/icon-192x192.png',
+      badge: '/icons/icon-192x192.png',
+      data: payload,
+    };
+
+    // Show native push popup
+    event.waitUntil(
+      self.registration
+        .showNotification(notificationTitle, notificationOptions)
+        .then(() => dbPromise)
+        .then(async (db) => {
+          // Save to IndexedDB
+          const tx = db.transaction('notifications', 'readwrite');
+          const store = tx.objectStore('notifications');
+          const item = {
+            title: notificationTitle,
+            message: payload.message,
+            timestamp: payload.timestamp || new Date().toISOString(),
+          };
+          store.add(item);
+
+          // Return a promise to clean up oldest if > 10
+          return new Promise((resolve, reject) => {
+            const getReq = store.getAll();
+            getReq.onsuccess = () => {
+              const all = getReq.result;
+              if (all.length > 10) {
+                // Sort by timestamp asc (oldest first)
+                all.sort(
+                  (a, b) => new Date(a.timestamp) - new Date(b.timestamp),
+                );
+                // Delete oldest elements until length is 10
+                let deleteTx = db.transaction('notifications', 'readwrite');
+                let deleteStore = deleteTx.objectStore('notifications');
+                let deletePromises = [];
+                for (let i = 0; i < all.length - 10; i++) {
+                  deletePromises.push(
+                    new Promise((res) => {
+                      const req = deleteStore.delete(all[i].timestamp);
+                      req.onsuccess = res;
+                    }),
+                  );
+                }
+                Promise.all(deletePromises).then(resolve);
+              } else {
+                resolve();
+              }
+            };
+            getReq.onerror = reject;
+          });
         })
-      )
+        .then(() => {
+          const bc = new BroadcastChannel('push-notifications');
+          bc.postMessage({ type: 'NEW_PUSH_NOTIFICATION' });
+          bc.close();
+        }),
+    );
+  }
+});
+
+// Handle push notification click
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  // The URL to open when the notification is clicked.
+  // We open the parent-dashboard since push notifications currently target parents.
+  // If there's already a window open for this origin, focus it; otherwise open a new one.
+  const targetUrl = '/parent-dashboard';
+  event.waitUntil(
+    clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((windowClients) => {
+        // Check if there's already a window open with this app
+        for (let i = 0; i < windowClients.length; i++) {
+          const client = windowClients[i];
+          if ('focus' in client) {
+            client.focus();
+            // Navigate the existing window to the parent dashboard
+            if (client.navigate) {
+              return client.navigate(targetUrl);
+            }
+            return;
+          }
+        }
+        // No window open — open a new one
+        if (clients.openWindow) {
+          return clients.openWindow(targetUrl);
+        }
+      }),
   );
 });

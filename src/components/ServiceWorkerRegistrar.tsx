@@ -1,4 +1,7 @@
 'use client';
+// React Compiler opt-out: this component uses imperative browser APIs
+// (ServiceWorker, EventTarget) that the compiler cannot safely analyse.
+'use no memo';
 
 import { useEffect } from 'react';
 

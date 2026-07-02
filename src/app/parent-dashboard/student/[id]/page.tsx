@@ -1,26 +1,65 @@
-"use client";
+﻿"use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useParams } from "next/navigation";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { PieChart, Pie, Tooltip, ResponsiveContainer } from "recharts";
 import { API_BASE_URL } from "@/lib/api";
 import { getToken, authFetch } from "@/lib/auth";
 import toast, { Toaster } from "react-hot-toast";
 import ReceiptModal from "@/components/ReceiptModal";
+import { getEnv } from "@/lib/env";
+import ExamScheduleParentView from "./ExamScheduleParentView";
+import PickupQRGenerator from "@/components/PickupQRGenerator";
+import ApplyLeaveModal from "@/components/ApplyLeaveModal";
+import LeaveTimeline from "@/components/LeaveTimeline";
+import { AppMonthPicker } from "@/components/ui/AppDatePicker";
+import { HomeSection } from "./components/HomeSection";
+import { StudentBanner } from "./components/StudentBanner";
+import { AiToolsSection } from "./components/AiToolsSection";
+import { AnimatedLoader } from "@/components/ui/AnimatedLoader";
+import { AttendanceBottomSheet } from "./components/AttendanceBottomSheet";
+import { HomeworkBottomSheet } from "./components/HomeworkBottomSheet";
+import FeesBottomSheet from "./components/FeesBottomSheet";
+import { useLibraryIssuances } from "./hooks/useStudentData";
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-type ActiveSection = "fees" | "attendance" | "results" | "holidays" | "info";
+const LEAVE_STATUS_STYLES: Record<string, string> = {
+    PENDING: "bg-amber-50 text-amber-700 border border-amber-200",
+    FIRST_APPROVED: "bg-blue-50 text-blue-700 border border-blue-200",
+    APPROVED: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+    REJECTED: "bg-red-50 text-red-700 border border-red-200",
+    CANCELLED: "bg-slate-100 text-slate-500 border border-slate-200",
+};
+const LEAVE_STATUS_LABELS: Record<string, string> = {
+    PENDING: "Pending",
+    FIRST_APPROVED: "1st Approved",
+    APPROVED: "Approved",
+    REJECTED: "Rejected",
+    CANCELLED: "Cancelled",
+};
+const LEAVE_TYPE_LABELS: Record<string, string> = {
+    SICK_LEAVE: "Sick Leave",
+    CASUAL_LEAVE: "Casual Leave",
+    OTHER_LEAVE: "Other Leave",
+};
+const fmtDate = (d: string) => { const [y, m, day] = d.split("-"); return `${day}/${m}/${y}`; };
+
+type ActiveSection = "home" | "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework" | "pickup" | "leaves" | "library" | "ai-tutor";
 
 declare global {
     interface Window {
-        Razorpay: any;
+        Razorpay: new (opts: Record<string, unknown>) => {
+            open: () => void;
+            on: (event: string, handler: (response: any) => void) => void;
+        };
     }
 }
 
 export default function StudentDashboardPage() {
     const params = useParams();
+    const router = useRouter();
     const studentId = params.id;
 
     const now = new Date();
@@ -29,39 +68,105 @@ export default function StudentDashboardPage() {
     const currentMonth = parseInt(attendanceMonth.split('-')[1]);
     const [academicSessionId, setAcademicSessionId] = useState<number | null>(null);
     const [academicYearString, setAcademicYearString] = useState<string>("");
-    const [activeSection, setActiveSection] = useState<ActiveSection>("fees");
+    const [activeSection, setActiveSection] = useState<ActiveSection>("home");
 
     const [info, setInfo] = useState<any>(null);
     const [attendance, setAttendance] = useState<any>(null);
     const [fees, setFees] = useState<any>(null);
     const [examResults, setExamResults] = useState<any>(null);
+    const [selectedExamCats, setSelectedExamCats] = useState<Set<string>>(new Set());
+    const [showCatDropdown, setShowCatDropdown] = useState(false);
+    const catDropdownRef = useRef<HTMLDivElement>(null);
     const [holidays, setHolidays] = useState<any[]>([]);
+    const [homework, setHomework] = useState<any[]>([]);
+    const [leaves, setLeaves] = useState<any>(null);
+    const [leavesPage, setLeavesPage] = useState(1);
+    const [showApplyLeave, setShowApplyLeave] = useState(false);
+    const [viewerDoc, setViewerDoc] = useState<{ url: string; fileName: string; mimeType: string } | null>(null);
+    const [cancelLeaveId, setCancelLeaveId] = useState<number | null>(null);
+    const [cancelLeaving, setCancelLeaving] = useState(false);
+    const [viewLeave, setViewLeave] = useState<any | null>(null);
+    const [replyLeaveId, setReplyLeaveId] = useState<number | null>(null);
+    const [replyNote, setReplyNote] = useState("");
+    const [replyFile, setReplyFile] = useState<File | null>(null);
+    const [replySending, setReplySending] = useState(false);
+    const homeworkDateInputRef = useRef<HTMLInputElement>(null);
+    const [homeworkDate, setHomeworkDate] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    });
     const [sessions, setSessions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [sectionLoading, setSectionLoading] = useState(false);
+
+    // Quick-view bottom sheets
+    const [showAttendanceSheet, setShowAttendanceSheet] = useState(false);
+    const [showHomeworkSheet, setShowHomeworkSheet] = useState(false);
+    const [showFeesSheet, setShowFeesSheet] = useState(false);
+
+    // Sibling students (for the top student-switcher tab strip)
+    const [siblings, setSiblings] = useState<any[]>([]);
 
     // Fee payment selection state (multi-select checkboxes)
+    // Initialise category filter whenever exam results load
+    useEffect(() => {
+        if (examResults?.categories?.length) {
+            setSelectedExamCats(new Set(examResults.categories));
+        }
+    }, [examResults]);
+
+    // Close category dropdown on outside click
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (catDropdownRef.current && !catDropdownRef.current.contains(e.target as Node)) {
+                setShowCatDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
     const [selectedMonths2Pay, setSelectedMonths2Pay] = useState<string[]>([]);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [payProcessing, setPayProcessing] = useState(false);
+    // School feature flag: when false, the online payment gateway (Razorpay) is hidden
+    const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
     const [showReceipt, setShowReceipt] = useState<any>(null);
     const [showReceiptsListModal, setShowReceiptsListModal] = useState<{ feeMonth: string, payments: any[], adjustments: any[], balanceRemaining: number, totalDue?: number, studentName?: string, studentClass?: string, studentSection?: string } | null>(null);
 
     const authHeaders = { Authorization: `Bearer ${getToken()}` };
 
-    const loadAll = useCallback(async () => {
+    const loadInitialInfo = useCallback(async () => {
         setLoading(true);
         try {
-            // First load sessions and info
-            const [infoRes, sessionsRes] = await Promise.all([
+            // First load sessions, info, and sibling list in parallel
+            const [infoRes, sessionsRes, siblingsRes, featuresRes] = await Promise.all([
                 authFetch(`${API_BASE_URL}/parent/student/${studentId}/info`, { headers: authHeaders }),
-                authFetch(`${API_BASE_URL}/parent/academic-sessions`, { headers: authHeaders })
+                authFetch(`${API_BASE_URL}/parent/academic-sessions`, { headers: authHeaders }),
+                authFetch(`${API_BASE_URL}/parent/my-students`, { headers: authHeaders }),
+                authFetch(`${API_BASE_URL}/school/features`, { headers: authHeaders }),
             ]);
 
             let infoData = null;
             let sessionsList = [];
 
+            if (infoRes.status === 404 || infoRes.status === 403) {
+                // Student doesn't belong to this school — send parent back to the listing
+                router.replace('/parent-dashboard');
+                return;
+            }
+
             if (infoRes.ok) infoData = await infoRes.json();
             if (sessionsRes.ok) sessionsList = await sessionsRes.json();
+            if (siblingsRes.ok) {
+                const allStudents = await siblingsRes.json();
+                // Only show switcher when there are 2+ students
+                setSiblings(allStudents.length > 1 ? allStudents : []);
+            }
+            if (featuresRes.ok) {
+                const features = await featuresRes.json();
+                setOnlinePaymentEnabled(features?.['online_fee_payment'] === true);
+            }
 
             setInfo(infoData);
             setSessions(sessionsList);
@@ -76,47 +181,154 @@ export default function StudentDashboardPage() {
             setAcademicSessionId(activeSessionId);
             setAcademicYearString(activeSessionStr);
 
-            // Now load the rest dependent on session/year
-            const [attRes, feeRes, examRes, holidayRes] = await Promise.all([
-                authFetch(`${API_BASE_URL}/parent/student/${studentId}/attendance?year=${currentYear}&month=${currentMonth}`, { headers: authHeaders }),
-                authFetch(`${API_BASE_URL}/parent/student/${studentId}/fees?academicYear=${activeSessionStr}`, { headers: authHeaders }),
-                authFetch(`${API_BASE_URL}/parent/student/${studentId}/exam-results?sessionId=${activeSessionId}`, { headers: authHeaders }),
-                authFetch(`${API_BASE_URL}/parent/student/${studentId}/holidays`, { headers: authHeaders })
-            ]);
-
-            if (attRes.ok) setAttendance(await attRes.json());
-            if (feeRes.ok) setFees(await feeRes.json());
-            if (examRes.ok) setExamResults(await examRes.json());
-            if (holidayRes.ok) setHolidays(await holidayRes.json());
-
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
-    }, [studentId, currentYear, currentMonth]);
+    }, [studentId]);
 
-    useEffect(() => { loadAll(); }, [loadAll]);
+    useEffect(() => { loadInitialInfo(); }, [loadInitialInfo]);
 
-    const reloadAttendance = useCallback(async () => {
+    const fetchFees = useCallback(async () => {
+        if (!academicYearString) {
+            setSectionLoading(false);
+            return;
+        }
+        setSectionLoading(true);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/fees?academicYear=${academicYearString}`, { headers: authHeaders });
+            if (res.ok) setFees(await res.json());
+        } catch (err) { console.error(err); }
+        finally { setSectionLoading(false); }
+    }, [studentId, academicYearString]);
+
+    const fetchAttendance = useCallback(async () => {
+        setSectionLoading(true);
         try {
             const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/attendance?year=${currentYear}&month=${currentMonth}`, { headers: authHeaders });
             if (res.ok) setAttendance(await res.json());
-        } catch { }
+        } catch (err) { console.error(err); }
+        finally { setSectionLoading(false); }
     }, [studentId, currentYear, currentMonth]);
 
-    useEffect(() => { reloadAttendance(); }, [reloadAttendance]);
-
-    const reloadFeesAndExams = useCallback(async () => {
-        if (!academicYearString || !academicSessionId) return;
+    const fetchExamResults = useCallback(async () => {
+        if (!academicSessionId) {
+            setSectionLoading(false);
+            return;
+        }
+        setSectionLoading(true);
         try {
-            const [feeRes, examRes] = await Promise.all([
-                authFetch(`${API_BASE_URL}/parent/student/${studentId}/fees?academicYear=${academicYearString}`, { headers: authHeaders }),
-                authFetch(`${API_BASE_URL}/parent/student/${studentId}/exam-results?sessionId=${academicSessionId}`, { headers: authHeaders })
-            ]);
-            if (feeRes.ok) setFees(await feeRes.json());
-            if (examRes.ok) setExamResults(await examRes.json());
-        } catch { }
-    }, [studentId, academicYearString, academicSessionId]);
+            const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/exam-results?sessionId=${academicSessionId}`, { headers: authHeaders });
+            if (res.ok) setExamResults(await res.json());
+        } catch (err) { console.error(err); }
+        finally { setSectionLoading(false); }
+    }, [studentId, academicSessionId]);
 
-    useEffect(() => { reloadFeesAndExams(); }, [reloadFeesAndExams]);
+    const fetchHolidays = useCallback(async () => {
+        setSectionLoading(true);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/holidays`, { headers: authHeaders });
+            if (res.ok) setHolidays(await res.json());
+        } catch (err) { console.error(err); }
+        finally { setSectionLoading(false); }
+    }, [studentId]);
+
+    const fetchHomework = useCallback(async () => {
+        setSectionLoading(true);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/homework?date=${homeworkDate}`, { headers: authHeaders });
+            if (res.ok) setHomework(await res.json());
+            else setHomework([]);
+        } catch (err) { console.error(err); setHomework([]); }
+        finally { setSectionLoading(false); }
+    }, [studentId, homeworkDate]);
+
+    const fetchLeaves = useCallback(async (p = 1) => {
+        setSectionLoading(true);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/leaves/student/${studentId}?page=${p}&limit=10`, { headers: authHeaders });
+            if (res.ok) setLeaves(await res.json());
+        } catch (err) { console.error(err); }
+        finally { setSectionLoading(false); }
+    }, [studentId]);
+
+    const handleReply = async () => {
+        if (!replyLeaveId) return;
+        if (!replyNote.trim() && !replyFile) {
+            toast.error("Please write a message or attach a document.");
+            return;
+        }
+        if (replyFile && replyFile.size > 5 * 1024 * 1024) {
+            toast.error("File is too large. Maximum size is 5 MB.");
+            return;
+        }
+        setReplySending(true);
+        try {
+            const formData = new FormData();
+            if (replyNote.trim()) formData.append("note", replyNote.trim());
+            if (replyFile) formData.append("file", replyFile);
+            const res = await authFetch(`${API_BASE_URL}/leaves/${replyLeaveId}/respond`, {
+                method: "POST",
+                body: formData,
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || "Failed to send reply");
+            }
+            toast.success("Reply sent!");
+            setReplyLeaveId(null);
+            setReplyNote("");
+            setReplyFile(null);
+            fetchLeaves(leavesPage);
+        } catch (err: any) {
+            toast.error(err.message || "Failed to send reply");
+        } finally {
+            setReplySending(false);
+        }
+    };
+
+    const handleOpenDoc = async (leaveId: number, doc: { id: number; fileName: string; mimeType: string }) => {
+        try {
+            const res = await authFetch(`${API_BASE_URL}/leaves/${leaveId}/documents/${doc.id}/url`);
+            if (res.ok) {
+                const { url } = await res.json();
+                setViewerDoc({ url, fileName: doc.fileName, mimeType: doc.mimeType });
+            } else {
+                toast.error("Failed to get document URL");
+            }
+        } catch { toast.error("Failed to get document URL"); }
+    };
+
+    const handleCancelLeave = async () => {
+        if (!cancelLeaveId) return;
+        setCancelLeaving(true);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/leaves/${cancelLeaveId}/cancel`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({}),
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || "Cancellation failed");
+            }
+            toast.success("Leave cancelled");
+            setCancelLeaveId(null);
+            fetchLeaves(leavesPage);
+        } catch (err: any) {
+            toast.error(err.message || "Failed to cancel leave");
+        } finally {
+            setCancelLeaving(false);
+        }
+    };
+
+    // Unconditionally refetch data whenever tab changes or prerequisites change
+    useEffect(() => {
+        if (activeSection === "fees") fetchFees();
+        else if (activeSection === "attendance") fetchAttendance();
+        else if (activeSection === "results") fetchExamResults();
+        else if (activeSection === "holidays") fetchHolidays();
+        else if (activeSection === "homework") fetchHomework();
+        else if (activeSection === "leaves") fetchLeaves(leavesPage);
+    }, [activeSection, fetchFees, fetchAttendance, fetchExamResults, fetchHolidays, fetchHomework, fetchLeaves, leavesPage]);
 
     const toggleMonthPay = (monthKey: string) => {
         setSelectedMonths2Pay(prev =>
@@ -153,11 +365,14 @@ export default function StudentDashboardPage() {
         });
     };
 
-    const processPayment = async () => {
+    const processPayment = async (keysOverride?: string[], itemsOverride?: any[]) => {
+        if (!onlinePaymentEnabled) return;
+        const keys = keysOverride ?? selectedMonths2Pay;
+        const items = itemsOverride ?? allDueItems;
         setPayProcessing(true);
         try {
-            const amount = selectedMonths2Pay.reduce((sum, key) => {
-                const m = dueMonths.find((x: any) => x.key === key);
+            const amount = keys.reduce((sum, key) => {
+                const m = items.find((x: any) => x.key === key);
                 return sum + (m ? m.amount : 0);
             }, 0);
 
@@ -167,8 +382,8 @@ export default function StudentDashboardPage() {
             let lateFeeTotal = 0;
             const discountNames: string[] = [];
 
-            selectedMonths2Pay.forEach(key => {
-                const m = dueMonths.find((x: any) => x.key === key);
+            keys.forEach(key => {
+                const m = items.find((x: any) => x.key === key);
                 if (m) {
                     baseFeeAmount += m.baseFee || 0;
                     discountAmount += m.discount || 0;
@@ -189,7 +404,7 @@ export default function StudentDashboardPage() {
                 body: JSON.stringify({
                     studentId: Number(studentId),
                     academicYear: academicYearString,
-                    feeMonths: selectedMonths2Pay,
+                    feeMonths: keys,
                 })
             });
 
@@ -204,17 +419,17 @@ export default function StudentDashboardPage() {
             const scriptLoaded = await loadRazorpayScript();
             if (!scriptLoaded) throw new Error("Failed to load Razorpay SDK. Check your connection.");
 
-            const rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-            if (!rzpKey) throw new Error("Razorpay public key missing from frontend environment");
+            const rzpKey = order.keyId as string | undefined;
+            if (!rzpKey) throw new Error("Razorpay is not configured for this school. Please contact the school administration.");
 
             // 3. Configure the checkout popup
-            const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin;
+            const baseUrl = getEnv('FRONTEND_URL') || window.location.origin;
             const options = {
                 key: rzpKey,
                 amount: order.amount,
                 currency: order.currency,
                 name: "School Management System",
-                description: `Fee Payment for ${selectedMonths2Pay.length} months`,
+                description: `Fee Payment for ${keys.length} months`,
                 order_id: order.id,
                 prefill: {
                     name: `${info.firstName} ${info.lastName}`,
@@ -248,18 +463,17 @@ export default function StudentDashboardPage() {
 
     if (loading || !info) return (
         <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-slate-400 text-sm">Loading student dashboard...</p>
+            <AnimatedLoader size="lg" text="Loading student dashboard..." />
         </div>
     );
 
     const pieData = attendance ? [
-        { name: "Present", value: attendance.present || 0, color: "#22c55e" },
-        { name: "Late", value: attendance.late || 0, color: "#facc15" },
-        { name: "Half Day", value: attendance.halfDay || 0, color: "#a855f7" },
-        { name: "Leave", value: attendance.leave || 0, color: "#3b82f6" },
-        { name: "Absent", value: attendance.absent || 0, color: "#ef4444" },
-        { name: "Holiday", value: attendance.holiday || 0, color: "#0ea5e9" },
+        { name: "Present", value: attendance.present || 0, color: "#22c55e", fill: "#22c55e" },
+        { name: "Late", value: attendance.late || 0, color: "#facc15", fill: "#facc15" },
+        { name: "Half Day", value: attendance.halfDay || 0, color: "#a855f7", fill: "#a855f7" },
+        { name: "Leave", value: attendance.leave || 0, color: "#3b82f6", fill: "#3b82f6" },
+        { name: "Absent", value: attendance.absent || 0, color: "#ef4444", fill: "#ef4444" },
+        { name: "Holiday", value: attendance.holiday || 0, color: "#0ea5e9", fill: "#0ea5e9" },
     ].filter(d => d.value > 0) : [];
 
     // Calendar logic
@@ -286,16 +500,24 @@ export default function StudentDashboardPage() {
             case 'LEAVE': return 'bg-blue-500 border-blue-600 text-white shadow-sm shadow-blue-500/20';
             case 'ABSENT': return 'bg-red-500 border-red-600 text-white shadow-sm shadow-red-500/20';
             case 'HOLIDAY': return 'bg-sky-500 border-sky-600 text-white shadow-sm shadow-sky-500/20';
-            case 'SUNDAY': return 'bg-orange-500/20 border-orange-500/40 text-orange-300';
-            default: return 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700/50';
+            case 'SUNDAY': return 'bg-orange-100 border-orange-300 text-orange-700';
+            default: return 'bg-slate-100 border-slate-200 text-ink hover:bg-slate-100/50';
         }
     };
 
     const dueMonths = fees?.months?.filter((m: any) => !m.paid && m.amount > 0) || [];
     const paidMonths = fees?.months?.filter((m: any) => m.paid && m.amount > 0) || [];
 
+    // Include oneTimeFees in due/paid lists
+    const otFee = fees?.oneTimeFees ?? null;
+    const dueOneTimeFee = otFee && !otFee.paid && otFee.amount > 0 ? otFee : null;
+    const paidOneTimeFee = otFee && otFee.paid && otFee.amount > 0 ? otFee : null;
+
+    // All selectable due items (monthly + one-time)
+    const allDueItems = [...(dueOneTimeFee ? [dueOneTimeFee] : []), ...dueMonths];
+
     const selectedAmountTotal = selectedMonths2Pay.reduce((sum, key) => {
-        const m = dueMonths.find((x: any) => x.key === key);
+        const m = allDueItems.find((x: any) => x.key === key);
         return sum + (m ? m.amount : 0);
     }, 0);
 
@@ -303,58 +525,173 @@ export default function StudentDashboardPage() {
         <div className="space-y-4 max-w-5xl">
             <Toaster position="top-right" />
 
-            {/* Back */}
-            <Link href="/parent-dashboard" className="inline-flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                All Students
-            </Link>
+            {/* Back — only when multi-student (single-student parents never see the card grid) */}
+            {siblings.length > 0 && (
+                <Link href="/parent-dashboard" className="inline-flex items-center gap-1.5 text-ink-muted hover:text-brand transition-colors text-sm animate-fade-in">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                    All Students
+                </Link>
+            )}
 
-            {/* ── Student Header Card ── */}
-            <div className="bg-linear-to-r from-indigo-600/20 to-purple-600/20 border border-indigo-500/30 rounded-2xl p-5">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg shrink-0">
-                        {info.firstName?.[0]}{info.lastName?.[0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <h1 className="text-white text-2xl font-bold">{info.firstName} {info.lastName}</h1>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                            {info.className && <span className="px-2.5 py-1 bg-indigo-500/20 text-indigo-300 text-xs rounded-full">{info.className}</span>}
-                            {info.sectionName && <span className="px-2.5 py-1 bg-purple-500/20 text-purple-300 text-xs rounded-full">Section {info.sectionName}</span>}
-                            {info.rollNo && <span className="px-2.5 py-1 bg-slate-700 text-slate-300 text-xs rounded-full">Roll No: {info.rollNo}</span>}
-                            {academicYearString && <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 text-xs rounded-full">{academicYearString}</span>}
-                            {info.subjects?.length > 0 && <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 text-xs rounded-full">{info.subjects.length} Subjects</span>}
-                        </div>
+            {/* ── Student Switcher (shown when parent has 2+ students) ── */}
+            {siblings.length > 0 && (
+                <div className="animate-fade-in">
+                    <p className="text-ink-muted text-xs font-medium mb-2 px-0.5 uppercase tracking-wide">Switch Student</p>
+                    <div className="flex gap-2.5 overflow-x-auto pb-1 no-scrollbar snap-x snap-mandatory">
+                        {siblings.map((s, idx) => {
+                            const isActive = String(s.id) === String(studentId);
+                            const initials = `${s.firstName?.[0] ?? ""}${s.lastName?.[0] ?? ""}`;
+                            const palettes = [
+                                { grad: "from-violet-500 to-purple-600", active: "bg-violet-50 border-violet-300 shadow-sm shadow-violet-200", dot: "bg-violet-500", nameActive: "text-violet-700" },
+                                { grad: "from-teal-500 to-cyan-500",     active: "bg-teal-50 border-teal-300 shadow-sm shadow-teal-200",     dot: "bg-teal-500",   nameActive: "text-teal-700"   },
+                                { grad: "from-rose-500 to-pink-500",     active: "bg-rose-50 border-rose-300 shadow-sm shadow-rose-200",     dot: "bg-rose-500",   nameActive: "text-rose-700"   },
+                                { grad: "from-amber-500 to-orange-500",  active: "bg-amber-50 border-amber-300 shadow-sm shadow-amber-200",  dot: "bg-amber-500",  nameActive: "text-amber-700"  },
+                                { grad: "from-green-500 to-emerald-500", active: "bg-green-50 border-green-300 shadow-sm shadow-green-200", dot: "bg-green-500",  nameActive: "text-green-700"  },
+                            ];
+                            const p = palettes[idx % palettes.length];
+                            return (
+                                <button
+                                    key={s.id}
+                                    onClick={() => !isActive && router.push(`/parent-dashboard/student/${s.id}`)}
+                                    className={`shrink-0 snap-start flex items-center gap-3 px-3.5 py-2.5 rounded-2xl border-2 transition-all text-left min-w-40
+                                        ${isActive
+                                            ? `${p.active}`
+                                            : "bg-white/80 border-slate-200 hover:border-slate-300 hover:shadow-sm"
+                                        }`}
+                                >
+                                    <div className={`w-10 h-10 rounded-xl bg-linear-to-br ${p.grad} flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-md`}>
+                                        {initials}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className={`text-sm font-bold leading-tight truncate ${isActive ? p.nameActive : "text-ink"}`}>
+                                            {s.firstName} {s.lastName}
+                                        </p>
+                                        <p className="text-[11px] text-ink-muted leading-tight truncate mt-0.5">
+                                            {[s.className, s.sectionName ? `Sec ${s.sectionName}` : null].filter(Boolean).join(" · ")}
+                                        </p>
+                                    </div>
+                                    {isActive && <div className={`w-2 h-2 rounded-full ${p.dot} shrink-0 ring-2 ring-white`} />}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
-            </div>
+            )}
+
+            {/* ── Student Header Card ── */}
+            <StudentBanner studentId={studentId as string} />
 
             {/* ── Section Nav Tabs ── */}
-            <div className="flex gap-1 bg-slate-900/80 border border-slate-800 rounded-xl p-1 overflow-x-auto no-scrollbar">
+            <div
+                role="tablist"
+                aria-label="Student sections"
+                className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2 bg-surface border border-slate-200 rounded-2xl p-2.5 animate-slide-up shadow-soft"
+                style={{ animationDelay: '50ms' }}
+            >
                 {([
-                    ["fees", "💰 Fee & Dues"],
-                    ["attendance", "📊 Attendance"],
-                    ["results", "📝 Exam Results"],
-                    ["holidays", "🏝️ Holidays"],
-                    ["info", "👤 Personal Info"],
-                ] as const).map(([key, label]) => (
-                    <button key={key} onClick={() => setActiveSection(key)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all shrink-0 ${activeSection === key ? "bg-indigo-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>
-                        {label}
+                    ["home",          "🏠", "Home"],
+                    ["attendance",    "📊", "Attendance"],
+                    ["homework",      "📚", "Homework"],
+                    ["ai-tutor",      "✨", "AI Tutor"],
+                    ["fees",          "💰", "Fees"],
+                    ["results",       "📝", "Results"],
+                    ["library",       "📖", "Library"],
+                    ["leaves",        "🗓️", "Leaves"],
+                    ["pickup",        "📱", "Pickup QR"],
+                    ["exam-schedule", "📅", "Schedule"],
+                    ["holidays",      "🏝️", "Holidays"],
+                    ["info",          "👤", "Profile"],
+                ] as const).map(([key, icon, label]) => (
+                    <button
+                        key={key}
+                        role="tab"
+                        aria-selected={activeSection === key}
+                        aria-controls={`tabpanel-${key}`}
+                        id={`tab-${key}`}
+                        onClick={() => {
+                            const section = key as ActiveSection;
+                            // Attendance, Homework and Fees open a bottom sheet on mobile/tablet only
+                            const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+                            if (isMobile && section === "attendance") {
+                                setShowAttendanceSheet(true);
+                                return;
+                            }
+                            if (isMobile && section === "homework") {
+                                setShowHomeworkSheet(true);
+                                return;
+                            }
+                            if (isMobile && section === "fees") {
+                                setShowFeesSheet(true);
+                                return;
+                            }
+                            if (section === activeSection) {
+                                // Already on this tab — re-fetch directly
+                                if (section === "leaves") fetchLeaves(leavesPage);
+                                else if (section === "fees") { setSectionLoading(true); fetchFees(); }
+                                else if (section === "results") { setSectionLoading(true); fetchExamResults(); }
+                                else if (section === "holidays") { setSectionLoading(true); fetchHolidays(); }
+                            } else {
+                                setActiveSection(section);
+                                if (section !== 'info' && section !== 'exam-schedule' && section !== 'pickup' && section !== 'home' && section !== 'library' && section !== 'ai-tutor') setSectionLoading(true);
+                            }
+                        }}
+                        className={`flex flex-col items-center justify-center gap-1 py-2 px-1 min-h-14 rounded-xl font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${activeSection === key ? "bg-brand text-white shadow-md shadow-brand/20 dark:bg-white dark:text-slate-900 dark:shadow-slate-900/20" : "text-ink-muted hover:text-ink hover:bg-brand/5 bg-white border border-slate-200 hover:border-brand/30 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20"}`}
+                    >
+                        <span className="text-[15px] leading-none shrink-0" aria-hidden="true">{icon}</span>
+                        <span className="text-[10px] leading-tight text-center whitespace-nowrap overflow-hidden w-full">{label}</span>
                     </button>
                 ))}
             </div>
 
-            {/* ════════════════════════════════
-                FEE & DUES TAB
-            ════════════════════════════════ */}
-            {activeSection === "fees" && (
-                <div className="space-y-4">
-                    {/* Academic year selector + summary */}
-                    <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+            {sectionLoading ? (
+                <div role="status" aria-label="Loading section" className="flex flex-col items-center justify-center py-24 gap-4 animate-fade-in">
+                    <AnimatedLoader size="md" text="Loading data..." />
+                </div>
+            ) : (
+                <>
+                    {/* ════════════════════════════════
+                        HOME TAB
+                    ════════════════════════════════ */}
+                    {activeSection === "home" && (
+                        <div
+                            id="tabpanel-home"
+                            role="tabpanel"
+                            aria-labelledby="tab-home"
+                            className="animate-scale-in"
+                        >
+                            <HomeSection studentId={studentId as string} academicYearString={academicYearString} sessionId={academicSessionId} onChangeSection={(sec) => setActiveSection(sec as ActiveSection)} />
+                        </div>
+                    )}
+
+                    {/* ════════════════════════════════
+                        LIBRARY TAB
+                    ════════════════════════════════ */}
+                    {activeSection === "library" && (
+                        <div id="tabpanel-library" role="tabpanel" aria-labelledby="tab-library" className="animate-scale-in">
+                            <StudentLibrarySection studentId={studentId as string} />
+                        </div>
+                    )}
+
+                    {/* ════════════════════════════════
+                        AI TUTOR TAB
+                    ════════════════════════════════ */}
+                    {activeSection === "ai-tutor" && (
+                        <div id="tabpanel-ai-tutor" role="tabpanel" aria-labelledby="tab-ai-tutor" className="animate-scale-in">
+                            <AiToolsSection studentId={studentId as string} info={info} />
+                        </div>
+                    )}
+
+                    {/* ════════════════════════════════
+                        FEE & DUES TAB
+                    ════════════════════════════════ */}
+                    {activeSection === "fees" && (
+                        <div id="tabpanel-fees" role="tabpanel" aria-labelledby="tab-fees" className="space-y-4 animate-scale-in">
+                            {/* Academic year selector + summary */}
+                            <div className="flex flex-wrap items-center justify-between gap-3 bg-white/80 backdrop-blur-sm border border-slate-200 p-4 rounded-2xl">
                         <div className="flex items-center gap-3">
-                            <label className="text-slate-400 text-sm">Academic Year:</label>
+                            <label className="text-ink-muted text-sm font-medium">Academic Year:</label>
                             <select value={academicSessionId || ""} onChange={handleSessionChange}
-                                className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                className="bg-slate-100 border border-slate-200 text-ink text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand">
                                 {sessions.map(s => <option key={s.id} value={s.id}>{s.name} {s.isActive && "(Current)"}</option>)}
                             </select>
                         </div>
@@ -370,20 +707,20 @@ export default function StudentDashboardPage() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* ── Due Months (Selectable checkboxes to pay) ── */}
-                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col h-full">
+                        <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-5 flex flex-col h-full">
                             <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-white font-bold flex items-center gap-2">
+                                <h2 className="text-ink font-bold flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-red-400 inline-block"></span>
-                                    Pending Dues ({dueMonths.length})
+                                    Pending Dues ({allDueItems.length})
                                 </h2>
-                                {dueMonths.length > 0 && (
-                                    <button onClick={() => setSelectedMonths2Pay(dueMonths.map((m: any) => m.key))} className="text-xs text-indigo-400 hover:text-indigo-300">
+                                {onlinePaymentEnabled && allDueItems.length > 0 && (
+                                    <button onClick={() => setSelectedMonths2Pay(allDueItems.map((m: any) => m.key))} className="text-xs text-brand hover:text-brand-light font-medium">
                                         Select All
                                     </button>
                                 )}
                             </div>
 
-                            {dueMonths.length === 0 ? (
+                            {allDueItems.length === 0 ? (
                                 <div className="text-center py-12 flex-1 flex flex-col justify-center">
                                     <div className="text-4xl mb-3">🎉</div>
                                     <p className="text-emerald-400 font-semibold text-base">All fees cleared!</p>
@@ -391,19 +728,115 @@ export default function StudentDashboardPage() {
                                 </div>
                             ) : (
                                 <div className="space-y-2 overflow-y-auto max-h-[350px] pr-2 custom-scrollbar">
+                                    {/* One-Time & Annual Fees — shown at the top if due */}
+                                    {dueOneTimeFee && (() => {
+                                        const m = dueOneTimeFee;
+                                        return (
+                                            <div key={m.key} className={`flex flex-col p-3 rounded-xl transition-all border ${selectedMonths2Pay.includes(m.key) ? "bg-indigo-600/20 border-indigo-500/50" : m.status === 'PARTIAL' ? "bg-yellow-500/5 border-yellow-500/30" : "bg-amber-500/5 border-amber-500/30"} ${onlinePaymentEnabled ? "cursor-pointer hover:border-amber-500/50" : ""}`}>
+                                                <label className={`flex justify-between items-center w-full ${onlinePaymentEnabled ? "cursor-pointer" : ""}`}>
+                                                    <div className="flex items-center gap-3">
+                                                        {onlinePaymentEnabled && (
+                                                            <input type="checkbox"
+                                                                checked={selectedMonths2Pay.includes(m.key)}
+                                                                onChange={() => toggleMonthPay(m.key)}
+                                                                className="w-4 h-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-white bg-slate-100" />
+                                                        )}
+                                                        <div>
+                                                            <span className="text-amber-700 text-sm font-semibold">{m.label}</span>
+                                                            <span className="ml-2 text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold uppercase tracking-wider">Annual</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="text-right">
+                                                            <div className="text-ink font-bold text-sm">₹{Number(m.amount).toLocaleString()}</div>
+                                                            {m.status === 'PARTIAL' && m.totalPaid > 0 && (
+                                                                <div className="text-yellow-400 text-[10px]">₹{Number(m.totalPaid).toLocaleString()} paid of ₹{Number(m.totalDue).toLocaleString()}</div>
+                                                            )}
+                                                        </div>
+                                                        {m.status === 'PARTIAL' ? (
+                                                            <span className="text-yellow-400 text-[10px] px-2 py-0.5 bg-yellow-500/10 rounded-full font-bold uppercase tracking-wider">Partial</span>
+                                                        ) : (
+                                                            <span className="text-red-400 text-[10px] px-2 py-0.5 bg-red-500/10 rounded-full font-bold uppercase tracking-wider">Due</span>
+                                                        )}
+                                                    </div>
+                                                </label>
+                                                {(m.categoryBreakdown?.length > 0 || m.discount > 0 || m.lateFee > 0) && (
+                                                    <div className="mt-2 ml-7 pl-3 border-l-2 border-amber-500/30 space-y-1">
+                                                        {m.categoryBreakdown?.map((cat: any, i: number) => (
+                                                            <div key={i} className="flex justify-between text-xs text-slate-400">
+                                                                <span>{cat.categoryName}</span>
+                                                                <span>₹{cat.amount}</span>
+                                                            </div>
+                                                        ))}
+                                                        {m.discount > 0 && (
+                                                            <div className="flex justify-between text-xs text-emerald-400/80">
+                                                                <span>Discount</span>
+                                                                <span>-₹{m.discount}</span>
+                                                            </div>
+                                                        )}
+                                                        {m.lateFee > 0 && (
+                                                            <div className="flex justify-between text-xs text-red-400/80">
+                                                                <span>Late Fee</span>
+                                                                <span>+₹{m.lateFee}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {m.status === 'PARTIAL' && m.payments && m.payments.length > 0 && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            if (m.payments && m.payments.length > 1) {
+                                                                setShowReceiptsListModal({
+                                                                    feeMonth: m.label,
+                                                                    payments: m.payments,
+                                                                    adjustments: m.adjustments ?? [],
+                                                                    balanceRemaining: m.outstanding ?? 0,
+                                                                    totalDue: m.totalDue,
+                                                                    studentName: info ? `${info.firstName} ${info.lastName}` : undefined,
+                                                                    studentClass: info?.className,
+                                                                    studentSection: info?.sectionName,
+                                                                });
+                                                            } else {
+                                                                const paymentToView = m.payments?.[0] || m.payment;
+                                                                setShowReceipt({
+                                                                    ...paymentToView,
+                                                                    components: paymentToView?.components ?? [],
+                                                                    feeMonth: m.label,
+                                                                    studentName: info ? `${info.firstName} ${info.lastName}` : undefined,
+                                                                    studentClass: info?.className,
+                                                                    studentSection: info?.sectionName,
+                                                                    adjustments: m.adjustments ?? [],
+                                                                    balanceRemaining: m.outstanding ?? 0,
+                                                                    totalPayable: m.totalDue ?? null,
+                                                                });
+                                                            }
+                                                        }}
+                                                        className="mt-2 ml-7 text-xs px-2.5 py-1 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 rounded-lg transition-colors border border-yellow-500/20 hover:border-yellow-500/40"
+                                                    >
+                                                        View Partial Receipt
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* Monthly dues */}
                                     {dueMonths.map((m: any) => (
-                                        <div key={m.key} className={`flex flex-col p-3 rounded-xl transition-all border ${selectedMonths2Pay.includes(m.key) ? "bg-indigo-600/20 border-indigo-500/50 cursor-pointer" : m.status === 'PARTIAL' ? "bg-yellow-500/5 border-yellow-500/30 hover:border-yellow-500/50 cursor-pointer" : "bg-slate-800/50 border-slate-700/50 hover:border-slate-600 cursor-pointer"}`}>
-                                            <label className="flex justify-between items-center cursor-pointer w-full">
+                                        <div key={m.key} className={`flex flex-col p-3 rounded-xl transition-all border ${selectedMonths2Pay.includes(m.key) ? "bg-indigo-600/20 border-indigo-500/50" : m.status === 'PARTIAL' ? "bg-yellow-500/5 border-yellow-500/30" : "bg-slate-100/60 border-slate-200/50"} ${onlinePaymentEnabled ? "cursor-pointer hover:border-slate-300" : ""}`}>
+                                            <label className={`flex justify-between items-center w-full ${onlinePaymentEnabled ? "cursor-pointer" : ""}`}>
                                                 <div className="flex items-center gap-3">
-                                                    <input type="checkbox"
-                                                        checked={selectedMonths2Pay.includes(m.key)}
-                                                        onChange={() => toggleMonthPay(m.key)}
-                                                        className="w-4 h-4 rounded border-slate-600 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-900 bg-slate-800" />
-                                                    <span className="text-white text-sm font-medium">{m.label}</span>
+                                                    {onlinePaymentEnabled && (
+                                                        <input type="checkbox"
+                                                            checked={selectedMonths2Pay.includes(m.key)}
+                                                            onChange={() => toggleMonthPay(m.key)}
+                                                            className="w-4 h-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-white bg-slate-100" />
+                                                    )}
+                                                    <span className="text-ink text-sm font-medium">{m.label}</span>
                                                 </div>
                                                 <div className="flex items-center gap-3">
                                                     <div className="text-right">
-                                                        <div className="text-white font-bold text-sm">₹{Number(m.amount).toLocaleString()}</div>
+                                                        <div className="text-ink font-bold text-sm">₹{Number(m.amount).toLocaleString()}</div>
                                                         {m.status === 'PARTIAL' && m.totalPaid > 0 && (
                                                             <div className="text-yellow-400 text-[10px]">₹{Number(m.totalPaid).toLocaleString()} paid of ₹{Number(m.totalDue).toLocaleString()}</div>
                                                         )}
@@ -418,7 +851,7 @@ export default function StudentDashboardPage() {
                                                 </div>
                                             </label>
                                             {(m.categoryBreakdown?.length > 0 || m.discount > 0 || m.lateFee > 0) && (
-                                                <div className="mt-2 ml-7 pl-3 border-l-2 border-slate-700/50 space-y-1">
+                                                <div className="mt-2 ml-7 pl-3 border-l-2 border-slate-200/50 space-y-1">
                                                     {m.categoryBreakdown?.map((cat: any, i: number) => (
                                                         <div key={i} className="flex justify-between text-xs text-slate-400">
                                                             <span>{cat.categoryName}</span>
@@ -482,15 +915,25 @@ export default function StudentDashboardPage() {
                                 </div>
                             )}
 
+                            {/* Notice when online payment is disabled for the school */}
+                            {!onlinePaymentEnabled && allDueItems.length > 0 && (
+                                <div className="mt-4 pt-4 border-t border-slate-200">
+                                    <div className="flex items-start gap-2 p-3 bg-sky-500/5 border border-sky-500/20 rounded-xl">
+                                        <span className="text-sm">ℹ️</span>
+                                        <p className="text-sky-700 text-xs">Online payment is not available. Please pay at the school office.</p>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Pay button pinned to bottom */}
-                            {selectedMonths2Pay.length > 0 && (
-                                <div className="mt-4 pt-4 border-t border-slate-800">
+                            {onlinePaymentEnabled && selectedMonths2Pay.length > 0 && (
+                                <div className="mt-4 pt-4 border-t border-slate-200">
                                     <div className="flex items-center justify-between mb-3 text-sm">
-                                        <span className="text-slate-400">Selected ({selectedMonths2Pay.length} months)</span>
-                                        <span className="text-white font-bold text-xl">₹{selectedAmountTotal.toLocaleString()}</span>
+                                        <span className="text-slate-400">Selected ({selectedMonths2Pay.length} item{selectedMonths2Pay.length !== 1 ? 's' : ''})</span>
+                                        <span className="text-ink font-bold text-xl">₹{selectedAmountTotal.toLocaleString()}</span>
                                     </div>
                                     <button onClick={handleConfirmPay}
-                                        className="w-full py-3 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-indigo-500/25">
+                                        className="w-full py-3 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-ink font-semibold rounded-xl transition-all shadow-lg shadow-indigo-500/25">
                                         Proceed to Pay
                                     </button>
                                 </div>
@@ -498,19 +941,65 @@ export default function StudentDashboardPage() {
                         </div>
 
                         {/* ── Paid Months (with receipt) ── */}
-                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col h-full">
-                            <h2 className="text-white font-bold mb-4 flex items-center gap-2">
+                        <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-5 flex flex-col h-full">
+                            <h2 className="text-ink font-bold mb-4 flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
-                                Payment History ({paidMonths.length})
+                                Payment History ({paidMonths.length + (paidOneTimeFee ? 1 : 0)})
                             </h2>
-                            {paidMonths.length === 0 ? (
+                            {paidMonths.length === 0 && !paidOneTimeFee ? (
                                 <p className="text-slate-500 text-sm text-center py-12 flex-1 flex flex-col justify-center">No payment history found for {academicYearString}</p>
                             ) : (
                                 <div className="space-y-2 overflow-y-auto max-h-[350px] pr-2 custom-scrollbar">
+                                    {/* Paid One-Time & Annual Fees at top */}
+                                    {paidOneTimeFee && (() => {
+                                        const m = paidOneTimeFee;
+                                        return (
+                                            <div key={m.key} className="flex items-center gap-3 p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl">
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-amber-700 text-sm font-semibold">{m.label}</p>
+                                                    <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold uppercase tracking-wider">Annual</span>
+                                                </div>
+                                                <div className="text-right whitespace-nowrap">
+                                                    <div className="text-emerald-400 text-sm font-bold block mb-1">₹{(m.payments && m.payments.length > 1 ? m.payments.reduce((sum: number, p: any) => sum + Number(p.amountPaid || 0), 0) : Number(m.payment?.amountPaid || 0)).toLocaleString()}</div>
+                                                    <button onClick={() => {
+                                                        if (m.payments && m.payments.length > 1) {
+                                                            setShowReceiptsListModal({
+                                                                feeMonth: m.label,
+                                                                payments: m.payments,
+                                                                adjustments: m.adjustments ?? [],
+                                                                balanceRemaining: m.outstanding ?? 0,
+                                                                totalDue: m.totalDue,
+                                                                studentName: info ? `${info.firstName} ${info.lastName}` : undefined,
+                                                                studentClass: info?.className,
+                                                                studentSection: info?.sectionName,
+                                                            });
+                                                        } else {
+                                                            const paymentToView = m.payment;
+                                                            setShowReceipt({
+                                                                ...paymentToView,
+                                                                components: paymentToView?.components ?? [],
+                                                                feeMonth: m.label,
+                                                                studentName: info ? `${info.firstName} ${info.lastName}` : undefined,
+                                                                studentClass: info?.className,
+                                                                studentSection: info?.sectionName,
+                                                                adjustments: m.adjustments ?? [],
+                                                                balanceRemaining: m.outstanding ?? 0,
+                                                                totalPayable: m.totalDue ?? null,
+                                                            });
+                                                        }
+                                                    }}
+                                                        className="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-100 text-ink rounded-lg transition-colors border border-slate-200 hover:border-brand/40">
+                                                        Receipt
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+
                                     {paidMonths.map((m: any) => (
                                         <div key={m.key} className="flex items-center gap-3 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-white text-sm font-medium">{m.label}</p>
+                                                <p className="text-ink text-sm font-medium">{m.label}</p>
                                             </div>
                                             <div className="text-right whitespace-nowrap">
                                                 <div className="text-emerald-400 text-sm font-bold block mb-1">₹{(m.payments && m.payments.length > 1 ? m.payments.reduce((sum: number, p: any) => sum + Number(p.amountPaid || 0), 0) : Number(m.payment?.amountPaid || 0)).toLocaleString()}</div>
@@ -543,7 +1032,7 @@ export default function StudentDashboardPage() {
                                                         });
                                                     }
                                                 }}
-                                                    className="text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors border border-slate-700 hover:border-slate-500">
+                                                    className="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-100 text-ink rounded-lg transition-colors border border-slate-200 hover:border-brand/40">
                                                     Receipt
                                                 </button>
                                             </div>
@@ -560,23 +1049,21 @@ export default function StudentDashboardPage() {
                 ATTENDANCE TAB
             ════════════════════════════════ */}
             {activeSection === "attendance" && (
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <div id="tabpanel-attendance" role="tabpanel" aria-labelledby="tab-attendance" className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-6 animate-scale-in">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-                        <h2 className="text-white font-bold text-lg">📊 Attendance</h2>
+                        <h2 className="text-ink font-bold text-lg">📊 Attendance</h2>
                         <div className="flex gap-2">
-                            <input
-                                type="month"
+                            <AppMonthPicker
                                 value={attendanceMonth}
-                                onChange={e => setAttendanceMonth(e.target.value)}
-                                className="bg-slate-800 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
+                                onChange={(v) => setAttendanceMonth(v)}
                             />
                         </div>
                     </div>
 
                     {attendance && attendance.total > 0 ? (
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                            <div className="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50">
-                                <h3 className="text-white font-semibold text-center mb-4">{MONTH_NAMES[currentMonth - 1]} {currentYear}</h3>
+                            <div className="bg-slate-100/60 rounded-2xl p-5 border border-slate-200/50">
+                                <h3 className="text-ink font-semibold text-center mb-4">{MONTH_NAMES[currentMonth - 1]} {currentYear}</h3>
                                 <div className="grid grid-cols-7 gap-1 text-center mb-2">
                                     {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
                                         <div key={day} className="text-slate-400 text-xs font-medium py-1">{day}</div>
@@ -601,7 +1088,7 @@ export default function StudentDashboardPage() {
                                         ));
                                     })}
                                 </div>
-                                <div className="flex flex-wrap justify-center gap-4 mt-6 text-xs text-slate-300">
+                                <div className="flex flex-wrap justify-center gap-4 mt-6 text-xs text-ink">
                                     <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-green-500 shadow-sm shadow-green-500/30"></span> Present</div>
                                     <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-yellow-400 shadow-sm shadow-yellow-400/30"></span> Late</div>
                                     <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-purple-500 shadow-sm shadow-purple-500/30"></span> Half Day</div>
@@ -617,41 +1104,39 @@ export default function StudentDashboardPage() {
                                     <div className="relative">
                                         <ResponsiveContainer width={220} height={220}>
                                             <PieChart>
-                                                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value">
-                                                    {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                                                </Pie>
-                                                <Tooltip formatter={(val: any, name: any) => [`${val} days`, name]} contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }} />
+                                                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value" />
+                                                <Tooltip formatter={(val: any, name: any) => [`${val} days`, name]} contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.1)' }} />
                                             </PieChart>
                                         </ResponsiveContainer>
                                         <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
-                                            <span className="text-white text-3xl font-bold">{attendance.percentage}%</span>
-                                            <span className="text-slate-400 text-xs mt-1 uppercase tracking-wider font-semibold">Present</span>
+                                            <span className="text-ink text-3xl font-bold">{attendance.percentage}%</span>
+                                            <span className="text-ink-muted text-xs mt-1 uppercase tracking-wider font-semibold">Present</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
                                     {[
-                                        { label: "Present", value: attendance.present, color: "text-green-400", bg: "bg-green-500/10 border-green-500/20" },
-                                        { label: "Late", value: attendance.late || 0, color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/20" },
-                                        { label: "Half Day", value: attendance.halfDay || 0, color: "text-purple-400", bg: "bg-purple-500/10 border-purple-500/20" },
-                                        { label: "Leave", value: attendance.leave || 0, color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
-                                        { label: "Absent", value: attendance.absent, color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
-                                        { label: "Holiday", value: attendance.holiday || 0, color: "text-sky-400", bg: "bg-sky-500/10 border-sky-500/20" },
+                                        { label: "Present", value: attendance.present, color: "text-green-600", bg: "bg-green-50 border-green-200" },
+                                        { label: "Late", value: attendance.late || 0, color: "text-yellow-600", bg: "bg-yellow-50 border-yellow-200" },
+                                        { label: "Half Day", value: attendance.halfDay || 0, color: "text-purple-600", bg: "bg-purple-50 border-purple-200" },
+                                        { label: "Leave", value: attendance.leave || 0, color: "text-blue-600", bg: "bg-blue-50 border-blue-200" },
+                                        { label: "Absent", value: attendance.absent, color: "text-red-600", bg: "bg-red-50 border-red-200" },
+                                        { label: "Holiday", value: attendance.holiday || 0, color: "text-sky-600", bg: "bg-sky-50 border-sky-200" },
                                     ].map(item => (
                                         <div key={item.label} className={`border rounded-xl p-3 text-center shadow-sm ${item.bg}`}>
                                             <div className={`text-2xl font-bold ${item.color} mb-1`}>{item.value}</div>
-                                            <div className="text-slate-400 font-medium text-[10px] uppercase">{item.label}</div>
+                                            <div className="text-ink-muted font-medium text-[10px] uppercase">{item.label}</div>
                                         </div>
                                     ))}
                                 </div>
-                                <div className="mt-2 bg-slate-800 border border-slate-700 rounded-xl p-3 text-center">
-                                    <div className="text-slate-300 font-medium text-xs">Total Working Days</div>
-                                    <div className="text-xl font-bold text-white mt-1">{attendance.total - (attendance.holiday || 0)}</div>
+                                <div className="mt-2 bg-brand/5 border border-brand/20 rounded-xl p-3 text-center">
+                                    <div className="text-ink-muted font-medium text-xs">Total Working Days</div>
+                                    <div className="text-xl font-bold text-ink mt-1">{attendance.workingDaysCount ?? (attendance.total - (attendance.holiday || 0))}</div>
                                 </div>
                             </div>
                         </div>
                     ) : (
-                        <div className="py-16 text-center border-2 border-dashed border-slate-800 rounded-xl">
+                        <div className="py-16 text-center border-2 border-dashed border-slate-200 rounded-xl">
                             <div className="text-4xl mb-3 opacity-60">📅</div>
                             <p className="text-slate-400 font-medium">No attendance data for {MONTH_NAMES[currentMonth - 1]} {currentYear}</p>
                             <p className="text-slate-500 text-sm mt-1">There are no records found for this month.</p>
@@ -664,66 +1149,217 @@ export default function StudentDashboardPage() {
                 EXAM RESULTS TAB
             ════════════════════════════════ */}
             {activeSection === "results" && (
-                <div className="space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+                <div id="tabpanel-results" role="tabpanel" aria-labelledby="tab-results" className="space-y-4 animate-scale-in">
+                    <div className="flex flex-wrap items-center justify-between gap-3 bg-white/80 backdrop-blur-sm border border-slate-200 p-4 rounded-2xl">
                         <div className="flex items-center gap-3">
                             <label className="text-slate-400 text-sm">Session:</label>
                             <select value={academicSessionId || ""} onChange={handleSessionChange}
-                                className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                className="bg-slate-100 border border-slate-200 text-ink text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand">
                                 {sessions.map(s => <option key={s.id} value={s.id}>{s.name} {s.isActive && "(Current)"}</option>)}
                             </select>
                         </div>
+                        {examResults?.categories?.length > 0 && (
+                            <div className="relative" ref={catDropdownRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCatDropdown(prev => !prev)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-slate-100 hover:bg-slate-100 text-ink"
+                                >
+                                    <span>Categories ({selectedExamCats.size}/{examResults.categories.length})</span>
+                                    <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                </button>
+                                {showCatDropdown && (
+                                    <div className="absolute right-0 z-30 mt-1 bg-slate-100 border border-slate-200 rounded-lg shadow-xl py-1.5 min-w-[190px]">
+                                        <label className="flex items-center gap-2 px-4 py-2 text-sm cursor-pointer hover:bg-slate-100 border-b border-slate-200">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedExamCats.size === examResults.categories.length}
+                                                onChange={() => {
+                                                    if (selectedExamCats.size === examResults.categories.length) {
+                                                        setSelectedExamCats(new Set([examResults.categories[0]]));
+                                                    } else {
+                                                        setSelectedExamCats(new Set(examResults.categories));
+                                                    }
+                                                }}
+                                                className="w-4 h-4 rounded border-slate-300 bg-slate-100 text-brand focus:ring-brand"
+                                            />
+                                            <span className="font-medium text-ink">Show All</span>
+                                        </label>
+                                        {examResults.categories.map((cat: string) => (
+                                            <label key={cat} className="flex items-center gap-2 px-4 py-2 text-sm cursor-pointer hover:bg-slate-100">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedExamCats.has(cat)}
+                                                    onChange={() => {
+                                                        setSelectedExamCats(prev => {
+                                                            const next = new Set(prev);
+                                                            if (next.has(cat)) {
+                                                                if (next.size === 1) return prev;
+                                                                next.delete(cat);
+                                                            } else {
+                                                                next.add(cat);
+                                                            }
+                                                            return next;
+                                                        });
+                                                    }}
+                                                    className="w-4 h-4 rounded border-slate-300 bg-slate-100 text-indigo-500 focus:ring-indigo-500"
+                                                />
+                                                <span className="text-ink">{cat}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                        <h2 className="text-white font-bold text-lg mb-4">📝 Examination Dashboard</h2>
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-6">
+                        <h2 className="text-ink font-bold text-lg mb-4">📝 Examination Dashboard</h2>
 
                         {(!examResults || examResults.subjects?.length === 0) ? (
-                            <div className="text-center py-16 border-2 border-dashed border-slate-800 rounded-xl">
+                            <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
                                 <div className="text-4xl mb-3 opacity-50">📑</div>
                                 <p className="text-slate-400 text-sm font-medium">No results published for {academicYearString}</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto rounded-xl border border-slate-800">
-                                <table className="w-full text-sm text-left whitespace-nowrap">
-                                    <thead className="text-xs text-slate-400 bg-slate-800/50 uppercase">
+                            <div className="relative overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
+                                {/* derive the visible (filtered) category list inline */}
+                                {(() => {
+                                    const visibleCats: string[] = examResults.categories.filter((c: string) => selectedExamCats.has(c));
+                                    return (
+                                <table className="w-full text-sm text-left text-ink min-w-[500px]">
+                                    <thead className="text-xs text-slate-400 uppercase">
                                         <tr>
-                                            <th className="px-4 py-3 font-semibold">Subject</th>
-                                            {examResults.categories.map((cat: string) => (
-                                                <th key={cat} className="px-4 py-3 font-semibold text-center">{cat}</th>
+                                            <th className="px-4 py-3 bg-slate-100 sticky left-0 z-10 w-40 sm:w-48 align-bottom border-b border-slate-200" rowSpan={2}>Subject</th>
+                                            {visibleCats.map((cat: string) => (
+                                                <th key={cat} className="px-4 py-3 text-center border-l border-b border-slate-200 bg-slate-100" colSpan={6}>
+                                                    {cat}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                        <tr>
+                                            {visibleCats.map((cat: string) => (
+                                                <React.Fragment key={`sub-${cat}`}>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-200 bg-slate-100/80">Th. Marks</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-purple-400 border-l border-b border-slate-200 bg-purple-900/20">Pr. Marks</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-200 bg-slate-100/80">Total</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-200 bg-slate-100/80">Obtained</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-indigo-400 border-l border-b border-slate-200 bg-indigo-900/20">%</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-200 bg-slate-100/80">Grade</th>
+                                                </React.Fragment>
                                             ))}
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-800">
+                                    <tbody>
                                         {examResults.subjects.map((sub: any, idx: number) => (
-                                            <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
-                                                <td className="px-4 py-3 font-medium text-white">{sub.subjectName}</td>
-                                                {examResults.categories.map((cat: string) => {
-                                                    const mark = sub.marks[cat];
+                                            <tr key={idx} className="border-b border-slate-200 hover:bg-slate-50/30 transition-colors">
+                                                <td className="px-4 py-3 font-semibold text-ink bg-surface sticky left-0 z-10 text-xs sm:text-sm border-r border-slate-200">{sub.subjectName}</td>
+                                                {visibleCats.map((cat: string) => {
+                                                    const m = sub.marks[cat];
+                                                    const isSplit = sub.hasTheory && sub.hasPractical;
+                                                    const calcTotal = isSplit
+                                                        ? (Number(m?.theoryTotalMarks || 0) + Number(m?.practicalTotalMarks || 0))
+                                                        : Number(m?.totalMarks || 0);
+                                                    const calcObtained = isSplit
+                                                        ? (Number(m?.theoryObtainedMarks || 0) + Number(m?.practicalObtainedMarks || 0))
+                                                        : Number(m?.obtainedMarks || 0);
                                                     return (
-                                                        <td key={cat} className="px-4 py-3 text-center">
-                                                            {mark ? (
-                                                                <div className="flex flex-col items-center">
-                                                                    <span className="text-white font-medium">{mark.obtainedMarks}/{mark.totalMarks}</span>
-                                                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                                                        <span className="text-[10px] text-slate-400">{Math.round(mark.percentage)}%</span>
-                                                                        {mark.grade && (
-                                                                            <span className={`text-[10px] px-1.5 rounded font-bold ${mark.isPass ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}>
-                                                                                {mark.grade}
-                                                                            </span>
-                                                                        )}
+                                                        <React.Fragment key={`td-${cat}`}>
+                                                            {/* Theory Marks */}
+                                                            <td className="px-2 py-2 border-l border-slate-200 text-center">
+                                                                {isSplit && m?.theoryTotalMarks
+                                                                    ? <div className="text-[10px] text-ink-muted">Obt: <span className="font-bold text-ink">{m.theoryObtainedMarks ?? '-'}</span><br />Tot: {m.theoryTotalMarks}</div>
+                                                                    : <span className="text-ink-muted">—</span>}
+                                                            </td>
+                                                            {/* Practical Marks */}
+                                                            <td className="px-2 py-2 border-l border-slate-200 text-center bg-purple-500/10">
+                                                                {isSplit && m?.practicalTotalMarks
+                                                                    ? <div className="text-[10px] text-purple-600">Obt: <span className="font-bold">{m.practicalObtainedMarks ?? '-'}</span><br />Tot: {m.practicalTotalMarks}</div>
+                                                                    : <span className="text-ink-muted">—</span>}
+                                                            </td>
+                                                            {/* Total */}
+                                                            <td className="px-2 py-2 border-l border-slate-200 text-center">
+                                                                <span className="font-bold text-ink">{calcTotal > 0 ? calcTotal : (m?.totalMarks ?? '-')}</span>
+                                                            </td>
+                                                            {/* Obtained */}
+                                                            <td className="px-2 py-2 border-l border-slate-200 text-center">
+                                                                <span className="font-bold text-ink">{m ? (calcTotal > 0 ? calcObtained : (m.obtainedMarks ?? '-')) : '-'}</span>
+                                                            </td>
+                                                            {/* Percentage */}
+                                                            <td className="px-2 py-2 border-l border-slate-200 text-center bg-brand/10">
+                                                                <span className="font-bold text-brand">
+                                                                    {m?.percentage != null ? `${Number(m.percentage).toFixed(1)}%` : '-'}
+                                                                </span>
+                                                            </td>
+                                                            {/* Grade / Status */}
+                                                            <td className="px-2 py-2 border-l border-slate-200 text-center">
+                                                                {m ? (
+                                                                    <div className="flex flex-col items-center gap-1">
+                                                                        <span className="font-bold text-ink-muted">{m.grade || '-'}</span>
+                                                                        {m.isPass === true && <span className="px-1.5 py-0.5 text-[9px] font-bold rounded uppercase bg-emerald-500/20 text-emerald-400">Pass</span>}
+                                                                        {m.isPass === false && <span className="px-1.5 py-0.5 text-[9px] font-bold rounded uppercase bg-red-500/20 text-red-400">Fail</span>}
                                                                     </div>
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-slate-600">-</span>
-                                                            )}
-                                                        </td>
+                                                                ) : <span className="text-slate-600">-</span>}
+                                                            </td>
+                                                        </React.Fragment>
                                                     );
                                                 })}
                                             </tr>
                                         ))}
                                     </tbody>
+                                    <tfoot className="border-t-2 border-slate-200 bg-slate-100/70 font-bold">
+                                        <tr>
+                                            <td className="px-4 py-4 sticky left-0 z-10 bg-slate-100 text-ink uppercase tracking-wider text-xs">Overall / Total</td>
+                                            {visibleCats.map((cat: string) => {
+                                                let sumTotal = 0;
+                                                let sumObtained = 0;
+                                                examResults.subjects.forEach((sub: any) => {
+                                                    const m = sub.marks[cat];
+                                                    if (m?.totalMarks) sumTotal += Number(m.totalMarks);
+                                                    if (m?.obtainedMarks) sumObtained += Number(m.obtainedMarks);
+                                                });
+                                                const percStr = sumTotal > 0 ? `${((sumObtained * 100) / sumTotal).toFixed(2)}%` : '-';
+
+                                                let overallGrade = '-';
+                                                let isPassText = '-';
+                                                let isPassColor = '';
+
+                                                if (sumTotal > 0 && examResults.gradingSystems?.length) {
+                                                    const perc = (sumObtained * 100) / sumTotal;
+                                                    const assigned = examResults.gradingSystems.find((g: any) =>
+                                                        perc >= g.minPercentage && (perc < g.maxPercentage || (g.maxPercentage === 100 && perc <= 100))
+                                                    );
+                                                    if (assigned) {
+                                                        overallGrade = assigned.gradeName;
+                                                        isPassText = assigned.isFailGrade ? 'FAIL' : 'PASS';
+                                                        isPassColor = assigned.isFailGrade
+                                                            ? 'bg-red-500/20 text-red-400'
+                                                            : 'bg-emerald-500/20 text-emerald-400';
+                                                    }
+                                                }
+
+                                                return (
+                                                    <React.Fragment key={`tfoot-${cat}`}>
+                                                        <td className="px-2 py-3 border-l border-slate-200 text-center text-ink-muted" colSpan={2}>—</td>
+                                                        <td className="px-2 py-3 border-l border-slate-200 text-center text-ink font-semibold">{sumTotal || '-'}</td>
+                                                        <td className="px-2 py-3 border-l border-slate-200 text-center text-ink font-semibold">{sumObtained || '-'}</td>
+                                                        <td className="px-2 py-3 border-l border-slate-200 text-center font-bold text-brand bg-brand/10">{percStr}</td>
+                                                        <td className="px-2 py-3 border-l border-slate-200 text-center">
+                                                            <div className="flex flex-col items-center gap-1">
+                                                                <span className="font-bold text-ink">{overallGrade}</span>
+                                                                {isPassText !== '-' && (
+                                                                    <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded uppercase ${isPassColor}`}>{isPassText}</span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </React.Fragment>
+                                                );
+                                            })}
+                                        </tr>
+                                    </tfoot>
                                 </table>
+                                    );
+                                })()}
                             </div>
                         )}
                     </div>
@@ -734,20 +1370,20 @@ export default function StudentDashboardPage() {
                 HOLIDAYS TAB
             ════════════════════════════════ */}
             {activeSection === "holidays" && (
-                <div className="space-y-4">
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <div id="tabpanel-holidays" role="tabpanel" aria-labelledby="tab-holidays" className="space-y-4 animate-scale-in">
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-6">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-xl">
                                 🏝️
                             </div>
                             <div>
-                                <h2 className="text-white font-bold text-lg">School Holidays</h2>
+                                <h2 className="text-ink font-bold text-lg">School Holidays</h2>
                                 <p className="text-slate-400 text-sm">Upcoming and past holidays applicable for {info?.firstName}</p>
                             </div>
                         </div>
 
                         {holidays.length === 0 ? (
-                            <div className="text-center py-16 border-2 border-dashed border-slate-800 rounded-xl">
+                            <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
                                 <div className="text-4xl mb-3 opacity-50">📅</div>
                                 <p className="text-slate-400 text-sm font-medium">No holidays declared at this moment.</p>
                             </div>
@@ -760,17 +1396,17 @@ export default function StudentDashboardPage() {
                                     const isUpcoming = end >= now;
 
                                     return (
-                                        <div key={h.id} className={`p-5 rounded-2xl border transition-colors ${isUpcoming ? 'bg-sky-500/10 border-sky-500/30 hover:border-sky-500/50' : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'}`}>
+                                        <div key={h.id} className={`p-5 rounded-2xl border transition-colors ${isUpcoming ? 'bg-sky-500/10 border-sky-500/30 hover:border-sky-500/50' : 'bg-slate-100/60 border-slate-200 hover:border-slate-300'}`}>
                                             <div className="flex justify-between items-start mb-3">
-                                                <h3 className="text-white font-bold">{h.description}</h3>
+                                                <h3 className="text-ink font-bold">{h.description}</h3>
                                                 {isUpcoming ? (
                                                     <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-sky-500/20 text-sky-400 tracking-wider">Upcoming</span>
                                                 ) : (
-                                                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-slate-700 text-slate-400 tracking-wider">Past</span>
+                                                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-slate-100 text-slate-400 tracking-wider">Past</span>
                                                 )}
                                             </div>
 
-                                            <div className="flex items-center text-sm text-slate-300 gap-2 mb-3">
+                                            <div className="flex items-center text-sm text-ink gap-2 mb-3">
                                                 <svg className="w-4 h-4 opacity-70 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                                 <span>
                                                     {start.toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -803,21 +1439,21 @@ export default function StudentDashboardPage() {
                 PERSONAL INFO TAB
             ════════════════════════════════ */}
             {activeSection === "info" && (
-                <div className="space-y-4">
+                <div id="tabpanel-info" role="tabpanel" aria-labelledby="tab-info" className="space-y-4 animate-scale-in">
                     {/* Subjects */}
                     {info.subjects?.length > 0 && (
-                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                            <h2 className="text-white font-bold mb-3">📚 Enrolled Subjects</h2>
+                        <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-5">
+                            <h2 className="text-ink font-bold mb-3">📚 Enrolled Subjects</h2>
                             <div className="flex flex-wrap gap-2">
                                 {info.subjects.map((s: string, i: number) => (
-                                    <span key={i} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors text-sm rounded-lg border border-slate-700">{s}</span>
+                                    <span key={i} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-100 text-ink transition-colors text-sm rounded-lg border border-slate-200">{s}</span>
                                 ))}
                             </div>
                         </div>
                     )}
                     {/* Personal details */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                        <h2 className="text-white font-bold mb-4">👤 Student Information</h2>
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-5">
+                        <h2 className="text-ink font-bold mb-4">👤 Student Information</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {[
                                 { label: "Father's Name", value: info.fathersName },
@@ -830,9 +1466,9 @@ export default function StudentDashboardPage() {
                                 { label: "Roll No", value: info.rollNo },
                                 { label: "Academic Session", value: academicYearString },
                             ].filter(f => f.value).map(field => (
-                                <div key={field.label} className="flex gap-3 p-3 bg-slate-800/50 rounded-xl border border-transparent hover:border-slate-700 transition-colors">
+                                <div key={field.label} className="flex gap-3 p-3 bg-slate-100/60 rounded-xl border border-transparent hover:border-slate-200 transition-colors">
                                     <span className="text-slate-500 text-sm min-w-[130px]">{field.label}</span>
-                                    <span className="text-white text-sm font-medium">{field.value}</span>
+                                    <span className="text-ink text-sm font-medium">{field.value}</span>
                                 </div>
                             ))}
                         </div>
@@ -840,29 +1476,296 @@ export default function StudentDashboardPage() {
                 </div>
             )}
 
+            {/* ════════════════════════════════
+                EXAM SCHEDULE TAB
+            ════════════════════════════════ */}
+            {activeSection === "exam-schedule" && info?.classId && academicSessionId && (
+                <div id="tabpanel-exam-schedule" role="tabpanel" aria-labelledby="tab-exam-schedule" className="animate-scale-in">
+                    <ExamScheduleParentView classId={info.classId} sessionId={academicSessionId} />
+                </div>
+            )}
+
+            {/* ════════════════════════════════
+                HOMEWORK TAB
+            ════════════════════════════════ */}
+            {activeSection === "homework" && (
+                <div id="tabpanel-homework" role="tabpanel" aria-labelledby="tab-homework" className="space-y-4 animate-scale-in">
+                    {(() => {
+                        // ── Homework helpers ──────────────────────────────────────────
+                        const subjectPalette = [
+                            { border: 'border-l-violet-500',  bg: 'bg-violet-500/10',  text: 'text-violet-600',  dot: 'bg-violet-500' },
+                            { border: 'border-l-sky-500',     bg: 'bg-sky-500/10',     text: 'text-sky-600',     dot: 'bg-sky-500' },
+                            { border: 'border-l-emerald-500', bg: 'bg-emerald-500/10', text: 'text-emerald-600', dot: 'bg-emerald-500' },
+                            { border: 'border-l-amber-500',   bg: 'bg-amber-500/10',   text: 'text-amber-600',   dot: 'bg-amber-500' },
+                            { border: 'border-l-rose-500',    bg: 'bg-rose-500/10',    text: 'text-rose-600',    dot: 'bg-rose-500' },
+                            { border: 'border-l-cyan-500',    bg: 'bg-cyan-500/10',    text: 'text-cyan-600',    dot: 'bg-cyan-500' },
+                            { border: 'border-l-fuchsia-500', bg: 'bg-fuchsia-500/10', text: 'text-fuchsia-600', dot: 'bg-fuchsia-500' },
+                            { border: 'border-l-orange-500',  bg: 'bg-orange-500/10',  text: 'text-orange-600',  dot: 'bg-orange-500' },
+                        ];
+                        const subjectColorMap = new Map<string, typeof subjectPalette[0]>();
+                        let paletteIdx = 0;
+                        const getSubjectColor = (subject: string) => {
+                            const key = subject.toLowerCase().trim();
+                            if (!subjectColorMap.has(key)) {
+                                subjectColorMap.set(key, subjectPalette[paletteIdx % subjectPalette.length]);
+                                paletteIdx++;
+                            }
+                            return subjectColorMap.get(key)!;
+                        };
+
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+                        const shiftDate = (delta: number) => {
+                            const [y, m, d] = homeworkDate.split('-').map(Number);
+                            const next = new Date(y, m - 1, d + delta);
+                            const ns = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
+                            if (ns <= todayStr) setHomeworkDate(ns);
+                        };
+
+                        const displayDate = (() => {
+                            const [y, m, d] = homeworkDate.split('-').map(Number);
+                            const dt = new Date(y, m - 1, d);
+                            if (homeworkDate === todayStr) return 'Today';
+                            const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+                            const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+                            if (homeworkDate === yStr) return 'Yesterday';
+                            return dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+                        })();
+
+                        const isToday = homeworkDate === todayStr;
+
+                        return (
+                            <>
+                                {/* ── Header ── */}
+                                <div className="flex items-center gap-3 mb-5">
+                                    <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl shrink-0">📚</div>
+                                    <div>
+                                        <h2 className="text-ink font-bold text-lg leading-tight">Homework</h2>
+                                        <p className="text-slate-400 text-sm">{info?.firstName}&apos;s class assignments</p>
+                                    </div>
+                                </div>
+
+                                {/* ── Day navigator ── */}
+                                <div className="flex justify-center mb-5">
+                                    <div className="inline-flex items-center bg-slate-100/70 border border-slate-200 rounded-2xl p-1 gap-1 shadow-lg">
+                                        {/* Previous day */}
+                                        <button
+                                            onClick={() => shiftDate(-1)}
+                                            className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-ink hover:bg-slate-100 active:scale-90 transition-all text-lg font-bold"
+                                            title="Previous day"
+                                        >
+                                            ‹
+                                        </button>
+
+                                        {/* Date label + calendar picker */}
+                                        <div className="relative">
+                                            <button
+                                                type="button"
+                                                onClick={() => homeworkDateInputRef.current?.showPicker()}
+                                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-slate-100 active:scale-95 transition-all group"
+                                                title="Pick a date"
+                                            >
+                                                <div className="text-center min-w-[72px]">
+                                                    <p className="text-ink font-semibold text-sm group-hover:text-indigo-300 transition-colors leading-tight">{displayDate}</p>
+                                                    {displayDate !== 'Today' && displayDate !== 'Yesterday' && (
+                                                        <p className="text-slate-500 text-[10px] leading-tight">{homeworkDate}</p>
+                                                    )}
+                                                </div>
+                                                <span className="text-indigo-400 group-hover:text-indigo-300 transition-colors text-base leading-none">📅</span>
+                                            </button>
+                                            {/* Input positioned at bottom-center so picker opens near the icon */}
+                                            <input
+                                                ref={homeworkDateInputRef}
+                                                type="date"
+                                                value={homeworkDate}
+                                                max={todayStr}
+                                                onChange={(e) => e.target.value && setHomeworkDate(e.target.value)}
+                                                className="absolute bottom-0 left-1/2 -translate-x-1/2 w-px h-px opacity-0 pointer-events-none"
+                                            />
+                                        </div>
+
+                                        {/* Next day */}
+                                        <button
+                                            onClick={() => shiftDate(1)}
+                                            disabled={isToday}
+                                            className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-ink hover:bg-slate-100 active:scale-90 transition-all disabled:opacity-25 disabled:cursor-not-allowed text-lg font-bold"
+                                            title="Next day"
+                                        >
+                                            ›
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* ── Content ── */}
+                                {sectionLoading ? (
+                                    <div className="flex items-center justify-center py-16">
+                                        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                                    </div>
+                                ) : homework.length === 0 ? (
+                                    <div className="text-center py-16">
+                                        <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-3xl mx-auto mb-4">🎉</div>
+                                        <p className="text-ink font-medium">No homework for {displayDate.toLowerCase()}!</p>
+                                        <p className="text-slate-500 text-sm mt-1">Check another date or enjoy the break.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {homework.map((h: any) => {
+                                            const color = getSubjectColor(h.subject || 'general');
+                                            return (
+                                                <div key={h.id} className={`bg-surface-glass backdrop-blur-sm border border-white/30 border-l-4 ${color.border} rounded-xl p-4 hover:shadow-md transition-all`}>
+                                                    {h.subject && (
+                                                        <div className="flex items-center gap-1.5 mb-2">
+                                                            <span className={`w-2 h-2 rounded-full shrink-0 ${color.dot}`} />
+                                                            <span className={`text-xs font-bold uppercase tracking-wide ${color.text}`}>{h.subject}</span>
+                                                        </div>
+                                                    )}
+                                                    <p className="text-ink text-sm leading-relaxed whitespace-pre-line">{h.message}</p>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </>
+                        );
+                    })()}
+                </div>
+            )}
+
+                </>
+            )}
+
+            {/* ════════════════════════════════
+                PICKUP QR TAB
+            ════════════════════════════════ */}
+            {activeSection === "pickup" && (
+                <div id="tabpanel-pickup" role="tabpanel" aria-labelledby="tab-pickup" className="space-y-4 animate-scale-in">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl shrink-0">🚗</div>
+                        <div>
+                            <h2 className="text-ink font-bold text-lg leading-tight">Pickup QR</h2>
+                            <p className="text-slate-400 text-sm">Authorise someone to collect {info?.firstName}</p>
+                        </div>
+                    </div>
+                    <PickupQRGenerator studentId={Number(studentId)} studentName={info ? `${info.firstName} ${info.lastName}` : undefined} />
+                </div>
+            )}
+
+            {/* ════════════════════════════════
+                LEAVES TAB
+            ════════════════════════════════ */}
+            {activeSection === "leaves" && (
+                <div id="tabpanel-leaves" role="tabpanel" aria-labelledby="tab-leaves" className="space-y-4 animate-scale-in">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl shrink-0">🗓️</div>
+                            <div>
+                                <h2 className="text-ink font-bold text-lg leading-tight">Leave Requests</h2>
+                                <p className="text-slate-400 text-sm">Track and apply for leaves</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setShowApplyLeave(true)}
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors shrink-0"
+                        >
+                            + Apply Leave
+                        </button>
+                    </div>
+
+                    {leaves && leaves.data && leaves.data.length > 0 ? (
+                        <div className="space-y-3">
+                            {leaves.data.map((leave: any) => (
+                                <div key={leave.id} className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div>
+                                            <p className="text-ink font-medium text-sm">{LEAVE_TYPE_LABELS[leave.leaveType] ?? leave.leaveType}</p>
+                                            <p className="text-slate-400 text-xs mt-0.5">
+                                                {fmtDate(leave.fromDate)}{leave.fromDate !== leave.toDate ? ` → ${fmtDate(leave.toDate)}` : ""} · {leave.leaveDuration === "HALF_DAY" ? "Half Day" : "Full Day"}
+                                            </p>
+                                        </div>
+                                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap shrink-0 ${LEAVE_STATUS_STYLES[leave.status] ?? ""}`}>
+                                            {LEAVE_STATUS_LABELS[leave.status] ?? leave.status}
+                                        </span>
+                                    </div>
+                                    {leave.isActionRequired && (
+                                        <div className="mt-2 flex items-center gap-1.5">
+                                            <svg className="w-3.5 h-3.5 shrink-0 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            <span className="text-orange-400 text-xs font-medium">Response needed</span>
+                                        </div>
+                                    )}
+                                    <div className="flex items-center justify-between mt-3">
+                                        <p className="text-slate-600 text-xs">Applied {new Date(leave.createdAt).toLocaleDateString()}</p>
+                                        <div className="flex items-center gap-2">
+                                            {leave.status === "PENDING" && (
+                                                <button
+                                                    onClick={() => setCancelLeaveId(leave.id)}
+                                                    className="px-2.5 py-1 text-xs font-medium text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-colors"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => setViewLeave(leave)}
+                                                className="px-2.5 py-1 text-xs font-medium text-ink border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                                            >
+                                                View Details
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-8 text-center">
+                            <div className="text-4xl mb-3">🗓️</div>
+                            <p className="text-slate-400 text-sm">No leave requests yet</p>
+                            <p className="text-slate-600 text-xs mt-1">Tap &quot;Apply Leave&quot; to submit a new request</p>
+                        </div>
+                    )}
+
+                    {/* Pagination */}
+                    {leaves && Math.ceil((leaves.total ?? 0) / 10) > 1 && (
+                        <div className="flex items-center justify-center gap-2">
+                            <button
+                                onClick={() => setLeavesPage(p => Math.max(1, p - 1))}
+                                disabled={leavesPage === 1}
+                                className="px-3 py-1.5 text-xs border border-slate-200 text-slate-400 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition-colors"
+                            >← Prev</button>
+                            <span className="text-xs text-slate-500">{leavesPage} / {Math.ceil((leaves.total ?? 0) / 10)}</span>
+                            <button
+                                onClick={() => setLeavesPage(p => p + 1)}
+                                disabled={leavesPage >= Math.ceil((leaves.total ?? 0) / 10)}
+                                className="px-3 py-1.5 text-xs border border-slate-200 text-slate-400 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition-colors"
+                            >Next →</button>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* ── Payment Confirmation Modal ── */}
             {showConfirmModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
                         <div className="mb-5 text-center">
                             <div className="w-16 h-16 bg-indigo-500/20 text-indigo-400 rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
                                 💳
                             </div>
-                            <h3 className="text-white font-bold text-xl">Confirm Payment</h3>
+                            <h3 className="text-ink font-bold text-xl">Confirm Payment</h3>
                             <p className="text-slate-400 text-sm mt-1">You are paying for {selectedMonths2Pay.length} months</p>
                         </div>
 
-                        <div className="bg-slate-800 rounded-xl p-4 mb-5 space-y-2">
+                        <div className="bg-slate-100 rounded-xl p-4 mb-5 space-y-2">
                             {selectedMonths2Pay.map(key => {
-                                const m = fees?.months.find((x: any) => x.key === key);
+                                const m = allDueItems.find((x: any) => x.key === key);
                                 return (
                                     <div key={key} className="flex justify-between text-sm">
-                                        <span className="text-slate-300">{m?.label}</span>
-                                        <span className="text-white font-medium">₹{Number(m?.amount).toLocaleString()}</span>
+                                        <span className="text-ink">{m?.label}</span>
+                                        <span className="text-ink font-medium">₹{Number(m?.amount).toLocaleString()}</span>
                                     </div>
                                 );
                             })}
-                            <div className="border-t border-slate-700 pt-2 mt-2 flex justify-between">
+                            <div className="border-t border-slate-200 pt-2 mt-2 flex justify-between">
                                 <span className="text-slate-400">Total Amount</span>
                                 <span className="text-indigo-400 font-bold text-lg">₹{selectedAmountTotal.toLocaleString()}</span>
                             </div>
@@ -870,10 +1773,10 @@ export default function StudentDashboardPage() {
 
                         <div className="flex gap-3">
                             <button onClick={() => setShowConfirmModal(false)} disabled={payProcessing}
-                                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl transition-colors text-sm disabled:opacity-50">
+                                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-100 text-ink font-medium rounded-xl transition-colors text-sm disabled:opacity-50">
                                 Cancel
                             </button>
-                            <button onClick={processPayment} disabled={payProcessing}
+                            <button onClick={() => processPayment()} disabled={payProcessing}
                                 className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                                 {payProcessing ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Processing...</> : "Confirm Pay"}
                             </button>
@@ -885,10 +1788,10 @@ export default function StudentDashboardPage() {
             {/* ── Receipt Selection Modal ── */}
             {showReceiptsListModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-                        <div className="bg-slate-800 px-5 py-4 flex justify-between items-center">
-                            <h3 className="text-white font-bold text-lg">Multiple Receipts</h3>
-                            <button onClick={() => setShowReceiptsListModal(null)} className="text-slate-400 hover:text-white transition-colors">
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+                        <div className="bg-slate-100 px-5 py-4 flex justify-between items-center">
+                            <h3 className="text-ink font-bold text-lg">Multiple Receipts</h3>
+                            <button onClick={() => setShowReceiptsListModal(null)} className="text-slate-400 hover:text-ink transition-colors">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
@@ -914,10 +1817,10 @@ export default function StudentDashboardPage() {
                                                 totalPayable: showReceiptsListModal.totalDue ?? null,
                                             });
                                         }}
-                                        className="w-full text-left p-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-indigo-500/50 transition-all flex justify-between items-center group"
+                                        className="w-full text-left p-3 rounded-xl bg-slate-100/60 hover:bg-slate-50 border border-slate-200 hover:border-indigo-500/50 transition-all flex justify-between items-center group"
                                     >
                                         <div>
-                                            <div className="text-white font-medium text-sm mb-1">{p.receiptNumber}</div>
+                                            <div className="text-ink font-medium text-sm mb-1">{p.receiptNumber}</div>
                                             <div className="text-slate-500 text-xs">{new Date(p.paymentDate).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })} · {p.paymentMethod}</div>
                                         </div>
                                         <div className="text-right">
@@ -938,6 +1841,360 @@ export default function StudentDashboardPage() {
                     receiptData={showReceipt}
                     onClose={() => setShowReceipt(null)}
                 />
+            )}
+
+            {/* ── In-app Document Viewer ── */}
+            {viewerDoc && (
+                <div className="fixed inset-0 z-60 flex flex-col bg-black/90" onClick={e => { if (e.target === e.currentTarget) setViewerDoc(null); }}>
+                    <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200 shrink-0">
+                        <span className="text-white text-sm font-medium truncate max-w-xs">{viewerDoc.fileName}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <a
+                                href={viewerDoc.url}
+                                download={viewerDoc.fileName}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg transition-colors"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                Download
+                            </a>
+                            <button onClick={() => setViewerDoc(null)} className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-200 transition-colors">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-auto flex items-center justify-center p-4">
+                        {viewerDoc.mimeType === 'application/pdf' ? (
+                            <iframe src={viewerDoc.url} title={viewerDoc.fileName} className="w-full h-full min-h-[70vh] rounded-lg border-0 bg-white" />
+                        ) : (
+                            <img src={viewerDoc.url} alt={viewerDoc.fileName} className="max-w-full max-h-full object-contain rounded-lg shadow-xl" />
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ── Leave Detail Modal ── */}
+            {viewLeave && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) setViewLeave(null); }}>
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl">
+                        {/* Header */}
+                        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-200 shrink-0">
+                            <div>
+                                <p className="text-ink font-bold text-base">{LEAVE_TYPE_LABELS[viewLeave.leaveType] ?? viewLeave.leaveType}</p>
+                                <p className="text-slate-400 text-xs mt-0.5">
+                                    {fmtDate(viewLeave.fromDate)}{viewLeave.fromDate !== viewLeave.toDate ? ` \u2192 ${fmtDate(viewLeave.toDate)}` : ""} &middot; {viewLeave.leaveDuration === "HALF_DAY" ? "Half Day" : "Full Day"}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${LEAVE_STATUS_STYLES[viewLeave.status] ?? ""}`}>
+                                    {LEAVE_STATUS_LABELS[viewLeave.status] ?? viewLeave.status}
+                                </span>
+                                <button onClick={() => setViewLeave(null)} className="p-1 rounded-lg text-slate-400 hover:text-ink transition-colors">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+                        </div>
+                        {/* Scrollable body */}
+                        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                            {/* Reason */}
+                            {viewLeave.reason && (
+                                <div>
+                                    <p className="text-slate-500 text-xs font-medium mb-1">Reason</p>
+                                    <p className="text-ink text-sm">{viewLeave.reason}</p>
+                                </div>
+                            )}
+                            {/* Chronological timeline of events */}
+                            <LeaveTimeline leave={viewLeave} theme="dark" />
+                            {/* Reply button — shown if school is still waiting for a response */}
+                            {viewLeave.isActionRequired && (
+                                <button
+                                    onClick={() => { setReplyLeaveId(viewLeave.id); setReplyNote(""); setReplyFile(null); }}
+                                    className="w-full px-3 py-2 text-xs font-medium rounded-xl border bg-orange-500/20 text-orange-300 border-orange-500/40 hover:bg-orange-500/30 transition-colors"
+                                >
+                                    💬 Reply to school
+                                </button>
+                            )}
+                            {/* Attached documents */}
+                            {viewLeave.documents && viewLeave.documents.length > 0 && (
+                                <div>
+                                    <p className="text-slate-500 text-xs font-medium mb-1.5">Attached documents</p>
+                                    <div className="space-y-1.5">
+                                        {viewLeave.documents.map((doc: any) => (
+                                            <button
+                                                key={doc.id}
+                                                onClick={() => handleOpenDoc(viewLeave.id, doc)}
+                                                className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg border border-slate-200 hover:border-brand/40 hover:bg-slate-100/60 transition-colors text-xs text-ink"
+                                            >
+                                                <span className="shrink-0">{doc.mimeType === 'application/pdf' ? '\uD83D\uDCC4' : '\uD83D\uDDBC\uFE0F'}</span>
+                                                <span className="truncate">{doc.fileName}</span>
+                                                <span className="ml-auto shrink-0 text-slate-500">{doc.mimeType === 'application/pdf' ? 'PDF' : 'Image'}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            <p className="text-slate-600 text-xs">Applied {new Date(viewLeave.createdAt).toLocaleDateString()}</p>
+                        </div>
+                        {/* Footer — cancel button for PENDING */}
+                        {viewLeave.status === "PENDING" && (
+                            <div className="px-5 py-4 border-t border-slate-200 shrink-0">
+                                <button
+                                    onClick={() => { setViewLeave(null); setCancelLeaveId(viewLeave.id); }}
+                                    className="w-full py-2.5 text-sm font-medium text-red-400 border border-red-500/30 rounded-xl hover:bg-red-500/10 transition-colors"
+                                >
+                                    Cancel Leave
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ── Reply to Action-Required Modal ── */}
+            {replyLeaveId !== null && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-5 w-full max-w-md shadow-2xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-ink font-bold text-base">Reply to School</h3>
+                            <button onClick={() => setReplyLeaveId(null)} className="p-1 rounded-lg text-slate-400 hover:text-ink transition-colors">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <p className="text-slate-400 text-xs mb-3">Write your reply below. You can also attach a document (optional).</p>
+                        <textarea
+                            value={replyNote}
+                            onChange={e => setReplyNote(e.target.value)}
+                            rows={4}
+                            placeholder="Type your reply here…"
+                            className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-ink placeholder-ink-muted/50 focus:outline-none focus:border-orange-500/60 resize-none mb-3"
+                        />
+                        {/* File attachment */}
+                        <div className="mb-4">
+                            {replyFile ? (
+                                <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl">
+                                    <span className="text-xs text-ink truncate flex-1">{replyFile.name}</span>
+                                    <button onClick={() => setReplyFile(null)} className="shrink-0 text-slate-500 hover:text-red-400 text-xs transition-colors">Remove</button>
+                                </div>
+                            ) : (
+                                <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-400 hover:text-ink transition-colors">
+                                    <input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                                        className="hidden"
+                                        onChange={e => { const f = e.target.files?.[0]; if (f) setReplyFile(f); e.target.value = ""; }}
+                                    />
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                    Attach document (optional)
+                                </label>
+                            )}
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setReplyLeaveId(null)}
+                                disabled={replySending}
+                                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-100 text-ink font-medium rounded-xl transition-colors text-sm disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleReply}
+                                disabled={replySending || (!replyNote.trim() && !replyFile)}
+                                className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-500 text-white font-medium rounded-xl transition-colors text-sm disabled:opacity-50"
+                            >
+                                {replySending ? "Sending…" : "Send Reply"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Cancel Leave Confirm Modal ── */}
+            {cancelLeaveId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+                        <div className="mb-4 text-center">
+                            <div className="w-12 h-12 bg-red-500/15 text-red-400 rounded-full flex items-center justify-center text-xl mx-auto mb-3">✕</div>
+                            <h3 className="text-ink font-bold text-lg">Cancel Leave</h3>
+                            <p className="text-slate-400 text-sm mt-1">Are you sure you want to cancel this leave request?</p>
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setCancelLeaveId(null)}
+                                disabled={cancelLeaving}
+                                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-100 text-ink font-medium rounded-xl transition-colors text-sm disabled:opacity-50"
+                            >
+                                Keep it
+                            </button>
+                            <button
+                                onClick={handleCancelLeave}
+                                disabled={cancelLeaving}
+                                className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white font-medium rounded-xl transition-colors text-sm disabled:opacity-50"
+                            >
+                                {cancelLeaving ? "Cancelling…" : "Yes, Cancel"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Apply Leave Modal ── */}
+            {showApplyLeave && info && (
+                <ApplyLeaveModal
+                    studentId={Number(studentId)}
+                    studentName={`${info.firstName} ${info.lastName}`}
+                    onClose={() => setShowApplyLeave(false)}
+                    onSuccess={() => { setShowApplyLeave(false); fetchLeaves(leavesPage); }}
+                />)}
+
+            {/* ── Attendance Quick-View Bottom Sheet ── */}
+            <AttendanceBottomSheet
+                studentId={studentId as string}
+                isOpen={showAttendanceSheet}
+                onClose={() => setShowAttendanceSheet(false)}
+                onViewFull={() => {
+                    setShowAttendanceSheet(false);
+                    setActiveSection("attendance");
+                    setSectionLoading(true);
+                    fetchAttendance();
+                }}
+            />
+
+            {/* ── Homework Quick-View Bottom Sheet ── */}
+            <HomeworkBottomSheet
+                studentId={studentId as string}
+                isOpen={showHomeworkSheet}
+                onClose={() => setShowHomeworkSheet(false)}
+                onViewFull={() => {
+                    setShowHomeworkSheet(false);
+                    setActiveSection("homework");
+                    setSectionLoading(true);
+                    fetchHomework();
+                }}
+            />
+
+            {/* ── Fees Quick-View Bottom Sheet ── */}
+            <FeesBottomSheet
+                studentId={studentId as string}
+                isOpen={showFeesSheet}
+                onClose={() => setShowFeesSheet(false)}
+                academicYearString={academicYearString}
+                studentInfo={info}
+                paymentEnabled={onlinePaymentEnabled}
+                onInitiatePayment={(keys, items) => processPayment(keys, items)}
+                onViewReceipt={(data) => setShowReceipt(data)}
+                onViewReceiptsList={(data) => setShowReceiptsListModal({
+                    ...data,
+                    studentName: info ? `${info.firstName} ${info.lastName}` : undefined,
+                    studentClass: info?.className,
+                    studentSection: info?.sectionName,
+                })}
+                onViewFull={() => {
+                    setShowFeesSheet(false);
+                    setActiveSection("fees");
+                    setSectionLoading(true);
+                }}
+            />
+        </div>
+    );
+}
+
+// ── Student Library Section ────────────────────────────────────────────────────
+
+function StudentLibrarySection({ studentId }: { studentId: string }) {
+    const { data, isLoading, error } = useLibraryIssuances(studentId);
+
+    const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
+        ISSUED:   { label: 'Issued',   color: 'text-blue-700 dark:text-blue-300',  bg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700' },
+        OVERDUE:  { label: 'Overdue',  color: 'text-red-700 dark:text-red-300',    bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700' },
+        RETURNED: { label: 'Returned', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700' },
+    };
+
+    const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+    return (
+        <div className="space-y-4">
+            {/* Header card */}
+            <div className="flex items-center gap-3 bg-linear-to-r from-lime-500 to-emerald-600 rounded-2xl p-5 text-white shadow-lg shadow-emerald-500/20">
+                <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl shrink-0">📖</div>
+                <div>
+                    <h2 className="font-bold text-lg leading-tight">My Library Books</h2>
+                    <p className="text-emerald-100 text-sm">Books currently issued or recently returned</p>
+                </div>
+            </div>
+
+            {isLoading ? (
+                <div className="flex justify-center py-16">
+                    <div className="w-8 h-8 border-3 border-lime-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+            ) : error ? (
+                <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-2xl p-8 text-center">
+                    <div className="text-4xl mb-3">📚</div>
+                    <p className="text-ink font-semibold">Library not available</p>
+                    <p className="text-ink-muted text-sm mt-1">Library feature may not be enabled for your school.</p>
+                </div>
+            ) : !data?.data?.length ? (
+                <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-2xl p-8 text-center">
+                    <div className="text-5xl mb-3">📚</div>
+                    <p className="text-ink font-semibold text-lg">No books issued</p>
+                    <p className="text-ink-muted text-sm mt-1">You have no books currently issued or in recent history.</p>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {data.data.map((item: any) => {
+                        const cfg = statusConfig[item.status] ?? statusConfig['ISSUED'];
+                        const isOverdue = item.status === 'OVERDUE';
+                        const daysOverdue = isOverdue
+                            ? Math.ceil((Date.now() - new Date(item.dueDate).getTime()) / 86400000)
+                            : 0;
+                        const hasLateFee = item.lateFeeCharged > 0;
+                        return (
+                            <div key={item.id} className={`bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border rounded-2xl p-4 shadow-soft transition-all ${isOverdue ? 'border-red-200 dark:border-red-700' : 'border-slate-200 dark:border-slate-700'}`}>
+                                <div className="flex items-start gap-3">
+                                    {/* Book icon */}
+                                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 border ${cfg.bg}`}>
+                                        {item.status === 'RETURNED' ? '✅' : isOverdue ? '⚠️' : '📗'}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-start justify-between gap-2 flex-wrap">
+                                            <p className="font-semibold text-ink text-sm leading-tight">{item.book?.title ?? 'Unknown Book'}</p>
+                                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border shrink-0 ${cfg.color} ${cfg.bg}`}>{cfg.label}</span>
+                                        </div>
+                                        {item.book?.author && (
+                                            <p className="text-xs text-ink-muted mt-0.5">by {item.book.author}</p>
+                                        )}
+                                        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+                                            <p className="text-xs text-ink-muted">
+                                                <span className="font-medium text-ink">Issued:</span> {fmtDate(item.issueDate)}
+                                            </p>
+                                            <p className={`text-xs ${isOverdue ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-ink-muted'}`}>
+                                                <span className={`font-medium ${isOverdue ? '' : 'text-ink'}`}>Due:</span> {fmtDate(item.dueDate)}
+                                            </p>
+                                            {item.returnDate && (
+                                                <p className="text-xs text-ink-muted">
+                                                    <span className="font-medium text-ink">Returned:</span> {fmtDate(item.returnDate)}
+                                                </p>
+                                            )}
+                                        </div>
+                                        {isOverdue && (
+                                            <div className="mt-2 flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 font-medium">
+                                                <span>⏰</span>
+                                                <span>{daysOverdue} day{daysOverdue !== 1 ? 's' : ''} overdue{hasLateFee ? ` · Late fee: ₹${item.lateFeeCharged}` : ''}</span>
+                                            </div>
+                                        )}
+                                        {hasLateFee && item.status === 'RETURNED' && (
+                                            <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                                                <span>💰</span>
+                                                <span>Late fee charged: ₹{item.lateFeeCharged} · Paid: ₹{item.lateFeePayment?.amountPaid ?? 0}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {data.total > data.data.length && (
+                        <p className="text-center text-sm text-ink-muted py-2">Showing {data.data.length} of {data.total} records</p>
+                    )}
+                </div>
             )}
         </div>
     );

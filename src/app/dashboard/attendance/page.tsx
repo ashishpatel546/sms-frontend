@@ -6,7 +6,9 @@ import { getUser, authFetch } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
 import { Loader } from "@/components/ui/Loader";
 import { StudentDetailsModal } from "@/components/StudentDetailsModal";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import StudentAttendanceModal from "@/components/StudentAttendanceModal";
+import { PieChart, Pie, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { useMemo } from "react";
 
 interface Student {
     id: number;
@@ -39,12 +41,24 @@ export default function AttendancePage() {
 
     const [selectedClassId, setSelectedClassId] = useState("");
     const [selectedSectionId, setSelectedSectionId] = useState("");
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    // Use local date (not UTC) so the default "today" matches the teacher's wall clock.
+    // `toISOString()` would shift to UTC and produce yesterday's date in IST after ~6:30pm local.
+    const [selectedDate, setSelectedDate] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    });
     const [activeSession, setActiveSession] = useState<any>(null);
     const [loadingSession, setLoadingSession] = useState(true);
 
     const [students, setStudents] = useState<Student[]>([]);
     const [loadingStudents, setLoadingStudents] = useState(false);
+
+    // Filters for displayed students
+    const [filterSearchQuery, setFilterSearchQuery] = useState("");
+    
+    // Sorting states
+    const [sortColumn, setSortColumn] = useState<keyof Student>('id');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
     const [attendanceRecords, setAttendanceRecords] = useState<Record<number, { status: string, remarks: string }>>({});
     const [existingAttendance, setExistingAttendance] = useState<any>(null);
@@ -52,10 +66,13 @@ export default function AttendancePage() {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ text: "", type: "" });
 
-    // For Modal
+    // For Modals
     const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
     const [studentDetails, setStudentDetails] = useState<any>(null);
     const [loadingStudentDetails, setLoadingStudentDetails] = useState(false);
+
+    const [attendanceModalStudentId, setAttendanceModalStudentId] = useState<number | null>(null);
+    const [attendanceModalStudentName, setAttendanceModalStudentName] = useState<string>("");
 
     // Holiday State Check
     const [activeHolidayInfo, setActiveHolidayInfo] = useState<{ description: string } | null>(null);
@@ -164,6 +181,11 @@ export default function AttendancePage() {
             try {
                 setLoading(true);
                 const res = await authFetch(`${API_BASE_URL}/attendance/class/${selectedClassId}/section/${selectedSectionId}?date=${selectedDate}`);
+                
+                if (!res.ok) {
+                    throw new Error("Attendance not found");
+                }
+
                 const data = await res.json();
 
                 if (data && data.id) {
@@ -182,22 +204,19 @@ export default function AttendancePage() {
                     });
 
                     setAttendanceRecords(records);
-                    setAttendanceRecords(records);
-                } else {
-                    setExistingAttendance(null);
-                    // Default all to PRESENT, unless it's a Sunday
-                    const targetDate = new Date(selectedDate);
-                    targetDate.setHours(0, 0, 0, 0);
-                    const isSunday = targetDate.getDay() === 0;
-
-                    const records: Record<number, { status: string, remarks: string }> = {};
-                    students.forEach(s => {
-                        records[s.id] = { status: isSunday ? "HOLIDAY" : "PRESENT", remarks: "" };
-                    });
-                    setAttendanceRecords(records);
                 }
-            } catch (err) {
-                console.error("Failed to fetch attendance records", err);
+            } catch {
+                // If 404 or error, reset state properly
+                setExistingAttendance(null);
+                const targetDate = new Date(selectedDate);
+                targetDate.setHours(0, 0, 0, 0);
+                const isSunday = targetDate.getDay() === 0;
+
+                const records: Record<number, { status: string, remarks: string }> = {};
+                students.forEach(s => {
+                    records[s.id] = { status: isSunday ? "HOLIDAY" : "PRESENT", remarks: "" };
+                });
+                setAttendanceRecords(records);
             } finally {
                 setLoading(false);
             }
@@ -263,7 +282,7 @@ export default function AttendancePage() {
             fetchAttendance();
             fetchHolidayForDate();
         }
-    }, [selectedClassId, selectedSectionId, selectedDate, students.length]);
+    }, [selectedClassId, selectedSectionId, selectedDate, students]);
 
     const handleStatusChange = (studentId: number, status: string) => {
         setAttendanceRecords(prev => ({
@@ -323,12 +342,12 @@ export default function AttendancePage() {
         });
 
         return [
-            { name: 'Present', value: stats.PRESENT, color: '#22c55e' }, // green-500
-            { name: 'Absent', value: stats.ABSENT, color: '#ef4444' }, // red-500
-            { name: 'Leave', value: stats.LEAVE, color: '#3b82f6' }, // blue-500
-            { name: 'Late', value: stats.LATE, color: '#eab308' }, // yellow-500
-            { name: 'Half Day', value: stats.HALF_DAY, color: '#a855f7' }, // purple-500
-            { name: 'Holiday', value: stats.HOLIDAY, color: '#0ea5e9' } // sky-500
+            { name: 'Present', value: stats.PRESENT, color: '#22c55e', fill: '#22c55e' }, // green-500
+            { name: 'Absent', value: stats.ABSENT, color: '#ef4444', fill: '#ef4444' }, // red-500
+            { name: 'Leave', value: stats.LEAVE, color: '#3b82f6', fill: '#3b82f6' }, // blue-500
+            { name: 'Late', value: stats.LATE, color: '#eab308', fill: '#eab308' }, // yellow-500
+            { name: 'Half Day', value: stats.HALF_DAY, color: '#a855f7', fill: '#a855f7' }, // purple-500
+            { name: 'Holiday', value: stats.HOLIDAY, color: '#0ea5e9', fill: '#0ea5e9' } // sky-500
         ].filter(item => item.value > 0);
     };
 
@@ -375,7 +394,7 @@ export default function AttendancePage() {
 
             // clear msg after 3s
             setTimeout(() => setMessage({ text: "", type: "" }), 3000);
-        } catch (err) {
+        } catch {
             setMessage({ text: "Failed to submit attendance. Please try again.", type: "error" });
         } finally {
             setLoading(false);
@@ -383,6 +402,43 @@ export default function AttendancePage() {
     };
 
     const availableSections = sections;
+
+    const handleSort = (column: keyof Student) => {
+        if (sortColumn === column) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortColumn(column);
+            setSortDirection('asc');
+        }
+    };
+
+    const displayedStudents = useMemo(() => {
+        const filtered = students.filter(student => {
+            if (!filterSearchQuery) return true;
+            const q = filterSearchQuery.toLowerCase();
+            const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
+            return student.id.toString().includes(q) || fullName.includes(q) || (student.rollNo && student.rollNo.toString().includes(q));
+        });
+
+        return filtered.sort((a, b) => {
+            let valA: any = a[sortColumn];
+            let valB: any = b[sortColumn];
+            
+            if (typeof valA === 'string') valA = valA.toLowerCase();
+            if (typeof valB === 'string') valB = valB.toLowerCase();
+            
+            if (valA == null) valA = '';
+            if (valB == null) valB = '';
+
+            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [students, filterSearchQuery, sortColumn, sortDirection]);
+
+    useEffect(() => {
+        setFilterSearchQuery("");
+    }, [selectedClassId, selectedSectionId, selectedDate]);
 
     if (loadingClasses) return <Loader fullScreen text="Loading attendance dashboard..." />;
 
@@ -411,7 +467,7 @@ export default function AttendancePage() {
 
             {/* Filters Form */}
             <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 mb-6 relative z-10">
-                <form className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <form className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div>
                         <label className="block mb-2 text-sm font-medium text-gray-900">Date</label>
                         <input
@@ -463,6 +519,33 @@ export default function AttendancePage() {
                         </select>
                     </div>
                 </form>
+                
+                {/* Search Filters Row */}
+                {students.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-slate-100 flex gap-4">
+                        <div className="flex-1 max-w-md">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Search Student</label>
+                            <input 
+                                type="text" 
+                                placeholder="Search by ID, Roll No, or Name..." 
+                                value={filterSearchQuery}
+                                onChange={(e) => setFilterSearchQuery(e.target.value)}
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2"
+                            />
+                        </div>
+                        {filterSearchQuery && (
+                            <div className="flex items-end">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setFilterSearchQuery('')}
+                                    className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200"
+                                >
+                                    Clear Filter
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {loadingStudents && (
@@ -477,8 +560,8 @@ export default function AttendancePage() {
                     {existingAttendance && students.length > 0 && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             {/* Consolidated Report & Chart */}
-                            <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 lg:col-span-2 flex flex-col md:flex-row items-center gap-8">
-                                <div className="flex-1 w-full">
+                            <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 lg:col-span-2 flex flex-col md:flex-row items-center gap-8 min-w-0">
+                                <div className="flex-1 w-full min-w-0">
                                     <h3 className="text-lg font-bold text-slate-800 mb-4">Consolidated Report</h3>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                         <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-center">
@@ -516,11 +599,7 @@ export default function AttendancePage() {
                                                 outerRadius={80}
                                                 paddingAngle={5}
                                                 dataKey="value"
-                                            >
-                                                {getChartData().map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                                ))}
-                                            </Pie>
+                                            />
                                             <Tooltip />
                                             <Legend verticalAlign="bottom" height={36} />
                                         </PieChart>
@@ -617,19 +696,45 @@ export default function AttendancePage() {
                                 <table className="w-full text-sm text-left text-gray-500">
                                     <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                                         <tr>
-                                            <th scope="col" className="px-6 py-3">Roll No.</th>
-                                            <th scope="col" className="px-6 py-3">Name</th>
+                                            <th scope="col" className="px-6 py-3 cursor-pointer hover:bg-gray-200 transition-colors group select-none" onClick={() => handleSort('id')}>
+                                                <div className="flex items-center gap-1">
+                                                    ID 
+                                                    <span className="text-gray-400 text-xs">
+                                                        {sortColumn === 'id' ? (sortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
+                                                    </span>
+                                                </div>
+                                            </th>
+                                            <th scope="col" className="px-6 py-3 cursor-pointer hover:bg-gray-200 transition-colors group select-none" onClick={() => handleSort('rollNo')}>
+                                                <div className="flex items-center gap-1">
+                                                    Roll No. 
+                                                    <span className="text-gray-400 text-xs">
+                                                        {sortColumn === 'rollNo' ? (sortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
+                                                    </span>
+                                                </div>
+                                            </th>
+                                            <th scope="col" className="px-6 py-3 cursor-pointer hover:bg-gray-200 transition-colors group select-none" onClick={() => handleSort('firstName')}>
+                                                <div className="flex items-center gap-1">
+                                                    Name 
+                                                    <span className="text-gray-400 text-xs">
+                                                        {sortColumn === 'firstName' ? (sortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
+                                                    </span>
+                                                </div>
+                                            </th>
                                             <th scope="col" className="px-6 py-3 text-center">Status</th>
                                             <th scope="col" className="px-6 py-3">Remarks</th>
+                                            <th scope="col" className="px-6 py-3 text-center">Attendance</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {students.map((student) => {
+                                        {displayedStudents.map((student) => {
                                             const record = attendanceRecords[student.id] || { status: 'PRESENT', remarks: '' };
                                             return (
                                                 <tr key={student.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
+                                                    <td className="px-6 py-4 font-medium text-blue-600 whitespace-nowrap">
+                                                        {student.id}
+                                                    </td>
                                                     <td className="px-6 py-4 font-bold text-gray-600 whitespace-nowrap">
-                                                        {student.rollNo || student.id}
+                                                        {student.rollNo || '-'}
                                                     </td>
                                                     <td className="px-6 py-4 font-medium text-gray-900">
                                                         <button
@@ -707,6 +812,20 @@ export default function AttendancePage() {
                                                             className={`bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 ${disableEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                         />
                                                     </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <button
+                                                            onClick={(e) => { 
+                                                                e.preventDefault(); 
+                                                                setAttendanceModalStudentId(student.id); 
+                                                                setAttendanceModalStudentName(`${student.firstName} ${student.lastName}`); 
+                                                            }}
+                                                            className="inline-flex items-center gap-1 font-medium text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200"
+                                                            title="View Attendance"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                            <span className="text-xs">View</span>
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             );
                                         })}
@@ -734,6 +853,17 @@ export default function AttendancePage() {
                     student={studentDetails}
                     isLoading={loadingStudentDetails}
                     onClose={closeStudentModal}
+                />
+            )}
+
+            {attendanceModalStudentId && (
+                <StudentAttendanceModal
+                    studentId={attendanceModalStudentId}
+                    studentName={attendanceModalStudentName}
+                    onClose={() => {
+                        setAttendanceModalStudentId(null);
+                        setAttendanceModalStudentName("");
+                    }}
                 />
             )}
         </main>

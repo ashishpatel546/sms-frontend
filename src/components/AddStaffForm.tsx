@@ -5,10 +5,13 @@ import { API_BASE_URL } from "@/lib/api";
 import { Country, State, City } from "country-state-city";
 import toast from "react-hot-toast";
 import { authFetch } from "@/lib/auth";
+import { todayLocalDate } from "@/lib/utils";
+import { AppDatePicker } from "@/components/ui/AppDatePicker";
 
 const ROLE_LABELS: Record<string, string> = {
     ADMIN: "Admin",
     SUB_ADMIN: "Sub Admin",
+    LIBRARIAN: "Librarian",
     TEACHER: "Teacher",
 };
 
@@ -43,6 +46,8 @@ const EMPTY_FORM = {
     mothersName: "",
     staffCategory: "",
     designationId: "" as string | number,
+    joiningDate: todayLocalDate(),
+    exitDate: "",
     isActive: true,
     role: "TEACHER",
     address: {
@@ -65,6 +70,8 @@ export default function AddStaffForm({
     const [formData, setFormData] = useState(EMPTY_FORM);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [mobileAvailable, setMobileAvailable] = useState<boolean | null>(null);
+    const [checkingMobile, setCheckingMobile] = useState(false);
 
     // Designation
     const [designations, setDesignations] = useState<any[]>([]);
@@ -116,6 +123,31 @@ export default function AddStaffForm({
             setCities([]);
         }
     }, [formData.address.country, formData.address.state]);
+
+    // Check mobile availability (debounced)
+    useEffect(() => {
+        if (!formData.mobile.trim() || formData.mobile.length < 7) {
+            setMobileAvailable(null);
+            return;
+        }
+
+        const debounceTimer = setTimeout(async () => {
+            setCheckingMobile(true);
+            try {
+                const res = await authFetch(`${API_BASE_URL}/users/check-availability?mobile=${encodeURIComponent(formData.mobile)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setMobileAvailable(data.available);
+                }
+            } catch (err) {
+                console.error("Failed to check mobile availability", err);
+            } finally {
+                setCheckingMobile(false);
+            }
+        }, 500);
+
+        return () => clearTimeout(debounceTimer);
+    }, [formData.mobile]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const target = e.target as HTMLInputElement;
@@ -215,9 +247,12 @@ export default function AddStaffForm({
             }
 
             // Strip empty optional strings
-            for (const key of ["alternateMobile", "fathersName", "mothersName", "aadhaarNumber", "bloodGroup"] as const) {
+            for (const key of ["alternateMobile", "fathersName", "mothersName", "aadhaarNumber", "bloodGroup", "joiningDate", "exitDate"] as const) {
                 if (payload[key] === "") delete payload[key];
             }
+
+            // Strip empty email (it is optional — personal contact only)
+            if (!payload.email) delete payload.email;
 
             // role is only sent when allowRoleSelect is explicitly shown
             if (!allowRoleSelect) delete payload.role;
@@ -261,7 +296,7 @@ export default function AddStaffForm({
         }
     };
 
-    const editableRoles = isSuperAdmin ? ["ADMIN", "SUB_ADMIN", "TEACHER"] : ["SUB_ADMIN", "TEACHER"];
+    const editableRoles = isSuperAdmin ? ["ADMIN", "SUB_ADMIN", "LIBRARIAN", "TEACHER"] : ["SUB_ADMIN", "LIBRARIAN", "TEACHER"];
 
     return (
         <>
@@ -298,8 +333,12 @@ export default function AddStaffForm({
                         </div>
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Date of Birth <span className="text-red-500">*</span></label>
-                            <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} required
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                            <AppDatePicker
+                                name="dateOfBirth"
+                                value={formData.dateOfBirth}
+                                onChange={(v) => handleChange({ target: { name: 'dateOfBirth', value: v } } as React.ChangeEvent<HTMLInputElement>)}
+                                required
+                            />
                         </div>
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Blood Group</label>
@@ -322,20 +361,40 @@ export default function AddStaffForm({
                 {/* ── CONTACT INFORMATION ── */}
                 <div>
                     <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">Contact Information</h3>
-                    <div className="grid gap-4 sm:grid-cols-3">
-                        <div>
-                            <label className="block mb-1 text-sm font-medium text-gray-900">Email Address <span className="text-red-500">*</span></label>
-                            <input type="email" name="email" value={formData.email} onChange={handleChange} required
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
-                        </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Mobile <span className="text-red-500">*</span></label>
-                            <input type="tel" name="mobile" value={formData.mobile} onChange={handleChange} required
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                            <div className="relative">
+                                <input
+                                    type="tel"
+                                    name="mobile"
+                                    value={formData.mobile}
+                                    onChange={handleChange}
+                                    required
+                                    maxLength={15}
+                                    className={`bg-gray-50 border ${mobileAvailable === false ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 pr-8`}
+                                />
+                                {checkingMobile && (
+                                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                    </div>
+                                )}
+                            </div>
+                            {formData.mobile.length >= 7 && !checkingMobile && mobileAvailable !== null && (
+                                <p className={`mt-1 text-xs font-medium ${mobileAvailable ? "text-green-600" : "text-red-500"}`}>
+                                    {mobileAvailable ? "✓ Mobile number is available" : "✕ Mobile number already registered for staff"}
+                                </p>
+                            )}
                         </div>
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Alternate Mobile <span className="text-gray-400 font-normal">(Optional)</span></label>
                             <input type="tel" name="alternateMobile" value={formData.alternateMobile} onChange={handleChange}
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                        </div>
+                        <div>
+                            <label className="block mb-1 text-sm font-medium text-gray-900">Personal Email <span className="text-gray-400 font-normal">(Optional)</span></label>
+                            <input type="email" name="email" value={formData.email ?? ""} onChange={handleChange}
+                                placeholder="for notifications only"
                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
                         </div>
                     </div>
@@ -401,7 +460,7 @@ export default function AddStaffForm({
                 {/* ── DEMOGRAPHICS ── */}
                 <div>
                     <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">Demographics</h3>
-                    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Category <span className="text-red-500">*</span></label>
                             <select name="category" value={formData.category} onChange={handleChange} required
@@ -436,7 +495,7 @@ export default function AddStaffForm({
                 {/* ── EMPLOYMENT DETAILS ── */}
                 <div>
                     <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">Employment Details</h3>
-                    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Staff Category <span className="text-red-500">*</span></label>
                             <select name="staffCategory" value={formData.staffCategory} onChange={handleChange} required
@@ -457,7 +516,7 @@ export default function AddStaffForm({
                                 <option value="CREATE_NEW" className="font-bold text-blue-600">+ Create New Designation</option>
                             </select>
                         </div>
-                        {allowRoleSelect && (
+                        {allowRoleSelect ? (
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">System Role <span className="text-red-500">*</span></label>
                                 <select name="role" value={formData.role} onChange={handleChange} required
@@ -467,7 +526,33 @@ export default function AddStaffForm({
                                     ))}
                                 </select>
                             </div>
+                        ) : (
+                            <div>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">System Role</label>
+                                <div className="bg-gray-100 border border-gray-300 text-gray-500 font-medium text-sm rounded-lg w-full p-2.5 cursor-not-allowed flex items-center justify-between">
+                                    <span>Teacher</span>
+                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                </div>
+                                <p className="text-[11px] text-gray-500 mt-1">Roles can be changed later from the Admin panel.</p>
+                            </div>
                         )}
+                        <div>
+                            <label className="block mb-1 text-sm font-medium text-gray-900">Joining Date <span className="text-red-500">*</span></label>
+                            <AppDatePicker
+                                name="joiningDate"
+                                value={formData.joiningDate}
+                                onChange={(v) => handleChange({ target: { name: 'joiningDate', value: v } } as React.ChangeEvent<HTMLInputElement>)}
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block mb-1 text-sm font-medium text-gray-900">Exit Date</label>
+                            <AppDatePicker
+                                name="exitDate"
+                                value={formData.exitDate}
+                                onChange={(v) => handleChange({ target: { name: 'exitDate', value: v } } as React.ChangeEvent<HTMLInputElement>)}
+                            />
+                        </div>
                     </div>
                 </div>
 

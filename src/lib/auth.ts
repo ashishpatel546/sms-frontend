@@ -1,4 +1,5 @@
 'use client';
+import { getEnv, getSchoolSlug } from './env';
 
 const TOKEN_KEY = 'auth_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
@@ -10,6 +11,7 @@ export interface AuthUser {
   lastName: string;
   mustChangePassword: boolean;
   mobile?: string;
+  staffId?: number;
 }
 
 export function setToken(token: string): void {
@@ -43,6 +45,9 @@ export function removeToken(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
+    // Clear user-specific UI state so it doesn't bleed into the next account
+    localStorage.removeItem('examPrefStartTime');
+    localStorage.removeItem('examPrefEndTime');
   }
 }
 
@@ -62,15 +67,71 @@ export function isAuthenticated(): boolean {
   return getUser() !== null;
 }
 
+/** Returns true if the stored access token is missing or past its expiry time. */
+export function isTokenExpired(): boolean {
+  const token = getToken();
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const exp = payload.exp as number | undefined;
+    return exp ? Date.now() / 1000 > exp : false;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Silently refresh the access token using the stored refresh token.
+ * Returns true if the refresh succeeded and new tokens were stored.
+ * Returns false if the refresh token is missing or the server rejected it.
+ * Throws if there is a network error (caller should NOT log out in that case).
+ */
+export async function silentRefresh(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+  const API_BASE_URL = getEnv('API_URL') || 'http://localhost:5000';
+  const slug = getSchoolSlug();
+  const res = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(slug ? { 'X-School-Slug': slug } : {}),
+    },
+    body: JSON.stringify({ refreshToken }),
+  });
+  if (!res.ok) return false;
+  const data = await res.json();
+  setTokens(data.access_token, data.refresh_token ?? refreshToken);
+  return true;
+}
+
+/**
+ * Transient in-memory flag set by the login page when redirecting to /change-password
+ * because mustChangePassword is true. Resets automatically on any full page refresh
+ * (module re-executes). Survives client-side SPA navigation within the same tab.
+ */
+let _mustChangePasswordFlow = false;
+
+export function markMustChangePasswordFlow(): void {
+  _mustChangePasswordFlow = true;
+}
+
+export function isMustChangePasswordFlow(): boolean {
+  return _mustChangePasswordFlow;
+}
+
 export function logout(): void {
   removeToken();
   window.location.href = '/';
 }
 
 export function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const slug = getSchoolSlug();
+  if (slug) headers['X-School-Slug'] = slug;
   const token = getToken();
-  if (!token) return {};
-  return { Authorization: `Bearer ${token}` };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
 }
 
 // ── Refresh token state ────────────────────────────────────────
@@ -110,13 +171,18 @@ export function resetRefreshState(): void {
 
 export async function authFetch(
   url: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<Response> {
-  let headers = {
+  let headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...getAuthHeaders(),
-    ...(options.headers || {}),
+    ...((options.headers as Record<string, string>) || {}),
   };
+
+  // If body is FormData, remove Content-Type so the browser sets it automatically with the correct boundary
+  if (options.body instanceof FormData) {
+    delete headers['Content-Type'];
+  }
 
   let res = await fetch(url, { ...options, headers });
 
@@ -152,11 +218,14 @@ export async function authFetch(
     const timeoutId = setTimeout(() => refreshAbortController?.abort(), 15_000);
 
     try {
-      const API_BASE_URL =
-        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const API_BASE_URL = getEnv('API_URL') || 'http://localhost:5000';
+      const slug = getSchoolSlug();
       const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(slug ? { 'X-School-Slug': slug } : {}),
+        },
         body: JSON.stringify({ refreshToken }),
         signal: refreshAbortController.signal,
       });
@@ -194,6 +263,10 @@ export async function authFetch(
       isRefreshing = false;
       refreshAbortController = null;
     }
+  }
+
+  if (res.status === 503 && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('service-unavailable'));
   }
 
   return res;

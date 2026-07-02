@@ -3,7 +3,10 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
-import { setToken, setTokens, getDashboardRoute, getUser, authFetch } from "@/lib/auth";
+import { getEnv, getSchoolSlug } from "@/lib/env";
+import { setToken, setTokens, getDashboardRoute, getUser, authFetch, markMustChangePasswordFlow } from "@/lib/auth";
+import SplashScreen from "@/components/SplashScreen";
+import { BarChart2, CalendarCheck2, IndianRupee, FileText, Users, Info } from "lucide-react";
 
 type Tab = "parent" | "staff";
 
@@ -13,22 +16,30 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // Parent form
   const [mobile, setMobile] = useState("");
   // Staff form
-  const [email, setEmail] = useState("");
+  const [staffIdentifier, setStaffIdentifier] = useState("");
   const [password, setPassword] = useState("");
 
   // Redirect if already logged in
   useEffect(() => {
     const user = getUser();
     if (user) {
-      if (user.mustChangePassword) {
-        router.replace("/change-password");
-      } else {
-        router.replace(getDashboardRoute(user.role));
-      }
+      setShowSplash(true);
+      setTimeout(() => {
+        if (user.mustChangePassword) {
+          markMustChangePasswordFlow();
+          router.replace("/change-password");
+        } else {
+          router.replace(getDashboardRoute(user.role));
+        }
+      }, 1500);
+    } else {
+      setIsCheckingAuth(false);
     }
   }, [router]);
 
@@ -37,19 +48,24 @@ export default function LoginPage() {
     setError("");
     setIsLoading(true);
     try {
+      const slug = getSchoolSlug();
       const res = await fetch(`${API_BASE_URL}/auth/login/parent`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(slug ? { 'X-School-Slug': slug } : {}) },
         body: JSON.stringify({ mobile, password }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Login failed");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Invalid mobile number or password");
       setTokens(data.access_token, data.refresh_token);
-      if (data.user.mustChangePassword) {
-        router.push("/change-password");
-      } else {
-        router.push("/parent-dashboard");
-      }
+      setShowSplash(true);
+      setTimeout(() => {
+        if (data.user.mustChangePassword) {
+          markMustChangePasswordFlow();
+          router.push("/change-password");
+        } else {
+          router.push("/parent-dashboard");
+        }
+      }, 1500);
     } catch (err: any) {
       setError(err.message || "Invalid mobile number or password");
     } finally {
@@ -62,21 +78,26 @@ export default function LoginPage() {
     setError("");
     setIsLoading(true);
     try {
+      const slug = getSchoolSlug();
       const res = await fetch(`${API_BASE_URL}/auth/login/staff`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        headers: { "Content-Type": "application/json", ...(slug ? { 'X-School-Slug': slug } : {}) },
+        body: JSON.stringify({ identifier: staffIdentifier, password }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Login failed");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Invalid mobile number or password");
       setTokens(data.access_token, data.refresh_token);
-      if (data.user.mustChangePassword) {
-        router.push("/change-password");
-      } else {
-        router.push("/dashboard");
-      }
+      setShowSplash(true);
+      setTimeout(() => {
+        if (data.user.mustChangePassword) {
+          markMustChangePasswordFlow();
+          router.push("/change-password");
+        } else {
+          router.push("/dashboard");
+        }
+      }, 1500);
     } catch (err: any) {
-      setError(err.message || "Invalid email or password");
+      setError(err.message || "Invalid mobile number or password");
     } finally {
       setIsLoading(false);
     }
@@ -84,14 +105,18 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-slate-950 selection:bg-indigo-500/30">
-      {/* Left — Branding Panel */}
-      <div className="relative hidden md:flex md:w-1/2 flex-col justify-between p-12 overflow-hidden">
+      {showSplash && <SplashScreen />}
+      
+      {!isCheckingAuth && (
+        <>
+          {/* Left — Branding Panel */}
+          <div className="relative hidden md:flex md:w-1/2 flex-col justify-between p-12 overflow-hidden">
         {/* Background school image */}
         <div className="absolute inset-0"
-          style={{ backgroundImage: 'url(/school-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}
+          style={{ backgroundImage: 'url(/colegios-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}
         />
-        {/* Gradient overlay on top of image */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/88 via-purple-900/82 to-slate-900/92" />
+        {/* Gradient overlay on top of image - enhanced contrast for text */}
+        <div className="absolute inset-0 bg-slate-950/60" />
         <div className="absolute inset-0 opacity-30"
           style={{
             backgroundImage: `radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.5) 0%, transparent 60%),
@@ -105,35 +130,57 @@ export default function LoginPage() {
 
         <div className="relative z-10">
           {/* Logo */}
-          <div className="flex items-center gap-3 mb-16">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
+          <div className="flex items-center gap-5 lg:gap-6 mb-14">
+            <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="w-20 h-20 lg:w-28 lg:h-28 rounded-2xl lg:rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-xl border border-white/20 p-1 lg:p-2 hover:scale-105 transition-transform overflow-hidden shrink-0">
+              <img src="/colegios/colegios-logo-v2.png" alt="Colegios Logo" className="w-full h-full object-cover drop-shadow-md rounded-xl lg:rounded-2xl" />
+            </a>
+            <div className="flex flex-col">
+              <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="text-white font-extrabold text-4xl tracking-tight drop-shadow-md hover:text-indigo-200 transition-colors">
+                Colegios
+              </a>
+              <a href="https://appme.in" target="_blank" rel="noopener noreferrer" className="text-indigo-100 text-sm font-bold tracking-widest drop-shadow-md mt-1 hover:text-white transition-colors">
+                A Flagship Product of AppMe Soft Pvt Ltd.
+              </a>
             </div>
-            <span className="text-white font-bold text-2xl tracking-tight">
-              {process.env.NEXT_PUBLIC_SCHOOL_NAME || 'EduSphere'}
-            </span>
           </div>
 
           {/* Headline */}
-          <h1 className="text-white text-5xl font-extrabold leading-tight mb-6">
-            Empowering<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
-              Every Learner
+          <h1 className="text-white text-4xl lg:text-5xl font-extrabold leading-tight mb-8 drop-shadow-lg">
+            Digitizing Schools<br />
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-indigo-300 to-purple-300 drop-shadow-sm">
+              for the Future.
             </span>
           </h1>
-          <p className="text-slate-400 text-lg leading-relaxed max-w-md">
-            A unified platform for administrators, teachers, and parents to manage school life seamlessly.
-          </p>
+          
+          <div className="space-y-4 mb-8 p-6 rounded-2xl bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl">
+            <p className="text-white text-xl font-bold tracking-wide leading-relaxed">
+              Colegios - The Smart Operating System for Modern Schools.
+            </p>
+            <p className="text-slate-200 text-base leading-relaxed max-w-md font-medium">
+              Colegios is an all-in-one, feature-rich school management ecosystem. We are building a stronger, smarter future by bringing cutting-edge digital infrastructure straight to the roots of our education system.
+            </p>
+            <p className="text-white text-sm font-black flex items-center gap-2 uppercase tracking-wider pt-2">
+              <svg className="w-5 h-5 text-indigo-400 drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Igniting a Digital Revolution in Education.
+            </p>
+          </div>
         </div>
 
         <div className="relative z-10">
           {/* Feature pills */}
           <div className="flex flex-wrap gap-3">
-            {['📊 Analytics', '📋 Attendance', '💰 Fee Management', '📝 Examinations', '👥 Parent Portal'].map(f => (
-              <span key={f} className="px-3 py-1.5 bg-white/10 backdrop-blur-sm text-slate-300 text-sm rounded-full border border-white/10">
-                {f}
+            {[
+              { Icon: BarChart2,      label: 'Report & Analytics', color: 'text-violet-300' },
+              { Icon: CalendarCheck2, label: 'Attendance',          color: 'text-sky-300'    },
+              { Icon: IndianRupee,    label: 'Fee Management',      color: 'text-emerald-300'},
+              { Icon: FileText,       label: 'Examinations',        color: 'text-amber-300'  },
+              { Icon: Users,          label: 'Parent Portal',       color: 'text-pink-300'   },
+            ].map(({ Icon, label, color }) => (
+              <span key={label} className="flex items-center gap-2 px-4 py-2 cursor-pointer bg-white/10 hover:bg-white/20 hover:scale-105 hover:-translate-y-1 transition-all duration-300 backdrop-blur-md text-white font-medium text-sm rounded-xl border border-indigo-500/30 shadow-lg hover:shadow-indigo-500/40">
+                <Icon className={`w-4 h-4 ${color}`} aria-hidden />
+                {label}
               </span>
             ))}
           </div>
@@ -143,27 +190,37 @@ export default function LoginPage() {
       {/* Right — Login Panel */}
       <div className="flex-1 flex items-center justify-center p-6 sm:p-10 min-h-screen md:min-h-0">
         <div className="w-full max-w-md">
-          {/* Mobile logo */}
-          <div className="flex md:hidden items-center gap-2 mb-8 justify-center">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
+          {/* Mobile/tablet branding card — visible up to large screens (desktop uses left panel) */}
+          <div className="lg:hidden relative w-full rounded-2xl overflow-hidden mb-7 shadow-2xl bg-linear-to-br from-slate-900 via-slate-950 to-slate-900 border border-white/10 p-5"
+            style={{ animation: 'fade-in 0.55s ease-out forwards' }}
+          >
+            <div className="absolute inset-0 opacity-30 bg-linear-to-br from-indigo-500/20 via-purple-500/10 to-transparent" />
+            <div className="relative flex items-center gap-4 sm:gap-5 mb-5">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/10 border border-white/10 backdrop-blur-md flex items-center justify-center shadow-lg p-1 sm:p-1.5 overflow-hidden shrink-0">
+                <img src="/colegios/colegios-logo-v2.png" alt="Colegios Logo" className="w-full h-full object-cover rounded-xl" />
+              </div>
+              <div>
+                <p className="text-white font-extrabold text-xl tracking-tight">Colegios</p>
+                <p className="text-slate-300 text-xs uppercase tracking-[0.24em]">Smart Operating System For School</p>
+              </div>
             </div>
-            <span className="text-white font-bold text-xl">
-              {process.env.NEXT_PUBLIC_SCHOOL_NAME || 'EduSphere'}
-            </span>
+            <div className="relative rounded-2xl bg-slate-950/60 border border-white/10 p-4 shadow-inner shadow-indigo-950/40 animate-[slide-up_0.75s_cubic-bezier(0.16,1,0.3,1)_0.1s_forwards]">
+              <p className="text-slate-200 text-sm leading-relaxed">
+                A smarter digital campus for modern schools.
+              </p>
+            </div>
           </div>
 
-          <h2 className="text-white text-3xl font-bold mb-2">Welcome back</h2>
+          <h2 className="text-white text-3xl font-bold mb-2">Welcome Back</h2>
           <p className="text-slate-500 mb-8">Sign in to your account to continue</p>
 
           {/* Tab Switcher */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-1.5 flex gap-1.5 mb-6">
             <button
               onClick={() => { setActiveTab("staff"); setError(""); }}
+              suppressHydrationWarning
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === "staff"
-                ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/20"
+                ? "bg-linear-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/20"
                 : "text-slate-500 hover:text-slate-300"
                 }`}
             >
@@ -174,15 +231,16 @@ export default function LoginPage() {
             </button>
             <button
               onClick={() => { setActiveTab("parent"); setError(""); }}
+              suppressHydrationWarning
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === "parent"
-                ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/20"
+                ? "bg-linear-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/20"
                 : "text-slate-500 hover:text-slate-300"
                 }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Parent
+              Parent / Student
             </button>
           </div>
 
@@ -191,19 +249,20 @@ export default function LoginPage() {
             {activeTab === "staff" ? (
               <form onSubmit={handleStaffLogin} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Email Address</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Mobile or Email</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                       <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                       </svg>
                     </div>
                     <input
-                      type="email"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
+                      type="text"
+                      value={staffIdentifier}
+                      onChange={e => setStaffIdentifier(e.target.value)}
                       required
-                      placeholder="admin@school.com"
+                      suppressHydrationWarning
+                      placeholder="Mobile or Email"
                       className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                     />
                   </div>
@@ -223,12 +282,14 @@ export default function LoginPage() {
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       required
+                      suppressHydrationWarning
                       placeholder="••••••••"
                       className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 pr-11 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
+                      suppressHydrationWarning
                       className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition-colors"
                     >
                       {showPassword ? (
@@ -241,14 +302,15 @@ export default function LoginPage() {
                 </div>
                 {error && (
                   <div className="flex items-center gap-2 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
-                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     {error}
                   </div>
                 )}
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 transition-all duration-200 flex items-center justify-center gap-2 mt-2"
+                  suppressHydrationWarning
+                  className="w-full py-3 rounded-xl font-semibold text-white bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 transition-all duration-200 flex items-center justify-center gap-2 mt-2"
                 >
                   {isLoading ? (
                     <><svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Signing in...</>
@@ -258,8 +320,9 @@ export default function LoginPage() {
             ) : (
               <>
                 <form onSubmit={handleParentLogin} className="space-y-5">
-                  <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-sm text-indigo-300">
-                    <span className="font-semibold">ℹ️ Parent Login:</span> Use the mobile number registered for your child&apos;s account.
+                  <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-sm text-indigo-300 flex items-start gap-2">
+                    <Info className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />
+                    <span><span className="font-semibold">Parent / Student Login:</span> Use the mobile number registered for your child&apos;s account.</span>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">Registered Mobile Number</label>
@@ -274,6 +337,7 @@ export default function LoginPage() {
                         value={mobile}
                         onChange={e => setMobile(e.target.value)}
                         required
+                        suppressHydrationWarning
                         placeholder="e.g. 9876543210"
                         className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                       />
@@ -292,12 +356,14 @@ export default function LoginPage() {
                         value={password}
                         onChange={e => setPassword(e.target.value)}
                         required
+                        suppressHydrationWarning
                         placeholder="••••••••"
                         className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 pr-11 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
+                        suppressHydrationWarning
                         className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition-colors"
                       >
                         {showPassword ? (
@@ -310,14 +376,15 @@ export default function LoginPage() {
                   </div>
                   {error && (
                     <div className="flex items-center gap-2 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
-                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                       {error}
                     </div>
                   )}
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 transition-all duration-200 flex items-center justify-center gap-2 mt-2"
+                    suppressHydrationWarning
+                    className="w-full py-3 rounded-xl font-semibold text-white bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 transition-all duration-200 flex items-center justify-center gap-2 mt-2"
                   >
                     {isLoading ? (
                       <><svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Signing in...</>
@@ -337,13 +404,31 @@ export default function LoginPage() {
           </div>
 
           <p className="text-center text-slate-600 text-sm mt-6">
-            Need help? Contact{" "}
-            <a href="mailto:admin@school.com" className="text-indigo-400 hover:text-indigo-300 transition-colors">
-              IT Support
+            Need help?{" "}
+            <a href="/contact-us" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors hover:underline">
+              Contact Support
             </a>
           </p>
+
+          <div className="mt-8 text-center text-xs text-slate-600 space-y-1">
+            <p>
+              &copy; {new Date().getFullYear()}{" "}
+              <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
+                Colegios
+              </a>
+              . All rights reserved.
+            </p>
+            <p>
+              Developed by{" "}
+              <a href="https://appme.in" target="_blank" rel="noopener noreferrer" className="text-indigo-300 underline decoration-indigo-500/70 decoration-1 underline-offset-2 font-medium transition-colors hover:text-indigo-100 hover:decoration-indigo-300">
+                AppMe Soft Pvt Ltd.
+              </a>
+            </p>
+          </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

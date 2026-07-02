@@ -8,10 +8,12 @@
  *  • Print: prints ONLY the receipt, formatted for A5 paper.
  */
 
-import React, { useRef, useState } from "react";
-import { CheckCircle2, School, CreditCard, CalendarDays, User, Hash } from "lucide-react";
-import { jsPDF } from "jspdf";
-import { toPng } from "html-to-image";
+import React, { useRef, useState, useEffect } from "react";
+import { CheckCircle2, School, CreditCard, CalendarDays, User, Hash, MapPin, Phone, Mail, Globe } from "lucide-react";
+import { getToken } from "@/lib/auth";
+import { getEnv, getSchoolSlug } from "@/lib/env";
+import { fetcher } from "@/lib/api";
+import toast from "react-hot-toast";
 
 export interface ReceiptData {
     receiptNumber?: string;
@@ -64,6 +66,7 @@ export interface ReceiptData {
         adjustedAt?: string;
         reason?: string;
         createdByName?: string;
+        permittedByName?: string;
     }>;
     collectedByName?: string;
     gatewayPaymentId?: string;
@@ -94,192 +97,99 @@ export default function ReceiptModal({
     onWaiveOff,
     onIssueRefund,
 }: ReceiptModalProps) {
-    const schoolName = process.env.NEXT_PUBLIC_SCHOOL_NAME || "EduSphere";
+    const [schoolName, setSchoolName] = useState<string>("Loading...");
+    const [schoolTagline, setSchoolTagline] = useState<string | null>(null);
+    const [schoolAddress, setSchoolAddress] = useState<string | null>(null);
+    const [schoolPhone, setSchoolPhone] = useState<string | null>(null);
+    const [schoolEmail, setSchoolEmail] = useState<string | null>(null);
+    const [schoolWebsite, setSchoolWebsite] = useState<string | null>(null);
+    // schoolLogoUrl — raw S3 URL, only used to display the logo inside the modal.
+    // Server-side PDF generation fetches the logo directly (no CORS issues).
+    const [schoolLogoUrl, setSchoolLogoUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetcher("/school/info")
+            .then((data: any) => {
+                if (data?.name) setSchoolName(data.name);
+                setSchoolTagline(data?.tagline ?? null);
+                setSchoolAddress(data?.address ?? null);
+                setSchoolPhone(data?.phone ?? null);
+                setSchoolEmail(data?.email ?? null);
+                setSchoolWebsite(data?.website ?? null);
+                if (data?.logoUrl) setSchoolLogoUrl(data.logoUrl);
+            })
+            .catch(() => {/* keep placeholder */});
+    }, []);
 
     const monthLabel =
         receiptData.monthsPaid || receiptData.feeMonth || "—";
 
-    // Ref to the receipt card — used by handlePrint to grab exact HTML without
-    // risk of querySelector matching another .receipt-print-area on the page.
     const receiptRef = useRef<HTMLDivElement>(null);
     const [isDownloading, setIsDownloading] = useState(false);
     const [isPrinting, setIsPrinting] = useState(false);
 
-    // ── Print handler (A5)
-    // Uses html-to-image to capture the receipt as a PNG, then injects a single
-    // <img> into a print container and calls window.print().
-    //
-    // Why image-based instead of HTML injection?
-    // The previous HTML-injection approach relied on @media print CSS to hide
-    // siblings and let the receipt flow across pages. This is fragile on mobile
-    // PWA (Android/iOS standalone mode): the browser computes print page count
-    // from the live DOM height BEFORE the @media print rules are applied, which
-    // causes the receipt to repeat on every generated page (duplication bug).
-    //
-    // Injecting a single <img> instead means:
-    //   • One element → browser always produces exactly one page
-    //   • No CSS color/class parsing — just a flat image
-    //   • Works identically on desktop Chrome, Android PWA, and iOS standalone
-    const handlePrint = async () => {
-        if (!receiptRef.current) return;
-        setIsPrinting(true);
+    // ── Shared: POST receipt data to /api/receipt-pdf, get back a PDF blob ──
+    const fetchReceiptPDF = async (action: 'print' | 'download'): Promise<Blob | null> => {
+        const token = getToken();
+        const slug = getSchoolSlug();
+        const apiBase = getEnv('API_URL') || 'http://localhost:3000';
 
-        const element = receiptRef.current;
-        const originalMaxHeight = element.style.maxHeight;
-        element.style.maxHeight = 'none';
+        const res = await fetch('/api/receipt-pdf', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                ...(slug ? { 'X-School-Slug': slug } : {}),
+                'X-Api-Base': apiBase,
+            },
+            body: JSON.stringify({ receiptData, isAdmin: isAdmin ?? false, action }),
+        });
 
-        const scrollBody = element.querySelector('.receipt-scroll-body') as HTMLElement;
-        const sbOriginalMaxHeight = scrollBody ? scrollBody.style.maxHeight : '';
-        const sbOriginalOverflow = scrollBody ? scrollBody.style.overflow : '';
-        if (scrollBody) {
-            scrollBody.style.maxHeight = 'none';
-            scrollBody.style.overflow = 'visible';
+        if (!res.ok) {
+            throw new Error(`receipt-pdf API returned ${res.status}`);
         }
+        return res.blob();
+    };
 
+    // ── Print handler: generate PDF server-side, open in new tab → browser prints it ──
+    const handlePrint = async () => {
+        setIsPrinting(true);
         try {
-            const imgData = await toPng(element, {
-                pixelRatio: 2,
-                filter: (node: Node) => {
-                    const el = node as HTMLElement;
-                    if (!el.classList) return true;
-                    return (
-                        !el.classList.contains('no-print') &&
-                        !el.hasAttribute('data-html2canvas-ignore')
-                    );
-                },
-            });
-
-            // Restore constraints before opening print dialog
-            element.style.maxHeight = originalMaxHeight;
-            if (scrollBody) {
-                scrollBody.style.maxHeight = sbOriginalMaxHeight;
-                scrollBody.style.overflow = sbOriginalOverflow;
+            const blob = await fetchReceiptPDF('print');
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const win = window.open(url, '_blank');
+            if (win) {
+                win.onload = () => { win.print(); };
             }
-
-            // Inject a single <img> — one element = exactly one print page,
-            // no page-count computation issues on mobile.
-            // The container is locked to the exact A5 page dimensions and
-            // object-fit:contain scales the image to fit — so regardless of
-            // the receipt's aspect ratio it always renders on a single page.
-            const printContainer = document.createElement('div');
-            printContainer.id = '__receipt-print-root__';
-            printContainer.innerHTML = `<img src="${imgData}" style="display:block;width:148mm;height:210mm;object-fit:contain;object-position:top center;" />`;
-            document.body.appendChild(printContainer);
-
-            const printStyle = document.createElement('style');
-            printStyle.id = '__receipt-print-style__';
-            printStyle.textContent = `
-@media print {
-  @page { size: A5 portrait; margin: 0; }
-  html, body {
-    margin: 0 !important; padding: 0 !important; background: white !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  body > *:not(#__receipt-print-root__) { display: none !important; }
-  #__receipt-print-root__ {
-    display: block !important;
-    width: 148mm !important;
-    height: 210mm !important;
-    overflow: hidden !important;
-    page-break-after: avoid !important;
-    break-after: avoid !important;
-  }
-  #__receipt-print-root__ img {
-    display: block !important;
-    width: 148mm !important;
-    height: 210mm !important;
-    object-fit: contain !important;
-    object-position: top center !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
-}`;
-            document.head.appendChild(printStyle);
-
-            setTimeout(() => {
-                setIsPrinting(false);
-                window.print();
-                setTimeout(() => {
-                    document.getElementById('__receipt-print-root__') && document.body.removeChild(printContainer);
-                    document.getElementById('__receipt-print-style__') && document.head.removeChild(printStyle);
-                }, 1500);
-            }, 150);
-
-        } catch {
-            element.style.maxHeight = originalMaxHeight;
-            if (scrollBody) {
-                scrollBody.style.maxHeight = sbOriginalMaxHeight;
-                scrollBody.style.overflow = sbOriginalOverflow;
-            }
+            // Revoke after a reasonable delay
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (err) {
+            console.error('[ReceiptModal] Print error:', err);
+            toast.error('Failed to prepare print. Please try again.');
+        } finally {
             setIsPrinting(false);
         }
     };
 
-    // ── PDF Download handler (A4, uses html-to-image + jsPDF)
-    // html-to-image renders via SVG foreignObject so the browser handles ALL
-    // CSS natively — including modern color functions like oklch()/lab() used
-    // by Tailwind v4, which legacy html2canvas cannot parse.
+    // ── Download handler: generate PDF server-side, trigger file download ──
     const handleDownloadPDF = async () => {
-        if (!receiptRef.current) return;
         setIsDownloading(true);
-
-        const element = receiptRef.current;
-        const originalMaxHeight = element.style.maxHeight;
-        element.style.maxHeight = 'none';
-
-        const scrollBody = element.querySelector('.receipt-scroll-body') as HTMLElement;
-        const sbOriginalMaxHeight = scrollBody ? scrollBody.style.maxHeight : '';
-        const sbOriginalOverflow = scrollBody ? scrollBody.style.overflow : '';
-        if (scrollBody) {
-            scrollBody.style.maxHeight = 'none';
-            scrollBody.style.overflow = 'visible';
-        }
-
         try {
-            const imgData = await toPng(element, {
-                pixelRatio: 2,
-                filter: (node: Node) => {
-                    const el = node as HTMLElement;
-                    if (!el.classList) return true;
-                    return (
-                        !el.classList.contains('no-print') &&
-                        !el.hasAttribute('data-html2canvas-ignore')
-                    );
-                },
-            });
-
-            // Measure the rendered image dimensions to compute mmHeight
-            const img = new Image();
-            await new Promise<void>((resolve) => { img.onload = () => resolve(); img.src = imgData; });
-
-            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
-            // Available area with 8mm margins on all sides (A5 = 148×210mm)
-            const margin = 8;
-            const availW = 148 - margin * 2;
-            const availH = 210 - margin * 2;
-            const imgRatio = img.naturalHeight / img.naturalWidth;
-            const availRatio = availH / availW;
-
-            // Scale to fit entirely within the page, maintaining aspect ratio
-            let fitW: number, fitH: number;
-            if (imgRatio > availRatio) {
-                fitH = availH;
-                fitW = availH / imgRatio;
-            } else {
-                fitW = availW;
-                fitH = availW * imgRatio;
-            }
-            const x = margin + (availW - fitW) / 2;
-            pdf.addImage(imgData, 'PNG', x, margin, fitW, fitH);
-
-            pdf.save(`receipt-${receiptData.receiptNumber || 'download'}.pdf`);
+            const blob = await fetchReceiptPDF('download');
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `receipt-${receiptData.receiptNumber || 'download'}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+        } catch (err) {
+            console.error('[ReceiptModal] Download error:', err);
+            toast.error('Failed to generate PDF. Please try again.');
         } finally {
-            element.style.maxHeight = originalMaxHeight;
-            if (scrollBody) {
-                scrollBody.style.maxHeight = sbOriginalMaxHeight;
-                scrollBody.style.overflow = sbOriginalOverflow;
-            }
             setIsDownloading(false);
         }
     };
@@ -423,18 +333,71 @@ export default function ReceiptModal({
                     </div>
 
                     {/* ── Premium Header ── */}
-                    <div className="relative z-10 shrink-0 bg-slate-900 border-b-4 border-emerald-500 px-6 py-6 text-center print:rounded-none overflow-hidden">
+                    <div className="relative z-10 shrink-0 bg-slate-900 border-b-4 border-emerald-500 px-6 py-5 text-center print:rounded-none overflow-hidden">
                         {/* Subtle background pattern */}
                         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-white to-transparent" />
                         
-                        <div className="relative z-10 flex flex-col items-center justify-center">
-                            <div className="bg-white/10 p-2 rounded-full mb-3 inline-flex">
-                                <School className="w-6 h-6 text-emerald-400" />
+                        <div className="relative z-10 flex flex-col items-center justify-center gap-1">
+                            {/* Logo or fallback icon */}
+                            <div className="mb-2">
+                                {schoolLogoUrl ? (
+                                    <img
+                                        data-receipt-logo
+                                        src={schoolLogoUrl}
+                                        alt={schoolName}
+                                        className="h-14 w-auto max-w-[120px] object-contain"
+                                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                    />
+                                ) : (
+                                    <div className="bg-white/10 p-2 rounded-full inline-flex">
+                                        <School className="w-6 h-6 text-emerald-400" />
+                                    </div>
+                                )}
                             </div>
-                            <h2 className="text-white font-black text-xl tracking-wide">
+
+                            {/* School name */}
+                            <h2 className="text-white font-black text-xl tracking-wide leading-tight">
                                 {schoolName}
                             </h2>
-                            <p className="text-slate-300 text-xs mt-1 uppercase tracking-widest font-medium">Official Fee Receipt</p>
+
+                            {/* Tagline */}
+                            {schoolTagline && (
+                                <p className="text-slate-300 text-xs italic leading-snug">{schoolTagline}</p>
+                            )}
+
+                            {/* Address */}
+                            {schoolAddress && (
+                                <p className="text-slate-400 text-[11px] leading-snug max-w-xs flex items-start gap-1 justify-center">
+                                    <MapPin className="w-3 h-3 mt-0.5 shrink-0 text-slate-500" />
+                                    <span>{schoolAddress}</span>
+                                </p>
+                            )}
+
+                            {/* Contact details: phone, email, website */}
+                            {(schoolPhone || schoolEmail || schoolWebsite) && (
+                                <div className="flex flex-wrap justify-center gap-x-3 gap-y-0.5 mt-0.5">
+                                    {schoolPhone && (
+                                        <span className="text-slate-400 text-[11px] flex items-center gap-1">
+                                            <Phone className="w-3 h-3 text-slate-500" />
+                                            {schoolPhone}
+                                        </span>
+                                    )}
+                                    {schoolEmail && (
+                                        <span className="text-slate-400 text-[11px] flex items-center gap-1">
+                                            <Mail className="w-3 h-3 text-slate-500" />
+                                            {schoolEmail}
+                                        </span>
+                                    )}
+                                    {schoolWebsite && (
+                                        <span className="text-slate-400 text-[11px] flex items-center gap-1">
+                                            <Globe className="w-3 h-3 text-slate-500" />
+                                            {schoolWebsite.replace(/^https?:\/\//, '')}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+
+                            <p className="text-slate-300 text-xs mt-2 uppercase tracking-widest font-medium">Official Fee Receipt</p>
                         </div>
                     </div>
 
@@ -450,7 +413,10 @@ export default function ReceiptModal({
                                 <div>
                                     <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">Receipt No.</p>
                                     <p className="font-bold font-mono text-slate-800 break-all text-sm leading-tight">
-                                        {receiptData.receiptNumber || "—"}
+                                        {receiptData.receiptNumber
+                                            ? receiptData.receiptNumber
+                                            : <span className="text-slate-400 font-normal not-italic text-xs">Adjustment Record</span>
+                                        }
                                     </p>
                                 </div>
                             </div>
@@ -610,6 +576,11 @@ export default function ReceiptModal({
                                                         Waived by: {a.createdByName}
                                                     </span>
                                                 )}
+                                                {a.permittedByName && (
+                                                    <span className="block text-xs text-gray-400">
+                                                        Permitted by: {a.permittedByName}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="py-2 text-right text-sm whitespace-nowrap">
                                                 -₹{Number(a.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
@@ -687,18 +658,18 @@ export default function ReceiptModal({
                         )}
 
                         {/* Authorized signature line / Digital generation notice */}
-                        <div className="mt-6 pt-4 border-t border-slate-200 text-xs text-slate-500 flex justify-between items-center">
+                        <div className="mt-6 pt-4 border-t border-slate-200 text-xs text-slate-500 flex justify-between items-center gap-4">
                             {isAdmin ? (
                                 <div className="text-center">
                                     <div className="w-32 border-b border-slate-400 mb-1 h-6"></div>
                                     <span className="font-medium">Authorized Signature</span>
                                 </div>
                             ) : (
-                                <span className="italic bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-100">
+                                <span className="italic bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-100 min-w-0">
                                     This is a digitally generated receipt and does not require a signature.
                                 </span>
                             )}
-                            <span className="font-medium text-slate-400 uppercase tracking-widest text-[10px]">Thank You</span>
+                            <span className="font-medium text-slate-400 uppercase tracking-widest text-[10px] shrink-0">Thank You</span>
                         </div>
                     </div>
 

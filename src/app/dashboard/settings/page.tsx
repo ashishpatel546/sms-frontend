@@ -5,7 +5,7 @@ import toast, { Toaster } from "react-hot-toast";
 import useSWR from "swr";
 import { API_BASE_URL, fetcher } from "@/lib/api";
 import { Loader } from "@/components/ui/Loader";
-import { Plus, Trash2, Edit2, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Trash2, Edit2, CheckCircle2, XCircle, Settings2, GraduationCap, CalendarDays } from "lucide-react";
 import { useRbac } from "@/lib/rbac";
 import { authFetch } from "@/lib/auth";
 
@@ -19,9 +19,27 @@ export default function SettingsPage() {
     const [newSessionStart, setNewSessionStart] = useState("");
     const [newSessionEnd, setNewSessionEnd] = useState("");
 
+    const { data: designations = [], mutate: mutateDesignations, isLoading: loadingDesignations } = useSWR('/designations', fetcher);
+    const [newDesigTitle, setNewDesigTitle] = useState("");
+    const [newDesigDesc, setNewDesigDesc] = useState("");
+
+    const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+    const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+
+    const [editingDesig, setEditingDesig] = useState<any>(null);
+    const [editDesigTitle, setEditDesigTitle] = useState("");
+    const [editDesigDesc, setEditDesigDesc] = useState("");
+
     // --- Examination Settings State ---
-    const { data: examCategories = [], mutate: mutateCategories } = useSWR('/exams/categories', fetcher);
-    const { data: examSettings, mutate: mutateSettings } = useSWR('/exams/settings', fetcher);
+    const [selectedExamSessionId, setSelectedExamSessionId] = useState<number | null>(null);
+    const { data: examCategories = [], mutate: mutateCategories } = useSWR(
+        selectedExamSessionId ? `/exams/categories?sessionId=${selectedExamSessionId}` : null,
+        fetcher
+    );
+    const { data: examSettings, mutate: mutateSettings } = useSWR(
+        selectedExamSessionId ? `/exams/settings?sessionId=${selectedExamSessionId}` : null,
+        fetcher
+    );
     const [newCategoryName, setNewCategoryName] = useState("");
     const [newCategoryDesc, setNewCategoryDesc] = useState("");
     const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
@@ -40,6 +58,49 @@ export default function SettingsPage() {
 
 
     useEffect(() => {
+        const handleClose = (e: Event) => {
+            if (e.target instanceof Element &&
+                (e.target.closest('.action-dropdown-btn') ||
+                e.target.closest('.action-dropdown-menu'))) {
+                return;
+            }
+            setOpenDropdownId(null);
+        };
+        document.addEventListener('click', handleClose);
+        document.addEventListener('scroll', handleClose, true);
+        return () => {
+            document.removeEventListener('click', handleClose);
+            document.removeEventListener('scroll', handleClose, true);
+        }
+    }, []);
+
+    const handleDropdownClick = (e: React.MouseEvent, id: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (openDropdownId === id) {
+            setOpenDropdownId(null);
+        } else {
+            const button = e.currentTarget as HTMLElement;
+            const rect = button.getBoundingClientRect();
+            const menuHeight = 80;
+            const menuWidth = 130;
+            const viewportHeight = window.innerHeight;
+            const viewportWidth = window.innerWidth;
+
+            const spaceBelow = viewportHeight - rect.bottom;
+            const top = spaceBelow >= menuHeight
+                ? rect.bottom + 4
+                : rect.top - menuHeight - 4;
+
+            const left = Math.min(rect.right - menuWidth, viewportWidth - menuWidth - 8);
+
+            setDropdownPosition({ top, left });
+            setOpenDropdownId(id);
+        }
+    };
+
+    useEffect(() => {
         if (examSettings && examSettings.hasOwnProperty('contributingCategoryIds')) {
             setSelectedCategoryIds(examSettings.contributingCategoryIds || []);
             setSelectedTargetCategoryId(examSettings.finalTargetCategoryId || null);
@@ -48,15 +109,18 @@ export default function SettingsPage() {
 
     // Handle initial session selection for grading
     useEffect(() => {
-        if (activeTab === 'examination' && !selectedGradingSessionId && sessions.length > 0) {
+        if (activeTab === 'examination' && sessions.length > 0) {
             const activeSession = sessions.find((s: any) => s.isActive);
-            if (activeSession) {
-                setSelectedGradingSessionId(activeSession.id);
-            } else {
-                setSelectedGradingSessionId(sessions[0].id);
+            const defaultId = activeSession ? activeSession.id : sessions[0].id;
+            
+            if (!selectedGradingSessionId) {
+                setSelectedGradingSessionId(defaultId);
+            }
+            if (!selectedExamSessionId) {
+                setSelectedExamSessionId(defaultId);
             }
         }
-    }, [activeTab, sessions, selectedGradingSessionId]);
+    }, [activeTab, sessions, selectedGradingSessionId, selectedExamSessionId]);
 
 
     // --- Holidays Settings State ---
@@ -108,7 +172,7 @@ export default function SettingsPage() {
             const url = editingHolidayId
                 ? `${API_BASE_URL}/holidays/${editingHolidayId}`
                 : `${API_BASE_URL}/holidays`;
-            const method = editingHolidayId ? 'PUT' : 'POST';
+            const method = editingHolidayId ? 'PATCH' : 'POST';
 
             const res = await authFetch(url, {
                 method,
@@ -124,7 +188,7 @@ export default function SettingsPage() {
                 const data = await res.json();
                 toast.error(data.message || "Failed to save holiday");
             }
-        } catch (err) {
+        } catch {
             toast.error("Network error");
         } finally {
             setIsSavingHoliday(false);
@@ -141,7 +205,7 @@ export default function SettingsPage() {
             } else {
                 toast.error("Failed to delete holiday");
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };
@@ -178,7 +242,7 @@ export default function SettingsPage() {
                 const data = await res.json();
                 toast.error(data.message || "Failed to create session");
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };
@@ -205,7 +269,67 @@ export default function SettingsPage() {
                 toast.success("Active session updated!");
                 mutate();
             }
-        } catch (err) {
+        } catch (_err) {
+            toast.error("Network error");
+        }
+    };
+
+    const handleCreateDesignation = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const res = await authFetch(`${API_BASE_URL}/designations`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: newDesigTitle, description: newDesigDesc, isActive: true })
+            });
+            if (res.ok) {
+                toast.success("Designation created!");
+                setNewDesigTitle("");
+                setNewDesigDesc("");
+                mutateDesignations();
+            } else {
+                const data = await res.json();
+                toast.error(data.message || "Failed to create designation");
+            }
+        } catch (_err) {
+            toast.error("Network error");
+        }
+    };
+
+    const handleDeleteDesignation = async (id: number) => {
+        if (!confirm("Are you sure you want to delete this designation?")) return;
+        try {
+            const res = await authFetch(`${API_BASE_URL}/designations/${id}`, { method: "DELETE" });
+            if (res.ok) {
+                toast.success("Designation deleted");
+                mutateDesignations();
+            } else {
+                const data = await res.json();
+                toast.error(data.message || "Failed to delete designation");
+            }
+        } catch (_err) {
+            toast.error("Network error");
+        }
+    };
+
+    const handleUpdateDesignation = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingDesig) return;
+        try {
+            const res = await authFetch(`${API_BASE_URL}/designations/${editingDesig.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: editDesigTitle, description: editDesigDesc })
+            });
+            if (res.ok) {
+                toast.success("Designation updated!");
+                setEditingDesig(null);
+                mutateDesignations();
+            } else {
+                const data = await res.json();
+                toast.error(data.message || "Failed to update designation");
+            }
+        } catch (_err) {
             toast.error("Network error");
         }
     };
@@ -213,11 +337,17 @@ export default function SettingsPage() {
     // --- Examination Setting Handlers ---
     const handleCreateCategory = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!selectedExamSessionId) return toast.error("Select a session first");
+
         try {
             const res = await authFetch(`${API_BASE_URL}/exams/categories`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: newCategoryName, description: newCategoryDesc })
+                body: JSON.stringify({ 
+                    name: newCategoryName, 
+                    description: newCategoryDesc,
+                    sessionId: selectedExamSessionId
+                })
             });
             if (res.ok) {
                 toast.success("Exam Category created!");
@@ -228,7 +358,7 @@ export default function SettingsPage() {
                 const data = await res.json();
                 toast.error(data.message || "Failed to create category");
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };
@@ -244,7 +374,7 @@ export default function SettingsPage() {
                 toast.success("Category status updated!");
                 mutateCategories();
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };
@@ -269,11 +399,14 @@ export default function SettingsPage() {
     };
 
     const handleSaveSettings = async () => {
+        if (!selectedExamSessionId) return toast.error("Select a session first");
+
         try {
             const res = await authFetch(`${API_BASE_URL}/exams/settings`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                    sessionId: selectedExamSessionId,
                     contributingCategoryIds: selectedCategoryIds,
                     finalTargetCategoryId: selectedTargetCategoryId
                 })
@@ -282,7 +415,7 @@ export default function SettingsPage() {
                 toast.success("Exam settings updated!");
                 mutateSettings();
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };
@@ -291,6 +424,13 @@ export default function SettingsPage() {
         e.preventDefault();
         if (!selectedGradingSessionId) return toast.error("Select a session first");
 
+        const parsedMin = parseFloat(newGradeMin);
+        const parsedMax = parseFloat(newGradeMax);
+        if (isNaN(parsedMin) || isNaN(parsedMax)) return toast.error("Enter valid percentage values");
+        if (parsedMin < 0 || parsedMax < 0) return toast.error("Percentages cannot be negative");
+        if (parsedMax > 100) return toast.error("Percentages cannot exceed 100");
+        if (parsedMin >= parsedMax) return toast.error("Min % must be strictly less than Max %");
+
         try {
             const res = await authFetch(`${API_BASE_URL}/exams/grading-system`, {
                 method: "POST",
@@ -298,8 +438,8 @@ export default function SettingsPage() {
                 body: JSON.stringify({
                     sessionId: selectedGradingSessionId,
                     gradeName: newGradeName,
-                    minPercentage: parseFloat(newGradeMin),
-                    maxPercentage: parseFloat(newGradeMax),
+                    minPercentage: parsedMin,
+                    maxPercentage: parsedMax,
                     isFailGrade: newGradeIsFail
                 })
             });
@@ -312,9 +452,10 @@ export default function SettingsPage() {
                 mutateGradingSystems();
             } else {
                 const data = await res.json();
-                toast.error(data.message || "Failed to create grading");
+                const errMsg = Array.isArray(data.message) ? data.message[0] : (data.message || "Failed to create grading");
+                toast.error(errMsg);
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };
@@ -327,7 +468,7 @@ export default function SettingsPage() {
                 toast.success("Grading band deleted");
                 mutateGradingSystems();
             }
-        } catch (err) {
+        } catch (_err) {
             toast.error("Network error");
         }
     };
@@ -337,25 +478,40 @@ export default function SettingsPage() {
         <main className="p-4 flex-1 h-full overflow-y-auto w-full max-w-7xl mx-auto">
             {error && <div className="p-4 text-red-600 mb-4 bg-red-50 rounded">Error loading sessions</div>}
             <Toaster position="top-right" />
-            <div className="flex justify-between items-center mb-6 border-b border-gray-200">
-                <h1 className="text-3xl font-bold text-slate-800 pb-2">Settings</h1>
-                <div className="flex space-x-1">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4 border-b pb-4 border-gray-200">
+                <h1 className="text-3xl font-bold text-slate-800 pb-2 md:pb-0">Settings</h1>
+                <div className="flex p-1 bg-slate-100 rounded-xl w-full md:w-fit shadow-inner border border-slate-200/60 overflow-x-auto">
                     <button
                         onClick={() => setActiveTab('system')}
-                        className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors border-b-2 ${activeTab === 'system' ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                        className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${
+                            activeTab === 'system'
+                                ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                        }`}
                     >
+                        <Settings2 className="w-4 h-4" />
                         System Settings
                     </button>
                     <button
                         onClick={() => setActiveTab('examination')}
-                        className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors border-b-2 ${activeTab === 'examination' ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                        className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${
+                            activeTab === 'examination'
+                                ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                        }`}
                     >
+                        <GraduationCap className="w-4 h-4" />
                         Examination Settings
                     </button>
                     <button
                         onClick={() => setActiveTab('holidays')}
-                        className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors border-b-2 ${activeTab === 'holidays' ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                        className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${
+                            activeTab === 'holidays'
+                                ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                        }`}
                     >
+                        <CalendarDays className="w-4 h-4" />
                         Holidays
                     </button>
                 </div>
@@ -373,8 +529,8 @@ export default function SettingsPage() {
                                 <h3 className="text-sm font-semibold text-slate-700 mb-3">Add New Session</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                     <div>
-                                        <label className="block mb-1 text-xs font-medium text-gray-700">Name (e.g. 2026-2027)</label>
-                                        <input type="text" value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                                        <label className="block mb-1 text-xs font-medium text-gray-700">Session Name</label>
+                                        <input type="text" placeholder="e.g. 2026-2027" value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-xs font-medium text-gray-700">Start Date</label>
@@ -396,6 +552,7 @@ export default function SettingsPage() {
                                 <table className="w-full text-sm text-left text-gray-500">
                                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                                         <tr>
+                                            <th scope="col" className="px-4 py-3">ID</th>
                                             <th scope="col" className="px-4 py-3">Name</th>
                                             <th scope="col" className="px-4 py-3">Period</th>
                                             <th scope="col" className="px-4 py-3 text-center">Status</th>
@@ -405,6 +562,7 @@ export default function SettingsPage() {
                                     <tbody>
                                         {sessions.map((s: any) => (
                                             <tr key={s.id} className="bg-white border-b hover:bg-gray-50">
+                                                <td className="px-4 py-3 font-mono text-xs text-gray-500">{s.id}</td>
                                                 <td className="px-4 py-3 font-semibold text-slate-800">{s.name}</td>
                                                 <td className="px-4 py-3 text-xs">
                                                     {new Date(s.startDate).toLocaleDateString()} to {new Date(s.endDate).toLocaleDateString()}
@@ -433,6 +591,124 @@ export default function SettingsPage() {
                             </div>
                         )}
                     </div>
+
+                    {/* Staff Designations panel */}
+                    <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+                        <h2 className="text-xl font-bold mb-4 text-slate-800">Staff Designations</h2>
+
+                        {rbac.isAdmin && (
+                            <form onSubmit={handleCreateDesignation} className="mb-8 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                                <h3 className="text-sm font-semibold text-slate-700 mb-3">Add Designation</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label className="block mb-1 text-xs font-medium text-gray-700">Title (e.g. Principal)</label>
+                                        <input type="text" value={newDesigTitle} onChange={(e) => setNewDesigTitle(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                                    </div>
+                                    <div>
+                                        <label className="block mb-1 text-xs font-medium text-gray-700">Description</label>
+                                        <input type="text" value={newDesigDesc} onChange={(e) => setNewDesigDesc(e.target.value)} className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                                    </div>
+                                </div>
+                                <button type="submit" className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition">Create Designation</button>
+                            </form>
+                        )}
+
+                        {/* Edit Designation Modal */}
+                        {editingDesig && (
+                            <div className="fixed inset-0 z-60 flex items-center justify-center bg-black bg-opacity-50">
+                                <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md animate-in zoom-in-95 duration-200">
+                                    <h3 className="text-lg font-bold mb-4 text-slate-800">Edit Designation</h3>
+                                    <form onSubmit={handleUpdateDesignation}>
+                                        <div className="mb-4">
+                                            <label className="block mb-2 text-sm font-medium text-gray-900">Title</label>
+                                            <input
+                                                type="text"
+                                                value={editDesigTitle}
+                                                onChange={(e) => setEditDesigTitle(e.target.value)}
+                                                className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="mb-6">
+                                            <label className="block mb-2 text-sm font-medium text-gray-900">Description</label>
+                                            <input
+                                                type="text"
+                                                value={editDesigDesc}
+                                                onChange={(e) => setEditDesigDesc(e.target.value)}
+                                                className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <div className="flex gap-3 justify-end">
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditingDesig(null)}
+                                                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                            >
+                                                Save Changes
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
+
+                        {loadingDesignations ? (
+                            <Loader text="Loading designations..." />
+                        ) : (
+                            <div className="relative overflow-x-auto rounded-lg border border-gray-200">
+                                <table className="w-full text-sm text-left text-gray-500">
+                                    <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                                        <tr>
+                                            <th scope="col" className="px-4 py-3">Title</th>
+                                            <th scope="col" className="px-4 py-3">Description</th>
+                                            <th scope="col" className="px-4 py-3 text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {designations.map((d: any) => (
+                                            <tr key={d.id} className="bg-white border-b hover:bg-gray-50">
+                                                <td className="px-4 py-3 font-semibold text-slate-800">{d.title}</td>
+                                                <td className="px-4 py-3 text-xs">{d.description || '-'}</td>
+                                                <td className="px-4 py-3 text-right">
+                                                    {rbac.isAdmin && (
+                                                        <div className="relative inline-block text-left">
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => handleDropdownClick(e, `desig-${d.id}`)}
+                                                                className="action-dropdown-btn text-gray-500 hover:text-gray-700 p-1 rounded hover:bg-gray-100 focus:outline-none"
+                                                            >
+                                                                <svg className="w-5 h-5 pointer-events-none" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>
+                                                            </button>
+                                                            {openDropdownId === `desig-${d.id}` && (
+                                                                <div
+                                                                    className="action-dropdown-menu fixed w-32 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-9999 border border-gray-100"
+                                                                    style={{ top: dropdownPosition.top, left: dropdownPosition.left }}
+                                                                >
+                                                                    <div className="py-1">
+                                                                        <button type="button" onClick={(e) => { e.stopPropagation(); setEditingDesig(d); setEditDesigTitle(d.title); setEditDesigDesc(d.description || ""); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Edit</button>
+                                                                        <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteDesignation(d.id); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Delete</button>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {designations.length === 0 && (
+                                            <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500 italic">No designations found.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 
@@ -441,7 +717,22 @@ export default function SettingsPage() {
                     <div className="space-y-6">
                         {/* Exam Categories panel */}
                         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                            <h2 className="text-xl font-bold mb-4 text-slate-800">Exam Categories</h2>
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                                <h2 className="text-xl font-bold text-slate-800">Exam Categories</h2>
+                                <div className="mt-2 sm:mt-0">
+                                    <label className="text-xs text-slate-500 mr-2 uppercase font-semibold">For Session:</label>
+                                    <select
+                                        className="text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-1"
+                                        value={selectedExamSessionId || ''}
+                                        onChange={(e) => setSelectedExamSessionId(Number(e.target.value))}
+                                    >
+                                        <option value="">Select Session</option>
+                                        {sessions.map((s: any) => (
+                                            <option key={s.id} value={s.id}>{s.name} {s.isActive && '(Active)'}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
 
                             {/* Create category form — ADMIN+ only */}
                             {rbac.canManageExamSettings && (
@@ -500,7 +791,22 @@ export default function SettingsPage() {
 
                         {/* Final Result Settings panel */}
                         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                            <h2 className="text-xl font-bold mb-4 text-slate-800">Final Result Settings</h2>
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                                <h2 className="text-xl font-bold text-slate-800">Final Result Settings</h2>
+                                <div className="mt-2 sm:mt-0">
+                                    <label className="text-xs text-slate-500 mr-2 uppercase font-semibold">For Session:</label>
+                                    <select
+                                        className="text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-1"
+                                        value={selectedExamSessionId || ''}
+                                        onChange={(e) => setSelectedExamSessionId(Number(e.target.value))}
+                                    >
+                                        <option value="">Select Session</option>
+                                        {sessions.map((s: any) => (
+                                            <option key={s.id} value={s.id}>{s.name} {s.isActive && '(Active)'}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
 
                             <div className="mb-6">
                                 <label className="block mb-2 text-sm font-semibold text-slate-700">Target Final Category</label>
@@ -575,11 +881,11 @@ export default function SettingsPage() {
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-[10px] uppercase font-bold text-gray-500">Min %</label>
-                                        <input type="number" step="0.01" value={newGradeMin} onChange={(e) => setNewGradeMin(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:ring-blue-500" />
+                                        <input type="number" step="0.01" min="0" max="100" value={newGradeMin} onChange={(e) => setNewGradeMin(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:ring-blue-500" />
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-[10px] uppercase font-bold text-gray-500">Max % <span className="text-[9px] font-normal lowercase">(excluding)</span></label>
-                                        <input type="number" step="0.01" value={newGradeMax} onChange={(e) => setNewGradeMax(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:ring-blue-500" />
+                                        <input type="number" step="0.01" min="0" max="100" value={newGradeMax} onChange={(e) => setNewGradeMax(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:ring-blue-500" />
                                     </div>
                                     <div className="flex items-center pt-5">
                                         <label className="flex items-center space-x-2 text-sm font-medium text-slate-800 cursor-pointer">

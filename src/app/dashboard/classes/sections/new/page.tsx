@@ -1,18 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import useSWR from "swr";
-import { fetcher, API_BASE_URL } from "@/lib/api";
-import { Loader } from "@/components/ui/Loader";
+import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
+import toast from "react-hot-toast";
 
 export default function AddSectionPage() {
     const router = useRouter();
-    const { data: classes, error: fetchError, isLoading } = useSWR('/classes', fetcher);
     const [name, setName] = useState("");
-    const [classId, setClassId] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
@@ -21,40 +18,35 @@ export default function AddSectionPage() {
         setLoading(true);
         setError("");
 
-        if (!classId) {
-            setError("Please select a class.");
-            setLoading(false);
-            return;
-        }
-
         try {
             const res = await authFetch(`${API_BASE_URL}/classes/sections`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ name, classId: parseInt(classId) }),
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: name.trim() }),
             });
 
             if (!res.ok) {
-                throw new Error("Failed to create section");
+                const errBody = await res.json().catch(() => ({}));
+                throw new Error(errBody?.message ?? "Failed to create section");
             }
 
+            toast.success(`Section "${name}" created successfully!`);
             router.push("/dashboard/classes");
             router.refresh();
-        } catch (err) {
-            setError("Failed to create section. Please try again.");
+        } catch (err: any) {
+            setError(err.message ?? "Failed to create section. Please try again.");
         } finally {
             setLoading(false);
         }
     };
-    if (isLoading) return <Loader fullScreen text="Loading classes..." />;
-    if (fetchError) return <div className="p-4 text-red-500">Failed to load classes</div>;
 
     return (
         <main className="p-4">
             <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-slate-200">
-                <h2 className="text-2xl font-bold mb-6 text-slate-800">Add New Section</h2>
+                <h2 className="text-2xl font-bold mb-2 text-slate-800">Add New Section</h2>
+                <p className="text-sm text-slate-500 mb-6">
+                    Sections are shared across classes (e.g. &quot;A&quot;, &quot;B&quot;). Once created, you can assign a section to any class.
+                </p>
 
                 {error && (
                     <div className="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50" role="alert">
@@ -64,24 +56,6 @@ export default function AddSectionPage() {
 
                 <form onSubmit={handleSubmit}>
                     <div className="mb-6">
-                        <label htmlFor="class" className="block mb-2 text-sm font-medium text-gray-900">Select Class</label>
-                        <select
-                            id="class"
-                            value={classId}
-                            onChange={(e) => setClassId(e.target.value)}
-                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                            required
-                        >
-                            <option value="">Choose a class</option>
-                            {classes?.map((cls: any) => (
-                                <option key={cls.id} value={cls.id}>
-                                    {cls.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="mb-6">
                         <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-900">Section Name</label>
                         <input
                             type="text"
@@ -89,9 +63,10 @@ export default function AddSectionPage() {
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                            placeholder="Section A"
+                            placeholder="e.g. A"
                             required
                         />
+                        <p className="mt-1 text-xs text-gray-500">Section names must be unique (case-insensitive).</p>
                     </div>
 
                     <div className="flex items-center space-x-4">
@@ -111,3 +86,4 @@ export default function AddSectionPage() {
         </main>
     );
 }
+

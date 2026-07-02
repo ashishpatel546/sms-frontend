@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || new URL(request.url).host;
 
     // Fallback order: Explicit Env -> Proxied Host Header -> Raw Request URL
-    let baseUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || `${protocol}://${host}`;
+    let baseUrl = process.env.FRONTEND_URL || `${protocol}://${host}`;
 
     // Build the absolute redirect URL with GET parameters
     const redirectUrl = new URL('/parent-dashboard/payment-success', baseUrl);

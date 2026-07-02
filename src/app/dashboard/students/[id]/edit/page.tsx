@@ -6,19 +6,39 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
+import { Country, State, City } from "country-state-city";
+import { AppDatePicker } from "@/components/ui/AppDatePicker";
+import { useRbac } from "@/lib/rbac";
 
 export default function EditStudentPage() {
     const router = useRouter();
     const params = useParams();
     const id = params?.id as string;
+    const rbac = useRbac();
+
+    // Redirect if user cannot manage students (only view)
+    useEffect(() => {
+        if (!rbac.canManageStudents) {
+            router.replace(`/dashboard/students/${id}`);
+        }
+    }, [rbac.canManageStudents, id, router]);
     const [formData, setFormData] = useState({
         firstName: "",
         lastName: "",
         email: "",
+        pen: "",
+        aparId: "",
+        abhaId: "",
         fathersName: "",
         fatherAadhaarNumber: "",
+        fatherPan: "",
+        fatherOccupation: "",
+        fatherIncome: "",
         mothersName: "",
         motherAadhaarNumber: "",
+        motherPan: "",
+        motherOccupation: "",
+        motherIncome: "",
         aadhaarNumber: "",
         mobile: "",
         alternateMobile: "",
@@ -29,12 +49,31 @@ export default function EditStudentPage() {
         dateOfBirth: "",
         siblingId: "",
         isActive: true,
+        address: { addressLine1: "", addressLine2: "", landmark: "", city: "", state: "", postalCode: "", country: "IN" }
     });
+
+    const countries = Country.getAllCountries();
+    const [states, setStates] = useState<any[]>(State.getStatesOfCountry("IN"));
+    const [cities, setCities] = useState<any[]>([]);
     const [availableDiscounts, setAvailableDiscounts] = useState<any[]>([]);
     const [selectedDiscounts, setSelectedDiscounts] = useState<number[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
+
+    useEffect(() => {
+        if (formData.address?.country) {
+            setStates(State.getStatesOfCountry(formData.address.country));
+        }
+    }, [formData.address?.country]);
+
+    useEffect(() => {
+        if (formData.address?.country && formData.address?.state) {
+            setCities(City.getCitiesOfState(formData.address.country, formData.address.state));
+        } else {
+            setCities([]);
+        }
+    }, [formData.address?.country, formData.address?.state]);
 
     // Sibling Modal State
     const [showSiblingModal, setShowSiblingModal] = useState(false);
@@ -60,14 +99,42 @@ export default function EditStudentPage() {
                 const student = await studRes.json();
 
                 if (student) {
+                    // Reverse-map stored full country/state names to ISO codes for the dropdowns
+                    let addressCountryCode = "IN";
+                    let addressStateCode = "";
+                    let addressCity = student.address?.city || "";
+                    if (student.address) {
+                        const allCountries = Country.getAllCountries();
+                        const foundCountry = allCountries.find((c: any) => c.name.toUpperCase() === (student.address.country || "").toUpperCase());
+                        if (foundCountry) addressCountryCode = foundCountry.isoCode;
+                        const statesOfCountry = State.getStatesOfCountry(addressCountryCode);
+                        const foundState = statesOfCountry.find((s: any) => s.name.toUpperCase() === (student.address.state || "").toUpperCase());
+                        if (foundState) addressStateCode = foundState.isoCode;
+                        // Normalize city to match dropdown option casing (backend stores uppercase)
+                        if (addressCity && addressStateCode) {
+                            const citiesOfState = City.getCitiesOfState(addressCountryCode, addressStateCode);
+                            const foundCity = citiesOfState.find((c: any) => c.name.toUpperCase() === addressCity.toUpperCase());
+                            if (foundCity) addressCity = foundCity.name;
+                        }
+                    }
+
                     setFormData({
                         firstName: student.firstName || "",
                         lastName: student.lastName || "",
                         email: student.email || "",
+                        pen: student.pen || "",
+                        aparId: student.aparId || "",
+                        abhaId: student.abhaId || "",
                         fathersName: student.fathersName || "",
                         fatherAadhaarNumber: student.fatherAadhaarNumber || "",
+                        fatherPan: student.fatherPan || "",
+                        fatherOccupation: student.fatherOccupation || "",
+                        fatherIncome: student.fatherIncome != null ? String(student.fatherIncome) : "",
                         mothersName: student.mothersName || "",
                         motherAadhaarNumber: student.motherAadhaarNumber || "",
+                        motherPan: student.motherPan || "",
+                        motherOccupation: student.motherOccupation || "",
+                        motherIncome: student.motherIncome != null ? String(student.motherIncome) : "",
                         aadhaarNumber: student.aadhaarNumber || "",
                         mobile: student.mobile || "",
                         alternateMobile: student.alternateMobile || "",
@@ -78,6 +145,15 @@ export default function EditStudentPage() {
                         dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split('T')[0] : "",
                         siblingId: student.siblingId ? student.siblingId.toString() : "",
                         isActive: student.isActive,
+                        address: {
+                            addressLine1: student.address?.addressLine1 || "",
+                            addressLine2: student.address?.addressLine2 || "",
+                            landmark: student.address?.landmark || "",
+                            city: addressCity,
+                            state: addressStateCode,
+                            postalCode: student.address?.postalCode || "",
+                            country: addressCountryCode,
+                        }
                     });
                     if (student.studentDiscounts) {
                         const activeDiscounts = student.studentDiscounts.filter((sd: any) => sd.isActive);
@@ -100,7 +176,7 @@ export default function EditStudentPage() {
                 } else {
                     setError("Student not found");
                 }
-            } catch (err) {
+            } catch (_err) {
                 setError("Failed to load data");
             } finally {
                 setLoading(false);
@@ -109,6 +185,17 @@ export default function EditStudentPage() {
 
         fetchData();
     }, [id]);
+
+    const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        if (name === "country") {
+            setFormData(prev => ({ ...prev, address: { ...prev.address, country: value, state: "", city: "" } }));
+        } else if (name === "state") {
+            setFormData(prev => ({ ...prev, address: { ...prev.address, state: value, city: "" } }));
+        } else {
+            setFormData(prev => ({ ...prev, address: { ...prev.address, [name]: value } }));
+        }
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const target = e.target as HTMLInputElement;
@@ -207,14 +294,28 @@ export default function EditStudentPage() {
         setError("");
 
         try {
+            const addressPayload = formData.address?.addressLine1 ? (() => {
+                const countryObj = Country.getCountryByCode(formData.address.country);
+                const stateObj = State.getStateByCodeAndCountry(formData.address.state, formData.address.country);
+                return {
+                    ...formData.address,
+                    country: countryObj ? countryObj.name : formData.address.country,
+                    state: stateObj ? stateObj.name : formData.address.state,
+                };
+            })() : undefined;
+
             const payload = {
                 ...formData,
+                address: addressPayload,
                 siblingId: formData.siblingId ? parseInt(formData.siblingId) : null,
+                fatherIncome: formData.fatherIncome !== "" ? parseFloat(formData.fatherIncome) : null,
+                motherIncome: formData.motherIncome !== "" ? parseFloat(formData.motherIncome) : null,
                 discountIds: selectedDiscounts
             };
+            if (!payload.address) delete (payload as any).address;
 
             // Remove optional empty string fields to prevent validation errors
-            const optionalFields = ['email', 'aadhaarNumber', 'mobile', 'alternateMobile', 'category', 'bloodGroup', 'religion', 'dateOfBirth'];
+            const optionalFields = ['email', 'aadhaarNumber', 'pen', 'aparId', 'abhaId', 'mobile', 'alternateMobile', 'category', 'bloodGroup', 'religion', 'dateOfBirth', 'fatherAadhaarNumber', 'fatherPan', 'fatherOccupation', 'motherAadhaarNumber', 'motherPan', 'motherOccupation'];
             optionalFields.forEach(field => {
                 const key = field as keyof typeof payload;
                 if (!(payload as any)[key]) {
@@ -289,7 +390,11 @@ export default function EditStudentPage() {
                             </div>
                             <div>
                                 <label htmlFor="dateOfBirth" className="block mb-2 text-sm font-medium text-gray-900">Date of Birth</label>
-                                <input type="date" id="dateOfBirth" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                                <AppDatePicker
+                                    name="dateOfBirth"
+                                    value={formData.dateOfBirth}
+                                    onChange={(v) => handleChange({ target: { name: 'dateOfBirth', value: v } } as React.ChangeEvent<HTMLInputElement>)}
+                                />
                             </div>
                             <div>
                                 <label htmlFor="bloodGroup" className="block mb-2 text-sm font-medium text-gray-900">Blood Group</label>
@@ -304,6 +409,81 @@ export default function EditStudentPage() {
                             <div>
                                 <label htmlFor="aadhaarNumber" className="block mb-2 text-sm font-medium text-gray-900">Aadhaar Number <span className="text-gray-400 font-normal">(Optional)</span></label>
                                 <input type="text" id="aadhaarNumber" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                            </div>
+                            <div>
+                                <label htmlFor="pen" className="block mb-2">
+                                    <span className="block text-sm font-medium text-gray-900">PEN (Permanent Enrollment Number)</span>
+                                    <span className="text-xs text-gray-400">(Optional)</span>
+                                </label>
+                                <input type="text" id="pen" name="pen" value={formData.pen} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="e.g. 1234567890" />
+                            </div>
+                            <div>
+                                <label htmlFor="aparId" className="block mb-2">
+                                    <span className="block text-sm font-medium text-gray-900">APAR ID</span>
+                                    <span className="text-xs text-gray-400">(Optional)</span>
+                                </label>
+                                <input type="text" id="aparId" name="aparId" value={formData.aparId} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="Academic Bank of Credits ID" />
+                            </div>
+                            <div>
+                                <label htmlFor="abhaId" className="block mb-2">
+                                    <span className="block text-sm font-medium text-gray-900">ABHA ID</span>
+                                    <span className="text-xs text-gray-400">(Optional)</span>
+                                </label>
+                                <input type="text" id="abhaId" name="abhaId" value={formData.abhaId} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="Ayushman Bharat Health Account ID" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Address Info */}
+                    <div>
+                        <h3 className="text-lg font-bold mb-4 text-slate-700 border-b pb-2">Address Information</h3>
+                        <div className="grid gap-6 md:grid-cols-2">
+                            <div>
+                                <label htmlFor="country" className="block mb-2 text-sm font-medium text-gray-900">Country</label>
+                                <select id="country" name="country" value={formData.address?.country} onChange={handleAddressChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
+                                    <option value="">Select Country</option>
+                                    {countries.map(c => (
+                                        <option key={c.isoCode} value={c.isoCode}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label htmlFor="state" className="block mb-2 text-sm font-medium text-gray-900">State</label>
+                                <select id="state" name="state" value={formData.address?.state} onChange={handleAddressChange} disabled={!states.length} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:opacity-50">
+                                    <option value="">Select State</option>
+                                    {states.map(s => (
+                                        <option key={s.isoCode} value={s.isoCode}>{s.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label htmlFor="city" className="block mb-2 text-sm font-medium text-gray-900">City</label>
+                                {cities.length > 0 ? (
+                                    <select id="city" name="city" value={formData.address?.city} onChange={handleAddressChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
+                                        <option value="">Select City</option>
+                                        {cities.map(c => (
+                                            <option key={c.name} value={c.name}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <input type="text" id="city" name="city" value={formData.address?.city} onChange={handleAddressChange} placeholder="City name" disabled={!formData.address?.state} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:opacity-50" />
+                                )}
+                            </div>
+                            <div>
+                                <label htmlFor="postalCode" className="block mb-2 text-sm font-medium text-gray-900">Postal Code</label>
+                                <input type="text" id="postalCode" name="postalCode" value={formData.address?.postalCode} onChange={handleAddressChange} placeholder="PIN code" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label htmlFor="addressLine1" className="block mb-2 text-sm font-medium text-gray-900">Address Line 1</label>
+                                <input type="text" id="addressLine1" name="addressLine1" value={formData.address?.addressLine1} onChange={handleAddressChange} placeholder="Street address, Flat no, etc." className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label htmlFor="addressLine2" className="block mb-2 text-sm font-medium text-gray-900">Address Line 2 <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" id="addressLine2" name="addressLine2" value={formData.address?.addressLine2} onChange={handleAddressChange} placeholder="Apartment, suite, unit, etc." className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label htmlFor="landmark" className="block mb-2 text-sm font-medium text-gray-900">Landmark <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" id="landmark" name="landmark" value={formData.address?.landmark} onChange={handleAddressChange} placeholder="Near..." className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
                             </div>
                         </div>
                     </div>
@@ -357,6 +537,30 @@ export default function EditStudentPage() {
                             <div>
                                 <label htmlFor="motherAadhaarNumber" className="block mb-2 text-sm font-medium text-gray-900">Mother's UUID (Aadhaar Number) <span className="text-gray-400 font-normal">(Optional)</span></label>
                                 <input type="text" id="motherAadhaarNumber" name="motherAadhaarNumber" value={formData.motherAadhaarNumber} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" />
+                            </div>
+                            <div>
+                                <label htmlFor="fatherPan" className="block mb-2 text-sm font-medium text-gray-900">Father's PAN <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" id="fatherPan" name="fatherPan" value={formData.fatherPan} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="PAN Number" />
+                            </div>
+                            <div>
+                                <label htmlFor="motherPan" className="block mb-2 text-sm font-medium text-gray-900">Mother's PAN <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" id="motherPan" name="motherPan" value={formData.motherPan} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="PAN Number" />
+                            </div>
+                            <div>
+                                <label htmlFor="fatherOccupation" className="block mb-2 text-sm font-medium text-gray-900">Father's Occupation <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" id="fatherOccupation" name="fatherOccupation" value={formData.fatherOccupation} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="e.g. Engineer" />
+                            </div>
+                            <div>
+                                <label htmlFor="motherOccupation" className="block mb-2 text-sm font-medium text-gray-900">Mother's Occupation <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" id="motherOccupation" name="motherOccupation" value={formData.motherOccupation} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="e.g. Teacher" />
+                            </div>
+                            <div>
+                                <label htmlFor="fatherIncome" className="block mb-2 text-sm font-medium text-gray-900">Father's Annual Income (₹) <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="number" id="fatherIncome" name="fatherIncome" value={formData.fatherIncome} onChange={handleChange} disabled={!!selectedSiblingObj} min="0" step="0.01" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="e.g. 500000" />
+                            </div>
+                            <div>
+                                <label htmlFor="motherIncome" className="block mb-2 text-sm font-medium text-gray-900">Mother's Annual Income (₹) <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="number" id="motherIncome" name="motherIncome" value={formData.motherIncome} onChange={handleChange} disabled={!!selectedSiblingObj} min="0" step="0.01" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="e.g. 300000" />
                             </div>
                         </div>
 

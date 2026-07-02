@@ -1,0 +1,709 @@
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\enrollment\page.tsx @ 11 ====
+import { API_BASE_URL } from "@/lib/api";
+import { authFetch } from "@/lib/auth";
+
+export default function EnrollmentPage() {
+    const router = useRouter();
+    const [students, setStudents] = useState<any[]>([]);
+    const [subjects, setSubjects] = useState<any[]>([]);
+    const [classes, setClasses] = useState<any[]>([]);
+    const [sections, setSections] = useState<any[]>([]);
+    const [academicSessions, setAcademicSessions] = useState<any[]>([]);
+    const [selectedSessionId, setSelectedSessionId] = useState<number | "">("");
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\enrollment\page.tsx @ 36 ====
+
+    const [loading, setLoading] = useState(false);
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
+    const [showEditModal, setShowEditModal] = useState(false);
+
+    // Bulk action state
+    const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
+    const [showBulkModal, setShowBulkModal] = useState(false);
+    const [bulkSubjects, setBulkSubjects] = useState<string[]>([]);
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\enrollment\page.tsx @ 217 ====
+                    });
+                });
+            }
+
+        } catch (err) {
+            setError("Failed to enroll student. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\enrollment\page.tsx @ 256 ====
+                    const updated = refreshedStudents.find((rs: any) => rs.id === fs.id);
+                    return updated ? updated : fs;
+                }));
+            }
+        } catch (err) {
+            toast.error("Failed to assign subjects in bulk.");
+        } finally {
+            setBulkLoading(false);
+        }
+    };
+
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\examinations\data-entry\page.tsx @ 19 ====
+    const [examCategories, setExamCategories] = useState<any[]>([]);
+
+    const [selectedSessionId, setSelectedSessionId] = useState("");
+    
+    const { data: examSettings, isLoading: settingsLoading } = useSWR(
+        selectedSessionId ? `${API_BASE_URL}/exams/settings?sessionId=${selectedSessionId}` : null,
+        fetcher
+    );
+    const [selectedClassId, setSelectedClassId] = useState("");
+    const [selectedSectionId, setSelectedSectionId] = useState("");
+    const [selectedSubjectId, setSelectedSubjectId] = useState("");
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\examinations\data-entry\page.tsx @ 97 ====
+                if (data.length === 0) toast("No students enrolled for this selection.");
+            } else {
+                toast.error("Failed to fetch students");
+            }
+        } catch (err) {
+            toast.error("Network error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\examinations\data-entry\page.tsx @ 170 ====
+                handleFetchStudents();
+            } else {
+                toast.error("Failed to save marks");
+            }
+        } catch (err) {
+            toast.error("Network error");
+        }
+    };
+
+    return (
+        <main className="p-4 bg-slate-50 min-h-screen">
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\fees\page.tsx @ 255 ====
+                        setCollectionYear(active.name);
+                        setFormAcademicYear(active.name);
+                    }
+                }
+            } catch (err) {
+                toast.error("Failed to load setup data");
+            }
+        };
+        fetchSetupData();
+        setMounted(true);
+    }, []);
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\fees\page.tsx @ 293 ====
+            if (res.ok) {
+                toast.success("Global Settings Saved!");
+                setGlobalSettings(await res.json());
+            } else throw new Error("Failed to save settings");
+        } catch (err) {
+            toast.error("Failed to save global settings");
+        } finally {
+            setSavingSettings(false);
+        }
+    };
+
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\fees\page.tsx @ 322 ====
+                setNewDiscountLogicRef("");
+                const dRes = await authFetch(`${API_BASE_URL}/fees/discounts`);
+                if (dRes.ok) setDiscounts(await dRes.json());
+            } else throw new Error("Creation failed");
+        } catch (err) {
+            toast.error("Failed to create discount");
+        }
+    };
+
+    const handleUpdateDiscount = async (e: React.FormEvent) => {
+        e.preventDefault();
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\fees\page.tsx @ 404 ====
+                setNewCategoryDesc("");
+                setNewCategoryType("REGULAR");
+                refreshSetupData();
+            } else throw new Error("Creation failed");
+        } catch (err) {
+            toast.error("Failed to create category");
+        }
+    };
+
+    const handleUpdateCategory = async (e: React.FormEvent) => {
+        e.preventDefault();
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\fees\page.tsx @ 573 ====
+                }
+            } else {
+                toast.error("Failed to fetch students");
+            }
+        } catch (error) {
+            toast.error("An error occurred while fetching students");
+        } finally {
+            setIsSearchingStudents(false);
+        }
+    };
+
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\fees\page.tsx @ 613 ====
+                if (res.ok) {
+                    setStudentFeeDetails(await res.json());
+                    setSelectedMonths([]);
+                }
+            } catch (err) {
+                toast.error("Failed to load student fees");
+            } finally {
+                setLoadingCollection(false);
+            }
+        };
+        fetchStudentFees();
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\fees\page.tsx @ 665 ====
+                setApplyOtherFeeDescription("");
+            } else {
+                throw new Error("Failed to apply fee");
+            }
+        } catch (err) {
+            toast.error("Error applying fee");
+        } finally {
+            setApplyingOtherFee(false);
+        }
+    };
+
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\fees\page.tsx @ 2742 ====
+                                        handleSearchFormStudents(e); 
+                                    } else {
+                                        throw new Error("Failed to apply discounts");
+                                    }
+                                } catch (err) {
+                                    toast.error("Error applying discounts");
+                                } finally {
+                                    setApplyingDiscounts(false);
+                                }
+                            }}>
+                                <div className="space-y-4 mb-6 max-h-96 overflow-y-auto p-4 border rounded-lg bg-slate-50">
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\notifications\new\page.tsx @ 30 ====
+  const [selectedClassId, setSelectedClassId] = useState<string>("");
+  const [selectedSectionId, setSelectedSectionId] = useState<string>("");
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  
+  const [isLoadingClasses, setIsLoadingClasses] = useState(false);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    control,
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\notifications\new\page.tsx @ 161 ====
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.message || "Failed to send notification.");
+      }
+    } catch (error) {
+      toast.error("An error occurred. Please try again.");
+    }
+  };
+
+  if (!canSendNotifications) {
+    return (
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\profile\page.tsx @ 4 ====
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\reports\page.tsx @ 29 ====
+    const [examTerms, setExamTerms] = useState<any[]>([]);
+
+    const [feeCollectionSession, setFeeCollectionSession] = useState('');
+    const [collectionStatusSession, setCollectionStatusSession] = useState('');
+    const [collectionPendingMonth, setCollectionPendingMonth] = useState((new Date().getMonth() + 1).toString());
+    const [feeAdjustmentsFromDate, setFeeAdjustmentsFromDate] = useState(new Date().toISOString().split('T')[0]);
+    const [feeAdjustmentsToDate, setFeeAdjustmentsToDate] = useState(new Date().toISOString().split('T')[0]);
+    const [waivedOffTrendSession, setWaivedOffTrendSession] = useState('');
+
+    const [selectedExamYear, setSelectedExamYear] = useState('');
+    const [selectedExamTerm, setSelectedExamTerm] = useState('');
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\reports\page.tsx @ 29 ====
+    const [examTerms, setExamTerms] = useState<any[]>([]);
+
+    const [feeCollectionSession, setFeeCollectionSession] = useState('');
+    const [collectionStatusSession, setCollectionStatusSession] = useState('');
+    const [collectionPendingMonth, setCollectionPendingMonth] = useState((new Date().getMonth() + 1).toString());
+    const [feeAdjustmentsFromDate, setFeeAdjustmentsFromDate] = useState(new Date().toISOString().split('T')[0]);
+    const [feeAdjustmentsToDate, setFeeAdjustmentsToDate] = useState(new Date().toISOString().split('T')[0]);
+    const [waivedOffTrendSession, setWaivedOffTrendSession] = useState('');
+
+    const [selectedExamYear, setSelectedExamYear] = useState('');
+    const [selectedExamTerm, setSelectedExamTerm] = useState('');
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\reports\page.tsx @ 307 ====
+        if (!receivedSessionId) {
+            toast.error('Please select an academic session');
+            return;
+        }
+        const page = pageOverride ?? receivedPage;
+        setReceivedLoading(true);
+        if (!pageOverride) {
+            setReceivedHasSearched(true);
+            setReceivedPage(1);
+        }
+        try {
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\settings\page.tsx @ 190 ====
+            } else {
+                const data = await res.json();
+                toast.error(data.message || "Failed to save holiday");
+            }
+        } catch (err) {
+            toast.error("Network error");
+        } finally {
+            setIsSavingHoliday(false);
+        }
+    };
+
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\settings\page.tsx @ 207 ====
+                mutateHolidays();
+            } else {
+                toast.error("Failed to delete holiday");
+            }
+        } catch (err) {
+            toast.error("Network error");
+        }
+    };
+
+    const handleHolidaySelectAllClasses = () => {
+        if (holidayClassIds.length === classes.length) {
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\settings\page.tsx @ 244 ====
+            } else {
+                const data = await res.json();
+                toast.error(data.message || "Failed to create session");
+            }
+        } catch (err) {
+            toast.error("Network error");
+        }
+    };
+
+    const handleSetActive = async (id: number) => {
+        try {
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\settings\page.tsx @ 271 ====
+            if (res.ok) {
+                toast.success("Active session updated!");
+                mutate();
+            }
+        } catch (err) {
+            toast.error("Network error");
+        }
+    };
+
+    const handleCreateDesignation = async (e: React.FormEvent) => {
+        e.preventDefault();
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\settings\page.tsx @ 293 ====
+            } else {
+                const data = await res.json();
+                toast.error(data.message || "Failed to create designation");
+            }
+        } catch (err) {
+            toast.error("Network error");
+        }
+    };
+
+    const handleDeleteDesignation = async (id: number) => {
+        if (!confirm("Are you sure you want to delete this designation?")) return;
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\settings\page.tsx @ 309 ====
+            } else {
+                const data = await res.json();
+                toast.error(data.message || "Failed to delete designation");
+            }
+        } catch (err) {
+            toast.error("Network error");
+        }
+    };
+
+    const handleUpdateDesignation = async (e: React.FormEvent) => {
+        e.preventDefault();
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\settings\page.tsx @ 331 ====
+            } else {
+                const data = await res.json();
+                toast.error(data.message || "Failed to update designation");
+            }
+        } catch (err) {
+            toast.error("Network error");
+        }
+    };
+
+    // --- Examination Setting Handlers ---
+    const handleCreateCategory = async (e: React.FormEvent) => {
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\settings\page.tsx @ 360 ====
+            } else {
+                const data = await res.json();
+                toast.error(data.message || "Failed to create category");
+            }
+        } catch (err) {
+            toast.error("Network error");
+        }
+    };
+
+    const handleToggleCategory = async (id: number, currentStatus: boolean) => {
+        try {
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\settings\page.tsx @ 376 ====
+            if (res.ok) {
+                toast.success("Category status updated!");
+                mutateCategories();
+            }
+        } catch (err) {
+            toast.error("Network error");
+        }
+    };
+
+    const toggleFinalResultCategory = (id: number) => {
+        if (id === selectedTargetCategoryId) {
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\settings\page.tsx @ 417 ====
+            if (res.ok) {
+                toast.success("Exam settings updated!");
+                mutateSettings();
+            }
+        } catch (err) {
+            toast.error("Network error");
+        }
+    };
+
+    const handleCreateGrading = async (e: React.FormEvent) => {
+        e.preventDefault();
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\settings\page.tsx @ 457 ====
+                const data = await res.json();
+                const errMsg = Array.isArray(data.message) ? data.message[0] : (data.message || "Failed to create grading");
+                toast.error(errMsg);
+            }
+        } catch (err) {
+            toast.error("Network error");
+        }
+    };
+
+    const handleDeleteGrading = async (id: number) => {
+        if (!confirm("Are you sure you want to delete this grading band?")) return;
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\settings\page.tsx @ 470 ====
+            if (res.ok) {
+                toast.success("Grading band deleted");
+                mutateGradingSystems();
+            }
+        } catch (err) {
+            toast.error("Network error");
+        }
+    };
+
+
+    return (
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\staff\[id]\edit\page.tsx @ 159 ====
+
+            if (classesRes.ok) setClasses(await classesRes.json());
+            if (subjectsRes.ok) setSubjects(await subjectsRes.json());
+            if (desigRes.ok) setDesignations(await desigRes.json());
+        } catch (err) {
+            setError("Failed to load data");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\staff\[id]\edit\page.tsx @ 169 ====
+
+    useEffect(() => {
+        if (!id) return;
+        fetchTeacherDetails();
+    }, [id]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const target = e.target as HTMLInputElement;
+        const value = target.type === 'checkbox' ? target.checked : target.value;
+
+        if (target.name === 'designationId' && value === 'CREATE_NEW') {
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\staff\[id]\edit\page.tsx @ 214 ====
+                toast.success("Designation created successfully");
+            } else {
+                toast.error("Failed to create designation");
+            }
+        } catch (err) {
+            toast.error("Failed to create designation");
+        }
+        setCreatingDes(false);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\staff\page.tsx @ 86 ====
+        authFetch(`${API_BASE_URL}/designations`)
+            .then(res => res.ok ? res.json() : [])
+            .then(data => setDesignations(data))
+            .catch(() => setDesignations([]));
+    }, []);
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        setPage(1);
+        fetchTeachers(1);
+    };
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\students\[id]\edit\page.tsx @ 103 ====
+                    }
+                } else {
+                    setError("Student not found");
+                }
+            } catch (err) {
+                setError("Failed to load data");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\students\[id]\promote\page.tsx @ 44 ====
+                } else {
+                    setError("Student not found");
+                }
+                setClasses(classesData);
+            } catch (err) {
+                setError("Failed to load data");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\students\new\page.tsx @ 312 ====
+                        toast.error("Student created successfully, but enrollment failed.");
+                    } else {
+                        toast.success("Student created and enrolled successfully!");
+                    }
+                } catch (enrollErr) {
+                    toast.error("Student created successfully, but enrollment failed.");
+                }
+            } else {
+                toast.success("Student created successfully!");
+            }
+
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\students\page.tsx @ 88 ====
+                setHasSearched(true);
+                setCommittedSessionId(searchSessionId);
+                setCommittedStatus(searchStatus);
+            }
+        } catch (err) {
+            toast.error("Failed to fetch students");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\students\page.tsx @ 191 ====
+                    toast.success(`Partially imported ${result.successful} students. Check errors.`);
+                    fetchStudents(1); // Refresh list
+                }
+            }
+        } catch (error) {
+            toast.error("An error occurred during bulk import");
+        } finally {
+            setBulkUploading(false);
+        }
+    };
+
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\subjects\[id]\edit\page.tsx @ 51 ====
+                    });
+                } else {
+                    setError("Subject not found");
+                }
+            } catch (err) {
+                setError("Failed to load subject data");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+==== D:\Ashish\Repos\School\sms-frontend\src\app\dashboard\subjects\new\page.tsx @ 60 ====
+            }
+
+            router.push("/dashboard/subjects");
+            router.refresh();
+        } catch (err) {
+            setError("Failed to create subject. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+==== D:\Ashish\Repos\School\sms-frontend\src\app\page.tsx @ 126 ====
+        <div className="relative z-10">
+          {/* Logo */}
+          <div className="flex items-center gap-4 mb-14">
+            <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-xl border border-white/20 p-2 hover:scale-105 transition-transform">
+              <img src="/colegios/logo.png" alt="Colegios Logo" className="w-full h-full object-contain drop-shadow-md" />
+            </a>
+            <div className="flex flex-col">
+              <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="text-white font-extrabold text-4xl tracking-tight drop-shadow-md hover:text-indigo-200 transition-colors">
+                Colegios
+              </a>
+              <a href="https://appme.in" target="_blank" rel="noopener noreferrer" className="text-indigo-100 text-sm font-bold tracking-widest drop-shadow-md mt-1 hover:text-white transition-colors">
+==== D:\Ashish\Repos\School\sms-frontend\src\app\page.tsx @ 184 ====
+          >
+            <div className="absolute inset-0 opacity-30 bg-linear-to-br from-indigo-500/20 via-purple-500/10 to-transparent" />
+            <div className="relative flex items-center gap-3 mb-4">
+              <div className="w-14 h-14 rounded-3xl bg-white/10 border border-white/10 backdrop-blur-md flex items-center justify-center shadow-lg">
+                <img src="/colegios/logo.png" alt="Colegios Logo" className="w-10 h-10 object-contain" />
+              </div>
+              <div>
+                <p className="text-white font-extrabold text-xl tracking-tight">Colegios</p>
+                <p className="text-slate-300 text-xs uppercase tracking-[0.24em]">Smart Operating System For School</p>
+              </div>
+            </div>
+==== D:\Ashish\Repos\School\sms-frontend\src\app\parent-dashboard\page.tsx @ 10 ====
+import { API_BASE_URL } from "@/lib/api";
+import { getToken, authFetch } from "@/lib/auth";
+
+export default function ParentDashboardPage() {
+    const router = useRouter();
+    const [students, setStudents] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+
+    useEffect(() => {
+        const fetchStudents = async () => {
+==== D:\Ashish\Repos\School\sms-frontend\src\app\parent-dashboard\profile\page.tsx @ 149 ====
+            } else {
+                const data = await res.json().catch(() => ({}));
+                setLogoutError(data.message || "Failed to log out device. Please try again.");
+            }
+        } catch (err: any) {
+            setLogoutError("Network error. Please check your connection and try again.");
+        } finally {
+            setLogoutingDevices(prev => { const s = new Set(prev); s.delete(sessionId); return s; });
+        }
+    };
+
+==== D:\Ashish\Repos\School\sms-frontend\src\app\parent-dashboard\profile\page.tsx @ 172 ====
+                const data = await res.json().catch(() => ({}));
+                setLogoutError(data.message || "Failed to log out of all devices. Please try again.");
+                setLogoutingAll(false);
+            }
+        } catch (err: any) {
+            setLogoutError("Network error. Please check your connection and try again.");
+            setLogoutingAll(false);
+        }
+    };
+
+    if (!user) return null;
+==== D:\Ashish\Repos\School\sms-frontend\src\app\parent-dashboard\student\[id]\page.tsx @ 84 ====
+            setAcademicYearString(activeSessionStr);
+
+        } catch (err) { console.error(err); }
+        finally { setLoading(false); }
+    }, [studentId]);
+
+    useEffect(() => { loadInitialInfo(); }, [loadInitialInfo]);
+
+    const fetchFees = useCallback(async () => {
+        if (!academicYearString) {
+            setSectionLoading(false);
+==== D:\Ashish\Repos\School\sms-frontend\src\app\parent-dashboard\student\[id]\page.tsx @ 99 ====
+            const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/fees?academicYear=${academicYearString}`, { headers: authHeaders });
+            if (res.ok) setFees(await res.json());
+        } catch (err) { console.error(err); }
+        finally { setSectionLoading(false); }
+    }, [studentId, academicYearString]);
+
+    const fetchAttendance = useCallback(async () => {
+        setSectionLoading(true);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/attendance?year=${currentYear}&month=${currentMonth}`, { headers: authHeaders });
+            if (res.ok) setAttendance(await res.json());
+==== D:\Ashish\Repos\School\sms-frontend\src\app\parent-dashboard\student\[id]\page.tsx @ 108 ====
+            const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/attendance?year=${currentYear}&month=${currentMonth}`, { headers: authHeaders });
+            if (res.ok) setAttendance(await res.json());
+        } catch (err) { console.error(err); }
+        finally { setSectionLoading(false); }
+    }, [studentId, currentYear, currentMonth]);
+
+    const fetchExamResults = useCallback(async () => {
+        if (!academicSessionId) {
+            setSectionLoading(false);
+            return;
+        }
+==== D:\Ashish\Repos\School\sms-frontend\src\app\parent-dashboard\student\[id]\page.tsx @ 121 ====
+            const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/exam-results?sessionId=${academicSessionId}`, { headers: authHeaders });
+            if (res.ok) setExamResults(await res.json());
+        } catch (err) { console.error(err); }
+        finally { setSectionLoading(false); }
+    }, [studentId, academicSessionId]);
+
+    const fetchHolidays = useCallback(async () => {
+        setSectionLoading(true);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/holidays`, { headers: authHeaders });
+            if (res.ok) setHolidays(await res.json());
+==== D:\Ashish\Repos\School\sms-frontend\src\app\parent-dashboard\student\[id]\page.tsx @ 130 ====
+            const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/holidays`, { headers: authHeaders });
+            if (res.ok) setHolidays(await res.json());
+        } catch (err) { console.error(err); }
+        finally { setSectionLoading(false); }
+    }, [studentId]);
+
+    // Unconditionally refetch data whenever tab changes or prerequisites change
+    useEffect(() => {
+        if (activeSection === "fees") fetchFees();
+        else if (activeSection === "attendance") fetchAttendance();
+        else if (activeSection === "results") fetchExamResults();
+==== D:\Ashish\Repos\School\sms-frontend\src\app\parent-dashboard\student\[id]\page.tsx @ 178 ====
+
+    const processPayment = async () => {
+        setPayProcessing(true);
+        try {
+            const amount = selectedMonths2Pay.reduce((sum, key) => {
+                const m = allDueItems.find((x: any) => x.key === key);
+                return sum + (m ? m.amount : 0);
+            }, 0);
+
+            // Compute total base fee and discount for the selected months from the unified API data
+            let baseFeeAmount = 0;
+==== D:\Ashish\Repos\School\sms-frontend\src\app\parent-dashboard\student\[id]\page.tsx @ 184 ====
+                return sum + (m ? m.amount : 0);
+            }, 0);
+
+            // Compute total base fee and discount for the selected months from the unified API data
+            let baseFeeAmount = 0;
+            let discountAmount = 0;
+            let lateFeeTotal = 0;
+            const discountNames: string[] = [];
+
+            selectedMonths2Pay.forEach(key => {
+                const m = allDueItems.find((x: any) => x.key === key);
+==== D:\Ashish\Repos\School\sms-frontend\src\app\parent-dashboard\student\[id]\page.tsx @ 185 ====
+            }, 0);
+
+            // Compute total base fee and discount for the selected months from the unified API data
+            let baseFeeAmount = 0;
+            let discountAmount = 0;
+            let lateFeeTotal = 0;
+            const discountNames: string[] = [];
+
+            selectedMonths2Pay.forEach(key => {
+                const m = allDueItems.find((x: any) => x.key === key);
+                if (m) {
+==== D:\Ashish\Repos\School\sms-frontend\src\app\parent-dashboard\student\[id]\page.tsx @ 186 ====
+
+            // Compute total base fee and discount for the selected months from the unified API data
+            let baseFeeAmount = 0;
+            let discountAmount = 0;
+            let lateFeeTotal = 0;
+            const discountNames: string[] = [];
+
+            selectedMonths2Pay.forEach(key => {
+                const m = allDueItems.find((x: any) => x.key === key);
+                if (m) {
+                    baseFeeAmount += m.baseFee || 0;
+==== D:\Ashish\Repos\School\sms-frontend\src\app\register-parent\page.tsx @ 7 ====
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { API_BASE_URL } from "@/lib/api";
+import { setToken, setTokens } from "@/lib/auth";
+
+type Step = "mobile" | "otp" | "students" | "details";
+
+export default function RegisterParentPage() {
+    const router = useRouter();
+
+==== D:\Ashish\Repos\School\sms-frontend\src\components\Examinations\StudentResultModal.tsx @ 150 ====
+            toast.success("Marks updated successfully!");
+            setIsEditMode(false);
+            mutateMarks();
+            onSave?.();
+        } catch (err) {
+            toast.error("Failed to update marks");
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/50 backdrop-blur-sm">
