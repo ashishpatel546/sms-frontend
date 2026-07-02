@@ -129,6 +129,8 @@ export default function StudentDashboardPage() {
     const [selectedMonths2Pay, setSelectedMonths2Pay] = useState<string[]>([]);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [payProcessing, setPayProcessing] = useState(false);
+    // School feature flag: when false, the online payment gateway (Razorpay) is hidden
+    const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
     const [showReceipt, setShowReceipt] = useState<any>(null);
     const [showReceiptsListModal, setShowReceiptsListModal] = useState<{ feeMonth: string, payments: any[], adjustments: any[], balanceRemaining: number, totalDue?: number, studentName?: string, studentClass?: string, studentSection?: string } | null>(null);
 
@@ -138,10 +140,11 @@ export default function StudentDashboardPage() {
         setLoading(true);
         try {
             // First load sessions, info, and sibling list in parallel
-            const [infoRes, sessionsRes, siblingsRes] = await Promise.all([
+            const [infoRes, sessionsRes, siblingsRes, featuresRes] = await Promise.all([
                 authFetch(`${API_BASE_URL}/parent/student/${studentId}/info`, { headers: authHeaders }),
                 authFetch(`${API_BASE_URL}/parent/academic-sessions`, { headers: authHeaders }),
                 authFetch(`${API_BASE_URL}/parent/my-students`, { headers: authHeaders }),
+                authFetch(`${API_BASE_URL}/school/features`, { headers: authHeaders }),
             ]);
 
             let infoData = null;
@@ -159,6 +162,10 @@ export default function StudentDashboardPage() {
                 const allStudents = await siblingsRes.json();
                 // Only show switcher when there are 2+ students
                 setSiblings(allStudents.length > 1 ? allStudents : []);
+            }
+            if (featuresRes.ok) {
+                const features = await featuresRes.json();
+                setOnlinePaymentEnabled(features?.['online_fee_payment'] === true);
             }
 
             setInfo(infoData);
@@ -359,6 +366,7 @@ export default function StudentDashboardPage() {
     };
 
     const processPayment = async (keysOverride?: string[], itemsOverride?: any[]) => {
+        if (!onlinePaymentEnabled) return;
         const keys = keysOverride ?? selectedMonths2Pay;
         const items = itemsOverride ?? allDueItems;
         setPayProcessing(true);
@@ -705,7 +713,7 @@ export default function StudentDashboardPage() {
                                     <span className="w-2 h-2 rounded-full bg-red-400 inline-block"></span>
                                     Pending Dues ({allDueItems.length})
                                 </h2>
-                                {allDueItems.length > 0 && (
+                                {onlinePaymentEnabled && allDueItems.length > 0 && (
                                     <button onClick={() => setSelectedMonths2Pay(allDueItems.map((m: any) => m.key))} className="text-xs text-brand hover:text-brand-light font-medium">
                                         Select All
                                     </button>
@@ -724,13 +732,15 @@ export default function StudentDashboardPage() {
                                     {dueOneTimeFee && (() => {
                                         const m = dueOneTimeFee;
                                         return (
-                                            <div key={m.key} className={`flex flex-col p-3 rounded-xl transition-all border ${selectedMonths2Pay.includes(m.key) ? "bg-indigo-600/20 border-indigo-500/50 cursor-pointer" : m.status === 'PARTIAL' ? "bg-yellow-500/5 border-yellow-500/30 hover:border-yellow-500/50 cursor-pointer" : "bg-amber-500/5 border-amber-500/30 hover:border-amber-500/50 cursor-pointer"}`}>
-                                                <label className="flex justify-between items-center cursor-pointer w-full">
+                                            <div key={m.key} className={`flex flex-col p-3 rounded-xl transition-all border ${selectedMonths2Pay.includes(m.key) ? "bg-indigo-600/20 border-indigo-500/50" : m.status === 'PARTIAL' ? "bg-yellow-500/5 border-yellow-500/30" : "bg-amber-500/5 border-amber-500/30"} ${onlinePaymentEnabled ? "cursor-pointer hover:border-amber-500/50" : ""}`}>
+                                                <label className={`flex justify-between items-center w-full ${onlinePaymentEnabled ? "cursor-pointer" : ""}`}>
                                                     <div className="flex items-center gap-3">
-                                                        <input type="checkbox"
-                                                            checked={selectedMonths2Pay.includes(m.key)}
-                                                            onChange={() => toggleMonthPay(m.key)}
-                                                            className="w-4 h-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-white bg-slate-100" />
+                                                        {onlinePaymentEnabled && (
+                                                            <input type="checkbox"
+                                                                checked={selectedMonths2Pay.includes(m.key)}
+                                                                onChange={() => toggleMonthPay(m.key)}
+                                                                className="w-4 h-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-white bg-slate-100" />
+                                                        )}
                                                         <div>
                                                             <span className="text-amber-700 text-sm font-semibold">{m.label}</span>
                                                             <span className="ml-2 text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold uppercase tracking-wider">Annual</span>
@@ -813,13 +823,15 @@ export default function StudentDashboardPage() {
 
                                     {/* Monthly dues */}
                                     {dueMonths.map((m: any) => (
-                                        <div key={m.key} className={`flex flex-col p-3 rounded-xl transition-all border ${selectedMonths2Pay.includes(m.key) ? "bg-indigo-600/20 border-indigo-500/50 cursor-pointer" : m.status === 'PARTIAL' ? "bg-yellow-500/5 border-yellow-500/30 hover:border-yellow-500/50 cursor-pointer" : "bg-slate-100/60 border-slate-200/50 hover:border-slate-300 cursor-pointer"}`}>
-                                            <label className="flex justify-between items-center cursor-pointer w-full">
+                                        <div key={m.key} className={`flex flex-col p-3 rounded-xl transition-all border ${selectedMonths2Pay.includes(m.key) ? "bg-indigo-600/20 border-indigo-500/50" : m.status === 'PARTIAL' ? "bg-yellow-500/5 border-yellow-500/30" : "bg-slate-100/60 border-slate-200/50"} ${onlinePaymentEnabled ? "cursor-pointer hover:border-slate-300" : ""}`}>
+                                            <label className={`flex justify-between items-center w-full ${onlinePaymentEnabled ? "cursor-pointer" : ""}`}>
                                                 <div className="flex items-center gap-3">
-                                                    <input type="checkbox"
-                                                        checked={selectedMonths2Pay.includes(m.key)}
-                                                        onChange={() => toggleMonthPay(m.key)}
-                                                        className="w-4 h-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-white bg-slate-100" />
+                                                    {onlinePaymentEnabled && (
+                                                        <input type="checkbox"
+                                                            checked={selectedMonths2Pay.includes(m.key)}
+                                                            onChange={() => toggleMonthPay(m.key)}
+                                                            className="w-4 h-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-white bg-slate-100" />
+                                                    )}
                                                     <span className="text-ink text-sm font-medium">{m.label}</span>
                                                 </div>
                                                 <div className="flex items-center gap-3">
@@ -903,8 +915,18 @@ export default function StudentDashboardPage() {
                                 </div>
                             )}
 
+                            {/* Notice when online payment is disabled for the school */}
+                            {!onlinePaymentEnabled && allDueItems.length > 0 && (
+                                <div className="mt-4 pt-4 border-t border-slate-200">
+                                    <div className="flex items-start gap-2 p-3 bg-sky-500/5 border border-sky-500/20 rounded-xl">
+                                        <span className="text-sm">ℹ️</span>
+                                        <p className="text-sky-700 text-xs">Online payment is not available. Please pay at the school office.</p>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Pay button pinned to bottom */}
-                            {selectedMonths2Pay.length > 0 && (
+                            {onlinePaymentEnabled && selectedMonths2Pay.length > 0 && (
                                 <div className="mt-4 pt-4 border-t border-slate-200">
                                     <div className="flex items-center justify-between mb-3 text-sm">
                                         <span className="text-slate-400">Selected ({selectedMonths2Pay.length} item{selectedMonths2Pay.length !== 1 ? 's' : ''})</span>
@@ -2056,6 +2078,7 @@ export default function StudentDashboardPage() {
                 onClose={() => setShowFeesSheet(false)}
                 academicYearString={academicYearString}
                 studentInfo={info}
+                paymentEnabled={onlinePaymentEnabled}
                 onInitiatePayment={(keys, items) => processPayment(keys, items)}
                 onViewReceipt={(data) => setShowReceipt(data)}
                 onViewReceiptsList={(data) => setShowReceiptsListModal({

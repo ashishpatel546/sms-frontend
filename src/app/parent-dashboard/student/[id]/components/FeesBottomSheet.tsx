@@ -13,6 +13,8 @@ interface FeesBottomSheetProps {
     onViewReceiptsList: (data: { feeMonth: string; payments: any[]; adjustments: any[]; balanceRemaining: number; totalDue?: number }) => void;
     onViewFull: () => void;
     studentInfo: { firstName: string; lastName: string; className?: string; sectionName?: string };
+    /** School feature flag: when false, the online payment gateway is hidden */
+    paymentEnabled: boolean;
 }
 
 export default function FeesBottomSheet({
@@ -25,6 +27,7 @@ export default function FeesBottomSheet({
     onViewReceiptsList,
     onViewFull,
     studentInfo,
+    paymentEnabled,
 }: FeesBottomSheetProps) {
     const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
 
@@ -173,12 +176,14 @@ export default function FeesBottomSheet({
                                                     {allDueItems.length}
                                                 </span>
                                             </p>
-                                            <button
-                                                onClick={toggleAll}
-                                                className="text-xs font-medium text-brand hover:underline"
-                                            >
-                                                {allSelected ? "Deselect All" : "Select All"}
-                                            </button>
+                                            {paymentEnabled && (
+                                                <button
+                                                    onClick={toggleAll}
+                                                    className="text-xs font-medium text-brand hover:underline"
+                                                >
+                                                    {allSelected ? "Deselect All" : "Select All"}
+                                                </button>
+                                            )}
                                         </div>
 
                                         <div className="space-y-2">
@@ -187,17 +192,19 @@ export default function FeesBottomSheet({
                                                 return (
                                                     <label
                                                         key={item.key}
-                                                        className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${isSelected
+                                                        className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all ${isSelected
                                                             ? "bg-brand/5 border-brand/30 shadow-sm"
-                                                            : "bg-slate-50 border-slate-200 hover:border-slate-300"
-                                                        }`}
+                                                            : "bg-slate-50 border-slate-200"
+                                                        } ${paymentEnabled ? "cursor-pointer hover:border-slate-300" : ""}`}
                                                     >
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={isSelected}
-                                                            onChange={() => toggleKey(item.key)}
-                                                            className="mt-0.5 w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand shrink-0"
-                                                        />
+                                                        {paymentEnabled && (
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isSelected}
+                                                                onChange={() => toggleKey(item.key)}
+                                                                className="mt-0.5 w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand shrink-0"
+                                                            />
+                                                        )}
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex items-center justify-between gap-2">
                                                                 <span className="text-sm font-semibold text-slate-800 truncate">
@@ -238,8 +245,16 @@ export default function FeesBottomSheet({
                                             })}
                                         </div>
 
+                                        {/* Notice when online payment is disabled for the school */}
+                                        {!paymentEnabled && (
+                                            <div className="flex items-start gap-2 p-3 bg-sky-50 border border-sky-200 rounded-xl">
+                                                <span className="text-sm">ℹ️</span>
+                                                <p className="text-sky-700 text-xs">Online payment is not available. Please pay at the school office.</p>
+                                            </div>
+                                        )}
+
                                         {/* Payment summary when items selected */}
-                                        {selectedKeys.length > 0 && (
+                                        {paymentEnabled && selectedKeys.length > 0 && (
                                             <div className="bg-brand/5 border border-brand/20 rounded-2xl p-4">
                                                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
                                                     Payment Summary
@@ -297,7 +312,7 @@ export default function FeesBottomSheet({
 
                 {/* Footer CTA */}
                 <div className="shrink-0 px-5 pb-10 pt-3 border-t border-slate-100 space-y-2 bg-white">
-                    {selectedKeys.length > 0 ? (
+                    {paymentEnabled && selectedKeys.length > 0 ? (
                         <button
                             onClick={() => {
                                 onInitiatePayment(selectedKeys, allDueItems);
