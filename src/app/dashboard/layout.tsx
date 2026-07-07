@@ -21,7 +21,13 @@ function QuickActionsSheet({ open, onClose }: { open: boolean; onClose: () => vo
     const { pinned, togglePin } = usePinnedActions();
 
     type Tile = { label: string; href: string; icon: LucideIcon; color: string; bg: string };
-    const tiles: Tile[] = [
+    // GUARD gets a minimal, gate-focused set — no student/fee/homework actions
+    const tiles: Tile[] = rbac.isGuard ? [
+        { label: 'Scan QR',       href: '/dashboard/pickup/scan',  icon: QrCode,        color: 'text-teal-700 dark:text-teal-300',    bg: 'bg-teal-50 dark:bg-teal-950/40 border-teal-100 dark:border-teal-900/50' },
+        { label: 'Visitors',      href: '/dashboard/visitors',     icon: Users,         color: 'text-cyan-700 dark:text-cyan-300',    bg: 'bg-cyan-50 dark:bg-cyan-950/40 border-cyan-100 dark:border-cyan-900/50' },
+        { label: 'My Attendance', href: '/dashboard/my-attendance', icon: Clock,        color: 'text-amber-700 dark:text-amber-300',  bg: 'bg-amber-50 dark:bg-amber-950/40 border-amber-100 dark:border-amber-900/50' },
+        { label: 'Notifications', href: '/dashboard/notifications', icon: Bell,         color: 'text-sky-700 dark:text-sky-300',      bg: 'bg-sky-50 dark:bg-sky-950/40 border-sky-100 dark:border-sky-900/50' },
+    ] : [
         { label: 'Take Attendance', href: '/dashboard/attendance',    icon: CalendarCheck, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900/50' },
         { label: 'Notifications',   href: '/dashboard/notifications', icon: Bell,          color: 'text-sky-700 dark:text-sky-300',         bg: 'bg-sky-50 dark:bg-sky-950/40 border-sky-100 dark:border-sky-900/50' },
         { label: 'Homework',        href: '/dashboard/homework',      icon: Pencil,        color: 'text-pink-700 dark:text-pink-300',       bg: 'bg-pink-50 dark:bg-pink-950/40 border-pink-100 dark:border-pink-900/50' },
@@ -30,6 +36,7 @@ function QuickActionsSheet({ open, onClose }: { open: boolean; onClose: () => vo
         ...(rbac.canAccessFees     ? [{ label: 'Collect Fee',  href: '/dashboard/fees',         icon: IndianRupee,   color: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-50 dark:bg-purple-950/40 border-purple-100 dark:border-purple-900/50' }] : []),
         ...(rbac.canManageTeachers ? [{ label: 'Add Staff',    href: '/dashboard/staff/new',    icon: Users,         color: 'text-orange-700 dark:text-orange-300', bg: 'bg-orange-50 dark:bg-orange-950/40 border-orange-100 dark:border-orange-900/50' }] : []),
         ...(rbac.isTeacher         ? [{ label: 'Scan QR',      href: '/dashboard/pickup/scan',  icon: QrCode,        color: 'text-teal-700 dark:text-teal-300',     bg: 'bg-teal-50 dark:bg-teal-950/40 border-teal-100 dark:border-teal-900/50' }] : []),
+        ...(rbac.isTeacher         ? [{ label: 'Visitors',     href: '/dashboard/visitors',     icon: Users,         color: 'text-cyan-700 dark:text-cyan-300',     bg: 'bg-cyan-50 dark:bg-cyan-950/40 border-cyan-100 dark:border-cyan-900/50' }] : []),
         ...(rbac.isAdmin           ? [{ label: 'Reports',      href: '/dashboard/reports',      icon: BarChart2,     color: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100 dark:border-indigo-900/50' }] : []),
         ...(rbac.canAccessHRSelfService ? [{ label: 'My Attendance', href: '/dashboard/my-attendance', icon: Clock, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-950/40 border-amber-100 dark:border-amber-900/50' }] : []),
     ];

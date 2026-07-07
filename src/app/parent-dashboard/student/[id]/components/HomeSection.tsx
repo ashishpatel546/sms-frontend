@@ -124,7 +124,7 @@ export const HomeSection = ({ studentId, academicYearString, sessionId, onChange
       <div>
         <p className="text-sm font-semibold text-ink mb-3 px-1">Quick Actions</p>
         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-          <ActionChip title="Pickup QR" icon="📱" onClick={() => onChangeSection("pickup")} />
+          <ActionChip title="QR Codes" icon="📱" onClick={() => onChangeSection("pickup")} />
           <ActionChip title="Apply Leave" icon="📅" onClick={() => onChangeSection("leaves")} />
           <ActionChip title="Homework" icon="📚" onClick={() => onChangeSection("homework")} />
           <ActionChip title="Pay Fees" icon="💳" onClick={() => onChangeSection("fees")} />

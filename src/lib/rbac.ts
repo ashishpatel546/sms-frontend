@@ -13,6 +13,7 @@ const ROLE_LEVEL: Record<string, number> = {
   SUB_ADMIN: 60,
   LIBRARIAN: 50,
   TEACHER: 40,
+  GUARD: 30,
   PARENT: 20,
   STUDENT: 10,
 };
@@ -83,6 +84,15 @@ export interface RbacPermissions {
   canManageLibrary: boolean;
   /** AI Tools: student-facing AI (STUDENT, PARENT) */
   isStudent: boolean;
+
+  /** Visitor management: is the user a GUARD specifically (restricted dashboard) */
+  isGuard: boolean;
+  /** Visitor management: scan/allow/exit/list (GUARD+) */
+  canManageVisitors: boolean;
+  /** Visitor management: CSV export + settings visibility (SUB_ADMIN+) */
+  canExportVisitors: boolean;
+  /** Visitor management settings (SUPER_ADMIN only) */
+  canManageVisitorSettings: boolean;
 }
 
 /**
@@ -130,7 +140,8 @@ export function useRbac(): RbacPermissions {
 
     canManageEnrollments: level >= 60,
 
-    canAccessHRSelfService: level >= 40,
+    // GUARD is staff too — needs self check-in / my-attendance
+    canAccessHRSelfService: level >= 30,
     canAccessHR: level >= 70,
     canManageHR: level >= 70,
     canManagePayroll: level >= 70,
@@ -143,5 +154,10 @@ export function useRbac(): RbacPermissions {
       'SYSTEM_ADMIN',
     ].includes(user?.role ?? ''),
     isStudent: user?.role === 'STUDENT' || user?.role === 'PARENT',
+
+    isGuard: user?.role === 'GUARD',
+    canManageVisitors: level >= 30,
+    canExportVisitors: level >= 60,
+    canManageVisitorSettings: level >= 100,
   };
 }

@@ -144,9 +144,11 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                 {/* ── Scrollable nav area ────────────────────────────── */}
                 <nav className="flex-1 overflow-y-auto py-2 px-2 no-scrollbar" aria-label="Main navigation">
                     {NAV_CONFIG.map((group, gi) => {
-                        const visibleItems = group.items.filter(item =>
-                            !item.rbacKey || Boolean((rbac as any)[item.rbacKey])
-                        );
+                        const visibleItems = group.items.filter(item => {
+                            // GUARD is deny-by-default: only explicitly flagged items appear
+                            if (rbac.isGuard) return item.guardAllowed === true;
+                            return !item.rbacKey || Boolean((rbac as any)[item.rbacKey]);
+                        });
                         if (!visibleItems.length) return null;
 
                         // Shared item renderer to avoid duplication
