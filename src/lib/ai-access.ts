@@ -17,6 +17,10 @@ export interface AiAccess {
   features: Record<string, boolean>;
   roles: string[]; // AI platform roles: 'teacher' | 'student'
   featureRoles: Record<string, string[]>; // feature → allowed roles (hub-configurable)
+  /** True when the status check itself failed (AI service unreachable / bad
+   *  response) — the user's plan is UNKNOWN, not absent. Gates must show a
+   *  connection error, never the "subscribe" upsell. */
+  unreachable: boolean;
 }
 
 const CACHE_KEY = 'ai_access_v2';
@@ -56,6 +60,7 @@ const DEFAULT: AiAccess = {
   features: {},
   roles: [],
   featureRoles: {},
+  unreachable: false,
 };
 
 export function useAiAccess(): AiAccess & { refetch: () => void } {
@@ -74,7 +79,10 @@ export function useAiAccess(): AiAccess & { refetch: () => void } {
       .then((headers) =>
         fetch(`${getAiBackendUrl()}/api/v1/subscription/status`, { headers }),
       )
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`subscription status ${r.status}`);
+        return r.json();
+      })
       .then((json) => {
         const raw = json?.data ?? json;
         const result: AiAccess = {
@@ -85,12 +93,15 @@ export function useAiAccess(): AiAccess & { refetch: () => void } {
           features: raw.plan?.features ?? {},
           roles: raw.roles ?? [],
           featureRoles: raw.feature_roles ?? {},
+          unreachable: false,
         };
         writeCache(result);
         setAccess(result);
       })
       .catch(() => {
-        setAccess({ ...DEFAULT, loading: false });
+        // Couldn't determine the plan (AI service down/unreachable from this
+        // device, or auth failed). Never cached — the next mount retries.
+        setAccess({ ...DEFAULT, loading: false, unreachable: true });
       });
   }, [retryCount]);
 

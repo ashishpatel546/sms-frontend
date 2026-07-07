@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Table from "../../../components/Table";
 import useSWR from "swr";
-import { fetcher } from "@/lib/api";
+import { fetcher, API_BASE_URL } from "@/lib/api";
+import { authFetch } from "@/lib/auth";
+import toast, { Toaster } from "react-hot-toast";
 import { Loader } from "@/components/ui/Loader";
 import { useRbac } from "@/lib/rbac";
 
@@ -20,8 +22,31 @@ export default function ClassesPage() {
     const [filters, setFilters] = useState({ className: "", sectionName: "" });
 
     // Conditional Fetching
-    const { data, error, isLoading } = useSWR(hasSearched ? '/classes' : null, fetcher);
+    const { data, error, isLoading, mutate } = useSWR(hasSearched ? '/classes' : null, fetcher);
     const [tableData, setTableData] = useState<any[]>([]);
+    const [deletingClassId, setDeletingClassId] = useState<number | null>(null);
+
+    const handleDeleteClass = async (classId: number, className: string) => {
+        if (!confirm(
+            `Delete class "${className}"?\n\nThis removes the class and its section links. ` +
+            `Deletion is refused if any students, attendance, exams, fees or other records are linked to it.`
+        )) return;
+        setDeletingClassId(classId);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/classes/${classId}`, { method: "DELETE" });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body?.message ?? "Failed to delete class");
+            }
+            toast.success(`Class "${className}" deleted`);
+            mutate(); // refresh the list
+        } catch (e: any) {
+            // 409 messages explain exactly which records are still linked
+            toast.error(e?.message ?? "Failed to delete class", { duration: 8000 });
+        } finally {
+            setDeletingClassId(null);
+        }
+    };
 
     useEffect(() => {
         if (data) {
@@ -108,12 +133,23 @@ export default function ClassesPage() {
         {
             header: "Action",
             render: (row: any) => rbac.canManageSections ? (
-                <Link
-                    href={`/dashboard/classes/${row.classId}/edit`}
-                    className="font-medium text-blue-600 hover:underline"
-                >
-                    Edit
-                </Link>
+                <div className="flex items-center gap-3">
+                    <Link
+                        href={`/dashboard/classes/${row.classId}/edit`}
+                        className="font-medium text-blue-600 hover:underline"
+                    >
+                        Edit
+                    </Link>
+                    {rbac.isSuperAdmin && (
+                        <button
+                            onClick={() => handleDeleteClass(row.classId, row.className)}
+                            disabled={deletingClassId === row.classId}
+                            className="font-medium text-red-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {deletingClassId === row.classId ? "Deleting…" : "Delete"}
+                        </button>
+                    )}
+                </div>
             ) : (
                 <span className="text-xs text-slate-400">View only</span>
             )
@@ -122,6 +158,7 @@ export default function ClassesPage() {
 
     return (
         <main className="p-4 bg-slate-50 min-h-screen">
+            <Toaster />
             <div className="max-w-7xl mx-auto">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                     <h1 className="text-2xl font-bold text-slate-800">Classes Management</h1>
