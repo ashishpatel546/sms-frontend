@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getUser, resetRefreshState, isTokenExpired, silentRefresh } from "@/lib/auth";
+import { getUser, resetRefreshState, silentRefresh } from "@/lib/auth";
 import { TopBar } from "@/components/dashboard/TopBar";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { BottomTabBar } from "@/components/dashboard/BottomTabBar";
@@ -101,13 +101,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     // ── Auth bootstrap ──────────────────────────────────────────────────────
     useEffect(() => {
         const initAuth = async () => {
-            const u = getUser();
+            let u = getUser();
             if (!u) { router.replace("/"); return; }
             if (u.mustChangePassword) { router.replace("/change-password"); return; }
             if (u.role === "PARENT") { router.replace("/parent-dashboard"); return; }
-            if (isTokenExpired()) {
-                try { await silentRefresh(); } catch { /* transient — ignore */ }
-            }
+            // Always refresh the access token on dashboard load — the backend
+            // re-reads the user from the DB, so role changes made by an admin
+            // (e.g. promotion to HR_ADMIN) take effect on the next page load
+            // instead of only after logout/login (tokens live 7 days).
+            try {
+                if (await silentRefresh()) u = getUser() ?? u;
+            } catch { /* transient network error — keep the current token */ }
+            if (!u) { router.replace("/"); return; }
             setUser(u);
         };
         initAuth();

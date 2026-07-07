@@ -24,6 +24,12 @@ const ROLE_LABELS: Record<string, { label: string; color: string }> = {
 
 const ALL_ROLES = ["", "SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "HR_ADMIN", "TEACHER", "PARENT", "STUDENT"];
 
+// Roles a super admin may assign from the panel. SUPER_ADMIN is deliberately
+// excluded — it can only be provisioned out-of-band, so a mis-click can never
+// create an unremovable super admin. Demoting an existing SUPER_ADMIN is
+// allowed (backend enforces: not yourself, at least one must remain).
+const ASSIGNABLE_ROLES = ["ADMIN", "SUB_ADMIN", "HR_ADMIN", "TEACHER"];
+
 export default function AdminPanel() {
     const router = useRouter();
     const currentUser = getUser();
@@ -233,7 +239,7 @@ export default function AdminPanel() {
         setViewModalLoading(true);
         setOpenDropdownId(null);
         // Only staff roles have a Staff record — try to load it
-        if (["SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "TEACHER"].includes(user.role)) {
+        if (["SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "HR_ADMIN", "TEACHER"].includes(user.role)) {
             try {
                 const res = await authFetch(`${API_BASE_URL}/staff/by-user/${user.id}`, { headers: authHeaders });
                 if (res.ok) setViewModalStaff(await res.json());
@@ -243,9 +249,6 @@ export default function AdminPanel() {
     };
 
     const isSuperAdmin = currentUser?.role === "SUPER_ADMIN";
-    const editableRoles = isSuperAdmin
-        ? ["ADMIN", "SUB_ADMIN", "TEACHER"]
-        : ["SUB_ADMIN", "TEACHER"];
 
     return (
         <main className="p-4 sm:p-6 max-w-7xl mx-auto">
@@ -403,7 +406,7 @@ export default function AdminPanel() {
                                                     {user.mobile && <div className="text-xs text-slate-400">{user.mobile}</div>}
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    {(user.role === "SUPER_ADMIN" || !isSuperAdmin) ? (
+                                                    {(!isSuperAdmin || user.id === currentUser?.sub) ? (
                                                         <span className={`px-2.5 py-1 text-xs font-medium rounded-full border ${ROLE_LABELS[user.role]?.color || "bg-slate-100 text-slate-500"}`}>
                                                             {ROLE_LABELS[user.role]?.label || user.role}
                                                         </span>
@@ -413,7 +416,11 @@ export default function AdminPanel() {
                                                             onChange={e => handleRoleChange(user.id, e.target.value)}
                                                             className="text-xs bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                                                         >
-                                                            {ALL_ROLES.filter(r => r).map(r => (
+                                                            {/* Current role stays visible even when it is not assignable (e.g. SUPER_ADMIN, PARENT) */}
+                                                            {!ASSIGNABLE_ROLES.includes(user.role) && (
+                                                                <option value={user.role} disabled>{ROLE_LABELS[user.role]?.label || user.role}</option>
+                                                            )}
+                                                            {ASSIGNABLE_ROLES.map(r => (
                                                                 <option key={r} value={r}>{ROLE_LABELS[r]?.label || r}</option>
                                                             ))}
                                                         </select>
