@@ -588,19 +588,21 @@ export default function LeavesPage() {
                                             </td>
                                             <td className="px-4 py-3 text-xs">{leave.leaveDuration === "HALF_DAY" ? "Half Day" : "Full Day"}</td>
                                             <td className="px-4 py-3">
-                                                <span className={`text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap ${STATUS_STYLES[leave.status]}`}>
-                                                    {STATUS_LABELS[leave.status]}
-                                                </span>
-                                                {leave.isActionRequired && (
-                                                    <span className="ml-1.5 text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200 font-medium">
-                                                        ⚠ Action Needed
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap ${STATUS_STYLES[leave.status]}`}>
+                                                        {STATUS_LABELS[leave.status]}
                                                     </span>
-                                                )}
-                                                {leave.documents && leave.documents.length > 0 && (
-                                                    <span className="ml-1.5 text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200 font-medium">
-                                                        📎 {leave.documents.length}
-                                                    </span>
-                                                )}
+                                                    {leave.isActionRequired && (
+                                                        <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200 font-medium whitespace-nowrap">
+                                                            ⚠ Action Needed
+                                                        </span>
+                                                    )}
+                                                    {leave.documents && leave.documents.length > 0 && (
+                                                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200 font-medium whitespace-nowrap">
+                                                            📎 {leave.documents.length}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
                                                 {new Date(leave.createdAt).toLocaleDateString()}
