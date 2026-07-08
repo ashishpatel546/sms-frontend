@@ -13,6 +13,7 @@ const ROLE_LEVEL: Record<string, number> = {
   SUB_ADMIN: 60,
   LIBRARIAN: 50,
   TEACHER: 40,
+  GUARD: 30,
   PARENT: 20,
   STUDENT: 10,
 };
@@ -69,11 +70,11 @@ export interface RbacPermissions {
 
   /** HR Portal: view own attendance/leaves/salary (TEACHER+) */
   canAccessHRSelfService: boolean;
-  /** HR Portal: manage staff attendance, leaves, policies (HR_ADMIN+) */
+  /** HR Portal: manage staff attendance, leaves, policies (HR_ADMIN or SUPER_ADMIN only) */
   canAccessHR: boolean;
-  /** HR Portal: manage attendance zones, policies, salary config (HR_ADMIN+) */
+  /** HR Portal: manage attendance zones, policies, salary config (HR_ADMIN or SUPER_ADMIN only) */
   canManageHR: boolean;
-  /** HR Portal: generate/finalize payroll (ADMIN+) */
+  /** HR Portal: generate/finalize payroll (HR_ADMIN drafts, ADMIN+ finalizes) */
   canManagePayroll: boolean;
   /** HR Portal: is the user an HR_ADMIN specifically */
   isHrAdmin: boolean;
@@ -83,6 +84,15 @@ export interface RbacPermissions {
   canManageLibrary: boolean;
   /** AI Tools: student-facing AI (STUDENT, PARENT) */
   isStudent: boolean;
+
+  /** Visitor management: is the user a GUARD specifically (restricted dashboard) */
+  isGuard: boolean;
+  /** Visitor management: scan/allow/exit/list (GUARD+) */
+  canManageVisitors: boolean;
+  /** Visitor management: CSV export + settings visibility (SUB_ADMIN+) */
+  canExportVisitors: boolean;
+  /** Visitor management settings (SUPER_ADMIN only) */
+  canManageVisitorSettings: boolean;
 }
 
 /**
@@ -130,9 +140,12 @@ export function useRbac(): RbacPermissions {
 
     canManageEnrollments: level >= 60,
 
-    canAccessHRSelfService: level >= 40,
-    canAccessHR: level >= 70,
-    canManageHR: level >= 70,
+    // GUARD is staff too — needs self check-in / my-attendance
+    canAccessHRSelfService: level >= 30,
+    // HR Portal is restricted to HR_ADMIN and SUPER_ADMIN specifically — not the full ADMIN+ hierarchy
+    canAccessHR: level === 70 || level >= 100,
+    canManageHR: level === 70 || level >= 100,
+    // Payroll finalize is an intentional ADMIN+ checks-and-balance escalation (HR_ADMIN drafts, ADMIN/SUPER_ADMIN finalizes) — keep ADMIN's access here
     canManagePayroll: level >= 70,
     isHrAdmin: level === 70,
     isLibrarian: user?.role === 'LIBRARIAN',
@@ -143,5 +156,10 @@ export function useRbac(): RbacPermissions {
       'SYSTEM_ADMIN',
     ].includes(user?.role ?? ''),
     isStudent: user?.role === 'STUDENT' || user?.role === 'PARENT',
+
+    isGuard: user?.role === 'GUARD',
+    canManageVisitors: level >= 30,
+    canExportVisitors: level >= 60,
+    canManageVisitorSettings: level >= 100,
   };
 }

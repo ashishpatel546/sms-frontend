@@ -17,6 +17,9 @@ export default function manifest(): MetadataRoute.Manifest {
     // Prevents browsers from deferring to a native app store listing instead of the PWA.
     // This is required for Edge on Android to reliably fire beforeinstallprompt.
     prefer_related_applications: false,
+    // Hint so in-scope links (e.g. the visitor-form QR pointing at /visit)
+    // open in the already-installed PWA where the OS supports link capturing.
+    ...({ launch_handler: { client_mode: 'navigate-existing' } } as object),
     // Use properly-sized icon files so browsers can validate installability
     icons: [
       { src: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },

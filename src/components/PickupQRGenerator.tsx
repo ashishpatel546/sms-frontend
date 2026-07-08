@@ -216,8 +216,20 @@ export default function PickupQRGenerator({ studentId, studentName }: PickupQRGe
     try {
       const res = await authFetch(`${API_BASE_URL}/pickup/${id}`, { method: "DELETE" });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Failed to cancel");
+        const err = await res.json().catch(() => ({}));
+        const message = err.message || "Failed to cancel";
+        // Token was scanned/confirmed (or expired/cancelled) elsewhere since this screen loaded —
+        // it can no longer be cancelled. Jump to History so the parent sees its real current status
+        // instead of getting stuck on a QR screen that's now out of date.
+        if (res.status === 400 && /pending/i.test(message)) {
+          toast.error(`${message} — showing latest status in History`);
+          setViewingToken(null);
+          setGenerated(null);
+          setView("history");
+          fetchHistoryPage(1);
+          return;
+        }
+        throw new Error(message);
       }
       toast.success("Pickup token cancelled");
       if (generated?.id === id) { setGenerated(null); setView("form"); setForm(BLANK_FORM); }
@@ -291,17 +303,16 @@ export default function PickupQRGenerator({ studentId, studentName }: PickupQRGe
               } catch (e: any) {
                 if (e?.name !== "AbortError") downloadQRBlob(blob);
               }
-            } else if (navigator.share) {
-              // Share text only (no file support)
-              try {
-                await navigator.share({ title: `Pickup QR — ${sName ?? "Student"}`, text: shareText });
-              } catch (e: any) {
-                if (e?.name !== "AbortError") downloadQRBlob(blob);
-              }
             } else {
-              // Desktop fallback: download the PNG
+              // No native file-sharing support (desktop Firefox and most desktop
+              // browsers). navigator.share() with text-only isn't useful here: it opens
+              // a share sheet without the QR image, and Firefox specifically appends
+              // its own "Sent from Firefox" promotional link to the shared text — that's
+              // Firefox's own attribution, not something this app can suppress. So skip
+              // it entirely: save the QR image and copy the caption for manual sharing.
               downloadQRBlob(blob);
-              toast.success("QR image saved!");
+              try { await navigator.clipboard.writeText(shareText); } catch { /* clipboard unavailable */ }
+              toast.success("QR image downloaded & message copied — attach the image in WhatsApp and paste the message", { duration: 6000 });
             }
             resolve();
           }, "image/png");
@@ -522,7 +533,7 @@ export default function PickupQRGenerator({ studentId, studentName }: PickupQRGe
               <button
                 onClick={() => handleCancel(generated.id)}
                 disabled={cancelling === generated.id}
-                className="flex-1 py-2.5 bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 rounded-xl text-sm font-medium transition-all border border-red-200"
+                className="flex-1 py-2.5 bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 rounded-xl text-sm font-medium transition-all border border-red-200 flex items-center justify-center gap-1.5"
               >
                 {cancelling === generated.id ? "Cancelling\u2026" : <><XCircle className="w-3.5 h-3.5" /> Cancel QR</>}
               </button>
@@ -586,7 +597,7 @@ export default function PickupQRGenerator({ studentId, studentName }: PickupQRGe
                       <button
                         onClick={() => handleCancel(r.id)}
                         disabled={cancelling === r.id}
-                        className="flex-1 py-1.5 bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 rounded-lg text-xs font-medium transition-all border border-red-200"
+                        className="flex-1 py-1.5 bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 rounded-lg text-xs font-medium transition-all border border-red-200 flex items-center justify-center gap-1.5"
                       >
                         {cancelling === r.id ? "Cancelling\u2026" : <><XCircle className="w-3.5 h-3.5" /> Cancel</>}
                       </button>

@@ -13,6 +13,7 @@ const ROLE_LABELS: Record<string, string> = {
     SUB_ADMIN: "Sub Admin",
     LIBRARIAN: "Librarian",
     TEACHER: "Teacher",
+    GUARD: "Guard",
 };
 
 interface Props {
@@ -296,7 +297,7 @@ export default function AddStaffForm({
         }
     };
 
-    const editableRoles = isSuperAdmin ? ["ADMIN", "SUB_ADMIN", "LIBRARIAN", "TEACHER"] : ["SUB_ADMIN", "LIBRARIAN", "TEACHER"];
+    const editableRoles = isSuperAdmin ? ["ADMIN", "SUB_ADMIN", "LIBRARIAN", "TEACHER", "GUARD"] : ["SUB_ADMIN", "LIBRARIAN", "TEACHER", "GUARD"];
 
     return (
         <>

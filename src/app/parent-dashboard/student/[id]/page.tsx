@@ -11,6 +11,7 @@ import ReceiptModal from "@/components/ReceiptModal";
 import { getEnv } from "@/lib/env";
 import ExamScheduleParentView from "./ExamScheduleParentView";
 import PickupQRGenerator from "@/components/PickupQRGenerator";
+import VisitorQRGenerator from "@/components/VisitorQRGenerator";
 import ApplyLeaveModal from "@/components/ApplyLeaveModal";
 import LeaveTimeline from "@/components/LeaveTimeline";
 import { AppMonthPicker } from "@/components/ui/AppDatePicker";
@@ -61,6 +62,9 @@ export default function StudentDashboardPage() {
     const params = useParams();
     const router = useRouter();
     const studentId = params.id;
+
+    // QR Codes tab: pickup (existing, with history) vs visiting (stateless, no history)
+    const [qrMode, setQrMode] = useState<"pickup" | "visit">("pickup");
 
     const now = new Date();
     const [attendanceMonth, setAttendanceMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
@@ -131,6 +135,7 @@ export default function StudentDashboardPage() {
     const [payProcessing, setPayProcessing] = useState(false);
     // School feature flag: when false, the online payment gateway (Razorpay) is hidden
     const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
+    const [visitorMgmtEnabled, setVisitorMgmtEnabled] = useState(false);
     const [showReceipt, setShowReceipt] = useState<any>(null);
     const [showReceiptsListModal, setShowReceiptsListModal] = useState<{ feeMonth: string, payments: any[], adjustments: any[], balanceRemaining: number, totalDue?: number, studentName?: string, studentClass?: string, studentSection?: string } | null>(null);
 
@@ -166,6 +171,7 @@ export default function StudentDashboardPage() {
             if (featuresRes.ok) {
                 const features = await featuresRes.json();
                 setOnlinePaymentEnabled(features?.['online_fee_payment'] === true);
+                setVisitorMgmtEnabled(features?.['visitor_management'] === true);
             }
 
             setInfo(infoData);
@@ -597,7 +603,7 @@ export default function StudentDashboardPage() {
                     ["results",       "📝", "Results"],
                     ["library",       "📖", "Library"],
                     ["leaves",        "🗓️", "Leaves"],
-                    ["pickup",        "📱", "Pickup QR"],
+                    ["pickup",        "📱", "QR Codes"],
                     ["exam-schedule", "📅", "Schedule"],
                     ["holidays",      "🏝️", "Holidays"],
                     ["info",          "👤", "Profile"],
@@ -1637,18 +1643,44 @@ export default function StudentDashboardPage() {
             )}
 
             {/* ════════════════════════════════
-                PICKUP QR TAB
+                QR CODES TAB — Pickup QR + Visiting QR
             ════════════════════════════════ */}
             {activeSection === "pickup" && (
                 <div id="tabpanel-pickup" role="tabpanel" aria-labelledby="tab-pickup" className="space-y-4 animate-scale-in">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl shrink-0">🚗</div>
+                        <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl shrink-0">📱</div>
                         <div>
-                            <h2 className="text-ink font-bold text-lg leading-tight">Pickup QR</h2>
-                            <p className="text-slate-400 text-sm">Authorise someone to collect {info?.firstName}</p>
+                            <h2 className="text-ink font-bold text-lg leading-tight">{visitorMgmtEnabled ? "QR Codes" : "Pickup QR"}</h2>
+                            <p className="text-slate-400 text-sm">
+                                {qrMode === "pickup" || !visitorMgmtEnabled
+                                    ? `Authorise someone to collect ${info?.firstName ?? "your child"}`
+                                    : "Generate a gate-entry QR for your school visit"}
+                            </p>
                         </div>
                     </div>
-                    <PickupQRGenerator studentId={Number(studentId)} studentName={info ? `${info.firstName} ${info.lastName}` : undefined} />
+
+                    {/* Pickup / Visiting switcher — Visiting only when the school has visitor management enabled */}
+                    {visitorMgmtEnabled && (
+                        <div role="tablist" aria-label="QR type" className="grid grid-cols-2 gap-1.5 bg-surface border border-slate-200 dark:border-white/10 rounded-xl p-1.5">
+                            {([["pickup", "🚗", "Pickup QR"], ["visit", "🚶", "Visiting QR"]] as const).map(([key, icon, label]) => (
+                                <button
+                                    key={key}
+                                    role="tab"
+                                    aria-selected={qrMode === key}
+                                    onClick={() => setQrMode(key)}
+                                    className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${qrMode === key ? "bg-brand text-white shadow-md shadow-brand/20 dark:bg-white dark:text-slate-900" : "text-ink-muted hover:text-ink hover:bg-brand/5"}`}
+                                >
+                                    <span aria-hidden>{icon}</span> {label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {qrMode === "pickup" || !visitorMgmtEnabled ? (
+                        <PickupQRGenerator studentId={Number(studentId)} studentName={info ? `${info.firstName} ${info.lastName}` : undefined} />
+                    ) : (
+                        <VisitorQRGenerator />
+                    )}
                 </div>
             )}
 

@@ -39,6 +39,11 @@ export interface NavItem {
   rbacKey?: string;
   /** Tailwind text-color class for the icon, e.g. "text-blue-500" */
   iconColor: string;
+  /**
+   * GUARD is deny-by-default: when the logged-in role is GUARD the sidebar
+   * shows ONLY items with this flag, ignoring the unkeyed-means-visible rule.
+   */
+  guardAllowed?: boolean;
 }
 
 export interface NavGroup {
@@ -58,6 +63,7 @@ export const NAV_CONFIG: NavGroup[] = [
         href: '/dashboard',
         icon: LayoutDashboard,
         iconColor: 'text-violet-500',
+        guardAllowed: true,
       },
       {
         id: 'notifications',
@@ -65,6 +71,7 @@ export const NAV_CONFIG: NavGroup[] = [
         href: '/dashboard/notifications',
         icon: Bell,
         iconColor: 'text-sky-500',
+        guardAllowed: true,
       },
     ],
   },
@@ -146,7 +153,7 @@ export const NAV_CONFIG: NavGroup[] = [
     ],
   },
   {
-    label: 'Pickup',
+    label: 'Gate',
     items: [
       {
         id: 'pickup-scan',
@@ -154,6 +161,16 @@ export const NAV_CONFIG: NavGroup[] = [
         href: '/dashboard/pickup/scan',
         icon: QrCode,
         iconColor: 'text-cyan-500',
+        guardAllowed: true,
+      },
+      {
+        id: 'visitors',
+        label: 'Visitors',
+        href: '/dashboard/visitors',
+        icon: Users,
+        iconColor: 'text-teal-500',
+        rbacKey: 'canManageVisitors',
+        guardAllowed: true,
       },
       {
         id: 'pickup-history',
@@ -260,6 +277,7 @@ export const NAV_CONFIG: NavGroup[] = [
         icon: Clock,
         iconColor: 'text-emerald-500',
         rbacKey: 'canAccessHRSelfService',
+        guardAllowed: true,
       },
       {
         id: 'my-leaves',
@@ -301,6 +319,7 @@ export const NAV_CONFIG: NavGroup[] = [
         href: '/dashboard/support',
         icon: HelpCircle,
         iconColor: 'text-sky-500',
+        guardAllowed: true,
       },
       {
         id: 'settings',

@@ -4,6 +4,7 @@ import QuickActions from "./QuickActions";
 import DashboardStats from "./DashboardStats";
 import RecentActivity from "@/components/RecentActivity";
 import GreetingCard from "./GreetingCardDynamic";
+import { GuardSwitch } from "./GuardDashboard";
 import { todayLocalDate } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -17,6 +18,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     const isToday = selectedDate === todayIST;
 
     return (
+        <GuardSwitch>
         <div className="min-h-screen p-4 sm:p-6">
             <div className="max-w-7xl mx-auto space-y-5">
 
@@ -46,5 +48,6 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                 </div>
             </div>
         </div>
+        </GuardSwitch>
     );
 }

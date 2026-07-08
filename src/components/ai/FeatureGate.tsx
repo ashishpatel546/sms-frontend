@@ -5,7 +5,7 @@
  * lock screen with an upgrade prompt.
  */
 import Link from "next/link";
-import { Lock, ArrowUpCircle, Sparkles, RefreshCw } from "lucide-react";
+import { Lock, ArrowUpCircle, Sparkles, RefreshCw, WifiOff } from "lucide-react";
 import { useAiAccess } from "@/lib/ai-access";
 
 const FEATURE_LABELS: Record<string, string> = {
@@ -39,6 +39,31 @@ export function FeatureGate({ feature, children, onUpgradeClick }: Props) {
         <div className="h-4 w-full bg-slate-200 dark:bg-white/10 rounded-lg" />
         <div className="h-4 w-3/4 bg-slate-200 dark:bg-white/10 rounded-lg" />
         <div className="h-40 w-full bg-slate-200 dark:bg-white/10 rounded-2xl" />
+      </div>
+    );
+  }
+
+  // ── Status check failed — plan is unknown, don't show the subscribe upsell ─
+  if (access.unreachable) {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-16 flex flex-col items-center text-center gap-5">
+        <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-white/5 flex items-center justify-center shadow-sm">
+          <WifiOff className="w-7 h-7 text-slate-400" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-ink">Can&apos;t reach the AI service</h2>
+          <p className="text-sm text-ink-muted leading-relaxed max-w-sm">
+            We couldn&apos;t check your subscription because the AI service is not
+            reachable from this device right now. Check your connection and try again.
+          </p>
+        </div>
+        <button
+          onClick={() => access.refetch()}
+          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors shadow-sm"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Try again
+        </button>
       </div>
     );
   }

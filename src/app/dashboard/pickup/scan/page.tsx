@@ -23,8 +23,8 @@ export default function PickupScanPage() {
             📷
           </div>
           <div>
-            <h1 className="text-white font-bold text-xl leading-tight">Pickup Scanner</h1>
-            <p className="text-slate-400 text-sm">Scan parent QR to verify student handover</p>
+            <h1 className="text-white font-bold text-xl leading-tight">Scan QR</h1>
+            <p className="text-slate-400 text-sm">Pickup and visitor QR codes — detected automatically</p>
           </div>
         </div>
 

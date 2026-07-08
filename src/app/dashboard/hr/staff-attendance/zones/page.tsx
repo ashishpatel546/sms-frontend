@@ -228,11 +228,16 @@ export default function AttendanceZonesPage() {
         </>
       )}
 
-      {/* Form modal */}
+      {/* Form modal — flex column with a pinned footer so Save/Cancel stay
+          visible on mobile even when the on-screen keyboard shrinks the
+          viewport (dvh tracks the *visible* viewport, unlike vh).
+          z-[80]: must stack above the mobile BottomTabBar (z-50, rendered
+          after page content) which otherwise covers the footer. */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-          <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 w-full sm:max-w-sm space-y-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="font-semibold text-lg">{editId ? "Edit" : "New"} Geo-Zone</h2>
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[80] p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full sm:max-w-sm flex flex-col max-h-[85dvh]">
+            <h2 className="font-semibold text-lg px-5 pt-5 pb-3 shrink-0">{editId ? "Edit" : "New"} Geo-Zone</h2>
+            <div className="px-5 space-y-4 overflow-y-auto flex-1 min-h-0">
             <div>
               <label className="text-sm font-medium">Zone Name</label>
               <input
@@ -297,7 +302,8 @@ export default function AttendanceZonesPage() {
               <input id="za" type="checkbox" checked={form.isActive} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} className="rounded" />
               <label htmlFor="za" className="text-sm">Active</label>
             </div>
-            <div className="flex gap-2 justify-end pt-2">
+            </div>
+            <div className="flex gap-2 justify-end shrink-0 px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] border-t border-gray-100 mt-3">
               <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={handleSave} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
             </div>
