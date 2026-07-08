@@ -8,7 +8,7 @@ import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
 import {
-    Download, LogOut, Plus, QrCode, Search, Settings2, X, Users, RefreshCw,
+    Download, LogOut, Plus, QrCode, Search, Settings2, X, Users, RefreshCw, Archive,
 } from "lucide-react";
 
 const PURPOSES = ["ADMISSION", "OFFICIAL", "INQUIRY", "PTM", "OTHERS"] as const;
@@ -77,6 +77,11 @@ export default function VisitorsPage() {
     const [settings, setSettings] = useState<{ qrValidityMinutes: number; exitTrackingEnabled: boolean } | null>(null);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [settingsSaving, setSettingsSaving] = useState(false);
+
+    // Archived history (SUB_ADMIN+)
+    const [archivesOpen, setArchivesOpen] = useState(false);
+    const [archives, setArchives] = useState<{ id: string; fromDate: string; toDate: string; rowCount: number; createdAt: string }[] | null>(null);
+    const [downloadingArchive, setDownloadingArchive] = useState<string | null>(null);
 
     useEffect(() => {
         if (!rbac.canManageVisitors) router.replace("/dashboard");
@@ -199,6 +204,40 @@ export default function VisitorsPage() {
         }
     };
 
+    const openArchives = async () => {
+        setArchivesOpen(true);
+        if (archives !== null) return; // already loaded this session
+        try {
+            const res = await authFetch(`${API_BASE_URL}/visitors/archives`);
+            if (!res.ok) throw new Error();
+            setArchives(await res.json());
+        } catch {
+            toast.error("Failed to load archives", { id: "archives-load-error" });
+            setArchives([]);
+        }
+    };
+
+    const downloadArchive = async (id: string) => {
+        setDownloadingArchive(id);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/visitors/archives/${id}/download`);
+            const body = await res.json();
+            if (!res.ok) throw new Error(body.message || "Download failed");
+            // Presigned S3 URL, valid 15 minutes
+            const a = document.createElement("a");
+            a.href = body.url;
+            a.target = "_blank";
+            a.rel = "noopener";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } catch (e: any) {
+            toast.error(e.message || "Download failed");
+        } finally {
+            setDownloadingArchive(null);
+        }
+    };
+
     const saveSettings = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!settings) return;
@@ -254,6 +293,12 @@ export default function VisitorsPage() {
                             className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-300 dark:border-white/10 text-ink text-sm hover:bg-surface-secondary">
                             <QrCode className="w-4 h-4" /> Entry QR Poster
                         </Link>
+                    )}
+                    {rbac.canExportVisitors && (
+                        <button onClick={openArchives}
+                            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-300 dark:border-white/10 text-ink text-sm hover:bg-surface-secondary">
+                            <Archive className="w-4 h-4" /> Archives
+                        </button>
                     )}
                     {rbac.canManageVisitorSettings && (
                         <button onClick={() => setSettingsOpen(true)}
@@ -418,6 +463,40 @@ export default function VisitorsPage() {
                             </button>
                             <p className="text-ink-muted text-xs text-center">Entry time is recorded automatically when you submit.</p>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Archived history modal (SUB_ADMIN+) ── */}
+            {archivesOpen && (
+                <div className="fixed inset-0 z-80 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={() => setArchivesOpen(false)}>
+                    <div className="bg-surface w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl p-5 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-1">
+                            <h3 className="text-ink font-semibold text-base flex items-center gap-2"><Archive className="w-4 h-4 text-teal-600 dark:text-teal-400" /> Archived Visitor History</h3>
+                            <button onClick={() => setArchivesOpen(false)} className="p-1.5 rounded-lg text-ink-muted hover:bg-surface-secondary"><X className="w-5 h-5" /></button>
+                        </div>
+                        <p className="text-xs text-ink-muted mb-4">Entries older than 90 days are archived nightly to secure storage and removed from the live list. Download links are valid for 15 minutes.</p>
+
+                        {archives === null ? (
+                            <div className="flex justify-center py-10"><div className="w-5 h-5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" /></div>
+                        ) : archives.length === 0 ? (
+                            <div className="text-center py-10 text-ink-muted text-sm">No archives yet. They appear once visitor entries cross the 90-day retention window.</div>
+                        ) : (
+                            <div className="space-y-2">
+                                {archives.map(a => (
+                                    <div key={a.id} className="flex items-center justify-between gap-3 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3">
+                                        <div className="min-w-0">
+                                            <div className="text-sm font-medium text-ink truncate">{a.fromDate} → {a.toDate}</div>
+                                            <div className="text-xs text-ink-muted">{a.rowCount.toLocaleString("en-IN")} entries · archived {new Date(a.createdAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}</div>
+                                        </div>
+                                        <button onClick={() => downloadArchive(a.id)} disabled={downloadingArchive === a.id}
+                                            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-medium disabled:opacity-50">
+                                            {downloadingArchive === a.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />} Download
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

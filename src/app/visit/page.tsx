@@ -39,6 +39,8 @@ const emptyForm = {
 
 export default function VisitorFormPage() {
     const [school, setSchool] = useState<{ name: string; logoUrl: string | null } | null>(null);
+    // null = still checking; the form only renders once the feature is confirmed on
+    const [featureEnabled, setFeatureEnabled] = useState<boolean | null>(null);
     const [form, setForm] = useState({ ...emptyForm });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
@@ -57,6 +59,11 @@ export default function VisitorFormPage() {
             .then(r => (r.ok ? r.json() : null))
             .then(d => d?.name && setSchool({ name: d.name, logoUrl: d.logoUrl }))
             .catch(() => { /* header still renders without school info */ });
+        fetch(`${API_BASE_URL}/visitors/public-status`, { headers: schoolHeaders() })
+            .then(r => (r.ok ? r.json() : { enabled: true }))
+            .then(d => setFeatureEnabled(d?.enabled !== false))
+            // Network hiccup — let the form render; submit still enforces server-side
+            .catch(() => setFeatureEnabled(true));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -136,7 +143,19 @@ export default function VisitorFormPage() {
                     <p className="text-slate-400 text-sm mt-1">Fill this form to get your gate-entry QR code</p>
                 </div>
 
-                {!qr ? (
+                {featureEnabled === null ? (
+                    <div className="flex justify-center py-16">
+                        <div className="w-7 h-7 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                ) : !featureEnabled ? (
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center space-y-3">
+                        <div className="text-5xl">🛂</div>
+                        <h2 className="text-white font-bold text-lg">Visitor registration is not available</h2>
+                        <p className="text-slate-400 text-sm">
+                            This school has not enabled online visitor registration. Please contact the staff at the school gate.
+                        </p>
+                    </div>
+                ) : !qr ? (
                     <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
                         <div>
                             <label className={labelCls}><UserRound className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />Full Name *</label>
