@@ -53,7 +53,7 @@ export default function StudentsPage() {
     const [bulkResult, setBulkResult] = useState<{ successful: number; failed: number; errors: string[] } | null>(null);
     const [bulkValidation, setBulkValidation] = useState<{ errors: string[]; warnings: string[]; rowCount: number } | null>(null);
 
-    const REQUIRED_HEADERS = ["firstName", "lastName", "gender", "dateOfBirth", "mobile", "category", "religion", "fathersName", "mothersName"];
+    const REQUIRED_HEADERS = ["firstName", "gender", "dateOfBirth", "mobile", "category", "religion", "fathersName", "mothersName"];
     const REQUIRED_FIELDS = REQUIRED_HEADERS;
     const DATE_DDMMYYYY = /^\d{2}-\d{2}-\d{4}$/;
     const DATE_YYYYMMDD = /^\d{4}-\d{2}-\d{2}$/;
@@ -548,7 +548,7 @@ export default function StudentsPage() {
                                     <ul className="list-disc pl-5 space-y-1">
                                         <li>Must contain headers exactly as shown below (order matters):</li>
                                         <li className="font-mono text-xs bg-gray-100 p-1 rounded overflow-x-auto whitespace-nowrap">firstName,lastName,gender,dateOfBirth,mobile,email,alternateMobile,category,religion,bloodGroup,aadhaarNumber,fathersName,fatherAadhaarNumber,mothersName,motherAadhaarNumber,addressLine1,addressLine2,landmark,city,state,postalCode,country,classId,sectionId,academicSessionId,subjectIds,pen,fatherPan,motherPan,fatherOccupation,motherOccupation,fatherIncome,motherIncome,aparId,abhaId</li>
-                                        <li><span className="font-semibold text-red-600">Required:</span> firstName, lastName, gender, dateOfBirth, mobile, fathersName, mothersName, category, religion</li>
+                                        <li><span className="font-semibold text-red-600">Required:</span> firstName, gender, dateOfBirth, mobile, fathersName, mothersName, category, religion</li>
                                         <li><span className="font-semibold">Optional fields</span> can be left empty, but the column must still be present.</li>
                                         <li><span className="font-semibold">dateOfBirth:</span> Use format YYYY-MM-DD</li>
                                         <li><span className="font-semibold">subjectIds:</span> Pipe-separated values e.g. <code className="bg-gray-200 px-1 rounded">1|3|4</code></li>

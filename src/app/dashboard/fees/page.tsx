@@ -71,6 +71,7 @@ export default function FeesDashboardPage() {
 
     // Manage Discounts State
     const [applyDiscountStudentId, setApplyDiscountStudentId] = useState("");
+    const [applyDiscountStudentClassId, setApplyDiscountStudentClassId] = useState("");
     const [applyDiscountSearchQuery, setApplyDiscountSearchQuery] = useState("");
     const [selectedDiscountsToApply, setSelectedDiscountsToApply] = useState<number[]>([]);
     const [applyingDiscounts, setApplyingDiscounts] = useState(false);
@@ -2788,6 +2789,7 @@ export default function FeesDashboardPage() {
                                                                 onClick={() => {
                                                                     if (activeTab === 'APPLY_DISCOUNTS') {
                                                                         setApplyDiscountStudentId(s.id.toString());
+                                                                        setApplyDiscountStudentClassId(enr?.class?.id?.toString() || s.class?.id?.toString() || "");
                                                                         setSelectedDiscountsToApply(
                                                                             s.studentDiscounts
                                                                                 ? s.studentDiscounts.filter((sd: any) => sd.isActive).map((sd: any) => sd.discountCategory?.id || sd.discountCategoryId)
@@ -2882,6 +2884,13 @@ export default function FeesDashboardPage() {
                                     ) : (
                                         discounts.map(d => {
                                             const isSelected = selectedDiscountsToApply.includes(d.id);
+                                            // Fee structures whitelist which discounts they honor (empty = none).
+                                            // Warn when this discount isn't enabled on any structure of the
+                                            // student's class — assigning it would not reduce the balance.
+                                            const isWhitelisted = !applyDiscountStudentClassId || structures.some(st =>
+                                                st.class?.id?.toString() === applyDiscountStudentClassId &&
+                                                (st.applicableDiscounts || []).some((ad: any) => ad.id === d.id)
+                                            );
                                             return (
                                                 <div key={`d-select-${d.id}`}
                                                     onClick={() => {
@@ -2904,6 +2913,11 @@ export default function FeesDashboardPage() {
                                                             {d.type === 'PERCENTAGE' ? `${d.value}% Off Base Fee` : `$${d.value} Flat Off Base Fee`}
                                                             {d.applicationType === 'AUTO' && <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold">AUTO: {d.logicReference}</span>}
                                                         </span>
+                                                        {isSelected && !isWhitelisted && (
+                                                            <span className="block text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2">
+                                                                ⚠ Not enabled on any fee structure for this student's class — it won't reduce the balance. Enable it under Fee Setup → Structures.
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             );
