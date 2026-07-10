@@ -1701,6 +1701,7 @@ export default function FeesDashboardPage() {
                                         <option value="">(None)</option>
                                         <option value="SIBLING">Sibling</option>
                                         <option value="GIRL">Girl Student</option>
+                                        <option value="EWS">EWS Category</option>
                                     </select>
                                 </div>
                             )}
@@ -1745,6 +1746,7 @@ export default function FeesDashboardPage() {
                                                         <option value="">(None)</option>
                                                         <option value="SIBLING">Sibling</option>
                                                         <option value="GIRL">Girl Student</option>
+                                                        <option value="EWS">EWS Category</option>
                                                     </select>
                                                 </div>
                                             )}
