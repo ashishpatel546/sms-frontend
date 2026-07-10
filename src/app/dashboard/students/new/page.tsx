@@ -173,6 +173,15 @@ export default function AddStudentPage() {
                 toast.success(`Auto-applied: ${girlDiscount.name}`);
             }
         }
+
+        // Auto-apply EWS discount
+        if (name === 'category' && value === 'EWS') {
+            const ewsDiscount = availableDiscounts.find(d => d.applicationType === 'AUTO' && d.logicReference === 'EWS');
+            if (ewsDiscount && !selectedDiscounts.includes(ewsDiscount.id)) {
+                setSelectedDiscounts(prev => [...prev, ewsDiscount.id]);
+                toast.success(`Auto-applied: ${ewsDiscount.name}`);
+            }
+        }
     };
 
     const openSiblingModal = () => {
