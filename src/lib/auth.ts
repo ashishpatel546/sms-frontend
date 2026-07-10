@@ -120,7 +120,41 @@ export function isMustChangePasswordFlow(): boolean {
   return _mustChangePasswordFlow;
 }
 
-export function logout(): void {
+// Guards against re-entry: authFetch's 401 handling can call logout() from
+// several places at once
+let _loggingOut = false;
+
+export async function logout(): Promise<void> {
+  if (typeof window !== 'undefined' && !_loggingOut) {
+    _loggingOut = true;
+    // Best-effort push cleanup so the next account on this browser cannot
+    // receive this account's notifications. Time-boxed so logout never hangs.
+    try {
+      const { unsubscribeFromPushNotifications } = await import(
+        './push-notifications'
+      );
+      const endpoint = await Promise.race([
+        unsubscribeFromPushNotifications(),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+      ]);
+      if (endpoint) {
+        const API_BASE_URL = getEnv('API_URL') || 'http://localhost:5000';
+        // Plain fetch, not authFetch: logout often runs from a 401 path where
+        // the token is already dead — authFetch's refresh flow would recurse
+        // back into logout. keepalive lets the request outlive the redirect.
+        // If it fails, the browser-side unsubscribe above already killed the
+        // endpoint and the backend garbage-collects the row on next push (410).
+        fetch(`${API_BASE_URL}/api/app-notifications/subscriptions`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+          body: JSON.stringify({ endpoint }),
+          keepalive: true,
+        }).catch(() => {});
+      }
+    } catch {
+      // Never block logout on push cleanup
+    }
+  }
   removeToken();
   window.location.href = '/';
 }

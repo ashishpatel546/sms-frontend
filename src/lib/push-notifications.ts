@@ -89,6 +89,35 @@ export async function subscribeToPushNotifications(): Promise<PushSubscribeResul
   }
 }
 
+/**
+ * Unsubscribe this browser from push notifications.
+ * Returns the endpoint that was unsubscribed (so the caller can also remove
+ * the backend subscription row), or null if there was no subscription or the
+ * browser doesn't support push.
+ */
+export async function unsubscribeFromPushNotifications(): Promise<string | null> {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    return null;
+  }
+
+  try {
+    // getRegistration (not .ready) — .ready never resolves when no service
+    // worker is registered, which would hang logout
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (!registration) return null;
+
+    const subscription = await registration.pushManager.getSubscription();
+    if (!subscription) return null;
+
+    const endpoint = subscription.endpoint;
+    await subscription.unsubscribe();
+    return endpoint;
+  } catch (err) {
+    console.warn('Failed to unsubscribe from push notifications:', err);
+    return null;
+  }
+}
+
 // Utility function to convert VAPID key
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
