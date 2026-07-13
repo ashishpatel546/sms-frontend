@@ -8,6 +8,7 @@ import { API_BASE_URL } from "@/lib/api";
 import { useRbac } from "@/lib/rbac";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { sortByName } from "@/lib/utils";
 
 type NotificationAudience = "PARENT" | "STAFF" | "ALL" | "CUSTOM";
 
@@ -59,7 +60,7 @@ export default function NewNotificationPage() {
     setIsLoadingClasses(true);
     try {
       const res = await authFetch(`${API_BASE_URL}/classes`);
-      if (res.ok) setClasses(await res.json());
+      if (res.ok) setClasses(sortByName(await res.json()));
     } catch (e) {
       console.error(e);
     } finally {

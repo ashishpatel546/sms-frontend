@@ -1,8 +1,11 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { useHomework } from "../hooks/useStudentData";
 import { Skeleton } from "@/components/ui/skeleton";
+import { API_BASE_URL } from "@/lib/api";
+import { authFetch } from "@/lib/auth";
 
 interface Props {
   studentId: string;
@@ -25,6 +28,21 @@ export const HomeworkBottomSheet = ({ studentId, isOpen, onClose, onViewFull }: 
   const displayDate = now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
 
   const { data: homeworkItems, isLoading } = useHomework(studentId, todayStr);
+  const [openingWorksheetId, setOpeningWorksheetId] = useState<string | null>(null);
+
+  const openWorksheet = async (h: any) => {
+    setOpeningWorksheetId(h.id);
+    try {
+      const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/homework/${h.id}/worksheet-url`);
+      if (!res.ok) throw new Error();
+      const { url } = await res.json();
+      window.open(url, "_blank", "noopener");
+    } catch {
+      toast.error("Could not open worksheet.");
+    } finally {
+      setOpeningWorksheetId(null);
+    }
+  };
 
   // Lock body scroll when open
   useEffect(() => {
@@ -105,7 +123,19 @@ export const HomeworkBottomSheet = ({ studentId, isOpen, onClose, onViewFull }: 
                           {h.subject}
                         </span>
                       )}
-                      <p className="text-sm text-ink leading-snug flex-1">{h.message}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-ink leading-snug">{h.message}</p>
+                        {h.worksheetFileName && (
+                          <button
+                            onClick={() => openWorksheet(h)}
+                            disabled={openingWorksheetId === h.id}
+                            className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand/10 text-brand text-xs font-semibold disabled:opacity-60 transition-colors max-w-full"
+                          >
+                            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                            <span className="truncate">{openingWorksheetId === h.id ? "Opening…" : "Worksheet"}</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { API_BASE_URL } from "@/lib/api";
 import { getToken, authFetch, getUser } from "@/lib/auth";
+import { sortByName } from "@/lib/utils";
 
 const todayStr = () => {
     const d = new Date();
@@ -23,17 +24,37 @@ type HomeworkEntry = {
     subject: string | null;
     message: string;
     homeworkDate: string;
+    worksheetFileName: string | null;
+    worksheetMimeType: string | null;
     createdBy: { id: number; firstName: string; lastName: string } | null;
     updatedBy: { id: number; firstName: string; lastName: string } | null;
     createdAt: string;
     updatedAt: string;
 };
 
-type ModalRow = { subject: string; message: string };
+type ModalRow = { subject: string; message: string; file: File | null };
+
+const MAX_HOMEWORK_ROWS = 10;
+const WORKSHEET_ACCEPT = "image/jpeg,image/png,image/webp,application/pdf";
+const WORKSHEET_MAX_BYTES = 5 * 1024 * 1024;
+
+const validateWorksheetFile = (file: File): string | null => {
+    if (!WORKSHEET_ACCEPT.split(",").includes(file.type)) return "Only JPEG, PNG, WEBP, and PDF files are allowed.";
+    if (file.size > WORKSHEET_MAX_BYTES) return "Worksheet must be ≤ 5 MB.";
+    return null;
+};
+
+const formatBytes = (bytes: number) =>
+    bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+
+const HOMEWORK_ADMIN_ROLES = new Set(["SUPER_ADMIN", "ADMIN"]);
 
 export default function HomeworkPage() {
     const router = useRouter();
     const authHeaders = { Authorization: `Bearer ${getToken()}` };
+    const currentUser = getUser();
+    const canModify = (h: HomeworkEntry) =>
+        !!currentUser && (h.createdBy?.id === currentUser.sub || HOMEWORK_ADMIN_ROLES.has(currentUser.role));
 
     const [classes, setClasses] = useState<any[]>([]);
     const [sections, setSections] = useState<any[]>([]);
@@ -52,7 +73,7 @@ export default function HomeworkPage() {
     // Send modal
     const [showSendModal, setShowSendModal] = useState(false);
     const [modalDate, setModalDate] = useState(todayStr());
-    const [modalRows, setModalRows] = useState<ModalRow[]>([{ subject: "", message: "" }]);
+    const [modalRows, setModalRows] = useState<ModalRow[]>([{ subject: "", message: "", file: null }]);
     const [sending, setSending] = useState(false);
 
     // Edit modal
@@ -60,6 +81,10 @@ export default function HomeworkPage() {
     const [editSubject, setEditSubject] = useState("");
     const [editMessage, setEditMessage] = useState("");
     const [editSaving, setEditSaving] = useState(false);
+    const [editWsBusy, setEditWsBusy] = useState(false);
+
+    // Worksheet viewer
+    const [viewerDoc, setViewerDoc] = useState<{ url: string; fileName: string; mimeType: string } | null>(null);
 
     // Redirect non-teacher/admin users
     useEffect(() => {
@@ -72,7 +97,7 @@ export default function HomeworkPage() {
     useEffect(() => {
         authFetch(`${API_BASE_URL}/classes/names-only`, { headers: authHeaders })
             .then((r) => r.json())
-            .then((data) => setClasses(Array.isArray(data) ? data : data.data || []))
+            .then((data) => setClasses(sortByName(Array.isArray(data) ? data : data.data || [])))
             .catch(console.error);
     }, []);
 
@@ -102,24 +127,55 @@ export default function HomeworkPage() {
     useEffect(() => { fetchHomework(); }, [fetchHomework]);
 
     // ── Send modal helpers ──
-    const addRow = () => setModalRows((prev) => [...prev, { subject: "", message: "" }]);
+    const addRow = () => setModalRows((prev) => (prev.length >= MAX_HOMEWORK_ROWS ? prev : [...prev, { subject: "", message: "", file: null }]));
     const removeRow = (i: number) => setModalRows((prev) => prev.filter((_, idx) => idx !== i));
-    const updateRow = (i: number, field: keyof ModalRow, value: string) => {
+    const updateRow = (i: number, field: "subject" | "message", value: string) => {
         setModalRows((prev) => { const next = [...prev]; next[i] = { ...next[i], [field]: value }; return next; });
+    };
+    const setRowFile = (i: number, file: File | null) => {
+        if (file) {
+            const err = validateWorksheetFile(file);
+            if (err) { toast.error(err); return; }
+        }
+        setModalRows((prev) => { const next = [...prev]; next[i] = { ...next[i], file }; return next; });
     };
 
     const openSendModal = () => {
         setModalDate(todayStr());
-        setModalRows([{ subject: "", message: "" }]);
+        setModalRows([{ subject: "", message: "", file: null }]);
         setShowSendModal(true);
     };
 
-    const handleSend = async () => {
-        const validEntries = modalRows
-            .filter((r) => r.message.trim())
-            .map((r) => ({ subject: r.subject.trim() || undefined, message: r.message.trim() }));
+    const uploadWorksheet = async (homeworkId: string, file: File) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await authFetch(`${API_BASE_URL}/homework/${homeworkId}/worksheet`, {
+            method: "POST",
+            headers: authHeaders, // no Content-Type — the browser sets the multipart boundary
+            body: formData,
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || "Worksheet upload failed");
+        }
+        return res.json();
+    };
 
-        if (!validEntries.length) { toast.error("Add at least one homework entry with a message."); return; }
+    const openWorksheet = async (h: { id: string; worksheetFileName: string | null; worksheetMimeType: string | null }) => {
+        try {
+            const res = await authFetch(`${API_BASE_URL}/homework/${h.id}/worksheet/url`, { headers: authHeaders });
+            if (!res.ok) throw new Error();
+            const { url } = await res.json();
+            setViewerDoc({ url, fileName: h.worksheetFileName || "worksheet", mimeType: h.worksheetMimeType || "" });
+        } catch {
+            toast.error("Could not open worksheet.");
+        }
+    };
+
+    const handleSend = async () => {
+        const validRows = modalRows.filter((r) => r.message.trim());
+
+        if (!validRows.length) { toast.error("Add at least one homework entry with a message."); return; }
         if (!selectedClassId || !selectedSectionId) return;
 
         setSending(true);
@@ -131,14 +187,31 @@ export default function HomeworkPage() {
                     classId: selectedClassId,
                     sectionId: selectedSectionId,
                     homeworkDate: modalDate,
-                    entries: validEntries,
+                    entries: validRows.map((r) => ({ subject: r.subject.trim() || undefined, message: r.message.trim() })),
                 }),
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 throw new Error(err.message || "Failed to send homework");
             }
-            toast.success("Homework sent successfully!");
+            // Backend saves and returns rows in the same order as entries —
+            // upload each row's worksheet against its created id.
+            const created: HomeworkEntry[] = await res.json();
+            const failedSubjects: string[] = [];
+            for (let i = 0; i < validRows.length; i++) {
+                const file = validRows[i].file;
+                if (!file || !created[i]?.id) continue;
+                try {
+                    await uploadWorksheet(created[i].id, file);
+                } catch {
+                    failedSubjects.push(validRows[i].subject.trim() || `entry ${i + 1}`);
+                }
+            }
+            if (failedSubjects.length) {
+                toast.error(`Homework sent, but worksheet upload failed for: ${failedSubjects.join(", ")}. Edit the entry to retry.`, { duration: 6000 });
+            } else {
+                toast.success("Homework sent successfully!");
+            }
             setShowSendModal(false);
             fetchHomework();
         } catch (e: any) {
@@ -176,14 +249,52 @@ export default function HomeworkPage() {
         }
     };
 
+    const handleEditWorksheetFile = async (file: File) => {
+        if (!editEntry) return;
+        const err = validateWorksheetFile(file);
+        if (err) { toast.error(err); return; }
+        setEditWsBusy(true);
+        try {
+            const updated = await uploadWorksheet(editEntry.id, file);
+            setEditEntry(updated);
+            toast.success("Worksheet uploaded.");
+            fetchHomework();
+        } catch (e: any) {
+            toast.error(e.message || "Worksheet upload failed");
+        } finally {
+            setEditWsBusy(false);
+        }
+    };
+
+    const handleRemoveWorksheet = async () => {
+        if (!editEntry?.worksheetFileName) return;
+        if (!confirm(`Remove worksheet "${editEntry.worksheetFileName}"?`)) return;
+        setEditWsBusy(true);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/homework/${editEntry.id}/worksheet`, { method: "DELETE", headers: authHeaders });
+            if (!res.ok) throw new Error();
+            setEditEntry({ ...editEntry, worksheetFileName: null, worksheetMimeType: null });
+            toast.success("Worksheet removed.");
+            fetchHomework();
+        } catch {
+            toast.error("Failed to remove worksheet.");
+        } finally {
+            setEditWsBusy(false);
+        }
+    };
+
     const handleDelete = async (entry: HomeworkEntry) => {
         if (!confirm(`Delete "${entry.subject || "homework"}" for ${formatDate(entry.homeworkDate)}?`)) return;
         try {
-            await authFetch(`${API_BASE_URL}/homework/${entry.id}`, { method: "DELETE", headers: authHeaders });
+            const res = await authFetch(`${API_BASE_URL}/homework/${entry.id}`, { method: "DELETE", headers: authHeaders });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || "Delete failed");
+            }
             toast.success("Deleted.");
             setHomework((prev) => prev.filter((h) => h.id !== entry.id));
-        } catch {
-            toast.error("Delete failed");
+        } catch (e: any) {
+            toast.error(e.message || "Delete failed");
         }
     };
 
@@ -332,6 +443,16 @@ export default function HomeworkPage() {
                                                 </span>
                                             )}
                                             <p className="text-slate-800 text-sm leading-relaxed whitespace-pre-line">{h.message}</p>
+                                            {h.worksheetFileName && (
+                                                <button
+                                                    onClick={() => openWorksheet(h)}
+                                                    className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-600 text-xs font-semibold transition-colors max-w-full"
+                                                    title={h.worksheetFileName}
+                                                >
+                                                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                                    <span className="truncate">View worksheet</span>
+                                                </button>
+                                            )}
                                             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-400">
                                                 {h.createdBy && (
                                                     <span>Sent by {h.createdBy.firstName} {h.createdBy.lastName} · {new Date(h.createdAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
@@ -342,20 +463,28 @@ export default function HomeworkPage() {
                                             </div>
                                         </div>
                                         <div className="flex gap-1 shrink-0">
-                                            <button
-                                                onClick={() => openEdit(h)}
-                                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                                                title="Edit"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(h)}
-                                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                title="Delete"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            </button>
+                                            {canModify(h) ? (
+                                                <>
+                                                    <button
+                                                        onClick={() => openEdit(h)}
+                                                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                        title="Edit"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(h)}
+                                                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Delete"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <span className="p-1.5 text-slate-300" title="Only the sender or a school admin can edit or delete this">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -478,15 +607,49 @@ export default function HomeworkPage() {
                                             >
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                             </button>
+                                            {/* Optional worksheet attachment — spans the full row */}
+                                            <div className="sm:col-span-2 sm:col-start-1">
+                                                {row.file ? (
+                                                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50 text-sm min-w-0">
+                                                        <svg className="w-4 h-4 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                                        <span className="flex-1 truncate text-indigo-700 font-medium">{row.file.name}</span>
+                                                        <span className="text-xs text-indigo-400 shrink-0">{formatBytes(row.file.size)}</span>
+                                                        <button onClick={() => setRowFile(i, null)} className="p-1 text-indigo-400 hover:text-red-500 rounded-lg transition-colors shrink-0" title="Remove file">
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-slate-300 text-slate-400 hover:border-indigo-400 hover:text-indigo-600 text-xs font-medium cursor-pointer transition-colors w-full sm:w-fit">
+                                                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                                        Attach worksheet (optional) · JPEG, PNG, WEBP, PDF · max 5 MB
+                                                        <input
+                                                            type="file"
+                                                            accept={WORKSHEET_ACCEPT}
+                                                            className="hidden"
+                                                            onChange={(e) => { setRowFile(i, e.target.files?.[0] ?? null); e.target.value = ""; }}
+                                                        />
+                                                    </label>
+                                                )}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
-                            <button onClick={addRow} className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-800 text-sm font-medium transition-colors">
+                            <button
+                                onClick={addRow}
+                                disabled={modalRows.length >= MAX_HOMEWORK_ROWS}
+                                className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-800 disabled:text-slate-300 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+                            >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                                Add Subject
+                                {modalRows.length >= MAX_HOMEWORK_ROWS ? `Maximum ${MAX_HOMEWORK_ROWS} subjects reached` : "Add Subject"}
                             </button>
+
+                            {modalRows.some((r) => r.file) && (
+                                <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-700">
+                                    ⚠️ Uploaded worksheets are kept for <strong>60 days only</strong>, then deleted automatically along with the homework.
+                                </div>
+                            )}
 
                             <div className="mt-4 p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-xs text-indigo-700">
                                 📣 A push notification will be sent to all parents of <strong>{selectedClassName} — Section {selectedSectionName}</strong>.
@@ -541,6 +704,33 @@ export default function HomeworkPage() {
                                     className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 />
                             </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Worksheet (optional)</label>
+                                {editEntry.worksheetFileName ? (
+                                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50 text-sm min-w-0">
+                                        <svg className="w-4 h-4 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                        <button onClick={() => openWorksheet(editEntry)} className="flex-1 truncate text-left text-indigo-700 font-medium hover:underline" title="View worksheet">
+                                            {editEntry.worksheetFileName}
+                                        </button>
+                                        <label className="text-xs text-indigo-500 hover:text-indigo-700 font-semibold cursor-pointer shrink-0" title="Replace worksheet">
+                                            Replace
+                                            <input type="file" accept={WORKSHEET_ACCEPT} className="hidden" disabled={editWsBusy}
+                                                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleEditWorksheetFile(f); e.target.value = ""; }} />
+                                        </label>
+                                        <button onClick={handleRemoveWorksheet} disabled={editWsBusy} className="text-xs text-red-400 hover:text-red-600 font-semibold shrink-0 disabled:opacity-50">
+                                            Remove
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <label className={`flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-slate-300 text-slate-400 hover:border-indigo-400 hover:text-indigo-600 text-xs font-medium cursor-pointer transition-colors ${editWsBusy ? "opacity-50 pointer-events-none" : ""}`}>
+                                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                        {editWsBusy ? "Uploading..." : "Attach worksheet · JPEG, PNG, WEBP, PDF · max 5 MB"}
+                                        <input type="file" accept={WORKSHEET_ACCEPT} className="hidden" disabled={editWsBusy}
+                                            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleEditWorksheetFile(f); e.target.value = ""; }} />
+                                    </label>
+                                )}
+                                <p className="mt-1.5 text-[11px] text-amber-600">⚠️ Worksheets are kept for 60 days only.</p>
+                            </div>
                         </div>
                         <div className="px-6 py-4 border-t border-slate-100 flex gap-3 justify-end">
                             <button onClick={() => setEditEntry(null)} className="px-4 py-2 text-slate-600 text-sm font-medium">
@@ -554,6 +744,35 @@ export default function HomeworkPage() {
                                 {editSaving ? "Saving..." : "Save Changes"}
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Worksheet Viewer ── */}
+            {viewerDoc && (
+                <div className="fixed inset-0 z-[60] flex flex-col bg-black/90" onClick={(e) => { if (e.target === e.currentTarget) setViewerDoc(null); }}>
+                    <div className="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-700 shrink-0">
+                        <span className="text-white text-sm font-medium truncate max-w-xs">{viewerDoc.fileName}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <a
+                                href={viewerDoc.url}
+                                download={viewerDoc.fileName}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                Download
+                            </a>
+                            <button onClick={() => setViewerDoc(null)} className="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-auto flex items-center justify-center p-4">
+                        {viewerDoc.mimeType === "application/pdf" ? (
+                            <iframe src={viewerDoc.url} title={viewerDoc.fileName} className="w-full h-full min-h-[70vh] rounded-lg border-0 bg-white" />
+                        ) : (
+                            <img src={viewerDoc.url} alt={viewerDoc.fileName} className="max-w-full max-h-full object-contain rounded-lg shadow-xl" />
+                        )}
                     </div>
                 </div>
             )}

@@ -6,6 +6,7 @@ import toast, { Toaster } from "react-hot-toast";
 import Table from "../../../components/Table";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
+import { sortByName } from "@/lib/utils";
 
 export default function EnrollmentPage() {
     const router = useRouter();
@@ -62,7 +63,7 @@ export default function EnrollmentPage() {
                     // Do NOT setFilteredStudents here initially to keep table empty until search
                 }
                 if (subjectsRes.ok) setSubjects(await subjectsRes.json());
-                if (classesRes.ok) setClasses(await classesRes.json());
+                if (classesRes.ok) setClasses(sortByName(await classesRes.json()));
                 if (sessionsRes.ok) {
                     const data = await sessionsRes.json();
                     setAcademicSessions(data);

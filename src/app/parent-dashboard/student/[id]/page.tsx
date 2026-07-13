@@ -303,6 +303,18 @@ export default function StudentDashboardPage() {
         } catch { toast.error("Failed to get document URL"); }
     };
 
+    const handleOpenWorksheet = async (h: { id: string; worksheetFileName: string; worksheetMimeType: string | null }) => {
+        try {
+            const res = await authFetch(`${API_BASE_URL}/parent/student/${studentId}/homework/${h.id}/worksheet-url`);
+            if (res.ok) {
+                const { url } = await res.json();
+                setViewerDoc({ url, fileName: h.worksheetFileName, mimeType: h.worksheetMimeType || "" });
+            } else {
+                toast.error("Failed to open worksheet");
+            }
+        } catch { toast.error("Failed to open worksheet"); }
+    };
+
     const handleCancelLeave = async () => {
         if (!cancelLeaveId) return;
         setCancelLeaving(true);
@@ -1628,6 +1640,15 @@ export default function StudentDashboardPage() {
                                                         </div>
                                                     )}
                                                     <p className="text-ink text-sm leading-relaxed whitespace-pre-line">{h.message}</p>
+                                                    {h.worksheetFileName && (
+                                                        <button
+                                                            onClick={() => handleOpenWorksheet(h)}
+                                                            className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-brand/10 text-brand hover:bg-brand/20 text-xs font-semibold transition-colors max-w-full"
+                                                        >
+                                                            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                                            <span className="truncate">View worksheet</span>
+                                                        </button>
+                                                    )}
                                                 </div>
                                             );
                                         })}
@@ -1878,7 +1899,7 @@ export default function StudentDashboardPage() {
             {/* ── In-app Document Viewer ── */}
             {viewerDoc && (
                 <div className="fixed inset-0 z-60 flex flex-col bg-black/90" onClick={e => { if (e.target === e.currentTarget) setViewerDoc(null); }}>
-                    <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200 shrink-0">
+                    <div className="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-700 shrink-0">
                         <span className="text-white text-sm font-medium truncate max-w-xs">{viewerDoc.fileName}</span>
                         <div className="flex items-center gap-2 shrink-0">
                             <a
@@ -1889,7 +1910,7 @@ export default function StudentDashboardPage() {
                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                                 Download
                             </a>
-                            <button onClick={() => setViewerDoc(null)} className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-200 transition-colors">
+                            <button onClick={() => setViewerDoc(null)} className="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
