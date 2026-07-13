@@ -255,8 +255,11 @@ export function AiPlanTool() {
         setProrationNote(null);
       }
 
-      // 2. Open Razorpay checkout
-      const rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? "";
+      // 2. Open Razorpay checkout — key comes from the create-order response
+      // (always matches the account that created the order; NEXT_PUBLIC_ vars
+      // are inlined at CI build time where no env is set, so they're only a
+      // local-dev fallback).
+      const rzpKey = orderData.razorpay_key_id ?? process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? "";
       await new Promise<void>((resolve, reject) => {
         const rzp = new window.Razorpay({
           key: rzpKey,
