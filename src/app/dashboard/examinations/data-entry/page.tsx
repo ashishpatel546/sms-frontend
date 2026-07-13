@@ -7,6 +7,7 @@ import { API_BASE_URL, fetcher } from "@/lib/api";
 import toast, { Toaster } from "react-hot-toast";
 import { authFetch } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
+import { sortByName } from "@/lib/utils";
 
 export default function ExaminationsDataEntryPage() {
     const rbac = useRbac();
@@ -89,7 +90,7 @@ export default function ExaminationsDataEntryPage() {
             authFetch(`${API_BASE_URL}/academic-sessions`).then(r => r.json()),
             authFetch(`${API_BASE_URL}/subjects`).then(r => r.json()),
         ]).then(([classesData, sessionsData, subjectsData]) => {
-            setClasses(Array.isArray(classesData) ? classesData : []);
+            setClasses(sortByName(Array.isArray(classesData) ? classesData : []));
             setSessions(Array.isArray(sessionsData) ? sessionsData : []);
             setSubjects(Array.isArray(subjectsData) ? subjectsData : []);
             const activeSession = sessionsData.find((s: any) => s.isActive);

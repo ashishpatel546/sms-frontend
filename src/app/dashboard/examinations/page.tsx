@@ -10,6 +10,7 @@ import { authFetch } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
 import ExamScheduleTab from "./ExamScheduleTab";
 import { ClipboardList, Calendar, MoreVertical } from "lucide-react";
+import { sortByName } from "@/lib/utils";
 
 export default function ExaminationsPage() {
     const [activeTab, setActiveTab] = useState<"results" | "schedule">("results");
@@ -87,7 +88,7 @@ export default function ExaminationsPage() {
             authFetch(`${API_BASE_URL}/classes/names-only`).then(r => r.json()),
             authFetch(`${API_BASE_URL}/academic-sessions`).then(r => r.json()),
         ]).then(([classesData, sessionsData]) => {
-            setClasses(Array.isArray(classesData) ? classesData : []);
+            setClasses(sortByName(Array.isArray(classesData) ? classesData : []));
             setSessions(Array.isArray(sessionsData) ? sessionsData : []);
             const activeSession = sessionsData.find((s: any) => s.isActive);
             if (activeSession) {

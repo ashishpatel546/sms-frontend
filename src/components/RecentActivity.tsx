@@ -5,7 +5,7 @@ import { authFetch } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
 import {
   LockOpen, Lock, CheckCircle2, XCircle, Undo2, Pencil,
-  ClipboardList, type LucideIcon,
+  ClipboardList, Trash2, type LucideIcon,
 } from "lucide-react";
 
 interface ActivityLogEntry {
@@ -23,6 +23,8 @@ const ACTION_META: Record<string, { Icon: LucideIcon; color: string }> = {
   LEAVE_REJECTED:       { Icon: XCircle,       color: "text-red-500"     },
   LEAVE_CANCELLED:      { Icon: Undo2,         color: "text-orange-500"  },
   STUDENT_UPDATED:      { Icon: Pencil,        color: "text-blue-500"    },
+  HOMEWORK_UPDATED:     { Icon: Pencil,        color: "text-blue-500"    },
+  HOMEWORK_DELETED:     { Icon: Trash2,        color: "text-red-500"     },
 };
 
 function timeAgo(iso: string): string {
@@ -98,14 +100,16 @@ export default function RecentActivity() {
                 );
               })()}
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-ink leading-snug truncate">
-                  {log.description ?? log.action}
-                </p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm text-ink leading-snug wrap-break-word">
+                    {log.description ?? log.action}
+                  </p>
+                  <span className="text-xs text-ink-muted shrink-0 mt-0.5 whitespace-nowrap">{timeAgo(log.createdAt)}</span>
+                </div>
                 {log.actorName && (
                   <p className="text-xs text-ink-muted mt-0.5">{log.actorName}</p>
                 )}
               </div>
-              <span className="text-xs text-ink-muted shrink-0 mt-0.5">{timeAgo(log.createdAt)}</span>
             </li>
           ))}
         </ul>

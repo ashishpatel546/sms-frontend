@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { useRbac } from "@/lib/rbac";
-import { todayLocalDate } from "@/lib/utils";
+import { todayLocalDate, sortByName } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
@@ -233,7 +233,7 @@ export default function ReportsDashboard() {
 
                 if (classesRes.ok) {
                     const data = await classesRes.json();
-                    setClasses(data);
+                    setClasses(sortByName(data));
                 }
 
                 if (sessionsRes.ok) {
