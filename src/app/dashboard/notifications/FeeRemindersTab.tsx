@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { authFetch } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
+import { sortByName } from "@/lib/utils";
 
 export default function FeeRemindersTab() {
   const [sessions, setSessions] = useState<any[]>([]);
@@ -68,7 +69,7 @@ export default function FeeRemindersTab() {
         }
 
         if (classRes.ok) {
-          setClasses(await classRes.json());
+          setClasses(sortByName(await classRes.json()));
         }
       } catch (err) {
         console.error(err);

@@ -186,7 +186,19 @@ export const HomeSection = ({ studentId, academicYearString, sessionId, onChange
                 {h.subject && (
                   <span className="text-xs font-bold text-brand uppercase tracking-wide shrink-0 mt-0.5">{h.subject}</span>
                 )}
-                <p className="text-sm text-ink leading-snug line-clamp-2">{h.message}</p>
+                <p className="text-sm text-ink leading-snug line-clamp-2 flex-1">{h.message}</p>
+                {h.worksheetFileName && (
+                  <svg
+                    className="w-3.5 h-3.5 text-ink-muted shrink-0 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-label="Worksheet attached"
+                  >
+                    <title>Worksheet attached</title>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                  </svg>
+                )}
               </div>
             ))}
           </div>

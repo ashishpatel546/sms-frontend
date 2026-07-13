@@ -8,6 +8,7 @@ import toast, { Toaster } from "react-hot-toast";
 import LeaveCancellationModal from "@/components/LeaveCancellationModal";
 import LeaveTimeline from "@/components/LeaveTimeline";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
+import { sortByName } from "@/lib/utils";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -338,7 +339,7 @@ export default function LeavesPage() {
     useEffect(() => {
         authFetch(`${API_BASE_URL}/classes/names-only`)
             .then(r => r.json())
-            .then(d => setClasses(Array.isArray(d) ? d : []))
+            .then(d => setClasses(sortByName(Array.isArray(d) ? d : [])))
             .catch(() => { });
     }, []);
 

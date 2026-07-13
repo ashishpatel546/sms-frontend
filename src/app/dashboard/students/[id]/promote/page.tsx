@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
+import { sortByName } from "@/lib/utils";
 
 export default function PromoteStudentPage() {
     const router = useRouter();
@@ -40,7 +41,7 @@ export default function PromoteStudentPage() {
                 } else {
                     setError("Student not found");
                 }
-                setClasses(classesData);
+                setClasses(sortByName(classesData));
             } catch (_err) {
                 setError("Failed to load data");
             } finally {

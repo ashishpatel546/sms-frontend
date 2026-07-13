@@ -8,6 +8,7 @@ import { API_BASE_URL } from "@/lib/api";
 import { toast } from "react-hot-toast";
 import { useRbac } from "@/lib/rbac";
 import { authFetch } from "@/lib/auth";
+import { sortByName } from "@/lib/utils";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -149,7 +150,7 @@ export default function StudentsPage() {
             authFetch(`${API_BASE_URL}/classes/names-only`).then(r => r.json()),
             authFetch(`${API_BASE_URL}/academic-sessions`).then(r => r.json())
         ]).then(([classesData, sessionsData]) => {
-            setClasses(Array.isArray(classesData) ? classesData : []);
+            setClasses(sortByName(Array.isArray(classesData) ? classesData : []));
             setSessions(Array.isArray(sessionsData) ? sessionsData : []);
             const activeSession = sessionsData.find((s: any) => s.isActive);
             if (activeSession) setSearchSessionId(activeSession.id.toString());

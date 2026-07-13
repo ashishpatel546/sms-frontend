@@ -9,6 +9,7 @@ import { useRbac } from "@/lib/rbac";
 import { authFetch, getUser } from "@/lib/auth";
 import ReceiptModal from "@/components/ReceiptModal";
 import { Settings, Layers, Wallet, BadgePercent } from "lucide-react";
+import { sortByName } from "@/lib/utils";
 
 export default function FeesDashboardPage() {
     const router = useRouter();
@@ -244,7 +245,7 @@ export default function FeesDashboardPage() {
                 ]);
                 if (catRes.ok) setCategories(await catRes.json());
                 if (structRes.ok) setStructures(await structRes.json());
-                if (classRes.ok) setClasses(await classRes.json());
+                if (classRes.ok) setClasses(sortByName(await classRes.json()));
                 if (studentRes.ok) setStudents(await studentRes.json());
                 if (settingsRes.ok) setGlobalSettings(await settingsRes.json());
                 if (discountRes.ok) setDiscounts(await discountRes.json());

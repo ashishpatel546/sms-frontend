@@ -9,6 +9,7 @@ import { StudentDetailsModal } from "@/components/StudentDetailsModal";
 import StudentAttendanceModal from "@/components/StudentAttendanceModal";
 import { PieChart, Pie, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { useMemo } from "react";
+import { sortByName } from "@/lib/utils";
 
 interface Student {
     id: number;
@@ -85,7 +86,7 @@ export default function AttendancePage() {
                 const res = await authFetch(`${API_BASE_URL}/classes/names-only`);
                 if (res.ok) {
                     const data = await res.json();
-                    setClasses(data);
+                    setClasses(sortByName(data));
                 }
             } catch (err) {
                 console.error("Failed to fetch classes", err);

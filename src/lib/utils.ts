@@ -15,3 +15,18 @@ export function todayLocalDate(): string {
     new Date(),
   );
 }
+
+/** Natural string comparison: "Class 2" sorts before "Class 10". */
+export function naturalCompare(a: string, b: string): number {
+  return (a ?? '').localeCompare(b ?? '', undefined, {
+    numeric: true,
+    sensitivity: 'base',
+  });
+}
+
+/** Sort an array of { name } objects naturally. Returns a new array. */
+export function sortByName<T extends { name?: string | null }>(
+  items: T[],
+): T[] {
+  return [...items].sort((x, y) => naturalCompare(x.name ?? '', y.name ?? ''));
+}

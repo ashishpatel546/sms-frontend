@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
+import { sortByName } from "@/lib/utils";
 
 export default function BulkPromotionsPage() {
     const router = useRouter();
@@ -45,7 +46,7 @@ export default function BulkPromotionsPage() {
             ]);
 
             if (sessRes.ok) setSessions(await sessRes.json());
-            if (classRes.ok) setClasses(await classRes.json());
+            if (classRes.ok) setClasses(sortByName(await classRes.json()));
         } catch (error) {
             toast.error("Failed to load initial data");
         }

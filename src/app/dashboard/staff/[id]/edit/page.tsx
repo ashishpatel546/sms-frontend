@@ -8,6 +8,7 @@ import { Country, State, City } from "country-state-city";
 import { authFetch, getUser } from "@/lib/auth";
 import toast from "react-hot-toast";
 import { useRbac } from "@/lib/rbac";
+import { sortByName } from "@/lib/utils";
 
 export default function EditStaffPage() {
     const router = useRouter();
@@ -166,7 +167,7 @@ export default function EditStaffPage() {
                 setError("Staff not found");
             }
 
-            if (classesRes.ok) setClasses(await classesRes.json());
+            if (classesRes.ok) setClasses(sortByName(await classesRes.json()));
             if (subjectsRes.ok) setSubjects(await subjectsRes.json());
             if (desigRes.ok) setDesignations(await desigRes.json());
         } catch (_err) {

@@ -9,6 +9,7 @@ import { Country, State, City } from "country-state-city";
 import { useRbac } from "@/lib/rbac";
 import { authFetch } from "@/lib/auth";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
+import { sortByName } from "@/lib/utils";
 
 export default function AddStudentPage() {
     const router = useRouter();
@@ -78,7 +79,7 @@ export default function AddStudentPage() {
                 ]);
                 
                 if (discountsRes.ok) setAvailableDiscounts(await discountsRes.json());
-                if (classesRes.ok) setClasses(await classesRes.json());
+                if (classesRes.ok) setClasses(sortByName(await classesRes.json()));
                 if (subjectsRes.ok) setSubjects(await subjectsRes.json());
                 if (sessionsRes.ok) {
                     const data = await sessionsRes.json();
