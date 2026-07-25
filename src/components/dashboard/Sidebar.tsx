@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { ChevronDown, ChevronRight, LogOut, User, X } from "lucide-react";
 import { NAV_CONFIG } from "@/lib/navConfig";
 import { useRbac } from "@/lib/rbac";
+import { useSchoolFeatures } from "@/lib/useSchoolFeatures";
 import { getUser, logout } from "@/lib/auth";
 
 interface SidebarProps {
@@ -34,6 +35,7 @@ interface SidebarProps {
 export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps) {
     const pathname = usePathname();
     const rbac = useRbac();
+    const { features, status: featureStatus } = useSchoolFeatures();
     const user = getUser();
 
     // ── Accordion state ─────────────────────────────────────────────────────
@@ -147,7 +149,15 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                         const visibleItems = group.items.filter(item => {
                             // GUARD is deny-by-default: only explicitly flagged items appear
                             if (rbac.isGuard) return item.guardAllowed === true;
-                            return !item.rbacKey || Boolean((rbac as any)[item.rbacKey]);
+                            if (item.rbacKey && !(rbac as any)[item.rbacKey]) return false;
+                            // Hide modules the school's plan does not include —
+                            // but only once we actually know the plan, so a slow
+                            // or failed lookup shows the full menu rather than a
+                            // menu that looks like features went missing.
+                            if (item.featureFlag && featureStatus === 'ready') {
+                                return features[item.featureFlag] === true;
+                            }
+                            return true;
                         });
                         if (!visibleItems.length) return null;
 
