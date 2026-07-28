@@ -46,6 +46,11 @@ interface InvoiceRow {
   dueDate: string;
   issuedAt: string;
   paidAt: string | null;
+  settlement: {
+    amountPaidPaise: number;
+    couponCode: string | null;
+    couponDiscountPaise: number;
+  } | null;
 }
 
 const STATUS_STYLES: Record<InvoiceRow['status'], string> = {
@@ -468,6 +473,14 @@ export default function BillingPage() {
                     </td>
                     <td className="px-3 py-3 font-medium text-gray-800 whitespace-nowrap">
                       {rupees(invoice.totalPaise)}
+                      {invoice.settlement &&
+                        invoice.settlement.couponDiscountPaise > 0 && (
+                          <p className="text-[11px] font-normal text-emerald-700">
+                            paid {rupees(invoice.settlement.amountPaidPaise)}
+                            {invoice.settlement.couponCode &&
+                              ` · ${invoice.settlement.couponCode}`}
+                          </p>
+                        )}
                     </td>
                     <td className="px-3 py-3 text-xs text-gray-600 whitespace-nowrap">
                       {formatDate(invoice.dueDate)}

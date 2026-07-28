@@ -49,6 +49,14 @@ export interface InvoiceDetail {
   paidAt: string | null;
   paymentMethod: string | null;
   offlineReference: string | null;
+  /** How the invoice was actually settled, when it has been. */
+  settlement: {
+    amountPaidPaise: number;
+    couponCode: string | null;
+    couponDiscountPaise: number;
+    method: string;
+    reference: string | null;
+  } | null;
   planName?: string;
   companyProfile: InvoiceCompanyProfile;
   billTo: {
@@ -292,6 +300,18 @@ export async function downloadInvoicePdf(
   }
   totals.push(['Total payable', rupees(invoice.totalPaise)]);
 
+  // A coupon is a settlement concession, not a change to what was billed —
+  // so the invoice total stands, and the coupon appears below it as the
+  // bridge to what was actually paid.
+  const settlement = invoice.settlement;
+  if (settlement && settlement.couponDiscountPaise > 0) {
+    totals.push([
+      `Coupon applied${settlement.couponCode ? ` (${settlement.couponCode})` : ''}`,
+      `- ${rupees(settlement.couponDiscountPaise)}`,
+    ]);
+    totals.push(['Amount paid', rupees(settlement.amountPaidPaise)]);
+  }
+
   autoTable(doc, {
     // @ts-expect-error — lastAutoTable is attached by the plugin at runtime.
     startY: (doc.lastAutoTable?.finalY ?? y) + 12,
@@ -319,7 +339,9 @@ export async function downloadInvoicePdf(
     doc.setTextColor(16, 122, 87);
     doc.setFont('helvetica', 'bold');
     doc.text(
-      `PAID on ${formatDate(invoice.paidAt)}${
+      `PAID${
+        invoice.settlement ? ` ${rupees(invoice.settlement.amountPaidPaise)}` : ''
+      } on ${formatDate(invoice.paidAt)}${
         invoice.paymentMethod ? ` via ${invoice.paymentMethod}` : ''
       }${invoice.offlineReference ? ` (Ref: ${invoice.offlineReference})` : ''}`,
       margin,
