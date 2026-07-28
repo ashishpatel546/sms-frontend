@@ -2,12 +2,12 @@
 
 import FeatureGate from '@/components/dashboard/FeatureGate';
 
-export default function VisitorsLayout({ children }: { children: React.ReactNode }) {
+export default function LeavesLayout({ children }: { children: React.ReactNode }) {
   return (
     <FeatureGate
-      flag="visitor_management"
-      title="Visitor Management"
-      icon="🛂"
+      flag="leave_management"
+      title="Student Leaves"
+      icon="🗓️"
       spinnerClass="border-teal-600"
     >
       {children}

@@ -5,6 +5,7 @@ import DashboardStats from "./DashboardStats";
 import RecentActivity from "@/components/RecentActivity";
 import GreetingCard from "./GreetingCardDynamic";
 import { GuardSwitch } from "./GuardDashboard";
+import BillingDueBanner from "@/components/dashboard/BillingDueBanner";
 import { todayLocalDate } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -21,6 +22,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <GuardSwitch>
         <div className="min-h-screen p-4 sm:p-6">
             <div className="max-w-7xl mx-auto space-y-5">
+
+                {/* ── Subscription dues, for the school owner ───────── */}
+                <BillingDueBanner />
 
                 {/* ── Personalised greeting ─────────────────────────── */}
                 <GreetingCard />
