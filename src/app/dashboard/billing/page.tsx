@@ -1,12 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Download, IndianRupee, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from '@/lib/api';
 import { authFetch } from '@/lib/auth';
 import { useRbac } from '@/lib/rbac';
-import { useSchoolInfo } from '@/lib/useSchoolInfo';
 import { downloadInvoicePdf, type InvoiceDetail } from '@/lib/billing-invoice-pdf';
 
 interface BillingSummary {
@@ -94,7 +93,6 @@ function loadRazorpay(): Promise<boolean> {
 
 export default function BillingPage() {
   const rbac = useRbac();
-  const schoolInfo = useSchoolInfo();
   const [summary, setSummary] = useState<BillingSummary | null>(null);
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,6 +172,19 @@ export default function BillingPage() {
       });
       if (!orderRes.ok) {
         const body = await orderRes.json().catch(() => ({}));
+        // 409 means there is nothing left to pay — either the invoice was
+        // settled elsewhere, or the coupon covered it entirely and the backend
+        // closed it on the spot. Both are outcomes to show, not errors.
+        if (orderRes.status === 409) {
+          toast.success(body?.message ?? 'This invoice is already settled.');
+          setAppliedCoupon((current) => {
+            const next = { ...current };
+            delete next[invoice.id];
+            return next;
+          });
+          await load();
+          return;
+        }
         throw new Error(body?.message ?? 'Could not start the payment.');
       }
       const order = await orderRes.json();
@@ -436,8 +447,8 @@ export default function BillingPage() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {invoices.map((invoice) => (
-                  <>
-                  <tr key={invoice.id}>
+                  <Fragment key={invoice.id}>
+                  <tr>
                     <td className="px-5 py-3">
                       <span className="font-mono text-xs text-gray-700">
                         {invoice.invoiceNumber}
@@ -539,7 +550,7 @@ export default function BillingPage() {
                       </td>
                     </tr>
                   )}
-                  </>
+                  </Fragment>
                 ))}
               </tbody>
             </table>
