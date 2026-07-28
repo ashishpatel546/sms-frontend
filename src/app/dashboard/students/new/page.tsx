@@ -10,6 +10,7 @@ import { useRbac } from "@/lib/rbac";
 import { authFetch } from "@/lib/auth";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
 import { sortByName } from "@/lib/utils";
+import { formatMobileInput, isValidMobile, MOBILE_ERROR } from "@/lib/mobile";
 
 export default function AddStudentPage() {
     const router = useRouter();
@@ -164,6 +165,13 @@ export default function AddStudentPage() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
+
+        // Mobile is a login identifier — strip formatting as it is typed/pasted
+        if (name === 'mobile' || name === 'alternateMobile') {
+            setFormData({ ...formData, [name]: formatMobileInput(value) });
+            return;
+        }
+
         setFormData({ ...formData, [name]: value });
 
         // Auto-apply Girl discount
@@ -261,8 +269,18 @@ export default function AddStudentPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
         setError("");
+
+        if (!isValidMobile(formData.mobile)) {
+            setError(`Mobile Number: ${MOBILE_ERROR}`);
+            return;
+        }
+        if (formData.alternateMobile && !isValidMobile(formData.alternateMobile)) {
+            setError(`Alternate Mobile: ${MOBILE_ERROR}`);
+            return;
+        }
+
+        setLoading(true);
 
         try {
             const payload = {
@@ -443,11 +461,17 @@ export default function AddStudentPage() {
                             </div>
                             <div>
                                 <label htmlFor="mobile" className="block mb-2 text-sm font-medium text-gray-900">Mobile Number <span className="text-red-500">*</span></label>
-                                <input type="tel" id="mobile" name="mobile" value={formData.mobile} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required />
+                                <input type="tel" id="mobile" name="mobile" value={formData.mobile} onChange={handleChange} maxLength={10} inputMode="numeric" placeholder="10-digit number" className={`bg-gray-50 border ${formData.mobile.length > 0 && !isValidMobile(formData.mobile) ? 'border-red-500' : 'border-gray-300'} text-sm rounded-lg block w-full p-2.5`} required />
+                                {formData.mobile.length > 0 && !isValidMobile(formData.mobile) && (
+                                    <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
+                                )}
                             </div>
                             <div>
                                 <label htmlFor="alternateMobile" className="block mb-2 text-sm font-medium text-gray-900">Alternate Mobile</label>
-                                <input type="tel" id="alternateMobile" name="alternateMobile" value={formData.alternateMobile} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                                <input type="tel" id="alternateMobile" name="alternateMobile" value={formData.alternateMobile} onChange={handleChange} maxLength={10} inputMode="numeric" placeholder="10-digit number" className={`bg-gray-50 border ${formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) ? 'border-red-500' : 'border-gray-300'} text-sm rounded-lg block w-full p-2.5`} />
+                                {formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) && (
+                                    <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
+                                )}
                             </div>
                         </div>
                     </div>

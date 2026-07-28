@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { authFetch } from "@/lib/auth";
 import { todayLocalDate } from "@/lib/utils";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
+import { formatMobileInput, isValidMobile, MOBILE_ERROR } from "@/lib/mobile";
 
 const ROLE_LABELS: Record<string, string> = {
     ADMIN: "Admin",
@@ -158,6 +159,11 @@ export default function AddStaffForm({
             setShowDesModal(true);
             return;
         }
+        // Mobile is a login identifier — strip formatting as it is typed/pasted
+        if (target.name === "mobile" || target.name === "alternateMobile") {
+            setFormData(prev => ({ ...prev, [target.name]: formatMobileInput(target.value) }));
+            return;
+        }
         setFormData(prev => ({ ...prev, [target.name]: value }));
     };
 
@@ -220,8 +226,18 @@ export default function AddStaffForm({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
         setError("");
+
+        if (!isValidMobile(formData.mobile)) {
+            setError(`Mobile: ${MOBILE_ERROR}`);
+            return;
+        }
+        if (formData.alternateMobile && !isValidMobile(formData.alternateMobile)) {
+            setError(`Alternate Mobile: ${MOBILE_ERROR}`);
+            return;
+        }
+
+        setLoading(true);
 
         try {
             const payload: any = { ...formData };
@@ -372,8 +388,10 @@ export default function AddStaffForm({
                                     value={formData.mobile}
                                     onChange={handleChange}
                                     required
-                                    maxLength={15}
-                                    className={`bg-gray-50 border ${mobileAvailable === false ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 pr-8`}
+                                    maxLength={10}
+                                    inputMode="numeric"
+                                    placeholder="10-digit number"
+                                    className={`bg-gray-50 border ${mobileAvailable === false || (formData.mobile.length > 0 && !isValidMobile(formData.mobile)) ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 pr-8`}
                                 />
                                 {checkingMobile && (
                                     <div className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -381,7 +399,10 @@ export default function AddStaffForm({
                                     </div>
                                 )}
                             </div>
-                            {formData.mobile.length >= 7 && !checkingMobile && mobileAvailable !== null && (
+                            {formData.mobile.length > 0 && !isValidMobile(formData.mobile) && (
+                                <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
+                            )}
+                            {isValidMobile(formData.mobile) && !checkingMobile && mobileAvailable !== null && (
                                 <p className={`mt-1 text-xs font-medium ${mobileAvailable ? "text-green-600" : "text-red-500"}`}>
                                     {mobileAvailable ? "✓ Mobile number is available" : "✕ Mobile number already registered for staff"}
                                 </p>
@@ -390,7 +411,11 @@ export default function AddStaffForm({
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Alternate Mobile <span className="text-gray-400 font-normal">(Optional)</span></label>
                             <input type="tel" name="alternateMobile" value={formData.alternateMobile} onChange={handleChange}
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                maxLength={10} inputMode="numeric" placeholder="10-digit number"
+                                className={`bg-gray-50 border ${formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5`} />
+                            {formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) && (
+                                <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
+                            )}
                         </div>
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Personal Email <span className="text-gray-400 font-normal">(Optional)</span></label>

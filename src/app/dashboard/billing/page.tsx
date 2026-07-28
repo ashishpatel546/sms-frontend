@@ -31,6 +31,8 @@ interface BillingSummary {
   overdueCount: number;
   nextDueDate: string | null;
   suspendOn: string | null;
+  /** Money we hold that belongs to this school. */
+  creditBalancePaise: number;
   gstEnabled: boolean;
 }
 
@@ -40,9 +42,13 @@ interface InvoiceRow {
   type: 'PERIOD' | 'TRUEUP';
   periodStart: string;
   periodEnd: string;
-  status: 'PENDING' | 'PAID' | 'OVERDUE' | 'VOID';
+  status: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'VOID';
   studentCount: number;
   totalPaise: number;
+  /** What is still owed after payments, credit, write-offs and refunds. */
+  balancePaise: number;
+  settledPaise: number;
+  amountRefundedPaise: number;
   dueDate: string;
   issuedAt: string;
   paidAt: string | null;
@@ -55,9 +61,18 @@ interface InvoiceRow {
 
 const STATUS_STYLES: Record<InvoiceRow['status'], string> = {
   PAID: 'bg-emerald-100 text-emerald-700',
+  PARTIALLY_PAID: 'bg-amber-100 text-amber-700',
   PENDING: 'bg-amber-100 text-amber-700',
   OVERDUE: 'bg-red-100 text-red-700',
   VOID: 'bg-gray-100 text-gray-500',
+};
+
+const STATUS_LABELS: Record<InvoiceRow['status'], string> = {
+  PAID: 'Paid',
+  PARTIALLY_PAID: 'Part paid',
+  PENDING: 'Due',
+  OVERDUE: 'Overdue',
+  VOID: 'Cancelled',
 };
 
 const FREQUENCY_LABELS: Record<string, string> = {
@@ -381,8 +396,21 @@ export default function BillingPage() {
                   Due {formatDate(summary.nextDueDate)}
                 </p>
               )}
+              {(summary.creditBalancePaise ?? 0) > 0 && (
+                <p className="text-xs font-medium text-emerald-600 mt-1">
+                  {rupees(summary.creditBalancePaise)} credit on your account
+                </p>
+              )}
             </div>
           </div>
+
+          {(summary.creditBalancePaise ?? 0) > 0 && (
+            <p className="mt-4 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2 text-xs text-emerald-800">
+              We are holding {rupees(summary.creditBalancePaise)} for you. It
+              comes off your next invoice automatically — there is nothing you
+              need to do.
+            </p>
+          )}
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5 pt-4 border-t border-gray-100">
             <div>
@@ -473,7 +501,14 @@ export default function BillingPage() {
                     </td>
                     <td className="px-3 py-3 font-medium text-gray-800 whitespace-nowrap">
                       {rupees(invoice.totalPaise)}
-                      {invoice.settlement &&
+                      {invoice.balancePaise > 0 &&
+                        invoice.settledPaise > 0 && (
+                          <p className="text-[11px] font-normal text-amber-700">
+                            {rupees(invoice.balancePaise)} still due
+                          </p>
+                        )}
+                      {invoice.balancePaise <= 0 &&
+                        invoice.settlement &&
                         invoice.settlement.couponDiscountPaise > 0 && (
                           <p className="text-[11px] font-normal text-emerald-700">
                             paid {rupees(invoice.settlement.amountPaidPaise)}
@@ -481,6 +516,11 @@ export default function BillingPage() {
                               ` · ${invoice.settlement.couponCode}`}
                           </p>
                         )}
+                      {invoice.amountRefundedPaise > 0 && (
+                        <p className="text-[11px] font-normal text-gray-500">
+                          {rupees(invoice.amountRefundedPaise)} refunded to you
+                        </p>
+                      )}
                     </td>
                     <td className="px-3 py-3 text-xs text-gray-600 whitespace-nowrap">
                       {formatDate(invoice.dueDate)}
@@ -489,7 +529,7 @@ export default function BillingPage() {
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${STATUS_STYLES[invoice.status]}`}
                       >
-                        {invoice.status}
+                        {STATUS_LABELS[invoice.status]}
                       </span>
                     </td>
                     <td className="px-5 py-3 text-right whitespace-nowrap">
@@ -505,7 +545,7 @@ export default function BillingPage() {
                         )}
                         PDF
                       </button>
-                      {invoice.status !== 'PAID' &&
+                      {invoice.balancePaise > 0 &&
                         invoice.status !== 'VOID' && (
                           <button
                             onClick={() => void pay(invoice)}
@@ -517,7 +557,7 @@ export default function BillingPage() {
                         )}
                     </td>
                   </tr>
-                  {invoice.status !== 'PAID' && invoice.status !== 'VOID' && (
+                  {invoice.balancePaise > 0 && invoice.status !== 'VOID' && (
                     <tr key={`${invoice.id}-coupon`}>
                       <td colSpan={6} className="px-5 pb-3 pt-0">
                         <div className="flex flex-wrap items-center gap-2">

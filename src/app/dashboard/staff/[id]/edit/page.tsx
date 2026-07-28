@@ -9,6 +9,7 @@ import { authFetch, getUser } from "@/lib/auth";
 import toast from "react-hot-toast";
 import { useRbac } from "@/lib/rbac";
 import { sortByName } from "@/lib/utils";
+import { formatMobileInput, isValidMobile, MOBILE_ERROR } from "@/lib/mobile";
 
 export default function EditStaffPage() {
     const router = useRouter();
@@ -191,6 +192,12 @@ export default function EditStaffPage() {
             return;
         }
 
+        // Mobile is a login identifier — strip formatting as it is typed/pasted
+        if (target.name === 'mobile' || target.name === 'alternateMobile') {
+            setFormData({ ...formData, [target.name]: formatMobileInput(target.value) });
+            return;
+        }
+
         setFormData({ ...formData, [target.name]: value });
     };
 
@@ -233,8 +240,18 @@ export default function EditStaffPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setSaving(true);
         setError("");
+
+        if (!isValidMobile(formData.mobile)) {
+            setError(`Mobile: ${MOBILE_ERROR}`);
+            return;
+        }
+        if (formData.alternateMobile && !isValidMobile(formData.alternateMobile)) {
+            setError(`Alternate Mobile: ${MOBILE_ERROR}`);
+            return;
+        }
+
+        setSaving(true);
 
         try {
             const payload = { ...formData };
@@ -413,12 +430,20 @@ export default function EditStaffPage() {
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">Mobile <span className="text-red-500">*</span></label>
                                 <input type="tel" name="mobile" value={formData.mobile} onChange={handleChange} required
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                    maxLength={10} inputMode="numeric" placeholder="10-digit number"
+                                    className={`bg-gray-50 border ${formData.mobile.length > 0 && !isValidMobile(formData.mobile) ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5`} />
+                                {formData.mobile.length > 0 && !isValidMobile(formData.mobile) && (
+                                    <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
+                                )}
                             </div>
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">Alternate Mobile <span className="text-gray-400 font-normal">(Optional)</span></label>
                                 <input type="tel" name="alternateMobile" value={formData.alternateMobile} onChange={handleChange}
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                    maxLength={10} inputMode="numeric" placeholder="10-digit number"
+                                    className={`bg-gray-50 border ${formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5`} />
+                                {formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) && (
+                                    <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
+                                )}
                             </div>
                         </div>
                     </div>

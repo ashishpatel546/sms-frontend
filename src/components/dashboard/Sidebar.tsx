@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, ChevronRight, LogOut, User, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Lock, LogOut, User, X } from "lucide-react";
 import { NAV_CONFIG } from "@/lib/navConfig";
 import { useRbac } from "@/lib/rbac";
 import { useSchoolFeatures } from "@/lib/useSchoolFeatures";
@@ -137,7 +137,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                 {/* Mobile close button */}
                 <button
                     onClick={onMobileClose}
-                    className="md:hidden absolute top-[60px] right-2 p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-secondary transition-colors"
+                    className="md:hidden absolute top-15 right-2 p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-secondary transition-colors"
                     aria-label="Close menu"
                 >
                     <X className="w-4 h-4" />
@@ -150,16 +150,27 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                             // GUARD is deny-by-default: only explicitly flagged items appear
                             if (rbac.isGuard) return item.guardAllowed === true;
                             if (item.rbacKey && !(rbac as any)[item.rbacKey]) return false;
-                            // Hide modules the school's plan does not include —
-                            // but only once we actually know the plan, so a slow
-                            // or failed lookup shows the full menu rather than a
-                            // menu that looks like features went missing.
-                            if (item.featureFlag && featureStatus === 'ready') {
-                                return features[item.featureFlag] === true;
-                            }
                             return true;
                         });
                         if (!visibleItems.length) return null;
+
+                        /**
+                         * A module the school's plan does not include.
+                         *
+                         * Shown rather than hidden: a school that cannot see a
+                         * feature cannot ask for it, and a menu that silently
+                         * differs per plan makes support conversations start
+                         * with "what am I even missing?". The item stays
+                         * reachable and the page behind it explains the upgrade.
+                         *
+                         * Only judged once the plan is actually known — a slow
+                         * or failed lookup leaves everything unlocked rather
+                         * than padlocking the whole menu.
+                         */
+                        const isLocked = (item: typeof visibleItems[number]) =>
+                            Boolean(item.featureFlag)
+                            && featureStatus === 'ready'
+                            && features[item.featureFlag!] !== true;
 
                         // Shared item renderer to avoid duplication
                         const renderItems = (items: typeof visibleItems) => (
@@ -167,13 +178,14 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                 {items.map(item => {
                                     const active = isActive(item.href);
                                     const Icon = item.icon;
+                                    const locked = isLocked(item);
                                     return (
                                         <li key={item.id}>
                                             <Link
                                                 href={item.href}
                                                 onClick={onMobileClose}
                                                 aria-current={active ? 'page' : undefined}
-                                                title={collapsed ? item.label : undefined}
+                                                title={locked ? `${item.label} — not in your plan` : collapsed ? item.label : undefined}
                                                 className={navLinkClass(active, collapsed)}
                                             >
                                                 {active && !collapsed && (
@@ -181,15 +193,20 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                                 )}
                                                 {collapsed ? (
                                                     <div className={`flex items-center justify-center w-9 h-9 rounded-xl transition-colors ${active ? 'bg-brand/10 dark:bg-brand/15' : 'group-hover:bg-slate-100/80 dark:group-hover:bg-surface-secondary'}`}>
-                                                        <Icon aria-hidden="true" className={`w-5 h-5 transition-opacity ${active ? item.iconColor : `${item.iconColor} opacity-55 group-hover:opacity-90`}`} />
+                                                        <Icon aria-hidden="true" className={`w-5 h-5 transition-opacity ${locked ? 'text-ink-muted opacity-40' : active ? item.iconColor : `${item.iconColor} opacity-55 group-hover:opacity-90`}`} />
                                                     </div>
                                                 ) : (
-                                                    <Icon aria-hidden="true" className={`shrink-0 w-4 h-4 transition-opacity ${active ? item.iconColor : `${item.iconColor} opacity-55 group-hover:opacity-90`}`} />
+                                                    <Icon aria-hidden="true" className={`shrink-0 w-4 h-4 transition-opacity ${locked ? 'text-ink-muted opacity-40' : active ? item.iconColor : `${item.iconColor} opacity-55 group-hover:opacity-90`}`} />
                                                 )}
                                                 {!collapsed && (
-                                                    <span className={`truncate transition-colors ${active ? 'text-brand font-semibold' : 'text-ink-muted group-hover:text-ink'}`}>
-                                                        {item.label}
-                                                    </span>
+                                                    <>
+                                                        <span className={`truncate transition-colors ${locked ? 'text-ink-muted/70' : active ? 'text-brand font-semibold' : 'text-ink-muted group-hover:text-ink'}`}>
+                                                            {item.label}
+                                                        </span>
+                                                        {locked && (
+                                                            <Lock aria-label="Not in your plan" className="ml-auto shrink-0 w-3 h-3 text-ink-muted/60" />
+                                                        )}
+                                                    </>
                                                 )}
                                             </Link>
                                         </li>
@@ -232,7 +249,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                 {/* Items — animated open/close in expanded mode; always visible flat in icon-only mode */}
                                 <div className={[
                                     'overflow-hidden transition-all duration-200 ease-out',
-                                    collapsed ? 'max-h-[2000px]' : isOpen ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0',
+                                    collapsed ? 'max-h-[2000px]' : isOpen ? 'max-h-150 opacity-100' : 'max-h-0 opacity-0',
                                 ].join(' ')}>
                                     {renderItems(visibleItems)}
                                 </div>
