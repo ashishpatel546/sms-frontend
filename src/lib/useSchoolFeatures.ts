@@ -17,15 +17,30 @@ export type FeatureStatus = 'loading' | 'ready' | 'error';
  * Shared cache, keyed by school slug so multiple tabs on different subdomains
  * stay correct. One in-flight promise means a page that gates several things
  * at once still makes a single request.
+ *
+ * The TTL matters: a plan change made in the hub console has to reach an open
+ * tab without the user knowing to hard-reload. A minute keeps the request count
+ * negligible while making "I switched the plan and nothing happened" go away on
+ * its own.
  */
+const CACHE_TTL_MS = 60_000;
+
 let _cache: FeatureMap | null = null;
 let _cacheKey: string | null = null;
+let _cachedAt = 0;
 let _inflight: Promise<FeatureMap | null> | null = null;
+
+function cacheIsFresh(slug: string): boolean {
+  return (
+    _cacheKey === slug && _cache !== null && Date.now() - _cachedAt < CACHE_TTL_MS
+  );
+}
 
 /** Drops the cache so the next read reflects a just-changed plan. */
 export function clearSchoolFeaturesCache(): void {
   _cache = null;
   _cacheKey = null;
+  _cachedAt = 0;
   _inflight = null;
 }
 
@@ -49,16 +64,16 @@ export function useSchoolFeatures(): {
 } {
   const slug = typeof window === 'undefined' ? '' : getSchoolSlug() || '';
   const [features, setFeatures] = useState<FeatureMap>(
-    _cacheKey === slug && _cache ? _cache : {},
+    cacheIsFresh(slug) && _cache ? _cache : {},
   );
   const [status, setStatus] = useState<FeatureStatus>(
-    _cacheKey === slug && _cache ? 'ready' : 'loading',
+    cacheIsFresh(slug) ? 'ready' : 'loading',
   );
 
   useEffect(() => {
     let cancelled = false;
 
-    if (_cacheKey === slug && _cache) {
+    if (cacheIsFresh(slug) && _cache) {
       setFeatures(_cache);
       setStatus('ready');
       return;
@@ -80,6 +95,7 @@ export function useSchoolFeatures(): {
         }
         _cache = map;
         _cacheKey = slug;
+        _cachedAt = Date.now();
         setFeatures(map);
         setStatus('ready');
       })
