@@ -100,6 +100,11 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(true);
   const [payingId, setPayingId] = useState<number | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [couponInput, setCouponInput] = useState<Record<number, string>>({});
+  const [appliedCoupon, setAppliedCoupon] = useState<
+    Record<number, { code: string; discountPaise: number }>
+  >({});
+  const [checkingCoupon, setCheckingCoupon] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -122,6 +127,36 @@ export default function BillingPage() {
     else setLoading(false);
   }, [rbac.isSuperAdmin, load]);
 
+  /** Checks a code and shows the saving, without spending it. */
+  const applyCoupon = async (invoice: InvoiceRow) => {
+    const code = couponInput[invoice.id]?.trim();
+    if (!code) return;
+    setCheckingCoupon(invoice.id);
+    try {
+      const res = await authFetch(`${API_BASE_URL}/billing/apply-coupon`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoiceId: invoice.id, code }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.message ?? 'That coupon is not valid.');
+      setAppliedCoupon((current) => ({
+        ...current,
+        [invoice.id]: { code, discountPaise: body.discountPaise },
+      }));
+      toast.success(`Coupon applied — you save ${rupees(body.discountPaise)}`);
+    } catch (e: unknown) {
+      setAppliedCoupon((current) => {
+        const next = { ...current };
+        delete next[invoice.id];
+        return next;
+      });
+      toast.error(e instanceof Error ? e.message : 'That coupon is not valid.');
+    } finally {
+      setCheckingCoupon(null);
+    }
+  };
+
   const pay = async (invoice: InvoiceRow) => {
     if (payingId) return;
     setPayingId(invoice.id);
@@ -132,7 +167,10 @@ export default function BillingPage() {
       const orderRes = await authFetch(`${API_BASE_URL}/billing/create-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invoiceId: invoice.id }),
+        body: JSON.stringify({
+          invoiceId: invoice.id,
+          couponCode: appliedCoupon[invoice.id]?.code,
+        }),
       });
       if (!orderRes.ok) {
         const body = await orderRes.json().catch(() => ({}));
@@ -183,6 +221,12 @@ export default function BillingPage() {
       });
 
       toast.success('Payment received — thank you!');
+      setAppliedCoupon((current) => {
+        const next = { ...current };
+        delete next[invoice.id];
+        return next;
+      });
+      setCouponInput((current) => ({ ...current, [invoice.id]: '' }));
       await load();
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Payment failed.';
@@ -200,7 +244,7 @@ export default function BillingPage() {
       );
       if (!res.ok) throw new Error();
       const detail = (await res.json()) as InvoiceDetail;
-      downloadInvoicePdf(detail, schoolInfo?.logoDataUrl ?? null);
+      await downloadInvoicePdf(detail);
     } catch {
       toast.error('Could not prepare the invoice PDF');
     } finally {
@@ -392,6 +436,7 @@ export default function BillingPage() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {invoices.map((invoice) => (
+                  <>
                   <tr key={invoice.id}>
                     <td className="px-5 py-3">
                       <span className="font-mono text-xs text-gray-700">
@@ -448,6 +493,53 @@ export default function BillingPage() {
                         )}
                     </td>
                   </tr>
+                  {invoice.status !== 'PAID' && invoice.status !== 'VOID' && (
+                    <tr key={`${invoice.id}-coupon`}>
+                      <td colSpan={6} className="px-5 pb-3 pt-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <input
+                            value={couponInput[invoice.id] ?? ''}
+                            onChange={(e) =>
+                              setCouponInput((current) => ({
+                                ...current,
+                                [invoice.id]: e.target.value.toUpperCase(),
+                              }))
+                            }
+                            onKeyDown={(e) =>
+                              e.key === 'Enter' && void applyCoupon(invoice)
+                            }
+                            placeholder="Have a coupon code?"
+                            className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-mono uppercase w-48 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          />
+                          <button
+                            onClick={() => void applyCoupon(invoice)}
+                            disabled={
+                              checkingCoupon === invoice.id ||
+                              !couponInput[invoice.id]?.trim()
+                            }
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+                          >
+                            {checkingCoupon === invoice.id
+                              ? 'Checking…'
+                              : 'Apply'}
+                          </button>
+                          {appliedCoupon[invoice.id] && (
+                            <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-2 py-1">
+                              {appliedCoupon[invoice.id].code} applied — you pay{' '}
+                              <strong>
+                                {rupees(
+                                  invoice.totalPaise -
+                                    appliedCoupon[invoice.id].discountPaise,
+                                )}
+                              </strong>{' '}
+                              instead of {rupees(invoice.totalPaise)}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </>
                 ))}
               </tbody>
             </table>

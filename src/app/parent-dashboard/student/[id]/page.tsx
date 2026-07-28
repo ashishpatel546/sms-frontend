@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import FeatureNotAvailableNotice from "@/components/parent/FeatureNotAvailableNotice";
 import Link from "next/link";
 import { PieChart, Pie, Tooltip, ResponsiveContainer } from "recharts";
 import { API_BASE_URL } from "@/lib/api";
@@ -737,6 +738,16 @@ export default function StudentDashboardPage() {
                                     </button>
                                 )}
                             </div>
+
+                            {/* Dues stay listed either way; only the pay-online
+                                path depends on the school having enabled it. */}
+                            {!onlinePaymentEnabled && allDueItems.length > 0 && (
+                                <FeatureNotAvailableNotice
+                                    title="Online fee payment"
+                                    description="You would be able to pay these dues from here by card or UPI."
+                                    className="mb-4"
+                                />
+                            )}
 
                             {allDueItems.length === 0 ? (
                                 <div className="text-center py-12 flex-1 flex flex-col justify-center">

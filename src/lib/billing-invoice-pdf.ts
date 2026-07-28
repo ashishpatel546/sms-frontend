@@ -63,6 +63,39 @@ export interface InvoiceDetail {
   } | null;
 }
 
+/** Our own logo, served from `public/`. */
+const SELLER_LOGO_URL = '/appmesoft/appme-logo.png';
+
+let _logoDataUrl: string | null | undefined;
+
+/**
+ * Loads the AppMeSoft logo as a data URL for embedding in the PDF.
+ *
+ * This is deliberately *our* logo, not the school's: the school is the
+ * customer being billed, so putting their branding on the invoice header would
+ * make it read as though they issued it to themselves.
+ *
+ * Cached after the first load, and failure is non-fatal — an invoice without a
+ * logo is still a valid invoice.
+ */
+async function loadSellerLogo(): Promise<string | null> {
+  if (_logoDataUrl !== undefined) return _logoDataUrl;
+  try {
+    const res = await fetch(SELLER_LOGO_URL);
+    if (!res.ok) throw new Error(String(res.status));
+    const blob = await res.blob();
+    _logoDataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    _logoDataUrl = null;
+  }
+  return _logoDataUrl;
+}
+
 function rupees(paise: number): string {
   return `Rs. ${(paise / 100).toLocaleString('en-IN', {
     minimumFractionDigits: 2,
@@ -99,10 +132,10 @@ function addressLines(
  * old invoice years later still shows the company details and tax treatment
  * that applied when it was issued.
  */
-export function downloadInvoicePdf(
+export async function downloadInvoicePdf(
   invoice: InvoiceDetail,
-  logoDataUrl?: string | null,
-): void {
+): Promise<void> {
+  const logoDataUrl = await loadSellerLogo();
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 40;
