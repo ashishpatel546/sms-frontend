@@ -71,9 +71,11 @@ export function TopBar({ user, sidebarCollapsed, onToggleSidebar, onOpenMobileNa
             <div className="flex h-full w-full items-center gap-2 sm:gap-3">
 
                 {/* ── Left: rail control + where you are ── */}
+                {/* lg and up only: below that the rail is forced icon-only, so a
+                    toggle would be a control that does nothing. */}
                 <button
                     onClick={onToggleSidebar}
-                    className="hidden size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink md:flex"
+                    className="hidden size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink lg:flex"
                     aria-label={sidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
                 >
                     {sidebarCollapsed

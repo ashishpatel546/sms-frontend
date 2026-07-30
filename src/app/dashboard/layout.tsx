@@ -70,6 +70,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const router = useRouter();
     const [user, setUser] = useState<any>(null);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [isWide, setIsWide] = useState(true);
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
     const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
 
@@ -100,6 +101,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         } catch { /* localStorage unavailable — use default */ }
     }, []);
 
+    // Below lg the rail is icon-only whatever the saved preference says: a
+    // 256px rail on a 768px tablet takes a third of the screen, and these are
+    // data-dense pages that need the width. The preference still governs
+    // desktop, where there is room for labels.
+    useEffect(() => {
+        const mq = window.matchMedia("(min-width: 1024px)");
+        const apply = () => setIsWide(mq.matches);
+        apply();
+        mq.addEventListener("change", apply);
+        return () => mq.removeEventListener("change", apply);
+    }, []);
+
     useEffect(() => {
         const onVisibility = () => {
             if (document.visibilityState === "visible") resetRefreshState();
@@ -113,6 +126,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setIsMobileNavOpen(false);
         setIsQuickActionsOpen(false);
     }, [pathname]);
+
+    // What the rail actually renders as. The stored preference only applies on
+    // desktop; below lg the rail is always the icon variant.
+    const railCollapsed = sidebarCollapsed || !isWide;
 
     const toggleSidebar = () => {
         setSidebarCollapsed(prev => {
@@ -140,13 +157,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             <TopBar
                 user={user}
-                sidebarCollapsed={sidebarCollapsed}
+                sidebarCollapsed={railCollapsed}
                 onToggleSidebar={toggleSidebar}
                 onOpenMobileNav={() => setIsMobileNavOpen(v => !v)}
             />
 
             <Sidebar
-                collapsed={sidebarCollapsed}
+                collapsed={railCollapsed}
                 isMobileOpen={isMobileNavOpen}
                 onMobileClose={() => setIsMobileNavOpen(false)}
             />
@@ -155,7 +172,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 id="main-content"
                 className={[
                     "min-w-0 pt-[calc(3.5rem+env(safe-area-inset-top))] transition-[margin] duration-300 ease-out",
-                    sidebarCollapsed ? "md:ml-16" : "md:ml-64",
+                    railCollapsed ? "md:ml-16" : "md:ml-64",
                     "pb-[calc(env(safe-area-inset-bottom)+64px)] md:pb-0",
                 ].join(" ")}
             >
