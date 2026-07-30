@@ -7,6 +7,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
+import NumberInput from "@/components/ui/NumberInput";
 import {
     Download, LogOut, Plus, QrCode, Search, Settings2, X, Users, RefreshCw, Archive,
 } from "lucide-react";
@@ -440,7 +441,7 @@ export default function VisitorsPage() {
                             <input type="text" value={manualForm.visitorName} onChange={e => setManualForm(p => ({ ...p, visitorName: e.target.value }))} maxLength={150} placeholder="Visitor name *" className={`${inputCls} w-full`} required />
                             <div className="grid grid-cols-2 gap-2">
                                 <input type="tel" value={manualForm.mobile} onChange={e => setManualForm(p => ({ ...p, mobile: e.target.value.replace(/\D/g, "").slice(0, 10) }))} maxLength={10} placeholder="Mobile *" className={`${inputCls} w-full`} required />
-                                <input type="number" min={1} max={50} value={manualForm.personsCount} onChange={e => setManualForm(p => ({ ...p, personsCount: Number(e.target.value) }))} placeholder="Persons" className={`${inputCls} w-full`} />
+                                <NumberInput min={1} max={50} value={manualForm.personsCount} emptyValue={1} onChange={v => setManualForm(p => ({ ...p, personsCount: v ?? 1 }))} placeholder="Persons" className={`${inputCls} w-full`} />
                             </div>
                             <select value={manualForm.purpose} onChange={e => setManualForm(p => ({ ...p, purpose: e.target.value }))} className={`${inputCls} w-full`} required>
                                 <option value="" disabled>Purpose *</option>
@@ -512,8 +513,8 @@ export default function VisitorsPage() {
                         <form onSubmit={saveSettings} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-ink mb-1.5">QR validity for entry (minutes)</label>
-                                <input type="number" min={5} max={720} value={settings.qrValidityMinutes}
-                                    onChange={e => setSettings(s => s && ({ ...s, qrValidityMinutes: Number(e.target.value) }))}
+                                <NumberInput min={5} max={720} value={settings.qrValidityMinutes} emptyValue={30}
+                                    onChange={v => setSettings(s => s && ({ ...s, qrValidityMinutes: v ?? 30 }))}
                                     className={`${inputCls} w-full`} />
                                 <p className="text-xs text-ink-muted mt-1">Default 30. Applies immediately, even to already-generated QRs.</p>
                             </div>

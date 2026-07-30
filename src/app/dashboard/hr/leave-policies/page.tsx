@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { hrApi, StaffLeavePolicy, LeavePolicyDefault, HrSettings, AccrualFrequency } from "@/lib/hr-api";
 import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
+import NumberInput from "@/components/ui/NumberInput";
 
 const EMPTY: Partial<StaffLeavePolicy> = {
   name: "", code: "", totalDaysPerYear: 12, carryForward: false, maxCarryForwardDays: 0,
@@ -360,7 +361,7 @@ export default function LeavePoliciesPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Days / Year</label>
-                <input type="number" min={0} step={1} value={form.totalDaysPerYear ?? 0} onChange={(e) => setForm((f) => ({ ...f, totalDaysPerYear: parseInt(e.target.value) || 0 }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
+                <NumberInput min={0} step={1} value={form.totalDaysPerYear ?? 0} emptyValue={0} onChange={(v) => setForm((f) => ({ ...f, totalDaysPerYear: v ?? 0 }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
               </div>
               <div className="flex items-center gap-2">
                 <input id="cf" type="checkbox" checked={form.carryForward ?? false} onChange={(e) => setForm((f) => ({ ...f, carryForward: e.target.checked }))} className="rounded" />
@@ -368,7 +369,7 @@ export default function LeavePoliciesPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Max Carry-Forward Days</label>
-                <input type="number" min={0} step={1} value={form.maxCarryForwardDays ?? 0} onChange={(e) => setForm((f) => ({ ...f, maxCarryForwardDays: parseInt(e.target.value) || 0 }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" disabled={!form.carryForward} />
+                <NumberInput min={0} step={1} value={form.maxCarryForwardDays ?? 0} emptyValue={0} onChange={(v) => setForm((f) => ({ ...f, maxCarryForwardDays: v ?? 0 }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" disabled={!form.carryForward} />
               </div>
               <div className="flex items-center gap-2">
                 <input id="paid" type="checkbox" checked={form.isPaid ?? true} onChange={(e) => setForm((f) => ({ ...f, isPaid: e.target.checked }))} className="rounded" />

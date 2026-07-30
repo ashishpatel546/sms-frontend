@@ -7,6 +7,7 @@ import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
 import StaffPicker from "@/components/StaffPicker";
 import { InfoBanner } from "@/components/ui/InfoBanner";
+import NumberInput from "@/components/ui/NumberInput";
 
 type ComponentTab = "components" | "ctc";
 
@@ -383,11 +384,11 @@ export default function SalaryConfigPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Value</label>
-                <input type="number" step="any" min={0} value={compForm.value ?? 0} onChange={(e) => setCompForm((f) => ({ ...f, value: parseFloat(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
+                <NumberInput step="any" min={0} value={compForm.value ?? 0} emptyValue={0} onChange={(v) => setCompForm((f) => ({ ...f, value: v ?? 0 }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
               </div>
               <div>
                 <label className="text-sm font-medium">Display Order</label>
-                <input type="number" min={0} value={compForm.displayOrder ?? 0} onChange={(e) => setCompForm((f) => ({ ...f, displayOrder: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
+                <NumberInput min={0} value={compForm.displayOrder ?? 0} emptyValue={0} onChange={(v) => setCompForm((f) => ({ ...f, displayOrder: v ?? 0 }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
               </div>
               <div className="flex items-center gap-2">
                 <input id="ca" type="checkbox" checked={compForm.isActive ?? true} onChange={(e) => setCompForm((f) => ({ ...f, isActive: e.target.checked }))} className="rounded" />

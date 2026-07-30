@@ -6,6 +6,7 @@ import { authFetch } from '@/lib/auth';
 import { API_BASE_URL } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { BookOpen, RefreshCw, Download, Plus, PlusCircle, Edit2, BookX, CheckCircle, AlertTriangle, Clock, Upload } from 'lucide-react';
+import NumberInput from '@/components/ui/NumberInput';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -965,8 +966,11 @@ function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | nu
                   }`}>{d}d</button>
               ))}
             </div>
-            <input type="number" min={1} max={settings?.maxLoanDays ?? 365} value={loanDays || ''}
-              onChange={e => setLoanDays(Math.max(1, Number(e.target.value)))}
+            {/* Clamped where it is used, not per keystroke: clamping as you type
+                pinned a cleared box back to 1, so "12" came out "112". */}
+            <NumberInput min={1} max={settings?.maxLoanDays ?? 365} value={loanDays || null}
+              emptyValue={0}
+              onChange={v => setLoanDays(v ?? 0)}
               placeholder="Custom days…"
               className="w-full border rounded px-3 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
             {dueDate && (
@@ -1774,8 +1778,8 @@ function SettingsTab() {
   const numField = (k: keyof LibrarySettings, label: string) => (
     <div>
       <label className="block text-sm font-medium mb-1">{label}</label>
-      <input type="number" min="1" value={form[k] as number}
-        onChange={e => setForm(f => ({ ...f, [k]: parseInt(e.target.value) || 0 }))}
+      <NumberInput min={1} value={form[k] as number} emptyValue={0}
+        onChange={v => setForm(f => ({ ...f, [k]: v ?? 0 }))}
         className="w-full border rounded px-3 py-2 text-sm dark:bg-slate-800 dark:border-slate-600 max-w-xs" />
     </div>
   );
@@ -1789,8 +1793,8 @@ function SettingsTab() {
         {numField('maxBooksPerBorrower', 'Max Books per Borrower')}
         <div>
           <label className="block text-sm font-medium mb-1">Late Fee per Day (₹)</label>
-          <input type="number" min="0" step="0.5" value={form.lateFeePerDay}
-            onChange={e => setForm(f => ({ ...f, lateFeePerDay: parseFloat(e.target.value) || 0 }))}
+          <NumberInput min={0} step="0.5" value={form.lateFeePerDay} emptyValue={0}
+            onChange={v => setForm(f => ({ ...f, lateFeePerDay: v ?? 0 }))}
             className="w-full border rounded px-3 py-2 text-sm dark:bg-slate-800 dark:border-slate-600 max-w-xs" />
         </div>
         <label className="flex items-center gap-2 cursor-pointer text-sm">
