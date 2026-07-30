@@ -146,7 +146,7 @@ export const HomeSection = ({ studentId, academicYearString, sessionId, onChange
       {/* ── The stamp ───────────────────────────────────────────────────── */}
       <div className="flex flex-col items-center py-2">
         {isAttLoading ? (
-          <Skeleton className="h-[74px] w-44 rounded-xl" />
+          <Skeleton className="h-18.5 w-44 rounded-xl" />
         ) : (
           <AttendanceStamp
             status={attStatus}
@@ -180,7 +180,7 @@ export const HomeSection = ({ studentId, academicYearString, sessionId, onChange
               <li key={h.id} className="flex items-start gap-3 py-2.5">
                 {/* The subject sits in the margin, in the register hand — the
                     way a diary entry is headed before the task is written. */}
-                <span className="tabular w-20 shrink-0 pt-0.5 text-[10.5px] font-semibold tracking-[0.1em] text-brand uppercase">
+                <span className="tabular w-20 shrink-0 pt-0.5 text-[10.5px] font-semibold tracking-widest text-brand uppercase">
                   {h.subject || '—'}
                 </span>
                 <p className="line-clamp-2 flex-1 text-[13.5px] leading-snug text-ink">{h.message}</p>

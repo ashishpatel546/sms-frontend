@@ -182,7 +182,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <h1 className="mt-8 max-w-md font-display text-[27px] leading-[1.14] font-semibold tracking-[-0.025em] text-white sm:mt-10 sm:text-[34px] lg:text-[38px]">
+            <h1 className="mt-8 max-w-md font-display text-[27px] leading-[1.14] font-semibold tracking-tight text-white sm:mt-10 sm:text-[34px] lg:text-[38px]">
               Every register, ledger and mark sheet,
               <span className="text-marigold-300"> in one place.</span>
             </h1>

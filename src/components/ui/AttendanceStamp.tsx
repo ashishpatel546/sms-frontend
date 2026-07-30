@@ -136,7 +136,7 @@ export function AttendanceStamp({
         className={cn(
           // Squarer and heavier than a badge: a stamp is a block of ink, and
           // the width is held so a long word cannot flatten it into a pill.
-          'stamp relative grid min-w-[176px] place-items-center rounded-xl border-[2.5px] px-7 py-5',
+          'stamp relative grid min-w-44 place-items-center rounded-xl border-[2.5px] px-7 py-5',
           face.dashed ? 'border-dashed' : '',
           face.ink,
           face.wash,
@@ -146,7 +146,7 @@ export function AttendanceStamp({
         <span
           aria-hidden
           className={cn(
-            'pointer-events-none absolute inset-[4px] rounded-lg border border-current opacity-30',
+            'pointer-events-none absolute inset-1 rounded-lg border border-current opacity-30',
             face.dashed ? 'border-dashed' : '',
           )}
         />

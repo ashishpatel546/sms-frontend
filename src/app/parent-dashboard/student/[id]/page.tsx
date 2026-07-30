@@ -874,7 +874,7 @@ export default function StudentDashboardPage() {
                                     <p className="text-slate-500 text-sm mt-1">No pending dues for this session.</p>
                                 </div>
                             ) : (
-                                <div className="space-y-2 overflow-y-auto max-h-[350px] pr-2 custom-scrollbar">
+                                <div className="space-y-2 overflow-y-auto max-h-87.5 pr-2 custom-scrollbar">
                                     {/* One-Time & Annual Fees — shown at the top if due */}
                                     {dueOneTimeFee && (() => {
                                         const m = dueOneTimeFee;
@@ -1096,7 +1096,7 @@ export default function StudentDashboardPage() {
                             {paidMonths.length === 0 && !paidOneTimeFee ? (
                                 <p className="text-slate-500 text-sm text-center py-12 flex-1 flex flex-col justify-center">No payment history found for {academicYearString}</p>
                             ) : (
-                                <div className="space-y-2 overflow-y-auto max-h-[350px] pr-2 custom-scrollbar">
+                                <div className="space-y-2 overflow-y-auto max-h-87.5 pr-2 custom-scrollbar">
                                     {/* Paid One-Time & Annual Fees at top */}
                                     {paidOneTimeFee && (() => {
                                         const m = paidOneTimeFee;
@@ -1333,7 +1333,7 @@ export default function StudentDashboardPage() {
                                     <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                                 </button>
                                 {showCatDropdown && (
-                                    <div className="absolute right-0 z-30 mt-1 bg-slate-100 border border-slate-200 rounded-lg shadow-xl py-1.5 min-w-[190px]">
+                                    <div className="absolute right-0 z-30 mt-1 bg-slate-100 border border-slate-200 rounded-lg shadow-xl py-1.5 min-w-47.5">
                                         <label className="flex items-center gap-2 px-4 py-2 text-sm cursor-pointer hover:bg-slate-100 border-b border-slate-200">
                                             <input
                                                 type="checkbox"
@@ -1391,7 +1391,7 @@ export default function StudentDashboardPage() {
                                 {(() => {
                                     const visibleCats: string[] = examResults.categories.filter((c: string) => selectedExamCats.has(c));
                                     return (
-                                <table className="w-full text-sm text-left text-ink min-w-[500px]">
+                                <table className="w-full text-sm text-left text-ink min-w-125">
                                     <thead className="text-xs text-slate-400 uppercase">
                                         <tr>
                                             <th className="px-4 py-3 bg-slate-100 sticky left-0 z-10 w-40 sm:w-48 align-bottom border-b border-slate-200" rowSpan={2}>Subject</th>
@@ -1631,7 +1631,7 @@ export default function StudentDashboardPage() {
                                 { label: "Academic Session", value: academicYearString },
                             ].filter(f => f.value).map(field => (
                                 <div key={field.label} className="flex gap-3 p-3 bg-slate-100/60 rounded-xl border border-transparent hover:border-slate-200 transition-colors">
-                                    <span className="text-slate-500 text-sm min-w-[130px]">{field.label}</span>
+                                    <span className="text-slate-500 text-sm min-w-32.5">{field.label}</span>
                                     <span className="text-ink text-sm font-medium">{field.value}</span>
                                 </div>
                             ))}
@@ -1731,7 +1731,7 @@ export default function StudentDashboardPage() {
                                                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-slate-100 active:scale-95 transition-all group"
                                                 title="Pick a date"
                                             >
-                                                <div className="text-center min-w-[72px]">
+                                                <div className="text-center min-w-18">
                                                     <p className="text-ink font-semibold text-sm group-hover:text-indigo-300 transition-colors leading-tight">{displayDate}</p>
                                                     {displayDate !== 'Today' && displayDate !== 'Yesterday' && (
                                                         <p className="text-slate-500 text-[10px] leading-tight">{homeworkDate}</p>

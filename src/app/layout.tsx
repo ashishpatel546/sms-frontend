@@ -99,6 +99,7 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${sora.variable} ${figtree.variable} ${plexMono.variable}`}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <head>
