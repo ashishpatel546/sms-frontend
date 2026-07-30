@@ -492,6 +492,73 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* ── Raw <table> markup gets the DataTable treatment ─────────────────────
+     Thirty-odd pages still hand-roll their own table. Styling the ELEMENTS
+     here means those tables read like the migrated ones — mono micro-caps
+     header, ruled rows, the register's margin rule — without touching a line
+     of their markup.
+
+     Element selectors sit at specificity 0,0,1, so any utility class already
+     on a th/td/tr still wins: a page that deliberately sets its own padding,
+     background or alignment keeps it. This raises the floor; it doesn't
+     overrule intent. DataTable is unaffected — it classes every cell.
+
+     Migrating a page to DataTable is still worth doing: it brings sorting, the
+     mobile card fallback and real empty/loading states, none of which CSS can
+     provide. */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead th {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    text-align: left;
+    white-space: nowrap;
+    padding: 10px 16px;
+    background-color: var(--surface-inset);
+    border-bottom: 1px solid var(--line-strong);
+  }
+
+  tbody td {
+    padding: 12px 16px;
+    font-size: 13.5px;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--line);
+  }
+
+  tbody tr {
+    transition: background-color 0.14s var(--ease-out-ink);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  tbody tr:hover {
+    background-color: color-mix(in srgb, var(--brand-tint) 60%, transparent);
+  }
+
+  /* The register's margin rule, on every table in the app. */
+  tbody tr > td:first-child {
+    box-shadow: inset 2px 0 0 var(--line-strong);
+  }
+  tbody tr:hover > td:first-child {
+    box-shadow: inset 2px 0 0 var(--brand);
+  }
+
+  tfoot td,
+  tfoot th {
+    background-color: var(--surface-secondary);
+    border-top: 1px solid var(--line-strong);
+    font-weight: 600;
+  }
+
   /* One focus ring for the whole app, always visible. */
   :focus-visible {
     outline: 2px solid var(--brand);
