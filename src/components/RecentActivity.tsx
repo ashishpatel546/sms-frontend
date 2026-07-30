@@ -7,6 +7,10 @@ import {
   LockOpen, Lock, CheckCircle2, XCircle, Undo2, Pencil,
   ClipboardList, Trash2, type LucideIcon,
 } from "lucide-react";
+import { Panel, PanelHeader } from "@/components/ui/Panel";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PIGMENT_CLASS, type Pigment } from "@/components/ui/pigment";
 
 interface ActivityLogEntry {
   id: number;
@@ -16,15 +20,20 @@ interface ActivityLogEntry {
   createdAt: string;
 }
 
-const ACTION_META: Record<string, { Icon: LucideIcon; color: string }> = {
-  BYPASS_WINDOW_OPENED: { Icon: LockOpen,     color: "text-amber-500"   },
-  BYPASS_WINDOW_CLOSED: { Icon: Lock,          color: "text-slate-500"   },
-  LEAVE_APPROVED:       { Icon: CheckCircle2,  color: "text-emerald-500" },
-  LEAVE_REJECTED:       { Icon: XCircle,       color: "text-red-500"     },
-  LEAVE_CANCELLED:      { Icon: Undo2,         color: "text-orange-500"  },
-  STUDENT_UPDATED:      { Icon: Pencil,        color: "text-blue-500"    },
-  HOMEWORK_UPDATED:     { Icon: Pencil,        color: "text-blue-500"    },
-  HOMEWORK_DELETED:     { Icon: Trash2,        color: "text-red-500"     },
+/**
+ * Each action gets a pigment rather than a colour, so the feed says what
+ * *kind* of thing happened: an approval is settled, a rejection is a
+ * correction, an opened bypass window wants attention.
+ */
+const ACTION_META: Record<string, { Icon: LucideIcon; pigment: Pigment }> = {
+  BYPASS_WINDOW_OPENED: { Icon: LockOpen,    pigment: "attn"    },
+  BYPASS_WINDOW_CLOSED: { Icon: Lock,        pigment: "neutral" },
+  LEAVE_APPROVED:       { Icon: CheckCircle2, pigment: "success" },
+  LEAVE_REJECTED:       { Icon: XCircle,      pigment: "danger"  },
+  LEAVE_CANCELLED:      { Icon: Undo2,        pigment: "danger"  },
+  STUDENT_UPDATED:      { Icon: Pencil,       pigment: "info"    },
+  HOMEWORK_UPDATED:     { Icon: Pencil,       pigment: "info"    },
+  HOMEWORK_DELETED:     { Icon: Trash2,       pigment: "danger"  },
 };
 
 function timeAgo(iso: string): string {
@@ -58,62 +67,74 @@ export default function RecentActivity() {
   useEffect(() => { fetchLogs(limit); }, [fetchLogs, limit]);
 
   return (
-    <div className="bg-surface/80 backdrop-blur-sm rounded-2xl p-6 shadow-soft border border-slate-200/80 dark:border-white/10">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-ink">Recent Activity</h3>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-ink-muted">Show</label>
-          <select
-            value={limit}
-            onChange={(e) => setLimit(Number(e.target.value))}
-            className="text-xs border border-slate-200/80 dark:border-white/10 rounded-md px-2 py-1 bg-surface-secondary text-ink"
-          >
-            <option value={10}>Last 10</option>
-            <option value={20}>Last 20</option>
-            <option value={50}>Last 50</option>
-          </select>
-        </div>
-      </div>
+    <Panel>
+      <PanelHeader
+        title="Recent activity"
+        action={
+          <label className="flex items-center gap-2">
+            <span className="eyebrow">Show</span>
+            <select
+              value={limit}
+              onChange={(e) => setLimit(Number(e.target.value))}
+              className="cursor-pointer rounded-md border border-line-strong bg-surface px-2 py-1 text-[12px] text-ink"
+              aria-label="Number of entries to show"
+            >
+              <option value={10}>Last 10</option>
+              <option value={20}>Last 20</option>
+              <option value={50}>Last 50</option>
+            </select>
+          </label>
+        }
+      />
 
       {loading ? (
-        <div className="space-y-2">
+        <div className="space-y-3 p-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-10 bg-surface-secondary rounded-lg animate-pulse" />
+            <div key={i} className="space-y-1.5">
+              <Skeleton className="h-3.5 w-3/5" />
+              <Skeleton className="h-2.5 w-1/4" />
+            </div>
           ))}
         </div>
       ) : logs.length === 0 ? (
-        <div className="flex items-center justify-center h-36 bg-surface-secondary border border-dashed border-slate-200/80 dark:border-white/10 rounded-xl">
-          <p className="text-ink-muted text-sm">No recent activity to display</p>
-        </div>
+        <EmptyState
+          compact
+          icon={<ClipboardList />}
+          title="Nothing logged yet"
+          description="Approvals, edits and gate events will appear here as staff work through the day."
+        />
       ) : (
-        <ul className="space-y-1 max-h-72 overflow-y-auto pr-1">
-          {logs.map((log) => (
-            <li key={log.id} className="flex items-start gap-3 py-2 border-b border-slate-100 dark:border-white/5 last:border-0">
-              {(() => {
-                const meta = ACTION_META[log.action];
-                const Icon = meta?.Icon ?? ClipboardList;
-                const color = meta?.color ?? "text-ink-muted";
-                return (
-                  <span className={`mt-0.5 shrink-0 p-1.5 rounded-lg bg-slate-100 dark:bg-surface-secondary ${color}`} title={log.action}>
-                    <Icon className="w-3.5 h-3.5" aria-hidden />
-                  </span>
-                );
-              })()}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm text-ink leading-snug wrap-break-word">
-                    {log.description ?? log.action}
-                  </p>
-                  <span className="text-xs text-ink-muted shrink-0 mt-0.5 whitespace-nowrap">{timeAgo(log.createdAt)}</span>
+        <ul className="max-h-72 divide-y divide-line overflow-y-auto">
+          {logs.map((log) => {
+            const meta = ACTION_META[log.action];
+            const Icon = meta?.Icon ?? ClipboardList;
+            const p = PIGMENT_CLASS[meta?.pigment ?? "neutral"];
+            return (
+              <li key={log.id} className="flex items-start gap-3 px-4 py-2.5">
+                <span
+                  className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-md ${p.tint} ${p.text}`}
+                  title={log.action}
+                >
+                  <Icon className="size-3.5" aria-hidden />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-[13.5px] leading-snug text-ink wrap-break-word">
+                      {log.description ?? log.action}
+                    </p>
+                    <span className="tabular mt-0.5 shrink-0 text-[11.5px] whitespace-nowrap text-ink-faint">
+                      {timeAgo(log.createdAt)}
+                    </span>
+                  </div>
+                  {log.actorName && (
+                    <p className="mt-0.5 text-[12px] text-ink-muted">{log.actorName}</p>
+                  )}
                 </div>
-                {log.actorName && (
-                  <p className="text-xs text-ink-muted mt-0.5">{log.actorName}</p>
-                )}
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
-    </div>
+    </Panel>
   );
 }

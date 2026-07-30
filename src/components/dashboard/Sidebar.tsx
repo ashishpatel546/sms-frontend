@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { ChevronDown, ChevronRight, Lock, LogOut, User, X } from "lucide-react";
 import { NAV_CONFIG } from "@/lib/navConfig";
 import { useRbac } from "@/lib/rbac";
 import { useSchoolFeatures } from "@/lib/useSchoolFeatures";
+import { useSchoolInfo } from "@/lib/useSchoolInfo";
 import { getUser, logout } from "@/lib/auth";
 
 interface SidebarProps {
@@ -19,15 +21,20 @@ interface SidebarProps {
 }
 
 /**
- * Sidebar navigation for the admin/staff dashboard.
+ * THE INK RAIL — navigation for the admin/staff dashboard.
+ *
+ * The rail is the dark half of the design and the only place it appears: ink
+ * ground, chalk text, with a lapis bloom in the top corner so it reads as lit
+ * rather than painted. It is chrome you stop seeing, which is exactly the job.
+ *
+ * The active item is marked by a marigold bar in the margin — the same marker
+ * language as the register's margin rule on a table row.
  *
  * Responsive behaviour:
  * – Mobile  (<md, <768px):  hidden behind left edge; slides in as a full drawer
  *                           when `isMobileOpen` is true.
  * – Tablet  (md–lg):        always visible, icon-only (64 px) to save screen space.
- *                           Collapse state controlled by parent via `collapsed` prop.
  * – Desktop (≥lg, ≥1024px): always visible, full width (256 px) by default.
- *                           User can collapse via the toggle button in TopBar.
  *
  * Multi-tenant: nav items are filtered by RBAC so each school staff member only
  * sees the sections their role unlocks.  No school-specific hardcoding here.
@@ -36,6 +43,9 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
     const pathname = usePathname();
     const rbac = useRbac();
     const { features, status: featureStatus } = useSchoolFeatures();
+    const school = useSchoolInfo();
+    // Prefer the S3 URL for fast loading; the data-url is only for PDF generation.
+    const logoSrc = school?.logoUrl || school?.logoDataUrl || null;
     const user = getUser();
 
     // ── Accordion state ─────────────────────────────────────────────────────
@@ -87,64 +97,85 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
         return pathname === href || pathname.startsWith(`${href}/`);
     };
 
-    const navLinkClass = (active: boolean, isCollapsed: boolean) => [
-        'group relative flex items-center gap-3 rounded-xl text-sm font-medium',
-        'transition-all duration-150 outline-none',
-        'focus-visible:ring-2 focus-visible:ring-brand/50',
-        isCollapsed ? 'justify-center px-0 py-2.5 mx-1' : 'px-3 py-2',
-        !isCollapsed
-            ? active
-                ? 'bg-brand/10 dark:bg-brand/15'
-                : 'hover:bg-slate-100/80 dark:hover:bg-surface-secondary'
-            : '',
-    ].join(' ');
-
     return (
         <>
             {/* ── Mobile backdrop ──────────────────────────────────────── */}
             {isMobileOpen && (
                 <div
-                    className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm md:hidden"
+                    className="fixed inset-0 z-30 bg-ink-950/60 backdrop-blur-sm md:hidden"
                     onClick={onMobileClose}
                     aria-hidden="true"
                 />
             )}
 
-            {/* ── Sidebar panel ────────────────────────────────────────── */}
+            {/* ── The rail ─────────────────────────────────────────────── */}
             <aside
                 aria-label="Sidebar navigation"
                 className={[
-                    // Positioning
-                    'fixed top-0 left-0 z-40 h-dvh flex flex-col',
-                    // Glass surface — adapts to all themes
-                    'bg-white/95 dark:bg-surface/98 backdrop-blur-xl',
-                    'border-r border-slate-200/80 dark:border-white/10',
-                    // Width — collapsed = icon-only (64 px), expanded = 256 px
+                    'fixed top-0 left-0 z-40 flex h-dvh flex-col',
+                    // Ink ground with the lapis bloom — see .rail-surface in globals.css
+                    'rail-surface border-r border-rail-line',
                     collapsed ? 'w-16' : 'w-64',
-                    // Smooth width + slide transitions
-                    'transition-all duration-300 ease-out',
-                    // Mobile: translated off-screen unless drawer is open
+                    'transition-[width,transform] duration-300 ease-out',
+                    // Mobile: off-canvas until the drawer opens
                     isMobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full',
-                    // Tablet+: always visible (override the translate)
                     'md:translate-x-0 md:shadow-none',
-                    // Clear the fixed TopBar (h-14 = 56 px) and on mobile also
-                    // clear the fixed BottomTabBar (60px + safe area) so the
-                    // profile section is never hidden behind it.
-                    'pt-14',
+                    // On mobile, clear the BottomTabBar so the profile block is
+                    // never hidden behind it.
+                    'pt-[env(safe-area-inset-top)]',
                     'pb-[calc(env(safe-area-inset-bottom)+60px)] md:pb-0',
                 ].join(' ')}
             >
-                {/* Mobile close button */}
-                <button
-                    onClick={onMobileClose}
-                    className="md:hidden absolute top-15 right-2 p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-secondary transition-colors"
-                    aria-label="Close menu"
-                >
-                    <X className="w-4 h-4" />
-                </button>
+                {/* ── Brand block — the rail owns its own masthead, so the light
+                     topbar spans only the canvas beside it. ───────────────── */}
+                <div className={[
+                    'flex h-14 shrink-0 items-center border-b border-rail-line',
+                    collapsed ? 'justify-center px-0' : 'gap-2.5 px-3',
+                ].join(' ')}>
+                    <Link
+                        href="/dashboard"
+                        onClick={onMobileClose}
+                        className="flex min-w-0 items-center gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-brand-light"
+                        title={school?.name || 'Dashboard'}
+                    >
+                        <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-linear-to-br from-lapis-500 to-marigold-400 font-display text-[15px] font-bold text-white">
+                            {logoSrc ? (
+                                <Image
+                                    src={logoSrc}
+                                    alt=""
+                                    width={32}
+                                    height={32}
+                                    unoptimized
+                                    className="size-full bg-white object-contain"
+                                />
+                            ) : (
+                                (school?.name?.[0] ?? 'S').toUpperCase()
+                            )}
+                        </span>
+                        {!collapsed && (
+                            <span className="min-w-0">
+                                <span className="block truncate font-display text-[14px] leading-tight font-semibold text-rail-ink">
+                                    {school?.name || 'School'}
+                                </span>
+                                <span className="block truncate font-mono text-[9px] tracking-[0.12em] text-rail-ink-muted uppercase">
+                                    Management portal
+                                </span>
+                            </span>
+                        )}
+                    </Link>
+
+                    {/* Mobile close button */}
+                    <button
+                        onClick={onMobileClose}
+                        className="ml-auto cursor-pointer rounded-md p-1.5 text-rail-ink-muted transition-colors hover:bg-white/8 hover:text-rail-ink md:hidden"
+                        aria-label="Close menu"
+                    >
+                        <X className="size-4" />
+                    </button>
+                </div>
 
                 {/* ── Scrollable nav area ────────────────────────────── */}
-                <nav className="flex-1 overflow-y-auto py-2 px-2 no-scrollbar" aria-label="Main navigation">
+                <nav className="no-scrollbar flex-1 overflow-y-auto px-2 py-2" aria-label="Main navigation">
                     {NAV_CONFIG.map((group, gi) => {
                         const visibleItems = group.items.filter(item => {
                             // GUARD is deny-by-default: only explicitly flagged items appear
@@ -186,25 +217,41 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                                 onClick={onMobileClose}
                                                 aria-current={active ? 'page' : undefined}
                                                 title={locked ? `${item.label} — not in your plan` : collapsed ? item.label : undefined}
-                                                className={navLinkClass(active, collapsed)}
+                                                className={[
+                                                    'group relative flex items-center gap-2.5 rounded-md text-[13.5px] font-medium',
+                                                    'outline-none transition-colors duration-150',
+                                                    'focus-visible:ring-2 focus-visible:ring-brand-light',
+                                                    collapsed ? 'mx-1 justify-center px-0 py-2' : 'px-2.5 py-2',
+                                                    active
+                                                        ? 'bg-linear-to-r from-lapis-500/34 to-lapis-500/8 text-white'
+                                                        : 'text-rail-ink-soft hover:bg-white/6 hover:text-white',
+                                                ].join(' ')}
                                             >
-                                                {active && !collapsed && (
-                                                    <span aria-hidden className={`absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full ${item.iconColor.replace('text-', 'bg-')}`} />
+                                                {/* Marigold marker in the margin — "you are here" */}
+                                                {active && (
+                                                    <span
+                                                        aria-hidden
+                                                        className={[
+                                                            'absolute top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-sm bg-accent',
+                                                            collapsed ? '-left-1' : '-left-2',
+                                                        ].join(' ')}
+                                                    />
                                                 )}
-                                                {collapsed ? (
-                                                    <div className={`flex items-center justify-center w-9 h-9 rounded-xl transition-colors ${active ? 'bg-brand/10 dark:bg-brand/15' : 'group-hover:bg-slate-100/80 dark:group-hover:bg-surface-secondary'}`}>
-                                                        <Icon aria-hidden="true" className={`w-5 h-5 transition-opacity ${locked ? 'text-ink-muted opacity-40' : active ? item.iconColor : `${item.iconColor} opacity-55 group-hover:opacity-90`}`} />
-                                                    </div>
-                                                ) : (
-                                                    <Icon aria-hidden="true" className={`shrink-0 w-4 h-4 transition-opacity ${locked ? 'text-ink-muted opacity-40' : active ? item.iconColor : `${item.iconColor} opacity-55 group-hover:opacity-90`}`} />
-                                                )}
+                                                <Icon
+                                                    aria-hidden="true"
+                                                    className={[
+                                                        'shrink-0 transition-opacity',
+                                                        collapsed ? 'size-5' : 'size-4',
+                                                        locked ? 'opacity-30' : active ? 'opacity-100' : 'opacity-65 group-hover:opacity-100',
+                                                    ].join(' ')}
+                                                />
                                                 {!collapsed && (
                                                     <>
-                                                        <span className={`truncate transition-colors ${locked ? 'text-ink-muted/70' : active ? 'text-brand font-semibold' : 'text-ink-muted group-hover:text-ink'}`}>
+                                                        <span className={['truncate', locked && 'opacity-50'].filter(Boolean).join(' ')}>
                                                             {item.label}
                                                         </span>
                                                         {locked && (
-                                                            <Lock aria-label="Not in your plan" className="ml-auto shrink-0 w-3 h-3 text-ink-muted/60" />
+                                                            <Lock aria-label="Not in your plan" className="ml-auto size-3 shrink-0 opacity-50" />
                                                         )}
                                                     </>
                                                 )}
@@ -218,7 +265,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                         // ── Unlabeled group (Dashboard + Notifications) — always visible ──
                         if (!group.label) {
                             return (
-                                <div key={gi} className={gi > 0 ? 'mt-1 pt-2 border-t border-slate-200/60 dark:border-white/8' : ''}>
+                                <div key={gi} className={gi > 0 ? 'mt-1 border-t border-rail-line pt-2' : ''}>
                                     {renderItems(visibleItems)}
                                 </div>
                             );
@@ -228,20 +275,20 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                         const isOpen = !!expandedGroups[group.label];
 
                         return (
-                            <div key={gi} className="mt-1 pt-2 border-t border-slate-200/60 dark:border-white/8">
+                            <div key={gi} className="mt-1 border-t border-rail-line pt-2">
                                 {/* Group header button — only shown in expanded sidebar */}
                                 {!collapsed && (
                                     <button
                                         onClick={() => toggleGroup(group.label!)}
-                                        className="w-full flex items-center justify-between px-3 pt-1 pb-1.5 rounded-lg hover:bg-slate-100/60 dark:hover:bg-surface-secondary/60 transition-colors group"
+                                        className="group flex w-full cursor-pointer items-center justify-between rounded-md px-2.5 pt-1 pb-1.5 transition-colors hover:bg-white/5"
                                         aria-expanded={isOpen}
                                     >
-                                        <span className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider select-none group-hover:text-ink transition-colors">
+                                        <span className="font-mono text-[9.5px] font-medium tracking-[0.14em] text-rail-ink-muted uppercase transition-colors select-none group-hover:text-rail-ink-soft">
                                             {group.label}
                                         </span>
                                         {isOpen
-                                            ? <ChevronDown className="w-3 h-3 text-ink-muted" />
-                                            : <ChevronRight className="w-3 h-3 text-ink-muted" />
+                                            ? <ChevronDown className="size-3 text-rail-ink-muted" />
+                                            : <ChevronRight className="size-3 text-rail-ink-muted" />
                                         }
                                     </button>
                                 )}
@@ -259,41 +306,41 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                 </nav>
 
                 {/* ── Profile section — pinned to bottom ───────────────── */}
-                <div className="border-t border-slate-200/80 dark:border-white/10 p-2">
+                <div className="border-t border-rail-line p-2">
                     {!collapsed ? (
                         <div>
                             {/* User info row */}
-                            <div className="flex items-center gap-2.5 px-3 py-2">
-                                <div className="w-8 h-8 rounded-full bg-linear-to-br from-brand to-brand-light flex items-center justify-center text-white text-xs font-bold shrink-0 select-none">
+                            <div className="flex items-center gap-2.5 px-2 py-2">
+                                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-lapis-500 to-marigold-400 font-display text-[11.5px] font-bold text-white select-none">
                                     {user?.firstName?.[0]}{user?.lastName?.[0]}
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-ink leading-tight truncate">
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate text-[13px] leading-tight font-semibold text-rail-ink">
                                         {user?.firstName} {user?.lastName}
                                     </p>
-                                    <p className="text-[11px] text-ink-muted leading-tight truncate capitalize">
-                                        {user?.role?.replace(/_/g, ' ').toLowerCase()}
+                                    <p className="truncate font-mono text-[9.5px] leading-tight tracking-[0.1em] text-rail-ink-muted uppercase">
+                                        {user?.role?.replace(/_/g, ' ')}
                                     </p>
                                 </div>
                             </div>
 
                             {/* Action buttons — always visible, one tap each */}
-                            <div className="flex items-center gap-1 px-1 pb-1">
+                            <div className="flex items-center gap-1 pb-1">
                                 <Link
                                     href="/dashboard/profile"
                                     onClick={onMobileClose}
-                                    title="My Profile"
-                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-ink-muted hover:text-ink hover:bg-slate-100/80 dark:hover:bg-surface-secondary transition-colors"
+                                    title="My profile"
+                                    className="flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 text-[12px] font-medium text-rail-ink-soft transition-colors hover:bg-white/8 hover:text-rail-ink"
                                 >
-                                    <User className="w-3.5 h-3.5" aria-hidden />
+                                    <User className="size-3.5" aria-hidden />
                                     Profile
                                 </Link>
                                 <button
                                     onClick={() => logout()}
                                     title="Sign out"
-                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-accent-danger hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                                    className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md py-2 text-[12px] font-medium text-vermilion-300 transition-colors hover:bg-vermilion-500/16 hover:text-vermilion-200"
                                 >
-                                    <LogOut className="w-3.5 h-3.5" aria-hidden />
+                                    <LogOut className="size-3.5" aria-hidden />
                                     Sign out
                                 </button>
                             </div>
@@ -303,18 +350,18 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                         <div className="flex flex-col items-center gap-1.5 py-1">
                             <Link
                                 href="/dashboard/profile"
-                                title={`${user?.firstName} ${user?.lastName} — My Profile`}
-                                className="w-8 h-8 rounded-full bg-linear-to-br from-brand to-brand-light flex items-center justify-center text-white text-xs font-bold select-none hover:ring-2 hover:ring-brand/40 transition-all"
+                                title={`${user?.firstName} ${user?.lastName} — my profile`}
+                                className="flex size-8 items-center justify-center rounded-lg bg-linear-to-br from-lapis-500 to-marigold-400 font-display text-[11.5px] font-bold text-white transition-all select-none hover:ring-2 hover:ring-brand-light/50"
                             >
                                 {user?.firstName?.[0]}{user?.lastName?.[0]}
                             </Link>
                             <button
                                 onClick={() => logout()}
                                 title="Sign out"
-                                className="p-1.5 rounded-lg text-ink-muted hover:text-accent-danger hover:bg-surface-secondary transition-colors"
+                                className="cursor-pointer rounded-md p-1.5 text-rail-ink-muted transition-colors hover:bg-vermilion-500/16 hover:text-vermilion-300"
                                 aria-label="Sign out"
                             >
-                                <LogOut className="w-3.5 h-3.5" />
+                                <LogOut className="size-3.5" />
                             </button>
                         </div>
                     )}

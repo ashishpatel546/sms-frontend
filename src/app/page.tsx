@@ -3,13 +3,39 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
-import { getEnv, getSchoolSlug } from "@/lib/env";
-import { setToken, setTokens, getDashboardRoute, getUser, authFetch, markMustChangePasswordFlow } from "@/lib/auth";
+import { getSchoolSlug } from "@/lib/env";
+import { setTokens, getDashboardRoute, getUser, markMustChangePasswordFlow } from "@/lib/auth";
 import SplashScreen from "@/components/SplashScreen";
-import { BarChart2, CalendarCheck2, IndianRupee, FileText, Users, Info } from "lucide-react";
+import { BorderBeam } from "@/components/ui/BorderBeam";
+import {
+  AlertCircle,
+  BarChart2,
+  CalendarCheck2,
+  Eye,
+  EyeOff,
+  FileText,
+  IndianRupee,
+  Info,
+  Loader2,
+  Lock,
+  Phone,
+  UserRound,
+  Users,
+} from "lucide-react";
 
 type Tab = "parent" | "staff";
 
+/**
+ * SIGN IN
+ *
+ * The one screen in the app that is mostly ink: a school day hasn't started
+ * yet. The paper card floats on the ink field with the running light around its
+ * edge — the app's way of saying "this is the live thing" — and everything else
+ * on the screen stays quiet so the beam is the only thing moving.
+ *
+ * Two doors, not two apps: staff sign in with a mobile or email, parents with
+ * the number the school already has on file.
+ */
 export default function LoginPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("staff");
@@ -103,332 +129,345 @@ export default function LoginPage() {
     }
   };
 
+  const MODULES = [
+    { Icon: CalendarCheck2, label: "Attendance" },
+    { Icon: IndianRupee, label: "Fees & receipts" },
+    { Icon: FileText, label: "Examinations" },
+    { Icon: BarChart2, label: "Reports" },
+    { Icon: Users, label: "Parent portal" },
+  ];
+
+  const inputClass =
+    "h-11 w-full rounded-md border border-line-strong bg-surface-secondary pl-10 pr-3 text-[14px] text-ink transition-colors placeholder:text-ink-faint focus:border-brand focus:bg-surface focus:ring-3 focus:ring-brand/16 focus:outline-none";
+
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-950 selection:bg-indigo-500/30">
+    <div className="theme-bg min-h-dvh">
       {showSplash && <SplashScreen />}
-      
+
       {!isCheckingAuth && (
-        <>
-          {/* Left — Branding Panel */}
-          <div className="relative hidden md:flex md:w-1/2 flex-col justify-between p-12 overflow-hidden">
-        {/* Background school image */}
-        <div className="absolute inset-0"
-          style={{ backgroundImage: 'url(/colegios-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}
-        />
-        {/* Gradient overlay on top of image - enhanced contrast for text */}
-        <div className="absolute inset-0 bg-slate-950/60" />
-        <div className="absolute inset-0 opacity-30"
-          style={{
-            backgroundImage: `radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.5) 0%, transparent 60%),
-                                          radial-gradient(ellipse at 80% 20%, rgba(168,85,247,0.4) 0%, transparent 50%)`
-          }}
-        />
-        {/* Floating orbs */}
-        <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 left-1/4 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-3/4 right-1/3 w-32 h-32 bg-violet-400/10 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="mx-auto flex min-h-dvh w-full max-w-6xl items-center px-3 py-6 sm:px-6 sm:py-10">
+          <div className="relative grid w-full items-center gap-5 lg:grid-cols-[1fr_390px] lg:gap-0">
 
-        <div className="relative z-10">
-          {/* Logo */}
-          <div className="flex items-center gap-5 lg:gap-6 mb-14">
-            <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="w-20 h-20 lg:w-28 lg:h-28 rounded-2xl lg:rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-xl border border-white/20 p-1 lg:p-2 hover:scale-105 transition-transform overflow-hidden shrink-0">
-              <img src="/colegios/colegios-logo-v2.png" alt="Colegios Logo" className="w-full h-full object-cover drop-shadow-md rounded-xl lg:rounded-2xl" />
-            </a>
-            <div className="flex flex-col">
-              <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="text-white font-extrabold text-4xl tracking-tight drop-shadow-md hover:text-indigo-200 transition-colors">
-                Colegios
+          {/* ── The walnut panel: what this is ─────────────────────────────
+              A panel, not a screen — the paper canvas runs around it, and the
+              sign-in card overlaps its right edge so the two halves of the
+              design meet on the card itself. ──────────────────────────────── */}
+          <div className="ink-field overflow-hidden rounded-2xl px-6 py-8 shadow-glass sm:px-9 sm:py-11 lg:py-14 lg:pr-32 lg:pl-11">
+            <div className="flex items-center gap-3.5">
+              <a
+                href="https://colegios.in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/14 bg-white/10 p-1 backdrop-blur-md transition-colors hover:border-white/28 sm:size-16"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/colegios/colegios-logo-v2.png"
+                  alt="Colegios"
+                  className="size-full rounded-lg object-cover"
+                />
               </a>
-              <a href="https://appme.in" target="_blank" rel="noopener noreferrer" className="text-indigo-100 text-sm font-bold tracking-widest drop-shadow-md mt-1 hover:text-white transition-colors">
-                A Flagship Product of AppMe Soft Pvt Ltd.
-              </a>
-            </div>
-          </div>
-
-          {/* Headline */}
-          <h1 className="text-white text-4xl lg:text-5xl font-extrabold leading-tight mb-8 drop-shadow-lg">
-            Digitizing Schools<br />
-            <span className="text-transparent bg-clip-text bg-linear-to-r from-indigo-300 to-purple-300 drop-shadow-sm">
-              for the Future.
-            </span>
-          </h1>
-          
-          <div className="space-y-4 mb-8 p-6 rounded-2xl bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl">
-            <p className="text-white text-xl font-bold tracking-wide leading-relaxed">
-              Colegios - The Smart Operating System for Modern Schools.
-            </p>
-            <p className="text-slate-200 text-base leading-relaxed max-w-md font-medium">
-              Colegios is an all-in-one, feature-rich school management ecosystem. We are building a stronger, smarter future by bringing cutting-edge digital infrastructure straight to the roots of our education system.
-            </p>
-            <p className="text-white text-sm font-black flex items-center gap-2 uppercase tracking-wider pt-2">
-              <svg className="w-5 h-5 text-indigo-400 drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              Igniting a Digital Revolution in Education.
-            </p>
-          </div>
-        </div>
-
-        <div className="relative z-10">
-          {/* Feature pills */}
-          <div className="flex flex-wrap gap-3">
-            {[
-              { Icon: BarChart2,      label: 'Report & Analytics', color: 'text-violet-300' },
-              { Icon: CalendarCheck2, label: 'Attendance',          color: 'text-sky-300'    },
-              { Icon: IndianRupee,    label: 'Fee Management',      color: 'text-emerald-300'},
-              { Icon: FileText,       label: 'Examinations',        color: 'text-amber-300'  },
-              { Icon: Users,          label: 'Parent Portal',       color: 'text-pink-300'   },
-            ].map(({ Icon, label, color }) => (
-              <span key={label} className="flex items-center gap-2 px-4 py-2 cursor-pointer bg-white/10 hover:bg-white/20 hover:scale-105 hover:-translate-y-1 transition-all duration-300 backdrop-blur-md text-white font-medium text-sm rounded-xl border border-indigo-500/30 shadow-lg hover:shadow-indigo-500/40">
-                <Icon className={`w-4 h-4 ${color}`} aria-hidden />
-                {label}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Right — Login Panel */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 min-h-screen md:min-h-0">
-        <div className="w-full max-w-md">
-          {/* Mobile/tablet branding card — visible up to large screens (desktop uses left panel) */}
-          <div className="lg:hidden relative w-full rounded-2xl overflow-hidden mb-7 shadow-2xl bg-linear-to-br from-slate-900 via-slate-950 to-slate-900 border border-white/10 p-5"
-            style={{ animation: 'fade-in 0.55s ease-out forwards' }}
-          >
-            <div className="absolute inset-0 opacity-30 bg-linear-to-br from-indigo-500/20 via-purple-500/10 to-transparent" />
-            <div className="relative flex items-center gap-4 sm:gap-5 mb-5">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/10 border border-white/10 backdrop-blur-md flex items-center justify-center shadow-lg p-1 sm:p-1.5 overflow-hidden shrink-0">
-                <img src="/colegios/colegios-logo-v2.png" alt="Colegios Logo" className="w-full h-full object-cover rounded-xl" />
-              </div>
-              <div>
-                <p className="text-white font-extrabold text-xl tracking-tight">Colegios</p>
-                <p className="text-slate-300 text-xs uppercase tracking-[0.24em]">Smart Operating System For School</p>
+              <div className="min-w-0">
+                <a
+                  href="https://colegios.in"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block font-display text-[26px] leading-none font-semibold tracking-tight text-white transition-colors hover:text-marigold-300 sm:text-[30px]"
+                >
+                  Colegios
+                </a>
+                <p className="mt-1.5 font-mono text-[9.5px] tracking-[0.16em] text-brass-200/70 uppercase sm:text-[10.5px]">
+                  School management system
+                </p>
               </div>
             </div>
-            <div className="relative rounded-2xl bg-slate-950/60 border border-white/10 p-4 shadow-inner shadow-indigo-950/40 animate-[slide-up_0.75s_cubic-bezier(0.16,1,0.3,1)_0.1s_forwards]">
-              <p className="text-slate-200 text-sm leading-relaxed">
-                A smarter digital campus for modern schools.
+
+            <h1 className="mt-8 max-w-md font-display text-[27px] leading-[1.14] font-semibold tracking-[-0.025em] text-white sm:mt-10 sm:text-[34px] lg:text-[38px]">
+              Every register, ledger and mark sheet,
+              <span className="text-marigold-300"> in one place.</span>
+            </h1>
+
+            <p className="mt-4 max-w-md text-[14.5px] leading-relaxed text-brass-100/72 sm:mt-5 sm:text-[15.5px]">
+              Attendance at the classroom door, fees at the counter, results at the end of term —
+              recorded once and visible to everyone who needs them, from the principal&apos;s desk to
+              a parent&apos;s phone.
+            </p>
+
+            {/* Modules — a plain list of what's inside, not a feature pitch */}
+            <ul className="mt-7 flex flex-wrap gap-2 sm:mt-8">
+              {MODULES.map(({ Icon, label }) => (
+                <li
+                  key={label}
+                  className="flex items-center gap-2 rounded-lg border border-white/12 bg-white/8 px-3 py-2 text-[12.5px] font-medium text-brass-100/90 backdrop-blur-sm"
+                >
+                  <Icon className="size-3.5 text-marigold-300" aria-hidden />
+                  {label}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* ── The sign-in card, overlapping the panel's edge ─────────── */}
+          <div className="relative z-10 w-full lg:-ml-24">
+            <div className="relative rounded-xl">
+              {/* The one storm border on the screen */}
+              <BorderBeam />
+
+              {/* z-0 keeps the card *below* the storm ring (z-3) even though it
+                  comes later in the DOM — otherwise it paints over the light. */}
+              <div className="relative z-0 overflow-hidden rounded-xl bg-surface shadow-glass">
+                <div className="px-6 pt-6 pb-1 sm:px-7">
+                  <h2 className="font-display text-[23px] font-semibold text-ink">Sign in</h2>
+                  <p className="mt-1 text-[13.5px] text-ink-muted">
+                    Use the account your school set up for you.
+                  </p>
+                </div>
+
+                {/* Which door */}
+                <div
+                  role="tablist"
+                  aria-label="Account type"
+                  className="mx-6 mt-4 flex gap-0.5 rounded-lg border border-line bg-surface-secondary p-0.5 sm:mx-7"
+                >
+                  {([
+                    { id: "staff" as Tab, label: "Staff", Icon: UserRound },
+                    { id: "parent" as Tab, label: "Parent", Icon: Users },
+                  ]).map(({ id, label, Icon }) => (
+                    <button
+                      key={id}
+                      role="tab"
+                      aria-selected={activeTab === id}
+                      onClick={() => { setActiveTab(id); setError(""); }}
+                      suppressHydrationWarning
+                      className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md py-2 text-[13px] font-semibold transition-all ${
+                        activeTab === id
+                          ? "bg-surface text-brand shadow-soft"
+                          : "text-ink-muted hover:text-ink"
+                      }`}
+                    >
+                      <Icon className="size-3.5" aria-hidden />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="px-6 pt-5 pb-6 sm:px-7">
+                  {activeTab === "staff" ? (
+                    <form onSubmit={handleStaffLogin} className="space-y-4">
+                      <div>
+                        <label htmlFor="staff-id" className="eyebrow mb-1.5 block">
+                          Mobile or email
+                        </label>
+                        <div className="relative">
+                          <Phone
+                            aria-hidden
+                            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-faint"
+                          />
+                          <input
+                            id="staff-id"
+                            type="text"
+                            value={staffIdentifier}
+                            onChange={e => setStaffIdentifier(e.target.value)}
+                            required
+                            autoComplete="username"
+                            suppressHydrationWarning
+                            placeholder="9876543210"
+                            className={inputClass}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label htmlFor="staff-password" className="eyebrow mb-1.5 block">
+                          Password
+                        </label>
+                        <div className="relative">
+                          <Lock
+                            aria-hidden
+                            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-faint"
+                          />
+                          <input
+                            id="staff-password"
+                            type={showPassword ? "text" : "password"}
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
+                            required
+                            autoComplete="current-password"
+                            suppressHydrationWarning
+                            placeholder="••••••••"
+                            className={`${inputClass} pr-11`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            suppressHydrationWarning
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            className="absolute top-1/2 right-2 grid size-8 -translate-y-1/2 cursor-pointer place-items-center rounded text-ink-faint transition-colors hover:bg-surface-secondary hover:text-ink"
+                          >
+                            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {error && <FormError>{error}</FormError>}
+
+                      <button
+                        type="submit"
+                        disabled={isLoading}
+                        suppressHydrationWarning
+                        className="mt-1 flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-brand text-[14.5px] font-semibold text-brand-contrast shadow-soft transition-all hover:bg-brand-deep hover:shadow-brand disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="size-4 animate-spin" /> Signing in…
+                          </>
+                        ) : (
+                          "Sign in"
+                        )}
+                      </button>
+                    </form>
+                  ) : (
+                    <>
+                      <form onSubmit={handleParentLogin} className="space-y-4">
+                        <div className="flex items-start gap-2.5 rounded-lg border border-accent-info-edge bg-accent-info-tint px-3.5 py-3 text-[12.5px] text-accent-info-deep">
+                          <Info className="mt-px size-4 shrink-0" aria-hidden />
+                          <span>
+                            Sign in with the mobile number registered against your child&apos;s
+                            account at the school.
+                          </span>
+                        </div>
+
+                        <div>
+                          <label htmlFor="parent-mobile" className="eyebrow mb-1.5 block">
+                            Registered mobile number
+                          </label>
+                          <div className="relative">
+                            <Phone
+                              aria-hidden
+                              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-faint"
+                            />
+                            <input
+                              id="parent-mobile"
+                              type="tel"
+                              inputMode="numeric"
+                              value={mobile}
+                              onChange={e => setMobile(e.target.value)}
+                              required
+                              autoComplete="tel"
+                              suppressHydrationWarning
+                              placeholder="9876543210"
+                              className={inputClass}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label htmlFor="parent-password" className="eyebrow mb-1.5 block">
+                            Password
+                          </label>
+                          <div className="relative">
+                            <Lock
+                              aria-hidden
+                              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-faint"
+                            />
+                            <input
+                              id="parent-password"
+                              type={showPassword ? "text" : "password"}
+                              value={password}
+                              onChange={e => setPassword(e.target.value)}
+                              required
+                              autoComplete="current-password"
+                              suppressHydrationWarning
+                              placeholder="••••••••"
+                              className={`${inputClass} pr-11`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              suppressHydrationWarning
+                              aria-label={showPassword ? "Hide password" : "Show password"}
+                              className="absolute top-1/2 right-2 grid size-8 -translate-y-1/2 cursor-pointer place-items-center rounded text-ink-faint transition-colors hover:bg-surface-secondary hover:text-ink"
+                            >
+                              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        {error && <FormError>{error}</FormError>}
+
+                        <button
+                          type="submit"
+                          disabled={isLoading}
+                          suppressHydrationWarning
+                          className="mt-1 flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-brand text-[14.5px] font-semibold text-brand-contrast shadow-soft transition-all hover:bg-brand-deep hover:shadow-brand disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isLoading ? (
+                            <>
+                              <Loader2 className="size-4 animate-spin" /> Signing in…
+                            </>
+                          ) : (
+                            "Sign in"
+                          )}
+                        </button>
+                      </form>
+
+                      <p className="mt-4 text-center text-[13px] text-ink-muted">
+                        First time here?{" "}
+                        <a
+                          href="/register-parent"
+                          className="font-semibold text-brand transition-colors hover:underline"
+                        >
+                          Register as a parent
+                        </a>
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <p className="mt-5 text-center text-[13px] text-ink-muted">
+              Trouble signing in?{" "}
+              <a href="/contact-us" className="font-semibold text-brand transition-colors hover:underline">
+                Contact support
+              </a>
+            </p>
+
+            <div className="mt-4 space-y-1 text-center font-mono text-[10.5px] text-ink-faint">
+              <p>
+                © {new Date().getFullYear()}{" "}
+                <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-ink-muted">
+                  Colegios
+                </a>
+              </p>
+              <p>
+                Built by{" "}
+                <a href="https://appme.in" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-ink-muted">
+                  AppMe Soft Pvt Ltd
+                </a>
               </p>
             </div>
           </div>
-
-          <h2 className="text-white text-3xl font-bold mb-2">Welcome Back</h2>
-          <p className="text-slate-500 mb-8">Sign in to your account to continue</p>
-
-          {/* Tab Switcher */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-1.5 flex gap-1.5 mb-6">
-            <button
-              onClick={() => { setActiveTab("staff"); setError(""); }}
-              suppressHydrationWarning
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === "staff"
-                ? "bg-linear-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/20"
-                : "text-slate-500 hover:text-slate-300"
-                }`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              Staff / Admin
-            </button>
-            <button
-              onClick={() => { setActiveTab("parent"); setError(""); }}
-              suppressHydrationWarning
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === "parent"
-                ? "bg-linear-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/20"
-                : "text-slate-500 hover:text-slate-300"
-                }`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Parent / Student
-            </button>
-          </div>
-
-          {/* Form Card */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-7 shadow-2xl">
-            {activeTab === "staff" ? (
-              <form onSubmit={handleStaffLogin} className="space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Mobile or Email</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                      <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                      </svg>
-                    </div>
-                    <input
-                      type="text"
-                      value={staffIdentifier}
-                      onChange={e => setStaffIdentifier(e.target.value)}
-                      required
-                      suppressHydrationWarning
-                      placeholder="Mobile or Email"
-                      className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <label className="text-sm font-medium text-slate-300">Password</label>
-                  </div>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                      <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                    </div>
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      required
-                      suppressHydrationWarning
-                      placeholder="••••••••"
-                      className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 pr-11 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      suppressHydrationWarning
-                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition-colors"
-                    >
-                      {showPassword ? (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-                      ) : (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                      )}
-                    </button>
-                  </div>
-                </div>
-                {error && (
-                  <div className="flex items-center gap-2 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
-                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    {error}
-                  </div>
-                )}
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  suppressHydrationWarning
-                  className="w-full py-3 rounded-xl font-semibold text-white bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 transition-all duration-200 flex items-center justify-center gap-2 mt-2"
-                >
-                  {isLoading ? (
-                    <><svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Signing in...</>
-                  ) : 'Sign in to Dashboard'}
-                </button>
-              </form>
-            ) : (
-              <>
-                <form onSubmit={handleParentLogin} className="space-y-5">
-                  <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-sm text-indigo-300 flex items-start gap-2">
-                    <Info className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />
-                    <span><span className="font-semibold">Parent / Student Login:</span> Use the mobile number registered for your child&apos;s account.</span>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Registered Mobile Number</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                        <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                        </svg>
-                      </div>
-                      <input
-                        type="tel"
-                        value={mobile}
-                        onChange={e => setMobile(e.target.value)}
-                        required
-                        suppressHydrationWarning
-                        placeholder="e.g. 9876543210"
-                        className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Password</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                        <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                      </div>
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        required
-                        suppressHydrationWarning
-                        placeholder="••••••••"
-                        className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 pr-11 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        suppressHydrationWarning
-                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition-colors"
-                      >
-                        {showPassword ? (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-                        ) : (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                  {error && (
-                    <div className="flex items-center gap-2 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
-                      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      {error}
-                    </div>
-                  )}
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    suppressHydrationWarning
-                    className="w-full py-3 rounded-xl font-semibold text-white bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 transition-all duration-200 flex items-center justify-center gap-2 mt-2"
-                  >
-                    {isLoading ? (
-                      <><svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Signing in...</>
-                    ) : "Access Parent Portal"}
-                  </button>
-                </form>
-                <div className="text-center mt-3">
-                  <p className="text-slate-500 text-sm">
-                    New here?{" "}
-                    <a href="/register-parent" className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors">
-                      Register as Parent &rarr;
-                    </a>
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-
-          <p className="text-center text-slate-600 text-sm mt-6">
-            Need help?{" "}
-            <a href="/contact-us" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors hover:underline">
-              Contact Support
-            </a>
-          </p>
-
-          <div className="mt-8 text-center text-xs text-slate-600 space-y-1">
-            <p>
-              &copy; {new Date().getFullYear()}{" "}
-              <a href="https://colegios.in" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
-                Colegios
-              </a>
-              . All rights reserved.
-            </p>
-            <p>
-              Developed by{" "}
-              <a href="https://appme.in" target="_blank" rel="noopener noreferrer" className="text-indigo-300 underline decoration-indigo-500/70 decoration-1 underline-offset-2 font-medium transition-colors hover:text-indigo-100 hover:decoration-indigo-300">
-                AppMe Soft Pvt Ltd.
-              </a>
-            </p>
           </div>
         </div>
-      </div>
-        </>
       )}
     </div>
+  );
+}
+
+/**
+ * A sign-in failure, stated plainly and next to the form it belongs to. It
+ * doesn't apologise and it doesn't guess which field was wrong — the server
+ * deliberately won't say, and neither should the UI.
+ */
+function FormError({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      role="alert"
+      className="flex items-start gap-2 rounded-lg border border-accent-danger-edge bg-accent-danger-tint px-3.5 py-2.5 text-[12.5px] font-medium text-accent-danger-deep"
+    >
+      <AlertCircle className="mt-px size-4 shrink-0" aria-hidden />
+      {children}
+    </p>
   );
 }

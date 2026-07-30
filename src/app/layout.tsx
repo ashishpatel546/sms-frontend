@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Sora, Figtree, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
@@ -10,22 +10,45 @@ import { ThemeProvider } from "@/components/providers/ThemeProvider";
 // not baked in at build time when env vars are not available.
 export const dynamic = 'force-dynamic';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+/**
+ * Three faces, three jobs — see the header of globals.css.
+ *   Sora           titles, stat figures — the display voice
+ *   Figtree        every label, cell and paragraph you actually read
+ *   IBM Plex Mono  every number, ID, date and micro-label, tabular by default
+ */
+const sora = Sora({
+  variable: "--font-sora",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const figtree = Figtree({
+  variable: "--font-figtree",
   subsets: ["latin"],
+  display: "swap",
+});
+
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
 });
 
 export const viewport: Viewport = {
-  themeColor: "#ffffff",
+  // Matches the ink rail so the phone's status bar continues the chrome
+  // rather than sitting on a white seam above it.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#0a0f1c" },
+    { media: "(prefers-color-scheme: dark)", color: "#060a14" },
+  ],
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // Pinch-zoom stays available: this is an ERP read on phones all day, and
+  // capping the scale is the one accessibility failure users cannot work around.
+  maximumScale: 5,
+  userScalable: true,
 };
 
 const schoolName = process.env.SCHOOL_NAME || 'School Management System';
@@ -69,7 +92,15 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    // The font variables must land on <html>, not <body>: globals.css defines
+    // --font-sans/--font-display at :root in terms of these, and a var() that
+    // cannot resolve where it is *declared* computes to invalid and then
+    // inherits as empty — so putting them on <body> silently kills every font.
+    <html
+      lang="en"
+      className={`${sora.variable} ${figtree.variable} ${plexMono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -77,14 +108,12 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className="antialiased">
         <ThemeProvider
           attribute="data-theme"
           defaultTheme="light"
           enableSystem
-          themes={["light", "dark", "teal"]}
+          themes={["light", "dark"]}
           disableTransitionOnChange
         >
           {children}
