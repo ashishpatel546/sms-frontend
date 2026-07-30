@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import { Sparkles, Square, Zap } from "lucide-react";
 import { streamAiResponse, SseUsage } from "@/lib/ai-stream";
 import { FeatureGate } from "@/components/ai/FeatureGate";
+import NumberInput from "@/components/ui/NumberInput";
 
 const GRADES = ["1","2","3","4","5","6","7","8","9","10","11","12"];
 const DIFFICULTIES = ["Easy","Medium","Hard"];
@@ -105,12 +106,12 @@ export function PracticeQuizTool({ defaultGrade, onUpgradeClick }: PracticeQuizT
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">No. of Questions</label>
-            <input
-              type="number"
+            <NumberInput
               min={3}
               max={20}
               value={questionCount}
-              onChange={(e) => setQuestionCount(Number(e.target.value))}
+              emptyValue={10}
+              onChange={(v) => setQuestionCount(v ?? 10)}
               className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-violet-500/40"
             />
           </div>

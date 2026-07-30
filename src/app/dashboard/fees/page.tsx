@@ -10,6 +10,7 @@ import { authFetch, getUser } from "@/lib/auth";
 import ReceiptModal from "@/components/ReceiptModal";
 import { Settings, Layers, Wallet, BadgePercent } from "lucide-react";
 import { sortByName } from "@/lib/utils";
+import NumberInput from "@/components/ui/NumberInput";
 
 export default function FeesDashboardPage() {
     const router = useRouter();
@@ -1409,10 +1410,11 @@ export default function FeesDashboardPage() {
                         <form onSubmit={handleSaveSettings} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
                             <div>
                                 <label className="block mb-2 text-sm font-medium text-gray-900">Monthly Due Date (Day)</label>
-                                <input
-                                    type="number" min="1" max="28"
+                                <NumberInput
+                                    min={1} max={28}
                                     value={globalSettings.feeDueDate}
-                                    onChange={(e) => setGlobalSettings({ ...globalSettings, feeDueDate: parseInt(e.target.value) || 15 })}
+                                    emptyValue={15}
+                                    onChange={(v) => setGlobalSettings({ ...globalSettings, feeDueDate: v ?? 15 })}
                                     className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500"
                                     required
                                 />
@@ -1420,10 +1422,11 @@ export default function FeesDashboardPage() {
                             </div>
                             <div>
                                 <label className="block mb-2 text-sm font-medium text-gray-900">Late Fee Per Day ($)</label>
-                                <input
-                                    type="number" step="0.01"
+                                <NumberInput
+                                    step="0.01"
                                     value={globalSettings.lateFeePerDay}
-                                    onChange={(e) => setGlobalSettings({ ...globalSettings, lateFeePerDay: parseFloat(e.target.value) || 0 })}
+                                    emptyValue={0}
+                                    onChange={(v) => setGlobalSettings({ ...globalSettings, lateFeePerDay: v ?? 0 })}
                                     className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500"
                                     required
                                 />

@@ -9,6 +9,7 @@ import { AiDisclaimer } from "@/components/ai/AiDisclaimer";
 import { DownloadPdfButton } from "@/components/ai/DownloadPdfButton";
 import { AiValueBanner } from "@/components/ai/AiValueBanner";
 import { SmartFillBox, ExtractedFields, applyBaseFields, useAutoFillHighlight } from "@/components/ai/SmartFillBox";
+import NumberInput from "@/components/ui/NumberInput";
 
 const GRADES = ["1","2","3","4","5","6","7","8","9","10","11","12"];
 const BOARDS = ["CBSE","ICSE","State Board","IB","IGCSE"];
@@ -160,12 +161,12 @@ export default function QuestionPaperPage() {
           </div>
           <div>
             <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">Total Marks</label>
-            <input
-              type="number"
+            <NumberInput
               min={10}
               max={100}
               value={totalMarks}
-              onChange={(e) => setTotalMarks(Number(e.target.value))}
+              emptyValue={40}
+              onChange={(v) => setTotalMarks(v ?? 40)}
               className={`w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/40${ring("totalMarks")}`}
             />
           </div>
