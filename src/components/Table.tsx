@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any --
+   This file's whole job is to accept the old, untyped column shape so existing
+   callers keep working. `any` is the compatibility surface, not an oversight —
+   new code uses DataTable directly, which is generic over the row type. */
 import React from 'react';
 import { DataTable, type Column as DataColumn } from '@/components/ui/DataTable';
 
@@ -49,14 +53,15 @@ const Table: React.FC<TableProps> = ({
     defaultSortDirection = 'asc',
 }) => {
     const mapped: DataColumn<any>[] = React.useMemo(() => {
-        let titleTaken = false;
+        // Only the first column that qualifies becomes the card's headline; any
+        // later candidate falls back to a labelled field. Resolved up front so
+        // the map below stays a pure transform.
+        const titleIndex = columns.findIndex((col, i) => cardRole(col.header, i) === 'title');
+
         return columns.map((col, index) => {
             const key = col.sortKey || col.accessor || `col-${index}`;
-            let card = cardRole(col.header, index);
-            if (card === 'title') {
-                if (titleTaken) card = 'field';
-                else titleTaken = true;
-            }
+            const role = cardRole(col.header, index);
+            const card = role === 'title' && index !== titleIndex ? 'field' : role;
             return {
                 key,
                 header: col.header,
