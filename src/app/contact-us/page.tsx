@@ -36,9 +36,9 @@ export default function ContactUsPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-950 selection:bg-indigo-500/30 font-sans">
+    <div className="min-h-dvh ink-field flex flex-col md:flex-row selection:bg-marigold-400/30 font-sans">
       {/* Left — Info & Branding Panel */}
-      <div className="relative flex flex-col md:w-5/12 justify-between p-8 md:p-12 overflow-hidden border-r border-white/10 shadow-2xl z-10 bg-slate-900/80 backdrop-blur-md">
+      <div className="relative flex flex-col md:w-5/12 justify-between p-8 md:p-12 overflow-hidden border-r border-white/10 shadow-2xl z-10 bg-walnut-850/80 backdrop-blur-md">
         {/* Subtle background glow effect */}
         <div className="absolute inset-0 opacity-20 pointer-events-none"
           style={{
@@ -51,7 +51,7 @@ export default function ContactUsPage() {
           {/* Header/Back Link */}
           <button 
              onClick={() => router.push('/')}
-             className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 transition-colors w-fit mb-12 text-sm font-semibold tracking-wide uppercase"
+             className="flex items-center gap-2 text-marigold-300 hover:text-marigold-200 transition-colors w-fit mb-12 text-sm font-semibold tracking-wide uppercase"
           >
             <ArrowLeft size={16} /> Back to Login
           </button>
@@ -60,7 +60,7 @@ export default function ContactUsPage() {
             <h1 className="text-white text-4xl lg:text-5xl font-extrabold leading-tight mb-4 drop-shadow-md">
               Get in Touch
             </h1>
-            <p className="text-slate-300 text-lg leading-relaxed font-medium">
+            <p className="text-brass-100/85 text-lg leading-relaxed font-medium">
               We&apos;re here to help! Connect with our support team instantly via WhatsApp or reach out through email.
             </p>
           </div>
@@ -68,15 +68,15 @@ export default function ContactUsPage() {
           <div className="space-y-6 mt-4">
             {/* Direct Information Blocks */}
             <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-              <div className="p-3 bg-indigo-500/20 rounded-xl text-indigo-400">
+              <div className="p-3 bg-indigo-500/20 rounded-xl text-marigold-300">
                 <Mail size={24} />
               </div>
               <div className="flex flex-col flex-1">
-                <span className="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-1">Email Support</span>
-                <a href={`mailto:${supportEmail}`} className="text-white font-medium text-lg hover:text-indigo-300 transition-colors">
+                <span className="text-brass-100/70 text-sm font-semibold uppercase tracking-wider mb-1">Email Support</span>
+                <a href={`mailto:${supportEmail}`} className="text-white font-medium text-lg hover:text-marigold-200 transition-colors">
                   {supportEmail}
                 </a>
-                <span className="text-slate-500 text-sm mt-1">Average response time: 24hrs</span>
+                <span className="text-brass-100/55 text-sm mt-1">Average response time: 24hrs</span>
               </div>
             </div>
 
@@ -90,9 +90,9 @@ export default function ContactUsPage() {
                 </svg>
               </div>
               <div className="flex flex-col flex-1 relative z-10">
-                <span className="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-1">WhatsApp Support</span>
+                <span className="text-brass-100/70 text-sm font-semibold uppercase tracking-wider mb-1">WhatsApp Support</span>
                 <span className="text-white font-medium text-lg tracking-widest">+91 {supportNumber.replace(/(\d{5})(\d{5})/, '$1 $2')}</span>
-                <span className="text-slate-500 text-sm mt-1">Chat directly with our team</span>
+                <span className="text-brass-100/55 text-sm mt-1">Chat directly with our team</span>
               </div>
             </div>
             
@@ -118,64 +118,64 @@ export default function ContactUsPage() {
           
           <div className="mb-8 text-center md:text-left">
             <h2 className="text-3xl font-extrabold text-white mb-2 tracking-tight">Tell us how we can help</h2>
-            <p className="text-slate-400">Fill out the form below to quickly summarize your issue and start a WhatsApp conversation with our support team.</p>
+            <p className="text-brass-100/70">Fill out the form below to quickly summarize your issue and start a WhatsApp conversation with our support team.</p>
           </div>
 
-          <form onSubmit={handleWhatsAppSubmit} className="space-y-6 bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-3xl shadow-2xl relative overflow-hidden">
+          <form onSubmit={handleWhatsAppSubmit} className="space-y-6 bg-walnut-850 border border-white/10 p-6 md:p-8 rounded-3xl shadow-2xl relative overflow-hidden">
              
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Mobile Number */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-300 mb-1.5 ml-1">Mobile Number <span className="text-red-400">*</span></label>
+                  <label className="block text-sm font-semibold text-brass-100/85 mb-1.5 ml-1">Mobile Number <span className="text-red-400">*</span></label>
                   <input
                     type="tel"
                     required
                     value={mobile}
                     onChange={(e) => setMobile(e.target.value)}
                     placeholder="10-digit mobile"
-                    className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand/40 transition-shadow"
+                    className="w-full bg-walnut-800 border border-white/12 text-white placeholder-brass-100/40 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand/40 transition-shadow"
                   />
                 </div>
                 {/* Email Address */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-300 mb-1.5 ml-1">Email <span className="text-slate-500 font-normal">(Optional)</span></label>
+                  <label className="block text-sm font-semibold text-brass-100/85 mb-1.5 ml-1">Email <span className="text-brass-100/55 font-normal">(Optional)</span></label>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="your@email.com"
-                    className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand/40 transition-shadow"
+                    className="w-full bg-walnut-800 border border-white/12 text-white placeholder-brass-100/40 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand/40 transition-shadow"
                   />
                 </div>
               </div>
 
               {/* School Name (Disabled) */}
               <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-1.5 ml-1">School Name</label>
+                <label className="block text-sm font-semibold text-brass-100/85 mb-1.5 ml-1">School Name</label>
                 <div className="relative">
                   <input
                     type="text"
                     disabled
                     value={schoolName}
-                    className="w-full bg-slate-800/50 border border-slate-700/50 text-slate-400 cursor-not-allowed rounded-xl px-4 py-3.5 font-medium"
+                    className="w-full bg-walnut-800/50 border border-white/12/50 text-brass-100/70 cursor-not-allowed rounded-xl px-4 py-3.5 font-medium"
                   />
                   <div className="absolute right-4 top-[50%] -translate-y-[50%]">
-                    <svg className="w-5 h-5 text-slate-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/></svg>
+                    <svg className="w-5 h-5 text-brass-100/55" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/></svg>
                   </div>
                 </div>
               </div>
 
               {/* Issue Details */}
               <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-1.5 ml-1">Issue Details <span className="text-red-400">*</span></label>
+                <label className="block text-sm font-semibold text-brass-100/85 mb-1.5 ml-1">Issue Details <span className="text-red-400">*</span></label>
                 <textarea
                   required
                   value={issue}
                   onChange={(e) => setIssue(e.target.value)}
                   rows={4}
                   placeholder="Please describe the issue you are facing..."
-                  className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand/40 transition-shadow resize-none"
+                  className="w-full bg-walnut-800 border border-white/12 text-white placeholder-brass-100/40 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand/40 transition-shadow resize-none"
                 />
               </div>
             </div>
@@ -190,7 +190,7 @@ export default function ContactUsPage() {
               </svg>
               <span>Connect on WhatsApp</span>
             </button>
-            <p className="text-center text-xs text-slate-500 mt-4 leading-relaxed px-4">
+            <p className="text-center text-xs text-brass-100/55 mt-4 leading-relaxed px-4">
               Clicking the button will open a WhatsApp chat directly with our team, transferring the details you filled in above. 
             </p>
           </form>

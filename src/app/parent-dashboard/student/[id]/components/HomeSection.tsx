@@ -1,5 +1,14 @@
 import React from "react";
-import { GlassCard } from "@/components/ui/GlassCard";
+import {
+  BookOpen,
+  CalendarDays,
+  ClipboardList,
+  IndianRupee,
+  QrCode,
+  Trophy,
+  type LucideIcon,
+} from "lucide-react";
+import { Panel } from "@/components/ui/Panel";
 import { StatTile } from "@/components/ui/StatTile";
 import { useAttendance, useFees, useNotifications, useHolidays, useHomework, useExamResults } from "../hooks/useStudentData";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -98,70 +107,75 @@ export const HomeSection = ({ studentId, academicYearString, sessionId, onChange
   return (
     <div className="space-y-6">
       {/* Today's Attendance Banner */}
-      <GlassCard className="p-5 flex items-center justify-between">
+      <Panel className="flex items-center justify-between p-4">
         <div>
-          <p className="text-sm font-medium text-ink-muted">Today&apos;s Attendance</p>
-          <div className="mt-1 flex items-center gap-2">
+          <p className="eyebrow">Attendance today</p>
+          <div className="mt-1.5 flex items-center gap-2">
             {isAttLoading ? (
-              <Skeleton className="h-8 w-28" />
+              <Skeleton className="h-7 w-28" />
             ) : (
               <>
-                <div className={`w-3 h-3 rounded-full ${attColor}`} />
-                <span className="text-xl font-bold text-ink">{attLabel}</span>
+                <span className={`size-2.5 rounded-full ${attColor}`} aria-hidden />
+                <span className="font-display text-[19px] font-semibold text-ink">{attLabel}</span>
               </>
             )}
           </div>
         </div>
         <button
           onClick={() => onChangeSection("attendance")}
-          className="text-brand text-sm font-medium hover:underline"
+          className="cursor-pointer text-[13px] font-semibold text-brand hover:underline"
         >
-          View Month →
+          View the month
         </button>
-      </GlassCard>
+      </Panel>
 
       {/* Quick Actions */}
       <div>
-        <p className="text-sm font-semibold text-ink mb-3 px-1">Quick Actions</p>
-        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-          <ActionChip title="QR Codes" icon="📱" onClick={() => onChangeSection("pickup")} />
-          <ActionChip title="Apply Leave" icon="📅" onClick={() => onChangeSection("leaves")} />
-          <ActionChip title="Homework" icon="📚" onClick={() => onChangeSection("homework")} />
-          <ActionChip title="Pay Fees" icon="💳" onClick={() => onChangeSection("fees")} />
+        <p className="eyebrow mb-2.5 px-1">Jump to</p>
+        <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-2">
+          <ActionChip title="QR codes" icon={QrCode} onClick={() => onChangeSection("pickup")} />
+          <ActionChip title="Apply for leave" icon={CalendarDays} onClick={() => onChangeSection("leaves")} />
+          <ActionChip title="Homework" icon={BookOpen} onClick={() => onChangeSection("homework")} />
+          <ActionChip title="Pay fees" icon={IndianRupee} onClick={() => onChangeSection("fees")} />
         </div>
       </div>
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 gap-4">
         <StatTile
-          title="Avg Attendance"
+          label="Attendance"
           value={isAttLoading ? <Skeleton className="h-7 w-16" /> : `${attendance?.percentage ?? 0}%`}
-          icon={<span className="text-lg">📊</span>}
+          hint="This month"
+          icon={<ClipboardList />}
+          pigment="success"
           onClick={() => onChangeSection("attendance")}
         />
         <StatTile
-          title="Latest Exam"
+          label="Latest exam"
           value={(!sessionId || isExamLoading) ? <Skeleton className="h-7 w-16" /> : latestPct}
-          delta={sessionId && !isExamLoading && latestCatName ? latestCatName : undefined}
-          icon={<span className="text-lg">🏆</span>}
+          hint={sessionId && !isExamLoading && latestCatName ? latestCatName : undefined}
+          icon={<Trophy />}
+          pigment="info"
           onClick={() => onChangeSection("results")}
         />
         <StatTile
-          title="Pending Fees"
+          label="Fees due"
           value={isFeesLoading ? <Skeleton className="h-7 w-20" /> : (pendingFmtd ?? "₹0")}
-          icon={<span className="text-lg">💰</span>}
+          icon={<IndianRupee />}
+          pigment="attn"
           onClick={() => onChangeSection("fees")}
         />
         <StatTile
-          title="Today's Hw"
+          label="Homework today"
           value={isHwLoading ? <Skeleton className="h-7 w-10" /> : (homeworkItems?.length > 0 ? `${homeworkItems.length} task${homeworkItems.length > 1 ? 's' : ''}` : 'None')}
-          icon={<span className="text-lg">📝</span>}
+          icon={<BookOpen />}
+          pigment="info"
           onClick={() => onChangeSection("homework")}
         />
       </div>
 
       {/* Today's Homework + Upcoming Holidays — combined card */}
-      <GlassCard className="p-5">
+      <Panel className="p-4">
         {/* ── Homework section ── */}
         <div className="flex items-center justify-between mb-3">
           <p className="text-ink font-semibold">Today&apos;s Homework</p>
@@ -258,10 +272,10 @@ export const HomeSection = ({ studentId, academicYearString, sessionId, onChange
             })}
           </div>
         )}
-      </GlassCard>
+      </Panel>
 
       {/* Recent Notifications */}
-      <GlassCard className="p-5">
+      <Panel className="p-4">
         <div className="flex items-center justify-between mb-3">
           <p className="text-ink font-semibold">Recent Notifications</p>
           <button
@@ -294,17 +308,25 @@ export const HomeSection = ({ studentId, academicYearString, sessionId, onChange
             ))}
           </div>
         )}
-      </GlassCard>
+      </Panel>
     </div>
   );
 };
 
-const ActionChip = ({ title, icon, onClick }: { title: string; icon: React.ReactNode; onClick: () => void }) => (
+const ActionChip = ({
+  title,
+  icon: Icon,
+  onClick,
+}: {
+  title: string;
+  icon: LucideIcon;
+  onClick: () => void;
+}) => (
   <button
     onClick={onClick}
-    className="shrink-0 flex items-center gap-2 bg-surface border border-slate-200 dark:border-white/10 px-4 py-2.5 rounded-xl shadow-sm hover:border-brand/40 hover:shadow-md transition-all"
+    className="flex shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2.5 text-[13px] font-medium text-ink shadow-soft transition-all hover:border-brand-edge hover:bg-brand-tint hover:text-brand active:scale-95"
   >
-    <span>{icon}</span>
-    <span className="text-sm font-medium text-ink">{title}</span>
+    <Icon className="size-4 shrink-0 text-brand" aria-hidden />
+    {title}
   </button>
 );

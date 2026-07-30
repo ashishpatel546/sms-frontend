@@ -101,30 +101,30 @@ export default function ChangePasswordPage() {
     const str = form.newPw ? strengthLabel(strengthScore) : null;
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-indigo-950 flex items-center justify-center px-4 py-12">
+        <div className="min-h-dvh ink-field flex items-center justify-center px-4 py-12">
             <div className="w-full max-w-md">
 
                 {/* Icon + heading */}
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-linear-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/30 mb-5">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-linear-to-br from-indigo-500 to-violet-600 shadow-lg shadow-brass-900/40 mb-5">
                         <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                         </svg>
                     </div>
                     <h1 className="text-2xl font-bold text-white tracking-tight">Create your password</h1>
-                    <p className="text-slate-400 text-sm mt-2">
-                        Welcome, <span className="text-indigo-400 font-semibold">{user.firstName}</span>. Set a new password to get started.
+                    <p className="text-brass-100/70 text-sm mt-2">
+                        Welcome, <span className="text-marigold-300 font-semibold">{user.firstName}</span>. Set a new password to get started.
                     </p>
                 </div>
 
                 {/* Card */}
-                <div className="bg-slate-900/70 backdrop-blur-md border border-slate-700/50 rounded-3xl p-7 shadow-2xl shadow-slate-950/60">
+                <div className="bg-walnut-850/70 backdrop-blur-md border border-white/12/50 rounded-3xl p-7 shadow-2xl shadow-slate-950/60">
                     {/* autoComplete="off" prevents browser from showing its native save-password popup */}
                     <form onSubmit={handleSubmit} autoComplete="off" className="space-y-5">
 
                         {/* Current password */}
                         <div>
-                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Current Password</label>
+                            <label className="block text-xs font-semibold text-brass-100/70 uppercase tracking-wider mb-2">Current Password</label>
                             <div className="relative">
                                 <input
                                     type={show.current ? "text" : "password"}
@@ -135,21 +135,21 @@ export default function ChangePasswordPage() {
                                     data-lpignore="true"
                                     data-form-type="other"
                                     placeholder="Enter your current password"
-                                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/40/70 focus:border-brand/50 transition-all"
+                                    className="w-full bg-walnut-800/80 border border-white/12 rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-brass-100/40 focus:outline-none focus:ring-2 focus:ring-brand/40/70 focus:border-brand/50 transition-all"
                                 />
                                 <button type="button" onClick={() => toggleShow("current")}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-0.5">
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-brass-100/55 hover:text-brass-100/85 transition-colors p-0.5">
                                     <EyeIcon open={show.current} />
                                 </button>
                             </div>
                         </div>
 
                         {/* Divider */}
-                        <div className="border-t border-slate-800" />
+                        <div className="border-t border-white/10" />
 
                         {/* New password */}
                         <div>
-                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">New Password</label>
+                            <label className="block text-xs font-semibold text-brass-100/70 uppercase tracking-wider mb-2">New Password</label>
                             <div className="relative">
                                 <input
                                     type={show.newPw ? "text" : "password"}
@@ -160,10 +160,10 @@ export default function ChangePasswordPage() {
                                     data-lpignore="true"
                                     data-form-type="other"
                                     placeholder="Create a strong password"
-                                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/40/70 focus:border-brand/50 transition-all"
+                                    className="w-full bg-walnut-800/80 border border-white/12 rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-brass-100/40 focus:outline-none focus:ring-2 focus:ring-brand/40/70 focus:border-brand/50 transition-all"
                                 />
                                 <button type="button" onClick={() => toggleShow("newPw")}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-0.5">
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-brass-100/55 hover:text-brass-100/85 transition-colors p-0.5">
                                     <EyeIcon open={show.newPw} />
                                 </button>
                             </div>
@@ -184,7 +184,7 @@ export default function ChangePasswordPage() {
 
                         {/* Confirm password */}
                         <div>
-                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Confirm New Password</label>
+                            <label className="block text-xs font-semibold text-brass-100/70 uppercase tracking-wider mb-2">Confirm New Password</label>
                             <div className="relative">
                                 <input
                                     type={show.confirm ? "text" : "password"}
@@ -195,14 +195,14 @@ export default function ChangePasswordPage() {
                                     data-lpignore="true"
                                     data-form-type="other"
                                     placeholder="Re-enter your new password"
-                                    className={`w-full bg-slate-800/80 border rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 transition-all ${
+                                    className={`w-full bg-walnut-800/80 border rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-brass-100/40 focus:outline-none focus:ring-2 transition-all ${
                                         confirmMatch    ? "border-emerald-500/60 focus:ring-emerald-500/40" :
                                         confirmMismatch ? "border-red-500/60 focus:ring-red-500/40" :
-                                                          "border-slate-700 focus:ring-brand/40/70 focus:border-brand/50"
+                                                          "border-white/12 focus:ring-brand/40/70 focus:border-brand/50"
                                     }`}
                                 />
                                 <button type="button" onClick={() => toggleShow("confirm")}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-0.5">
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-brass-100/55 hover:text-brass-100/85 transition-colors p-0.5">
                                     <EyeIcon open={show.confirm} />
                                 </button>
                                 {confirmMatch && (
@@ -237,7 +237,7 @@ export default function ChangePasswordPage() {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="relative w-full bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3 text-sm transition-all shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 flex items-center justify-center gap-2"
+                            className="relative w-full bg-brand hover:bg-brand-deep disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3 text-sm transition-all shadow-lg shadow-brass-900/35 hover:shadow-brass-900/45 flex items-center justify-center gap-2"
                         >
                             {isLoading ? (
                                 <>
@@ -262,7 +262,7 @@ export default function ChangePasswordPage() {
                 <p className="text-center mt-6">
                     <button
                         onClick={() => { removeToken(); router.push("/"); }}
-                        className="text-sm text-slate-500 hover:text-slate-400 transition-colors inline-flex items-center gap-1.5"
+                        className="text-sm text-brass-100/55 hover:text-brass-100/70 transition-colors inline-flex items-center gap-1.5"
                     >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />

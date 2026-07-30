@@ -1037,14 +1037,12 @@
   }
 
   /* Pages that hand-wrote their own dark variants reach for slate-700/800/900,
-     which are BLUE-grey and read as a foreign panel dropped on walnut. Both the
-     bare and the `dark:`-prefixed forms are folded back into the surfaces. */
-  .bg-slate-700,
-  .bg-slate-800,
-  .bg-slate-900,
-  .bg-slate-950,
-  .bg-gray-800,
-  .bg-gray-900,
+     which are BLUE-grey and read as a foreign panel dropped on walnut.
+
+     ONLY the `dark:`-prefixed forms are bridged. The bare ones are deliberately
+     left alone: the public pages (register-parent, change-password, contact-us,
+     visit) use `bg-slate-950` as an intentional dark GROUND with white text on
+     it, so folding those into a light surface makes their headings invisible. */
   .dark\:bg-slate-700,
   .dark\:bg-slate-800,
   .dark\:bg-slate-900,
@@ -1208,6 +1206,8 @@
 
   /* Icon medallions and avatars painted as blue/violet gradients: flatten to a
      brass gradient so they stop introducing a second brand colour. */
+  /* Both the v4 (`bg-linear-to-*`) and the v3 alias (`bg-gradient-to-*`) are
+     matched — the older pages still use the alias, and it still compiles. */
   .bg-linear-to-br.from-indigo-500,
   .bg-linear-to-br.from-indigo-600,
   .bg-linear-to-br.from-purple-500,
@@ -1215,7 +1215,15 @@
   .bg-linear-to-br.from-blue-500,
   .bg-linear-to-br.from-blue-600,
   .bg-linear-to-r.from-indigo-600,
-  .bg-linear-to-r.from-indigo-500 {
+  .bg-linear-to-r.from-indigo-500,
+  .bg-gradient-to-br.from-indigo-500,
+  .bg-gradient-to-br.from-indigo-600,
+  .bg-gradient-to-br.from-purple-500,
+  .bg-gradient-to-br.from-violet-500,
+  .bg-gradient-to-br.from-blue-500,
+  .bg-gradient-to-br.from-blue-600,
+  .bg-gradient-to-r.from-indigo-600,
+  .bg-gradient-to-r.from-indigo-500 {
     background-image: linear-gradient(
       140deg,
       var(--color-brass-500),

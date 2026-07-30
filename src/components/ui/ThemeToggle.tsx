@@ -20,7 +20,14 @@ const OPTIONS = [
  * Icon-only to stay compact in the top bar; each option keeps its own
  * accessible name.
  */
-export function ThemeToggle({ className }: { className?: string }) {
+export function ThemeToggle({
+  className,
+  /** Rendered on the walnut rail or bar rather than on paper. */
+  onInk = false,
+}: {
+  className?: string;
+  onInk?: boolean;
+}) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -34,7 +41,10 @@ export function ThemeToggle({ className }: { className?: string }) {
       role="radiogroup"
       aria-label="Colour theme"
       className={cn(
-        "flex items-center gap-0.5 rounded-lg border border-line bg-surface-secondary p-0.5",
+        "flex items-center gap-0.5 rounded-lg border p-0.5",
+        onInk
+          ? "border-white/12 bg-white/8"
+          : "border-line bg-surface-secondary",
         className,
       )}
     >
@@ -52,8 +62,12 @@ export function ThemeToggle({ className }: { className?: string }) {
             className={cn(
               "grid size-8 cursor-pointer place-items-center rounded-md transition-all",
               active
-                ? "bg-surface text-brand shadow-soft"
-                : "text-ink-faint hover:text-ink",
+                ? onInk
+                  ? "bg-white/16 text-marigold-300"
+                  : "bg-surface text-brand shadow-soft"
+                : onInk
+                  ? "text-rail-ink-muted hover:text-rail-ink"
+                  : "text-ink-faint hover:text-ink",
             )}
           >
             <Icon className="size-4" />

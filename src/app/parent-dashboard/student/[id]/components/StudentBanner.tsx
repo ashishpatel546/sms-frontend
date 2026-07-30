@@ -1,5 +1,5 @@
 import React from "react";
-import { GlassCard } from "@/components/ui/GlassCard";
+import { Panel } from "@/components/ui/Panel";
 import { useStudentInfo } from "../hooks/useStudentData";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -8,20 +8,20 @@ export const StudentBanner = ({ studentId }: { studentId: string }) => {
 
   if (isLoading) {
     return (
-      <GlassCard className="p-4 mx-2 mt-4 flex items-center gap-4">
+      <Panel className="p-4 mx-2 mt-4 flex items-center gap-4">
         <Skeleton className="w-16 h-16 rounded-full" />
         <div className="space-y-2">
           <Skeleton className="h-6 w-48" />
           <Skeleton className="h-4 w-32" />
         </div>
-      </GlassCard>
+      </Panel>
     );
   }
 
   if (!info) return null;
 
   return (
-    <GlassCard className="p-4 mx-2 mt-4 flex items-center gap-4 relative overflow-hidden">
+    <Panel className="p-4 mx-2 mt-4 flex items-center gap-4 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-32 h-32 bg-brand/5 rounded-bl-full -z-10" />
       
       <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-brand to-brand-light flex items-center justify-center text-white text-2xl font-bold shadow-md shrink-0">
@@ -41,6 +41,6 @@ export const StudentBanner = ({ studentId }: { studentId: string }) => {
           </span>
         </div>
       </div>
-    </GlassCard>
+    </Panel>
   );
 };

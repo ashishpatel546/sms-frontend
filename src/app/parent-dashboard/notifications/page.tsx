@@ -4,7 +4,7 @@ import useSWR from "swr";
 import Link from "next/link";
 import { authFetch } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
-import { GlassCard } from "@/components/ui/GlassCard";
+import { Panel } from "@/components/ui/Panel";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const fetcher = (url: string) => authFetch(url).then((r) => r.json());
@@ -49,17 +49,17 @@ export default function NotificationsPage() {
           ))}
         </div>
       ) : !notifications || notifications.length === 0 ? (
-        <GlassCard className="p-10 text-center">
+        <Panel className="p-10 text-center">
           <div className="text-4xl mb-3">🔔</div>
           <p className="text-ink font-semibold">No notifications yet</p>
           <p className="text-sm text-ink-muted mt-1">
             School announcements will appear here
           </p>
-        </GlassCard>
+        </Panel>
       ) : (
         <div className="space-y-3">
           {notifications.map((n) => (
-            <GlassCard key={n.id} className="p-4">
+            <Panel key={n.id} className="p-4">
               <div className="flex items-start gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-brand mt-1.5 shrink-0" />
                 <div className="min-w-0 flex-1">
@@ -73,7 +73,7 @@ export default function NotificationsPage() {
                   </p>
                 </div>
               </div>
-            </GlassCard>
+            </Panel>
           ))}
         </div>
       )}
