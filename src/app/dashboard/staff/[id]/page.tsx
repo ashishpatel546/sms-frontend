@@ -69,7 +69,7 @@ export default function ViewStaffPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-slate-50">
+            <div className="flex min-h-[60vh] items-center justify-center">
                 <div className="text-slate-500 font-medium">Loading staff details...</div>
             </div>
         );
@@ -77,7 +77,7 @@ export default function ViewStaffPage() {
 
     if (error || !staff) {
         return (
-            <div className="p-4 bg-slate-50 min-h-screen">
+            <div className="p-4 sm:p-5">
                 <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg border border-red-200 text-red-600">
                     {error || "Staff not found"}
                     <div className="mt-4">
@@ -93,7 +93,7 @@ export default function ViewStaffPage() {
     const activeAssignments = staff.subjectAssignments?.filter((a: any) => a.isActive) || [];
 
     return (
-        <main className="p-4 bg-slate-50 min-h-screen space-y-6">
+        <main className="p-4 sm:p-5 space-y-6">
             <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-slate-200">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-6 mb-6 gap-4">

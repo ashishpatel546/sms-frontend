@@ -354,7 +354,7 @@ export default function EditStaffPage() {
     const sectionsForClass = classes.find(c => c.id.toString() === selectedClass)?.sections || [];
 
     return (
-        <main className="p-4 bg-slate-50 min-h-screen space-y-6">
+        <main className="p-4 sm:p-5 space-y-6">
             <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-slate-200">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold text-slate-800">Edit Staff</h2>

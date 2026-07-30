@@ -343,7 +343,7 @@ export default function EnrollmentPage() {
     ];
 
     return (
-        <main className="p-4 bg-slate-50 min-h-screen">
+        <main className="p-4 sm:p-5">
             <Toaster position="top-right" />
             <div className="max-w-6xl mx-auto">
                 <div className="bg-white p-8 rounded-lg shadow-sm border border-slate-200 mb-6">

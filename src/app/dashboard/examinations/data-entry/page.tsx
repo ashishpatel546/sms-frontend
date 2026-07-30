@@ -232,7 +232,7 @@ export default function ExaminationsDataEntryPage() {
     };
 
     return (
-        <main className="p-4 bg-slate-50 min-h-screen">
+        <main className="p-4 sm:p-5">
             <Toaster position="top-right" />
 
             {/* Audit info card */}

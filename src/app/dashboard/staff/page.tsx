@@ -5,6 +5,9 @@ import Link from "next/link";
 import Table from "../../../components/Table";
 import { API_BASE_URL } from "@/lib/api";
 import { useRbac } from "@/lib/rbac";
+import { Upload, UserPlus } from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/button";
 import { authFetch } from "@/lib/auth";
 import Papa from "papaparse";
 import { MoreVertical, Eye, Pencil, UserMinus } from "lucide-react";
@@ -344,46 +347,51 @@ export default function TeachersPage() {
     };
 
     return (
-        <main className="p-4 bg-slate-50 min-h-screen">
+        <main className="p-4 sm:p-5">
             <div className="max-w-7xl mx-auto">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                    <h1 className="text-2xl font-bold text-slate-800">Staff Management</h1>
-                    {rbac.canManageTeachers && (
-                        <div className="flex gap-2 w-full sm:w-auto">
-                            <button onClick={() => setShowImportModal(true)} className="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-none w-full sm:w-auto text-center whitespace-nowrap shadow-sm">
+                <PageHeader
+                    className="mb-4"
+                    section="Academics · Staff"
+                    title="Staff"
+                    description="Teachers, admins and support staff on the payroll."
+                    actions={rbac.canManageTeachers ? (
+                        <>
+                            <Button variant="outline" onClick={() => setShowImportModal(true)}>
+                                <Upload />
                                 Import CSV
-                            </button>
-                            <Link href="/dashboard/staff/new" className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-none w-full sm:w-auto text-center whitespace-nowrap shadow-sm">
-                                Add Staff
-                            </Link>
-                        </div>
-                    )}
-                </div>
+                            </Button>
+                            <Button render={<Link href="/dashboard/staff/new" />}>
+                                <UserPlus />
+                                Add staff
+                            </Button>
+                        </>
+                    ) : undefined}
+                />
 
                 {/* Advanced Search Filter */}
-                <div className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 mb-6">
-                    <h2 className="text-lg font-semibold text-slate-700 mb-4">Search Staff</h2>
+                <div className="mb-4 rounded-xl border border-line bg-surface p-4 shadow-soft">
+                    <h2 className="mb-3.5 font-display text-[15px] font-semibold text-ink">Search Staff</h2>
                     <form onSubmit={handleSearch}>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4">
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Teacher ID</label>
-                                <input type="text" value={searchId} onChange={e => setSearchId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="e.g. 1" />
+                                <label className="eyebrow mb-1.5 block">Teacher ID</label>
+                                <input type="text" value={searchId} onChange={e => setSearchId(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none" placeholder="e.g. 1" />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">First Name</label>
-                                <input type="text" value={searchFirstName} onChange={e => setSearchFirstName(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="First Name" />
+                                <label className="eyebrow mb-1.5 block">First Name</label>
+                                <input type="text" value={searchFirstName} onChange={e => setSearchFirstName(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none" placeholder="First Name" />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Last Name</label>
-                                <input type="text" value={searchLastName} onChange={e => setSearchLastName(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="Last Name" />
+                                <label className="eyebrow mb-1.5 block">Last Name</label>
+                                <input type="text" value={searchLastName} onChange={e => setSearchLastName(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none" placeholder="Last Name" />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
-                                <input type="text" value={searchEmail} onChange={e => setSearchEmail(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="Email Address" />
+                                <label className="eyebrow mb-1.5 block">Email</label>
+                                <input type="text" value={searchEmail} onChange={e => setSearchEmail(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none" placeholder="Email Address" />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
-                                <select value={searchCategory} onChange={e => setSearchCategory(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2">
+                                <label className="eyebrow mb-1.5 block">Category</label>
+                                <select value={searchCategory} onChange={e => setSearchCategory(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none">
                                     <option value="">All Categories</option>
                                     <option value="Teaching Staff">Teaching Staff</option>
                                     <option value="Management">Management</option>
@@ -392,8 +400,8 @@ export default function TeachersPage() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Designation</label>
-                                <select value={searchDesignation} onChange={e => setSearchDesignation(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2">
+                                <label className="eyebrow mb-1.5 block">Designation</label>
+                                <select value={searchDesignation} onChange={e => setSearchDesignation(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none">
                                     <option value="">All Designations</option>
                                     {designations.map(d => (
                                         <option key={d.id} value={d.id}>{d.title}</option>
@@ -401,8 +409,8 @@ export default function TeachersPage() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
-                                <select value={searchStatus} onChange={e => setSearchStatus(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2">
+                                <label className="eyebrow mb-1.5 block">Status</label>
+                                <select value={searchStatus} onChange={e => setSearchStatus(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none">
                                     <option value="">All Statuses</option>
                                     <option value="true">Active</option>
                                     <option value="false">Inactive</option>
@@ -410,17 +418,17 @@ export default function TeachersPage() {
                             </div>
                         </div>
                         <div className="flex justify-end gap-2">
-                            <button type="button" onClick={handleReset} className="px-5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-200">
+                            <button type="button" onClick={handleReset} className="h-10 cursor-pointer rounded-md px-3.5 text-[13.5px] font-semibold text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink">
                                 Reset
                             </button>
-                            <button type="submit" className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300">
+                            <button type="submit" className="h-10 cursor-pointer rounded-md bg-brand px-4 text-[13.5px] font-semibold text-brand-contrast shadow-soft transition-all hover:bg-brand-deep hover:shadow-brand">
                                 Search
                             </button>
                         </div>
                     </form>
                 </div>
 
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+                <div className="rounded-xl border border-line bg-surface shadow-soft">
                     <Table
                         columns={columns}
                         data={teachers}
