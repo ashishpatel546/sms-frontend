@@ -475,7 +475,7 @@ export default function AttendancePage() {
                             type="date"
                             value={selectedDate}
                             onChange={(e) => setSelectedDate(e.target.value)}
-                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                             required
                         />
                     </div>
@@ -495,7 +495,7 @@ export default function AttendancePage() {
                         <select
                             value={selectedClassId}
                             onChange={(e) => setSelectedClassId(e.target.value)}
-                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                             required
                         >
                             <option value="">Select Class</option>
@@ -509,7 +509,7 @@ export default function AttendancePage() {
                         <select
                             value={selectedSectionId}
                             onChange={(e) => setSelectedSectionId(e.target.value)}
-                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                             disabled={!selectedClassId || loadingSections}
                             required
                         >
@@ -531,7 +531,7 @@ export default function AttendancePage() {
                                 placeholder="Search by ID, Roll No, or Name..." 
                                 value={filterSearchQuery}
                                 onChange={(e) => setFilterSearchQuery(e.target.value)}
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2"
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2"
                             />
                         </div>
                         {filterSearchQuery && (
@@ -810,7 +810,7 @@ export default function AttendancePage() {
                                                             onChange={(e) => handleRemarksChange(student.id, e.target.value)}
                                                             placeholder="Notes (optional)"
                                                             disabled={disableEdit}
-                                                            className={`bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 ${disableEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                            className={`bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2 ${disableEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                         />
                                                     </td>
                                                     <td className="px-6 py-4 text-center">
@@ -838,7 +838,7 @@ export default function AttendancePage() {
                                         type="button"
                                         onClick={handleSubmit}
                                         disabled={loading || students.length === 0 || disableEdit}
-                                        className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-6 py-2.5 disabled:opacity-50"
+                                        className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-brand/40 font-medium rounded-lg text-sm px-6 py-2.5 disabled:opacity-50"
                                     >
                                         {loading ? 'Saving...' : 'Save Attendance'}
                                     </button>

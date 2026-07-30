@@ -131,7 +131,7 @@ export default function ExamEntryModal({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
                 <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
                     <div>
@@ -168,14 +168,14 @@ export default function ExamEntryModal({
                             <div className="flex items-center justify-between mb-2">
                                 <label className="block text-sm font-medium text-gray-700">Subject</label>
                                 <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-                                    <input type="checkbox" checked={useCustomName} onChange={e => setUseCustomName(e.target.checked)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                                    <input type="checkbox" checked={useCustomName} onChange={e => setUseCustomName(e.target.checked)} className="rounded border-gray-300 text-blue-600 focus:ring-brand/40" />
                                     Use custom name
                                 </label>
                             </div>
                             {useCustomName ? (
-                                <input type="text" required value={subjectName} onChange={e => setSubjectName(e.target.value)} placeholder="Enter subject name" className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                                <input type="text" required value={subjectName} onChange={e => setSubjectName(e.target.value)} placeholder="Enter subject name" className="w-full p-2 border border-gray-300 rounded-md focus:ring-brand/40 focus:border-brand text-sm" />
                             ) : (
-                                <select required value={subjectId} onChange={e => setSubjectId(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                <select required value={subjectId} onChange={e => setSubjectId(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md focus:ring-brand/40 focus:border-brand text-sm">
                                     <option value="">Select Subject</option>
                                     {subjects?.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
@@ -185,24 +185,24 @@ export default function ExamEntryModal({
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                                <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                                <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md focus:ring-brand/40 focus:border-brand text-sm" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
-                                <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                                <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md focus:ring-brand/40 focus:border-brand text-sm" />
                             </div>
                         </div>
 
                         {!existingEntry && (
                             <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-                                <input type="checkbox" checked={saveTimePreference} onChange={e => setSaveTimePreference(e.target.checked)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                                <input type="checkbox" checked={saveTimePreference} onChange={e => setSaveTimePreference(e.target.checked)} className="rounded border-gray-300 text-blue-600 focus:ring-brand/40" />
                                 Save these times as default
                             </label>
                         )}
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
-                            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Any specific instructions..." />
+                            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full p-2 border border-gray-300 rounded-md focus:ring-brand/40 focus:border-brand text-sm" placeholder="Any specific instructions..." />
                         </div>
 
                         <div className="flex justify-between items-center pt-4 border-t border-gray-200">

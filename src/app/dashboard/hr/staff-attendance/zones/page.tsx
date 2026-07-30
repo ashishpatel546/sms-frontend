@@ -234,7 +234,7 @@ export default function AttendanceZonesPage() {
           z-[80]: must stack above the mobile BottomTabBar (z-50, rendered
           after page content) which otherwise covers the footer. */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[80] p-0 sm:p-4">
+        <div className="fixed inset-0 bg-walnut-950/55 flex items-end sm:items-center justify-center z-[80] p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-xl w-full sm:max-w-sm flex flex-col max-h-[85dvh]">
             <h2 className="font-semibold text-lg px-5 pt-5 pb-3 shrink-0">{editId ? "Edit" : "New"} Geo-Zone</h2>
             <div className="px-5 space-y-4 overflow-y-auto flex-1 min-h-0">

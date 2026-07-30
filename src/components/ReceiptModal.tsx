@@ -316,7 +316,7 @@ export default function ReceiptModal({
              * so the backdrop/modal are simply not in the print render path at all.
              */}
             <div
-                className="fixed inset-0 z-200 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm"
+                className="fixed inset-0 z-200 flex items-center justify-center p-3 sm:p-4 bg-walnut-950/60 backdrop-blur-sm"
                 onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
             >
                 {/*

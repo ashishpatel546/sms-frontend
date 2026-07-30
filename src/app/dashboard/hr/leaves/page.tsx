@@ -234,7 +234,7 @@ export default function StaffLeavesPage() {
 
       {/* Apply modal */}
       {showApply && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+        <div className="fixed inset-0 bg-walnut-950/55 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 w-full sm:max-w-md space-y-4 max-h-[90vh] overflow-y-auto">
             <h2 className="font-semibold text-lg">Apply Leave</h2>
             {rbac.canAccessHR && (
@@ -286,7 +286,7 @@ export default function StaffLeavesPage() {
 
       {/* Reject modal */}
       {rejectId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-walnut-950/55 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm space-y-4">
             <h2 className="font-semibold text-lg">Reject Leave</h2>
             <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Reason for rejection…" rows={3} className="w-full border rounded-lg px-3 py-2 text-sm" />

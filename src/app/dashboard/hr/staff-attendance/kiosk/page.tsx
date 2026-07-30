@@ -92,7 +92,7 @@ export default function AttendanceKioskPage() {
                 onChange={(e) => { setEmployeeCode(e.target.value); setStep("entering"); }}
                 onKeyDown={(e) => e.key === "Enter" && handleAuthenticate()}
                 placeholder="e.g. 1001"
-                className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-2xl text-center tracking-widest focus:outline-none focus:border-blue-500"
+                className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-2xl text-center tracking-widest focus:outline-none focus:border-brand"
                 autoComplete="off"
               />
             </div>

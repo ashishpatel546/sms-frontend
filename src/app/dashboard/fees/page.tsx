@@ -984,7 +984,7 @@ export default function FeesDashboardPage() {
 
             {/* Payment History Modal (for PARTIAL months) */}
             {paymentHistoryData && (
-                <div className="fixed inset-0 z-100 flex items-center justify-center bg-black bg-opacity-50 no-print">
+                <div className="fixed inset-0 z-100 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm no-print">
                     <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-lg font-bold text-slate-800">Payment History — {paymentHistoryData.label}</h2>
@@ -1143,7 +1143,7 @@ export default function FeesDashboardPage() {
 
             {/* Fee Adjustment Modal (Refund / Waive-Off) */}
             {adjModalOpen && (
-                <div className="fixed inset-0 z-110 flex items-center justify-center bg-black bg-opacity-60 no-print">
+                <div className="fixed inset-0 z-110 flex items-center justify-center bg-walnut-950/60 backdrop-blur-sm no-print">
                     <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
                         <div className="flex justify-between items-center mb-3">
                             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -1175,7 +1175,7 @@ export default function FeesDashboardPage() {
                                     value={adjFeeMonth}
                                     onChange={(e) => setAdjFeeMonth(e.target.value)}
                                     required
-                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500"
+                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-brand/40 focus:border-brand"
                                 >
                                     <option value="">Select month...</option>
                                     {studentFeeDetails?.oneTimeFees && (
@@ -1220,7 +1220,7 @@ export default function FeesDashboardPage() {
                                             value={adjAmount}
                                             onChange={(e) => setAdjAmount(e.target.value)}
                                             required
-                                            className="bg-gray-50 border-2 border-gray-200 rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500 font-bold text-lg"
+                                            className="bg-gray-50 border-2 border-gray-200 rounded-lg block w-full p-2.5 focus:ring-brand/40 focus:border-brand font-bold text-lg"
                                             placeholder="Enter amount"
                                         />
                                     </div>
@@ -1249,7 +1249,7 @@ export default function FeesDashboardPage() {
                                     value={adjReason}
                                     onChange={(e) => setAdjReason(e.target.value)}
                                     required={adjType === 'WAIVE_OFF'}
-                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500"
+                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-brand/40 focus:border-brand"
                                     placeholder={adjType === 'REFUND' ? 'e.g. Overpayment, Error correction...' : 'Reason for waiving dues (required)'}
                                 />
                             </div>
@@ -1415,7 +1415,7 @@ export default function FeesDashboardPage() {
                                     value={globalSettings.feeDueDate}
                                     emptyValue={15}
                                     onChange={(v) => setGlobalSettings({ ...globalSettings, feeDueDate: v ?? 15 })}
-                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500"
+                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand"
                                     required
                                 />
                                 <p className="text-xs text-gray-500 mt-1">Day of the month (e.g., 15th)</p>
@@ -1427,7 +1427,7 @@ export default function FeesDashboardPage() {
                                     value={globalSettings.lateFeePerDay}
                                     emptyValue={0}
                                     onChange={(v) => setGlobalSettings({ ...globalSettings, lateFeePerDay: v ?? 0 })}
-                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500"
+                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand"
                                     required
                                 />
                                 <p className="text-xs text-gray-500 mt-1">Applied daily if overdue</p>
@@ -1447,15 +1447,15 @@ export default function FeesDashboardPage() {
                             <form onSubmit={handleCreateCategory}>
                                 <div className="mb-4">
                                     <label className="block mb-2 text-sm font-medium text-gray-900">Category Name</label>
-                                    <input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="e.g. Curriculum Activity" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required />
+                                    <input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="e.g. Curriculum Activity" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required />
                                 </div>
                                 <div className="mb-4">
                                     <label className="block mb-2 text-sm font-medium text-gray-900">Description</label>
-                                    <input type="text" value={newCategoryDesc} onChange={(e) => setNewCategoryDesc(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" />
+                                    <input type="text" value={newCategoryDesc} onChange={(e) => setNewCategoryDesc(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" />
                                 </div>
                                 <div className="mb-4">
                                     <label className="block mb-2 text-sm font-medium text-gray-900">Type</label>
-                                    <select value={newCategoryType} onChange={(e) => setNewCategoryType(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required>
+                                    <select value={newCategoryType} onChange={(e) => setNewCategoryType(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required>
                                         <option value="REGULAR">Regular (class-wide fee)</option>
                                         <option value="ADD_ON">Add-On (individual student fee)</option>
                                     </select>
@@ -1465,7 +1465,7 @@ export default function FeesDashboardPage() {
 
                             {/* Category Edit Modal */}
                             {editingCategory && (
-                                <div className="fixed inset-0 z-60 flex items-center justify-center bg-black bg-opacity-50">
+                                <div className="fixed inset-0 z-60 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm">
                                     <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md animate-in zoom-in-95 duration-200">
                                         <h3 className="text-lg font-bold mb-4 text-slate-800">Edit Fee Category</h3>
                                         <form onSubmit={handleUpdateCategory}>
@@ -1475,7 +1475,7 @@ export default function FeesDashboardPage() {
                                                     type="text"
                                                     value={editCategoryName}
                                                     onChange={(e) => setEditCategoryName(e.target.value)}
-                                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500"
+                                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand"
                                                     required
                                                 />
                                             </div>
@@ -1485,7 +1485,7 @@ export default function FeesDashboardPage() {
                                                     type="text"
                                                     value={editCategoryDesc}
                                                     onChange={(e) => setEditCategoryDesc(e.target.value)}
-                                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500"
+                                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand"
                                                 />
                                             </div>
                                             <div className="mb-6">
@@ -1493,7 +1493,7 @@ export default function FeesDashboardPage() {
                                                 <select
                                                     value={editCategoryType}
                                                     onChange={(e) => setEditCategoryType(e.target.value)}
-                                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500"
+                                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand"
                                                     required
                                                 >
                                                     <option value="REGULAR">Regular (class-wide fee)</option>
@@ -1588,14 +1588,14 @@ export default function FeesDashboardPage() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                     <div>
                                         <label className="block mb-2 text-sm font-medium text-gray-900">Class</label>
-                                        <select value={formClassId} onChange={(e) => setFormClassId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required>
+                                        <select value={formClassId} onChange={(e) => setFormClassId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required>
                                             <option value="">Select</option>
                                             {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                         </select>
                                     </div>
                                     <div>
                                         <label className="block mb-2 text-sm font-medium text-gray-900">Category</label>
-                                        <select value={formCategoryId} onChange={(e) => setFormCategoryId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required>
+                                        <select value={formCategoryId} onChange={(e) => setFormCategoryId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required>
                                             <option value="">Select</option>
                                             {regularCategories.filter(c => c.isActive !== false).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                         </select>
@@ -1604,11 +1604,11 @@ export default function FeesDashboardPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                                     <div>
                                         <label className="block mb-2 text-sm font-medium text-gray-900">Amount (₹)</label>
-                                        <input type="number" step="0.01" value={formAmount} onChange={(e) => setFormAmount(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required />
+                                        <input type="number" step="0.01" value={formAmount} onChange={(e) => setFormAmount(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required />
                                     </div>
                                     <div>
                                         <label className="block mb-2 text-sm font-medium text-gray-900">Frequency</label>
-                                        <select value={formFrequency} onChange={(e) => setFormFrequency(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required>
+                                        <select value={formFrequency} onChange={(e) => setFormFrequency(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required>
                                             <option value="MONTHLY">Monthly</option>
                                             <option value="ONE_TIME">One Time</option>
                                             <option value="ANNUALLY">Annually</option>
@@ -1618,7 +1618,7 @@ export default function FeesDashboardPage() {
                                     </div>
                                     <div>
                                         <label className="block mb-2 text-sm font-medium text-gray-900">Academic Year</label>
-                                        <select value={formAcademicYear} onChange={(e) => setFormAcademicYear(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required>
+                                        <select value={formAcademicYear} onChange={(e) => setFormAcademicYear(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required>
                                             <option value="">Select Year</option>
                                             {sessions.map((s: any) => <option key={s.id} value={s.name}>{s.name} {s.isActive ? '(Current)' : ''}</option>)}
                                         </select>
@@ -1637,7 +1637,7 @@ export default function FeesDashboardPage() {
                                                 <label key={d.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
                                                     <input
                                                         type="checkbox"
-                                                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                        className="rounded border-gray-300 text-indigo-600 focus:ring-brand/40"
                                                         checked={formApplicableDiscountIds.includes(d.id)}
                                                         onChange={(e) => {
                                                             setFormApplicableDiscountIds(prev =>
@@ -1658,7 +1658,7 @@ export default function FeesDashboardPage() {
                                     <label className="flex items-center gap-3 cursor-pointer select-none">
                                         <input
                                             type="checkbox"
-                                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                            className="rounded border-gray-300 text-indigo-600 focus:ring-brand/40"
                                             checked={formIsLateFeeApplicable}
                                             onChange={(e) => setFormIsLateFeeApplicable(e.target.checked)}
                                         />
@@ -1678,22 +1678,22 @@ export default function FeesDashboardPage() {
                         <form onSubmit={handleCreateDiscount} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-end mb-6">
                             <div className="col-span-2">
                                 <label className="block mb-2 text-sm font-medium text-gray-900">Discount Name</label>
-                                <input type="text" value={newDiscountName} onChange={(e) => setNewDiscountName(e.target.value)} placeholder="e.g. Sibling Discount" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required />
+                                <input type="text" value={newDiscountName} onChange={(e) => setNewDiscountName(e.target.value)} placeholder="e.g. Sibling Discount" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required />
                             </div>
                             <div className="col-span-1">
                                 <label className="block mb-2 text-sm font-medium text-gray-900">Value Type</label>
-                                <select value={newDiscountType} onChange={(e) => setNewDiscountType(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required>
+                                <select value={newDiscountType} onChange={(e) => setNewDiscountType(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required>
                                     <option value="FLAT">Flat Amount ($)</option>
                                     <option value="PERCENTAGE">Percentage (%)</option>
                                 </select>
                             </div>
                             <div className="col-span-1">
                                 <label className="block mb-2 text-sm font-medium text-gray-900">Value</label>
-                                <input type="number" step="0.01" value={newDiscountValue} onChange={(e) => setNewDiscountValue(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required />
+                                <input type="number" step="0.01" value={newDiscountValue} onChange={(e) => setNewDiscountValue(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required />
                             </div>
                             <div className="col-span-1">
                                 <label className="block mb-2 text-sm font-medium text-gray-900">Application</label>
-                                <select value={newDiscountAppType} onChange={(e) => setNewDiscountAppType(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" required>
+                                <select value={newDiscountAppType} onChange={(e) => setNewDiscountAppType(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required>
                                     <option value="MANUAL">Manual</option>
                                     <option value="AUTO">Auto</option>
                                 </select>
@@ -1701,7 +1701,7 @@ export default function FeesDashboardPage() {
                             {newDiscountAppType === 'AUTO' && (
                                 <div className="col-span-1">
                                     <label className="block mb-2 text-sm font-medium text-gray-900">Logic Ref</label>
-                                    <select value={newDiscountLogicRef} onChange={(e) => setNewDiscountLogicRef(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500">
+                                    <select value={newDiscountLogicRef} onChange={(e) => setNewDiscountLogicRef(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand">
                                         <option value="">(None)</option>
                                         <option value="SIBLING">Sibling</option>
                                         <option value="GIRL">Girl Student</option>
@@ -1716,7 +1716,7 @@ export default function FeesDashboardPage() {
 
                         {/* Edit Discount Modal */}
                         {editingDiscount && (
-                            <div className="fixed inset-0 z-60 flex items-center justify-center bg-black bg-opacity-50">
+                            <div className="fixed inset-0 z-60 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm">
                                 <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl animate-in zoom-in-95 duration-200">
                                     <h3 className="text-lg font-bold mb-4 text-slate-800">Edit Discount Category</h3>
                                     <form onSubmit={handleUpdateDiscount}>
@@ -1840,7 +1840,7 @@ export default function FeesDashboardPage() {
                                 <select
                                     value={structureSearchClassId}
                                     onChange={(e) => setStructureSearchClassId(e.target.value)}
-                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500"
+                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand"
                                 >
                                     <option value="">Filter by Class (All)</option>
                                     {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -1917,7 +1917,7 @@ export default function FeesDashboardPage() {
 
                     {/* Edit Modal */}
                     {editingStructure && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm">
                             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md animate-in zoom-in-95 duration-200">
                                 <h3 className="text-lg font-bold mb-4 text-slate-800">Edit Fee Structure</h3>
                                 <p className="text-sm text-gray-600 mb-4">
@@ -1930,7 +1930,7 @@ export default function FeesDashboardPage() {
                                             type="number" step="0.01"
                                             value={editAmount}
                                             onChange={(e) => setEditAmount(e.target.value)}
-                                            className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500"
+                                            className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand"
                                             required
                                         />
                                     </div>
@@ -1939,7 +1939,7 @@ export default function FeesDashboardPage() {
                                         <select
                                             value={editFrequency}
                                             onChange={(e) => setEditFrequency(e.target.value)}
-                                            className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500"
+                                            className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand"
                                             required
                                         >
                                             <option value="MONTHLY">Monthly</option>
@@ -1954,7 +1954,7 @@ export default function FeesDashboardPage() {
                                         <select
                                             value={editYear}
                                             onChange={(e) => setEditYear(e.target.value)}
-                                            className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500"
+                                            className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand"
                                             required
                                         >
                                             <option value="">Select Year</option>
@@ -1974,7 +1974,7 @@ export default function FeesDashboardPage() {
                                                     <label key={d.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
                                                         <input
                                                             type="checkbox"
-                                                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                            className="rounded border-gray-300 text-indigo-600 focus:ring-brand/40"
                                                             checked={editApplicableDiscountIds.includes(d.id)}
                                                             onChange={(e) => {
                                                                 setEditApplicableDiscountIds(prev =>
@@ -1994,7 +1994,7 @@ export default function FeesDashboardPage() {
                                         <label className="flex items-center gap-3 cursor-pointer select-none">
                                             <input
                                                 type="checkbox"
-                                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                className="rounded border-gray-300 text-indigo-600 focus:ring-brand/40"
                                                 checked={editIsLateFeeApplicable}
                                                 onChange={(e) => setEditIsLateFeeApplicable(e.target.checked)}
                                             />
@@ -2039,7 +2039,7 @@ export default function FeesDashboardPage() {
                                         if (selectedStudentId) setSelectedStudentId(""); // Clear selection if typing
                                     }}
                                     placeholder="Search e.g., 'John', '12'"
-                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-3 transition-colors focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                                    className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-3 transition-colors focus:ring-brand/40 focus:border-brand shadow-sm"
                                 />
 
                                 {/* Search Results Dropdown */}
@@ -2654,7 +2654,7 @@ export default function FeesDashboardPage() {
                                                         value={payAmount}
                                                         onChange={(e) => setPayAmount(e.target.value)}
                                                         placeholder={`Recommended: ${totalBalance.toFixed(2)}`}
-                                                        className="bg-blue-50 border-2 border-blue-200 rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500 text-lg font-bold text-blue-900 transition-colors"
+                                                        className="bg-blue-50 border-2 border-blue-200 rounded-lg block w-full p-2.5 focus:ring-brand/40 focus:border-brand text-lg font-bold text-blue-900 transition-colors"
                                                         required
                                                     />
                                                     <button
@@ -2681,7 +2681,7 @@ export default function FeesDashboardPage() {
                                         </div>
                                         <div className="mb-6">
                                             <label className="block mb-2 text-sm font-medium text-gray-900">Remarks/Ref No.</label>
-                                            <input type="text" value={payRemarks} onChange={(e) => setPayRemarks(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-blue-500 focus:border-blue-500" placeholder="Optional transaction ID..." />
+                                            <input type="text" value={payRemarks} onChange={(e) => setPayRemarks(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" placeholder="Optional transaction ID..." />
                                         </div>
                                         <div className="flex gap-3">
                                             <button type="submit" disabled={loadingCollection} className="flex-1 text-white bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-bold disabled:opacity-50 transition-colors shadow-sm">
@@ -2739,20 +2739,20 @@ export default function FeesDashboardPage() {
                                 : 'Find Student to View Fee Details'}
                         </h2>
                         <form onSubmit={handleSearchFormStudents} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-4">
-                            <input type="text" placeholder="Student ID" value={searchFormId} onChange={e => setSearchFormId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-blue-500 focus:border-blue-500" />
-                            <input type="text" placeholder="First Name" value={searchFormFirstName} onChange={e => setSearchFormFirstName(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-blue-500 focus:border-blue-500" />
-                            <input type="text" placeholder="Last Name" value={searchFormLastName} onChange={e => setSearchFormLastName(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-blue-500 focus:border-blue-500" />
-                            <input type="text" placeholder="Mobile" value={searchFormMobile} onChange={e => setSearchFormMobile(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-blue-500 focus:border-blue-500" />
+                            <input type="text" placeholder="Student ID" value={searchFormId} onChange={e => setSearchFormId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-brand/40 focus:border-brand" />
+                            <input type="text" placeholder="First Name" value={searchFormFirstName} onChange={e => setSearchFormFirstName(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-brand/40 focus:border-brand" />
+                            <input type="text" placeholder="Last Name" value={searchFormLastName} onChange={e => setSearchFormLastName(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-brand/40 focus:border-brand" />
+                            <input type="text" placeholder="Mobile" value={searchFormMobile} onChange={e => setSearchFormMobile(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-brand/40 focus:border-brand" />
                             
-                            <select value={searchFormClassId} onChange={e => setSearchFormClassId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-blue-500 focus:border-blue-500">
+                            <select value={searchFormClassId} onChange={e => setSearchFormClassId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-brand/40 focus:border-brand">
                                 <option value="">Class (All)</option>
                                 {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
-                            <select value={searchFormSectionId} onChange={e => setSearchFormSectionId(e.target.value)} disabled={!searchFormClassId} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-blue-500 focus:border-blue-500">
+                            <select value={searchFormSectionId} onChange={e => setSearchFormSectionId(e.target.value)} disabled={!searchFormClassId} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-brand/40 focus:border-brand">
                                 <option value="">Section (All)</option>
                                 {searchFormSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
-                            <select value={searchFormSessionId} onChange={e => setSearchFormSessionId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-blue-500 focus:border-blue-500">
+                            <select value={searchFormSessionId} onChange={e => setSearchFormSessionId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-brand/40 focus:border-brand">
                                 <option value="">Session (All)</option>
                                 {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
@@ -2911,7 +2911,7 @@ export default function FeesDashboardPage() {
                                                         type="checkbox"
                                                         checked={isSelected}
                                                         onChange={() => { }}
-                                                        className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                                        className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-brand/40"
                                                     />
                                                     <div className="ml-4 flex-1">
                                                         <span className="block text-sm font-semibold text-gray-900">{d.name}</span>
@@ -2935,7 +2935,7 @@ export default function FeesDashboardPage() {
                                     <button
                                         type="submit"
                                         disabled={applyingDiscounts}
-                                        className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-6 py-2.5 transition-colors disabled:opacity-50"
+                                        className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-brand/40 font-medium rounded-lg text-sm px-6 py-2.5 transition-colors disabled:opacity-50"
                                     >
                                         {applyingDiscounts ? 'Saving...' : 'Save Discount Assignments'}
                                     </button>
@@ -2958,7 +2958,7 @@ export default function FeesDashboardPage() {
                                             value={applyOtherFeeCategoryId}
                                             onChange={(e) => setApplyOtherFeeCategoryId(e.target.value)}
                                             required
-                                            className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500"
+                                            className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-brand/40 focus:border-brand"
                                         >
                                             <option value="">Select Category...</option>
                                             {addOnCategories.filter(c => c.isActive !== false).map(c => (
@@ -2973,7 +2973,7 @@ export default function FeesDashboardPage() {
                                             value={applyOtherFeeAmount}
                                             onChange={(e) => setApplyOtherFeeAmount(e.target.value)}
                                             placeholder="e.g. 500"
-                                            className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500"
+                                            className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-brand/40 focus:border-brand"
                                         />
                                     </div>
                                 </div>
@@ -2984,7 +2984,7 @@ export default function FeesDashboardPage() {
                                             value={applyOtherFeeFrequency}
                                             onChange={(e) => setApplyOtherFeeFrequency(e.target.value)}
                                             required
-                                            className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500"
+                                            className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-brand/40 focus:border-brand"
                                         >
                                             <option value="MONTHLY">Monthly</option>
                                             <option value="QUARTERLY">Quarterly</option>
@@ -3000,7 +3000,7 @@ export default function FeesDashboardPage() {
                                             value={applyOtherFeeDescription}
                                             onChange={(e) => setApplyOtherFeeDescription(e.target.value)}
                                             placeholder="e.g. Transport fees for Route 4"
-                                            className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500"
+                                            className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-brand/40 focus:border-brand"
                                         />
                                     </div>
                                 </div>
@@ -3009,7 +3009,7 @@ export default function FeesDashboardPage() {
                                     <button
                                         type="submit"
                                         disabled={applyingOtherFee}
-                                        className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-6 py-2.5 transition-colors disabled:opacity-50"
+                                        className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-brand/40 font-medium rounded-lg text-sm px-6 py-2.5 transition-colors disabled:opacity-50"
                                     >
                                         {applyingOtherFee ? 'Applying...' : 'Apply Special Fee'}
                                     </button>

@@ -121,7 +121,7 @@ export default function QuestionPaperPage() {
             onChange={(e) => setTopic(e.target.value)}
             placeholder="e.g. Laws of Motion"
             maxLength={300}
-            className={`w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-indigo-500/40${ring("topic")}`}
+            className={`w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-brand/40/40${ring("topic")}`}
           />
           <p className="mt-1 text-xs text-ink-muted text-right">{topic.length}/300</p>
         </div>
@@ -133,7 +133,7 @@ export default function QuestionPaperPage() {
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="e.g. Physics"
-              className={`w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-indigo-500/40${ring("subject")}`}
+              className={`w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-brand/40/40${ring("subject")}`}
             />
           </div>
           <div>
@@ -141,7 +141,7 @@ export default function QuestionPaperPage() {
             <select
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
-              className={`w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/40${ring("grade")}`}
+              className={`w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/40/40${ring("grade")}`}
             >
               {GRADES.map((g) => <option key={g} value={g}>Grade {g}</option>)}
             </select>
@@ -154,7 +154,7 @@ export default function QuestionPaperPage() {
             <select
               value={board}
               onChange={(e) => setBoard(e.target.value)}
-              className={`w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/40${ring("board")}`}
+              className={`w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/40/40${ring("board")}`}
             >
               {BOARDS.map((b) => <option key={b}>{b}</option>)}
             </select>
@@ -167,7 +167,7 @@ export default function QuestionPaperPage() {
               value={totalMarks}
               emptyValue={40}
               onChange={(v) => setTotalMarks(v ?? 40)}
-              className={`w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/40${ring("totalMarks")}`}
+              className={`w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/40/40${ring("totalMarks")}`}
             />
           </div>
           <div>
@@ -175,7 +175,7 @@ export default function QuestionPaperPage() {
             <select
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value)}
-              className={`w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/40${ring("difficulty")}`}
+              className={`w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/40/40${ring("difficulty")}`}
             >
               {DIFFICULTIES.map((d) => <option key={d}>{d}</option>)}
             </select>

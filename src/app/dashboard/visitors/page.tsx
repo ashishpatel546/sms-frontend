@@ -431,7 +431,7 @@ export default function VisitorsPage() {
 
             {/* ── Manual entry modal ── */}
             {manualOpen && (
-                <div className="fixed inset-0 z-80 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={() => setManualOpen(false)}>
+                <div className="fixed inset-0 z-80 flex items-end sm:items-center justify-center bg-walnut-950/55 backdrop-blur-sm p-0 sm:p-4" onClick={() => setManualOpen(false)}>
                     <div className="bg-surface w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-ink font-semibold text-base">Manual Visitor Entry</h3>
@@ -470,7 +470,7 @@ export default function VisitorsPage() {
 
             {/* ── Archived history modal (SUB_ADMIN+) ── */}
             {archivesOpen && (
-                <div className="fixed inset-0 z-80 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={() => setArchivesOpen(false)}>
+                <div className="fixed inset-0 z-80 flex items-end sm:items-center justify-center bg-walnut-950/55 backdrop-blur-sm p-0 sm:p-4" onClick={() => setArchivesOpen(false)}>
                     <div className="bg-surface w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl p-5 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-1">
                             <h3 className="text-ink font-semibold text-base flex items-center gap-2"><Archive className="w-4 h-4 text-teal-600 dark:text-teal-400" /> Archived Visitor History</h3>
@@ -504,7 +504,7 @@ export default function VisitorsPage() {
 
             {/* ── Settings modal (SUPER_ADMIN) ── */}
             {settingsOpen && settings && (
-                <div className="fixed inset-0 z-80 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setSettingsOpen(false)}>
+                <div className="fixed inset-0 z-80 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm p-4" onClick={() => setSettingsOpen(false)}>
                     <div className="bg-surface w-full max-w-sm rounded-2xl p-5" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-ink font-semibold text-base">Visitor Management Settings</h3>

@@ -572,7 +572,7 @@ export default function StudentsPage() {
                                         }}
                                         className="mt-3 inline-flex cursor-pointer items-center gap-1 text-[12px] font-semibold text-brand underline hover:no-underline"
                                     >
-                                        ⬇ Download CSV Template
+                                        Download CSV template
                                     </button>
                                 </div>
 
@@ -596,8 +596,8 @@ export default function StudentsPage() {
                                         <div className={`p-4 mb-4 text-sm rounded-lg border ${bulkValidation.errors.length > 0 ? 'bg-red-50 text-red-800 border-red-200' : 'bg-green-50 text-green-800 border-green-200'}`}>
                                             <p className="font-bold mb-1">
                                                 {bulkValidation.errors.length > 0
-                                                    ? `⚠️ Validation found ${bulkValidation.errors.length} issue(s) in ${bulkValidation.rowCount} row(s)`
-                                                    : `✅ File looks good — ${bulkValidation.rowCount} row(s) ready to import`}
+                                                    ? `Validation found ${bulkValidation.errors.length} issue(s) in ${bulkValidation.rowCount} row(s)`
+                                                    : `File looks good — ${bulkValidation.rowCount} row(s) ready to import`}
                                             </p>
                                             {bulkValidation.errors.length > 0 && (
                                                 <div className="mt-2 max-h-40 overflow-y-auto text-xs bg-white p-2 rounded border border-red-100">
@@ -622,8 +622,8 @@ export default function StudentsPage() {
                                     {bulkResult && (
                                         <div className={`p-4 mb-4 text-sm rounded-lg ${bulkResult.failed > 0 ? 'bg-orange-50 text-orange-800 border border-orange-200' : 'bg-green-50 text-green-800 border border-green-200'}`}>
                                             <p className="font-bold mb-2">Import Results:</p>
-                                            <p>✅ {bulkResult.successful} students successfully created and enrolled.</p>
-                                            {bulkResult.failed > 0 && <p>❌ {bulkResult.failed} failed.</p>}
+                                            <p>{bulkResult.successful} students successfully created and enrolled.</p>
+                                            {bulkResult.failed > 0 && <p>{bulkResult.failed} failed.</p>}
                                             {bulkResult.errors?.length > 0 && (
                                                 <div className="mt-2 max-h-32 overflow-y-auto text-xs bg-white p-2 rounded border border-orange-100">
                                                     {bulkResult.errors.map((err, i) => (
@@ -638,14 +638,14 @@ export default function StudentsPage() {
                                         <button 
                                             type="button" 
                                             onClick={closeBulkModal} 
-                                            className="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5"
+                                            className="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-4 focus:ring-line-strong font-medium rounded-lg text-sm px-5 py-2.5"
                                         >
                                             Close
                                         </button>
                                         <button 
                                             type="submit" 
                                             disabled={!bulkFile || bulkUploading}
-                                            className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 disabled:opacity-50"
+                                            className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-brand/40 font-medium rounded-lg text-sm px-5 py-2.5 disabled:opacity-50"
                                         >
                                             {bulkUploading ? 'Importing...' : 'Upload & Import'}
                                         </button>

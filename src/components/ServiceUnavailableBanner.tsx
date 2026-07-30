@@ -14,7 +14,7 @@ export default function ServiceUnavailableBanner() {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm mx-4 text-center">
         <div className="text-5xl mb-4">⚠️</div>
         <h2 className="text-lg font-semibold text-gray-800 mb-2">

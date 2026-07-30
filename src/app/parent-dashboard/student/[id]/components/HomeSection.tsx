@@ -246,7 +246,7 @@ export const HomeSection = ({ studentId, academicYearString, sessionId, onChange
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-ink leading-tight truncate">{h.description}</p>
                     <p className="text-[11px] text-ink-muted mt-0.5">
-                      {isToday ? "🎉 Today" : daysUntil === 1 ? "Tomorrow" : `In ${daysUntil} days`}
+                      {isToday ? "Today" : daysUntil === 1 ? "Tomorrow" : `In ${daysUntil} days`}
                       {!isSingleDay && ` \u00b7 ${dateLabel}`}
                     </p>
                   </div>

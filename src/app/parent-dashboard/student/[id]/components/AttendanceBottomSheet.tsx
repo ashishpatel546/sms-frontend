@@ -82,7 +82,7 @@ export const AttendanceBottomSheet = ({ studentId, isOpen, onClose, onViewFull }
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-walnut-950/50 backdrop-blur-[2px]"
         onClick={onClose}
       />
 

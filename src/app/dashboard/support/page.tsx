@@ -222,7 +222,7 @@ export default function DashboardSupportPage() {
                     onChange={(e) => setIssue(e.target.value)}
                     rows={5}
                     placeholder="Describe the issue you are facing or the question you have..."
-                    className="w-full bg-white border border-slate-300 text-slate-900 placeholder-slate-400 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow resize-none"
+                    className="w-full bg-white border border-slate-300 text-slate-900 placeholder-slate-400 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-transparent transition-shadow resize-none"
                   />
                 </div>
 

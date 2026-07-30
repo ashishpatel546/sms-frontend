@@ -462,7 +462,7 @@ export default function MyAttendancePage() {
       {pendingCheckOut && (
         <div className="rounded-xl border-2 border-red-300 bg-red-50 p-4 flex flex-col gap-3">
           <div>
-            <p className="text-sm font-bold text-red-800">⚠️ Unclosed Check-In from {pendingCheckOut.date}</p>
+            <p className="text-sm font-bold text-red-800">Unclosed Check-In from {pendingCheckOut.date}</p>
             <p className="text-xs text-red-600 mt-0.5">
               You checked in at {dayjs(pendingCheckOut.checkInTime).format('YYYY-MM-DD HH:mm:ss')} but never checked out.
               Please resolve this before checking in today.
@@ -530,7 +530,7 @@ export default function MyAttendancePage() {
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value as typeof selectedStatus)}
-                className="text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand/40"
               >
                 <option value="PRESENT">Present</option>
                 <option value="LATE">Late</option>

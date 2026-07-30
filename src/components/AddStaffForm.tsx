@@ -331,17 +331,17 @@ export default function AddStaffForm({
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">First Name <span className="text-red-500">*</span></label>
                             <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} required
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                         </div>
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Last Name <span className="text-red-500">*</span></label>
                             <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} required
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                         </div>
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Gender <span className="text-red-500">*</span></label>
                             <select name="gender" value={formData.gender} onChange={handleChange} required
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
                                 <option value="">Select Gender</option>
                                 <option value="Male">Male</option>
                                 <option value="Female">Female</option>
@@ -360,7 +360,7 @@ export default function AddStaffForm({
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Blood Group</label>
                             <select name="bloodGroup" value={formData.bloodGroup} onChange={handleChange}
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
                                 <option value="">Select Group</option>
                                 {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map(bg => (
                                     <option key={bg} value={bg}>{bg}</option>
@@ -370,7 +370,7 @@ export default function AddStaffForm({
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Aadhaar Number <span className="text-gray-400 font-normal">(Optional)</span></label>
                             <input type="text" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} maxLength={14}
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                         </div>
                     </div>
                 </div>
@@ -391,7 +391,7 @@ export default function AddStaffForm({
                                     maxLength={10}
                                     inputMode="numeric"
                                     placeholder="10-digit number"
-                                    className={`bg-gray-50 border ${mobileAvailable === false || (formData.mobile.length > 0 && !isValidMobile(formData.mobile)) ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 pr-8`}
+                                    className={`bg-gray-50 border ${mobileAvailable === false || (formData.mobile.length > 0 && !isValidMobile(formData.mobile)) ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5 pr-8`}
                                 />
                                 {checkingMobile && (
                                     <div className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -412,7 +412,7 @@ export default function AddStaffForm({
                             <label className="block mb-1 text-sm font-medium text-gray-900">Alternate Mobile <span className="text-gray-400 font-normal">(Optional)</span></label>
                             <input type="tel" name="alternateMobile" value={formData.alternateMobile} onChange={handleChange}
                                 maxLength={10} inputMode="numeric" placeholder="10-digit number"
-                                className={`bg-gray-50 border ${formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5`} />
+                                className={`bg-gray-50 border ${formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5`} />
                             {formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) && (
                                 <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
                             )}
@@ -421,7 +421,7 @@ export default function AddStaffForm({
                             <label className="block mb-1 text-sm font-medium text-gray-900">Personal Email <span className="text-gray-400 font-normal">(Optional)</span></label>
                             <input type="email" name="email" value={formData.email ?? ""} onChange={handleChange}
                                 placeholder="for notifications only"
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                         </div>
                     </div>
                 </div>
@@ -490,7 +490,7 @@ export default function AddStaffForm({
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Category <span className="text-red-500">*</span></label>
                             <select name="category" value={formData.category} onChange={handleChange} required
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
                                 <option value="">Select Category</option>
                                 {["General", "SC", "ST", "OBC", "EWS"].map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
@@ -498,7 +498,7 @@ export default function AddStaffForm({
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Religion <span className="text-red-500">*</span></label>
                             <select name="religion" value={formData.religion} onChange={handleChange} required
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
                                 <option value="">Select Religion</option>
                                 {["HINDU", "MUSLIM", "SIKH", "CHRISTIAN", "PARSI", "OTHERS"].map(r => (
                                     <option key={r} value={r}>{r[0] + r.slice(1).toLowerCase()}</option>
@@ -508,12 +508,12 @@ export default function AddStaffForm({
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Father&apos;s Name <span className="text-gray-400 font-normal">(Optional)</span></label>
                             <input type="text" name="fathersName" value={formData.fathersName} onChange={handleChange}
-                                placeholder="Father's name" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                placeholder="Father's name" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                         </div>
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Mother&apos;s Name <span className="text-gray-400 font-normal">(Optional)</span></label>
                             <input type="text" name="mothersName" value={formData.mothersName} onChange={handleChange}
-                                placeholder="Mother's name" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                placeholder="Mother's name" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                         </div>
                     </div>
                 </div>
@@ -525,7 +525,7 @@ export default function AddStaffForm({
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Staff Category <span className="text-red-500">*</span></label>
                             <select name="staffCategory" value={formData.staffCategory} onChange={handleChange} required
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
                                 <option value="">Select Category</option>
                                 <option value="Teaching Staff">Teaching Staff</option>
                                 <option value="Management">Management</option>
@@ -536,7 +536,7 @@ export default function AddStaffForm({
                         <div>
                             <label className="block mb-1 text-sm font-medium text-gray-900">Designation <span className="text-red-500">*</span></label>
                             <select name="designationId" value={String(formData.designationId)} onChange={handleChange} required
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
                                 <option value="">Select Designation</option>
                                 {designations.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
                                 <option value="CREATE_NEW" className="font-bold text-blue-600">+ Create New Designation</option>
@@ -546,7 +546,7 @@ export default function AddStaffForm({
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">System Role <span className="text-red-500">*</span></label>
                                 <select name="role" value={formData.role} onChange={handleChange} required
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
                                     {editableRoles.map(r => (
                                         <option key={r} value={r}>{ROLE_LABELS[r] || r}</option>
                                     ))}
@@ -585,7 +585,7 @@ export default function AddStaffForm({
                 {/* ── ACCOUNT STATUS ── */}
                 <div className="flex items-center">
                     <input id="isActive" name="isActive" type="checkbox" checked={formData.isActive} onChange={handleChange}
-                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-brand/40" />
                     <label htmlFor="isActive" className="ml-2 text-sm font-medium text-gray-900">Account Active</label>
                 </div>
 
@@ -657,12 +657,12 @@ export default function AddStaffForm({
                 {/* ── ACTIONS ── */}
                 <div className="flex items-center gap-3 border-t pt-6">
                     <button type="submit" disabled={loading}
-                        className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-6 py-2.5 disabled:opacity-50">
+                        className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-medium rounded-lg text-sm px-6 py-2.5 disabled:opacity-50">
                         {loading ? "Creating..." : "Create Staff Member"}
                     </button>
                     {onCancel && (
                         <button type="button" onClick={onCancel}
-                            className="text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-6 py-2.5">
+                            className="text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 focus:ring-4 focus:ring-line-strong font-medium rounded-lg text-sm px-6 py-2.5">
                             Cancel
                         </button>
                     )}
@@ -671,13 +671,13 @@ export default function AddStaffForm({
 
             {/* ── DESIGNATION CREATION MODAL ── */}
             {showDesModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55">
                     <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-sm">
                         <h3 className="text-lg font-bold mb-4">Create New Designation</h3>
                         <form onSubmit={handleCreateDesignation}>
                             <input type="text" value={newDesTitle} onChange={e => setNewDesTitle(e.target.value)}
                                 placeholder="Designation Title (e.g. Principal)"
-                                className="w-full border p-2 rounded mb-4 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                className="w-full border p-2 rounded mb-4 focus:ring-2 focus:ring-brand/40 focus:outline-none"
                                 autoFocus required />
                             <div className="flex justify-end gap-2">
                                 <button type="button"

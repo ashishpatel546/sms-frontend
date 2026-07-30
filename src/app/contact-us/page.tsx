@@ -134,7 +134,7 @@ export default function ContactUsPage() {
                     value={mobile}
                     onChange={(e) => setMobile(e.target.value)}
                     placeholder="10-digit mobile"
-                    className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                    className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand/40 transition-shadow"
                   />
                 </div>
                 {/* Email Address */}
@@ -145,7 +145,7 @@ export default function ContactUsPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="your@email.com"
-                    className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                    className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand/40 transition-shadow"
                   />
                 </div>
               </div>
@@ -175,7 +175,7 @@ export default function ContactUsPage() {
                   onChange={(e) => setIssue(e.target.value)}
                   rows={4}
                   placeholder="Please describe the issue you are facing..."
-                  className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow resize-none"
+                  className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand/40 transition-shadow resize-none"
                 />
               </div>
             </div>

@@ -109,7 +109,7 @@ export default function FeesBottomSheet({
         >
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                className="absolute inset-0 bg-walnut-950/55 backdrop-blur-sm"
                 onClick={onClose}
                 aria-hidden="true"
             />
@@ -127,7 +127,7 @@ export default function FeesBottomSheet({
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 shrink-0">
                     <div>
-                        <h2 className="text-base font-bold text-slate-800">💰 Fee Summary</h2>
+                        <h2 className="text-base font-bold text-slate-800">Fee Summary</h2>
                         {academicYearString && (
                             <p className="text-xs text-slate-400 mt-0.5">{academicYearString}</p>
                         )}

@@ -295,7 +295,7 @@ export default function AdminPanel() {
                                 <input
                                     type="text" value={searchName} onChange={e => setSearchName(e.target.value)}
                                     placeholder="Search by name..."
-                                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
                                 />
                             </div>
                             <div className="relative">
@@ -305,7 +305,7 @@ export default function AdminPanel() {
                                 <input
                                     type="text" value={searchEmail} onChange={e => setSearchEmail(e.target.value)}
                                     placeholder="Search by email..."
-                                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
                                 />
                             </div>
                             <div className="relative">
@@ -315,12 +315,12 @@ export default function AdminPanel() {
                                 <input
                                     type="text" value={searchMobile} onChange={e => setSearchMobile(e.target.value)}
                                     placeholder="Search by mobile..."
-                                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
                                 />
                             </div>
                             <select
                                 value={searchRole} onChange={e => setSearchRole(e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/40"
                             >
                                 <option value="">All Roles</option>
                                 {ALL_ROLES.filter(r => r).map(r => (
@@ -329,7 +329,7 @@ export default function AdminPanel() {
                             </select>
                             <select
                                 value={searchDesignation} onChange={e => setSearchDesignation(e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/40"
                             >
                                 <option value="">All Designations</option>
                                 {designations.map(d => (
@@ -414,7 +414,7 @@ export default function AdminPanel() {
                                                         <select
                                                             defaultValue={user.role}
                                                             onChange={e => handleRoleChange(user.id, e.target.value)}
-                                                            className="text-xs bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                                                            className="text-xs bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand/40 cursor-pointer"
                                                         >
                                                             {/* Current role stays visible even when it is not assignable (e.g. SUPER_ADMIN, PARENT) */}
                                                             {!ASSIGNABLE_ROLES.includes(user.role) && (
@@ -464,7 +464,7 @@ export default function AdminPanel() {
                                                                     <button
                                                                         onClick={() => { setOpenDropdownId(null); handleToggleStatus(user.id, user.isActive, `${user.firstName} ${user.lastName}`); }}
                                                                         className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 ${user.isActive ? "text-orange-700" : "text-green-700"}`}>
-                                                                        {user.isActive ? "🔒 Deactivate" : "✅ Activate"}
+                                                                        {user.isActive ? "🔒 Deactivate" : "Activate"}
                                                                     </button>
                                                                     {isSuperAdmin && (
                                                                         <>
@@ -497,7 +497,7 @@ export default function AdminPanel() {
                                 <select
                                     value={pageSize}
                                     onChange={handlePageSizeChange}
-                                    className="border border-slate-200 rounded-lg text-sm p-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    className="border border-slate-200 rounded-lg text-sm p-1 focus:outline-none focus:ring-1 focus:ring-brand/40"
                                 >
                                     {PAGE_SIZE_OPTIONS.map(opt => (
                                         <option key={opt} value={opt}>{opt}</option>
@@ -594,7 +594,7 @@ export default function AdminPanel() {
                         ) : isConfirmingSetup ? (
                             <div className="flex flex-wrap items-center gap-3">
                                 <button onClick={executeSchoolSetup} disabled={!setupFile || setupLoading} className="w-full sm:w-auto px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all shadow-sm disabled:opacity-50 flex justify-center items-center gap-2">
-                                    {setupLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "⚠️ Confirm Execution"}
+                                    {setupLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Confirm Execution"}
                                 </button>
                                 <button onClick={() => { setIsConfirmingSetup(false); setSetupTimer(0); }} className="w-full sm:w-auto px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all disabled:opacity-50">
                                     Cancel
@@ -611,7 +611,7 @@ export default function AdminPanel() {
 
             {/* ─── VIEW PROFILE MODAL ─── */}
             {viewModalUser && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 p-4">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between p-6 border-b border-slate-100">
                             <h3 className="text-lg font-bold text-slate-800">User Profile</h3>

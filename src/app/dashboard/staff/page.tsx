@@ -498,7 +498,7 @@ export default function TeachersPage() {
 
             {/* Import Modal */}
             {showImportModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm">
                     <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                         <h2 className="text-xl font-bold mb-4">Bulk Import Staff</h2>
                         
@@ -559,7 +559,7 @@ export default function TeachersPage() {
                                     </div>
                                 )}
                                 <div className="flex justify-end gap-2 pt-4 border-t mt-4 border-slate-200">
-                                    <button type="button" onClick={() => { setShowImportModal(false); setImportSummary(null); setImportFile(null); }} className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300">
+                                    <button type="button" onClick={() => { setShowImportModal(false); setImportSummary(null); setImportFile(null); }} className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-brand/40">
                                         Done
                                     </button>
                                 </div>
@@ -571,10 +571,10 @@ export default function TeachersPage() {
                                     <input type="file" accept=".csv" required onChange={e => setImportFile(e.target.files?.[0] || null)} className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none file:mr-4 file:py-2.5 file:px-4 file:rounded-l-lg file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200" />
                                 </div>
                                 <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
-                                    <button type="button" onClick={() => setShowImportModal(false)} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-200">
+                                    <button type="button" onClick={() => setShowImportModal(false)} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-line-strong">
                                         Cancel
                                     </button>
-                                    <button type="submit" disabled={importLoading || !importFile} className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 disabled:opacity-50 flex items-center">
+                                    <button type="submit" disabled={importLoading || !importFile} className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-brand/40 disabled:opacity-50 flex items-center">
                                         {importLoading ? "Importing..." : "Start Import"}
                                     </button>
                                 </div>
@@ -584,7 +584,7 @@ export default function TeachersPage() {
                 </div>
             )}
             {showExitModal && selectedStaffForExit && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
                         <h3 className="text-lg font-bold text-gray-900 mb-4">Mark Staff Exit</h3>
                         <p className="text-sm text-gray-600 mb-4">
@@ -598,14 +598,14 @@ export default function TeachersPage() {
                                     required
                                     value={exitDate}
                                     onChange={e => setExitDate(e.target.value)}
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                 />
                             </div>
                             <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
                                 <button
                                     type="button"
                                     onClick={() => { setShowExitModal(false); setSelectedStaffForExit(null); }}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-200"
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-line-strong"
                                 >
                                     Cancel
                                 </button>

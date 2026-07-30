@@ -193,7 +193,7 @@ export default function NewNotificationPage() {
             <label className="text-sm font-semibold text-slate-900 w-full block">Notification Title</label>
             <input
               {...register("title", { required: "Title is required" })}
-              className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
+              className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none transition-all placeholder:text-slate-400"
               placeholder="e.g., Important Parent-Teacher Meeting"
             />
             {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title.message}</p>}
@@ -203,7 +203,7 @@ export default function NewNotificationPage() {
             <label className="text-sm font-semibold text-slate-900 w-full block">Message Overview</label>
             <textarea
               {...register("message", { required: "Message is required" })}
-              className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all min-h-[120px] resize-y placeholder:text-slate-400"
+              className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none transition-all min-h-[120px] resize-y placeholder:text-slate-400"
               placeholder="Write the full message details here..."
             />
             {errors.message && <p className="text-red-500 text-sm mt-1">{errors.message.message}</p>}
@@ -213,7 +213,7 @@ export default function NewNotificationPage() {
             <label className="text-sm font-semibold text-slate-900 w-full block">Target Audience</label>
             <select
               {...register("targetAudience", { required: "Please select an audience" })}
-              className="w-full px-4 py-3 border border-slate-200 text-slate-700 bg-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              className="w-full px-4 py-3 border border-slate-200 text-slate-700 bg-white rounded-lg focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none transition-all"
             >
               <option value="" disabled>-- Select an Audience --</option>
               <option value="ALL">All Users (Parents & Staff)</option>
@@ -233,7 +233,7 @@ export default function NewNotificationPage() {
                   <select
                     value={selectedSessionId}
                     onChange={handleSessionChange}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-brand/40 outline-none transition-all text-sm font-medium"
                   >
                     {sessions.map(s => (
                       <option key={s.id} value={s.id}>{s.name} {s.isActive ? '(Active)' : ''}</option>
@@ -246,7 +246,7 @@ export default function NewNotificationPage() {
                   <select
                     value={selectedClassId}
                     onChange={handleClassChange}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-brand/40 outline-none transition-all text-sm"
                   >
                     <option value="">-- All Classes --</option>
                     {classes.map(c => (
@@ -261,7 +261,7 @@ export default function NewNotificationPage() {
                     value={selectedSectionId}
                     onChange={(e) => { setSelectedSectionId(e.target.value); setSelectedStudentIds([]); }}
                     disabled={!selectedClassId || sections.length === 0}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm disabled:opacity-50 disabled:bg-slate-50"
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-brand/40 outline-none transition-all text-sm disabled:opacity-50 disabled:bg-slate-50"
                   >
                     <option value="">-- All Sections --</option>
                     {sections.map(sec => (
@@ -289,7 +289,7 @@ export default function NewNotificationPage() {
                              setSelectedStudentIds([]);
                            }
                          }}
-                         className="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500"
+                         className="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-brand/40"
                        />
                        <span className="text-sm font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">
                          Select All Students ({students.length})
@@ -318,7 +318,7 @@ export default function NewNotificationPage() {
                            type="checkbox" 
                            checked={selectedStudentIds.includes(s.id.toString())}
                            onChange={() => toggleStudentSelection(s.id.toString())}
-                           className="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500 mt-0.5"
+                           className="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-brand/40 mt-0.5"
                          />
                          <div className="flex-1">
                            <p className="text-sm font-semibold text-slate-900">{s.firstName} {s.lastName}</p>

@@ -121,7 +121,7 @@ export default function VisitorFormPage() {
 
     const resetAll = () => { setQr(null); setForm({ ...emptyForm }); setError(""); };
 
-    const inputCls = "w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500";
+    const inputCls = "w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40";
     const labelCls = "block text-sm font-medium text-slate-300 mb-1.5";
 
     const fmtRemaining = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`;

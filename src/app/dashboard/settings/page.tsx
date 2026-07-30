@@ -530,15 +530,15 @@ export default function SettingsPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                     <div>
                                         <label className="block mb-1 text-xs font-medium text-gray-700">Session Name</label>
-                                        <input type="text" placeholder="e.g. 2026-2027" value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                                        <input type="text" placeholder="e.g. 2026-2027" value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand" />
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-xs font-medium text-gray-700">Start Date</label>
-                                        <input type="date" value={newSessionStart} onChange={(e) => setNewSessionStart(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                                        <input type="date" value={newSessionStart} onChange={(e) => setNewSessionStart(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand" />
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-xs font-medium text-gray-700">End Date</label>
-                                        <input type="date" value={newSessionEnd} onChange={(e) => setNewSessionEnd(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                                        <input type="date" value={newSessionEnd} onChange={(e) => setNewSessionEnd(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand" />
                                     </div>
                                 </div>
                                 <button type="submit" className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition">Create Session</button>
@@ -602,11 +602,11 @@ export default function SettingsPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                     <div>
                                         <label className="block mb-1 text-xs font-medium text-gray-700">Title (e.g. Principal)</label>
-                                        <input type="text" value={newDesigTitle} onChange={(e) => setNewDesigTitle(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                                        <input type="text" value={newDesigTitle} onChange={(e) => setNewDesigTitle(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand" />
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-xs font-medium text-gray-700">Description</label>
-                                        <input type="text" value={newDesigDesc} onChange={(e) => setNewDesigDesc(e.target.value)} className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                                        <input type="text" value={newDesigDesc} onChange={(e) => setNewDesigDesc(e.target.value)} className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand" />
                                     </div>
                                 </div>
                                 <button type="submit" className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition">Create Designation</button>
@@ -615,7 +615,7 @@ export default function SettingsPage() {
 
                         {/* Edit Designation Modal */}
                         {editingDesig && (
-                            <div className="fixed inset-0 z-60 flex items-center justify-center bg-black bg-opacity-50">
+                            <div className="fixed inset-0 z-60 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm">
                                 <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md animate-in zoom-in-95 duration-200">
                                     <h3 className="text-lg font-bold mb-4 text-slate-800">Edit Designation</h3>
                                     <form onSubmit={handleUpdateDesignation}>
@@ -625,7 +625,7 @@ export default function SettingsPage() {
                                                 type="text"
                                                 value={editDesigTitle}
                                                 onChange={(e) => setEditDesigTitle(e.target.value)}
-                                                className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500"
+                                                className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-brand/40 focus:border-brand"
                                                 required
                                             />
                                         </div>
@@ -635,7 +635,7 @@ export default function SettingsPage() {
                                                 type="text"
                                                 value={editDesigDesc}
                                                 onChange={(e) => setEditDesigDesc(e.target.value)}
-                                                className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500"
+                                                className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-brand/40 focus:border-brand"
                                             />
                                         </div>
                                         <div className="flex gap-3 justify-end">
@@ -722,7 +722,7 @@ export default function SettingsPage() {
                                 <div className="mt-2 sm:mt-0">
                                     <label className="text-xs text-slate-500 mr-2 uppercase font-semibold">For Session:</label>
                                     <select
-                                        className="text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-1"
+                                        className="text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand p-1"
                                         value={selectedExamSessionId || ''}
                                         onChange={(e) => setSelectedExamSessionId(Number(e.target.value))}
                                     >
@@ -741,11 +741,11 @@ export default function SettingsPage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                         <div>
                                             <label className="block mb-1 text-xs font-medium text-gray-700">Name (e.g. SA1, Final)</label>
-                                            <input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                                            <input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand" />
                                         </div>
                                         <div>
                                             <label className="block mb-1 text-xs font-medium text-gray-700">Description</label>
-                                            <input type="text" value={newCategoryDesc} onChange={(e) => setNewCategoryDesc(e.target.value)} className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                                            <input type="text" value={newCategoryDesc} onChange={(e) => setNewCategoryDesc(e.target.value)} className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand" />
                                         </div>
                                     </div>
                                     <button type="submit" className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition">Create Category</button>
@@ -796,7 +796,7 @@ export default function SettingsPage() {
                                 <div className="mt-2 sm:mt-0">
                                     <label className="text-xs text-slate-500 mr-2 uppercase font-semibold">For Session:</label>
                                     <select
-                                        className="text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-1"
+                                        className="text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand p-1"
                                         value={selectedExamSessionId || ''}
                                         onChange={(e) => setSelectedExamSessionId(Number(e.target.value))}
                                     >
@@ -811,7 +811,7 @@ export default function SettingsPage() {
                             <div className="mb-6">
                                 <label className="block mb-2 text-sm font-semibold text-slate-700">Target Final Category</label>
                                 <select
-                                    className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2"
+                                    className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand p-2"
                                     value={selectedTargetCategoryId || ''}
                                     onChange={handleTargetCategoryChange}
                                 >
@@ -834,7 +834,7 @@ export default function SettingsPage() {
                                                 checked={selectedCategoryIds.includes(c.id)}
                                                 onChange={() => toggleFinalResultCategory(c.id)}
                                                 disabled={isTarget}
-                                                className={`rounded ${isTarget ? 'text-gray-400 focus:ring-gray-400 cursor-not-allowed' : 'text-blue-600 focus:ring-blue-500'}`}
+                                                className={`rounded ${isTarget ? 'text-gray-400 focus:ring-gray-400 cursor-not-allowed' : 'text-blue-600 focus:ring-brand/40'}`}
                                             />
                                             <span>{c.name} {isTarget && <span className="text-xs italic font-normal text-slate-400">(Selected as Target)</span>}</span>
                                         </label>
@@ -858,7 +858,7 @@ export default function SettingsPage() {
                             <div className="mt-2 sm:mt-0">
                                 <label className="text-xs text-slate-500 mr-2 uppercase font-semibold">For Session:</label>
                                 <select
-                                    className="text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-1"
+                                    className="text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand p-1"
                                     value={selectedGradingSessionId || ''}
                                     onChange={(e) => setSelectedGradingSessionId(Number(e.target.value))}
                                 >
@@ -877,15 +877,15 @@ export default function SettingsPage() {
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                                     <div>
                                         <label className="block mb-1 text-[10px] uppercase font-bold text-gray-500">Grade (e.g. A+)</label>
-                                        <input type="text" value={newGradeName} onChange={(e) => setNewGradeName(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:ring-blue-500" />
+                                        <input type="text" value={newGradeName} onChange={(e) => setNewGradeName(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:ring-brand/40" />
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-[10px] uppercase font-bold text-gray-500">Min %</label>
-                                        <input type="number" step="0.01" min="0" max="100" value={newGradeMin} onChange={(e) => setNewGradeMin(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:ring-blue-500" />
+                                        <input type="number" step="0.01" min="0" max="100" value={newGradeMin} onChange={(e) => setNewGradeMin(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:ring-brand/40" />
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-[10px] uppercase font-bold text-gray-500">Max % <span className="text-[9px] font-normal lowercase">(excluding)</span></label>
-                                        <input type="number" step="0.01" min="0" max="100" value={newGradeMax} onChange={(e) => setNewGradeMax(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:ring-blue-500" />
+                                        <input type="number" step="0.01" min="0" max="100" value={newGradeMax} onChange={(e) => setNewGradeMax(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:ring-brand/40" />
                                     </div>
                                     <div className="flex items-center pt-5">
                                         <label className="flex items-center space-x-2 text-sm font-medium text-slate-800 cursor-pointer">
@@ -1032,7 +1032,7 @@ export default function SettingsPage() {
 
             {/* Holiday Modal */}
             {showHolidayModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm backdrop-blur-sm">
                     <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6 border-b pb-4">
                             <h2 className="text-2xl font-bold text-slate-800">{editingHolidayId ? 'Edit Holiday' : 'Add New Holiday'}</h2>
@@ -1130,7 +1130,7 @@ export default function SettingsPage() {
                                 <button
                                     type="button"
                                     onClick={() => setShowHolidayModal(false)}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:outline-none focus:ring-gray-200"
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:outline-none focus:ring-line-strong"
                                 >
                                     Cancel
                                 </button>

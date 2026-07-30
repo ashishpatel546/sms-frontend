@@ -1,5 +1,6 @@
 'use client';
 
+import { Users } from 'lucide-react';
 import FeatureGate from '@/components/dashboard/FeatureGate';
 
 export default function VisitorsLayout({ children }: { children: React.ReactNode }) {
@@ -7,8 +8,7 @@ export default function VisitorsLayout({ children }: { children: React.ReactNode
     <FeatureGate
       flag="visitor_management"
       title="Visitor Management"
-      icon="🛂"
-      spinnerClass="border-teal-600"
+      icon={<Users />}
     >
       {children}
     </FeatureGate>

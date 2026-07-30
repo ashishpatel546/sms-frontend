@@ -768,7 +768,7 @@ export default function StudentDashboardPage() {
                                                             <input type="checkbox"
                                                                 checked={selectedMonths2Pay.includes(m.key)}
                                                                 onChange={() => toggleMonthPay(m.key)}
-                                                                className="w-4 h-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-white bg-slate-100" />
+                                                                className="w-4 h-4 rounded border-slate-300 text-indigo-500 focus:ring-brand/40 focus:ring-offset-white bg-slate-100" />
                                                         )}
                                                         <div>
                                                             <span className="text-amber-700 text-sm font-semibold">{m.label}</span>
@@ -859,7 +859,7 @@ export default function StudentDashboardPage() {
                                                         <input type="checkbox"
                                                             checked={selectedMonths2Pay.includes(m.key)}
                                                             onChange={() => toggleMonthPay(m.key)}
-                                                            className="w-4 h-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-white bg-slate-100" />
+                                                            className="w-4 h-4 rounded border-slate-300 text-indigo-500 focus:ring-brand/40 focus:ring-offset-white bg-slate-100" />
                                                     )}
                                                     <span className="text-ink text-sm font-medium">{m.label}</span>
                                                 </div>
@@ -1231,7 +1231,7 @@ export default function StudentDashboardPage() {
                                                             return next;
                                                         });
                                                     }}
-                                                    className="w-4 h-4 rounded border-slate-300 bg-slate-100 text-indigo-500 focus:ring-indigo-500"
+                                                    className="w-4 h-4 rounded border-slate-300 bg-slate-100 text-indigo-500 focus:ring-brand/40"
                                                 />
                                                 <span className="text-ink">{cat}</span>
                                             </label>
@@ -1243,7 +1243,7 @@ export default function StudentDashboardPage() {
                     </div>
 
                     <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-6">
-                        <h2 className="text-ink font-bold text-lg mb-4">📝 Examination Dashboard</h2>
+                        <h2 className="text-ink font-bold text-lg mb-4">Examination Dashboard</h2>
 
                         {(!examResults || examResults.subjects?.length === 0) ? (
                             <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
@@ -1472,7 +1472,7 @@ export default function StudentDashboardPage() {
                     {/* Subjects */}
                     {info.subjects?.length > 0 && (
                         <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-5">
-                            <h2 className="text-ink font-bold mb-3">📚 Enrolled Subjects</h2>
+                            <h2 className="text-ink font-bold mb-3">Enrolled Subjects</h2>
                             <div className="flex flex-wrap gap-2">
                                 {info.subjects.map((s: string, i: number) => (
                                     <span key={i} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-100 text-ink transition-colors text-sm rounded-lg border border-slate-200">{s}</span>
@@ -1809,7 +1809,7 @@ export default function StudentDashboardPage() {
 
             {/* ── Payment Confirmation Modal ── */}
             {showConfirmModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/60 backdrop-blur-sm">
                     <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
                         <div className="mb-5 text-center">
                             <div className="w-16 h-16 bg-indigo-500/20 text-indigo-400 rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
@@ -1851,7 +1851,7 @@ export default function StudentDashboardPage() {
 
             {/* ── Receipt Selection Modal ── */}
             {showReceiptsListModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/60 backdrop-blur-sm">
                     <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
                         <div className="bg-slate-100 px-5 py-4 flex justify-between items-center">
                             <h3 className="text-ink font-bold text-lg">Multiple Receipts</h3>

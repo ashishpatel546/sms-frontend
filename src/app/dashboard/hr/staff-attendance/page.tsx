@@ -743,7 +743,7 @@ export default function StaffAttendancePage() {
 
       {/* HR resolve pending checkout modal */}
       {resolveTarget && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-walnut-950/55 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm space-y-4 max-h-[90vh] overflow-y-auto">
             <h2 className="font-semibold text-lg">Close Pending Checkout</h2>
             <div className="bg-orange-50 border border-orange-100 rounded-lg p-3">
@@ -819,7 +819,7 @@ export default function StaffAttendancePage() {
 
       {/* Manual mark modal */}
       {showMark && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-walnut-950/55 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm space-y-4 max-h-[90vh] overflow-y-auto">
             <h2 className="font-semibold text-lg">Mark Attendance Manually</h2>
 
@@ -907,7 +907,7 @@ export default function StaffAttendancePage() {
 
       {/* Bypass window modal */}
       {showBypass && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-walnut-950/55 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm space-y-4">
             <h2 className="font-semibold text-lg">Open Bypass Window</h2>
             <p className="text-sm text-gray-600">During a bypass window, staff can mark attendance without biometrics (e.g., device maintenance).</p>

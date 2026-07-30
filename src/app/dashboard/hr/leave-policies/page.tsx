@@ -347,7 +347,7 @@ export default function LeavePoliciesPage() {
 
       {/* Create / Edit Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+        <div className="fixed inset-0 bg-walnut-950/55 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 w-full sm:max-w-md space-y-4 max-h-[90vh] overflow-y-auto">
             <h2 className="font-semibold text-lg">{editId ? "Edit" : "New"} Leave Policy</h2>
             <div className="grid grid-cols-2 gap-3">

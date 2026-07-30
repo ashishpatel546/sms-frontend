@@ -127,7 +127,7 @@ export default function DesignationsAdminPage() {
                                     type="text"
                                     value={formData.title}
                                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
                                     placeholder="e.g. Principal, Teacher"
                                     required
                                 />
@@ -137,7 +137,7 @@ export default function DesignationsAdminPage() {
                                 <textarea
                                     value={formData.description}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
                                     placeholder="Optional description..."
                                     rows={3}
                                 />
@@ -148,7 +148,7 @@ export default function DesignationsAdminPage() {
                                     id="isActive"
                                     checked={formData.isActive}
                                     onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-brand/40"
                                 />
                                 <label htmlFor="isActive" className="ml-2 text-sm text-slate-700">Active</label>
                             </div>

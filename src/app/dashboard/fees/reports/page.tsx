@@ -54,7 +54,7 @@ export default function FeeReportsDashboard() {
                     <select
                         value={academicYear}
                         onChange={(e) => setAcademicYear(e.target.value)}
-                        className="bg-white border border-gray-300 text-sm rounded-lg p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                        className="bg-white border border-gray-300 text-sm rounded-lg p-2.5 shadow-sm focus:ring-brand/40 focus:border-brand"
                     >
                         <option value="2025-2026">2025-2026</option>
                         <option value="2026-2027">2026-2027</option>

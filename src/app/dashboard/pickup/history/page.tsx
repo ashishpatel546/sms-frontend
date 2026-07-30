@@ -99,7 +99,7 @@ export default function PickupHistoryPage() {
             value={studentIdInput}
             onChange={(e) => setStudentIdInput(e.target.value)}
             placeholder="Enter Student ID"
-            className="flex-1 bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-slate-600"
+            className="flex-1 bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 placeholder-slate-600"
             min={1}
             required
           />

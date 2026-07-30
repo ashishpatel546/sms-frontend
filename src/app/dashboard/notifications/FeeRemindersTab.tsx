@@ -202,7 +202,7 @@ export default function FeeRemindersTab() {
             <select
               value={selectedSessionId}
               onChange={(e) => setSelectedSessionId(e.target.value)}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand/40 text-sm"
             >
               {sessions.map((s) => (
                 <option key={s.id} value={s.id}>{s.name} {s.isActive ? '(Active)' : ''}</option>
@@ -214,7 +214,7 @@ export default function FeeRemindersTab() {
             <select
               value={selectedClassId}
               onChange={handleClassChange}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand/40 text-sm"
             >
               <option value="">-- Select Class --</option>
               {classes.map((c) => (
@@ -228,7 +228,7 @@ export default function FeeRemindersTab() {
               value={selectedSectionId}
               onChange={(e) => setSelectedSectionId(e.target.value)}
               disabled={!selectedClassId || sections.length === 0}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm disabled:opacity-50"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand/40 text-sm disabled:opacity-50"
             >
               <option value="">{selectedClassId ? '-- Select Section --' : '-- Select Class First --'}</option>
               {sections.map((sec) => (
@@ -359,7 +359,7 @@ export default function FeeRemindersTab() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/55 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-scale-in">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -387,7 +387,7 @@ export default function FeeRemindersTab() {
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-semibold text-slate-700">Message Content</label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={useCustomMessage} onChange={(e) => setUseCustomMessage(e.target.checked)} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                    <input type="checkbox" checked={useCustomMessage} onChange={(e) => setUseCustomMessage(e.target.checked)} className="rounded border-slate-300 text-indigo-600 focus:ring-brand/40" />
                     <span className="text-xs text-slate-600 font-medium">Use custom message</span>
                   </label>
                 </div>
@@ -397,7 +397,7 @@ export default function FeeRemindersTab() {
                     value={customMessage}
                     onChange={(e) => setCustomMessage(e.target.value)}
                     placeholder="Write your custom reminder message here..."
-                    className="w-full border-slate-300 rounded-lg p-3 text-sm focus:ring-indigo-500 focus:border-indigo-500 min-h-[120px]"
+                    className="w-full border-slate-300 rounded-lg p-3 text-sm focus:ring-brand/40 focus:border-brand min-h-[120px]"
                   />
                 ) : (
                   <div className="w-full border border-slate-200 bg-slate-50 rounded-lg p-4 text-sm text-slate-500 italic">

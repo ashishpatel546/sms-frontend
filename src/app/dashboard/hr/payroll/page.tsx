@@ -158,7 +158,7 @@ export default function PayrollPage() {
 
       {/* Generate draft modal */}
       {showDraft && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+        <div className="fixed inset-0 bg-walnut-950/55 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 w-full sm:max-w-sm space-y-4">
             <h2 className="font-semibold text-lg">Generate Payroll Draft</h2>
             {unmarkedWarning ? (

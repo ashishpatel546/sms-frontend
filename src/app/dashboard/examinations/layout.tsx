@@ -1,5 +1,6 @@
 'use client';
 
+import { FileText } from 'lucide-react';
 import FeatureGate from '@/components/dashboard/FeatureGate';
 
 export default function ExaminationsLayout({ children }: { children: React.ReactNode }) {
@@ -7,8 +8,7 @@ export default function ExaminationsLayout({ children }: { children: React.React
     <FeatureGate
       flag="exam_management"
       title="Examinations"
-      icon="📋"
-      spinnerClass="border-purple-600"
+      icon={<FileText />}
     >
       {children}
     </FeatureGate>

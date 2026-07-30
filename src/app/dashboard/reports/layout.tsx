@@ -1,5 +1,6 @@
 'use client';
 
+import { BarChart2 } from 'lucide-react';
 import FeatureGate from '@/components/dashboard/FeatureGate';
 
 export default function ReportsLayout({ children }: { children: React.ReactNode }) {
@@ -7,8 +8,7 @@ export default function ReportsLayout({ children }: { children: React.ReactNode 
     <FeatureGate
       flag="reports_analytics"
       title="Reports"
-      icon="📊"
-      spinnerClass="border-amber-600"
+      icon={<BarChart2 />}
     >
       {children}
     </FeatureGate>

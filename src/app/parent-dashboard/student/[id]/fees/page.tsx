@@ -96,7 +96,7 @@ export default function FeePaymentPage() {
                         <div className="flex justify-between text-sm"><span className="text-ink-muted">Transaction ID</span><span className="text-ink font-mono">{mockTransactionId}</span></div>
                         <div className="flex justify-between text-sm"><span className="text-ink-muted">Amount</span><span className="text-green-600 font-semibold">₹{Number(amount).toLocaleString()}</span></div>
                         <div className="flex justify-between text-sm"><span className="text-ink-muted">Method</span><span className="text-ink">{paymentMethod}</span></div>
-                        <div className="flex justify-between text-sm"><span className="text-ink-muted">Status</span><span className="text-green-600">✅ Success</span></div>
+                        <div className="flex justify-between text-sm"><span className="text-ink-muted">Status</span><span className="text-green-600">Success</span></div>
                     </div>
                     <Link href={`/parent-dashboard/student/${studentId}`}
                         className="inline-flex items-center gap-2 px-6 py-2.5 bg-brand hover:bg-brand-light text-white rounded-xl font-medium transition-colors">

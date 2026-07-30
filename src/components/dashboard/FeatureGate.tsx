@@ -25,18 +25,15 @@ export default function FeatureGate({
   title,
   icon,
   description,
-  spinnerClass = 'border-blue-600',
   children,
 }: {
   flag: string;
   /** Module name as the school knows it, e.g. "Library Management". */
   title: string;
-  /** Emoji shown on the not-enabled screen. */
-  icon: string;
+  /** Icon for the not-enabled screen — the same one the module uses in the rail. */
+  icon: React.ReactNode;
   /** One line on what the module does, so the upsell is not abstract. */
   description?: string;
-  /** Tailwind border colour for the loading spinner, to match the section. */
-  spinnerClass?: string;
   children: React.ReactNode;
 }) {
   const { enabled, status } = useFeatureFlag(flag);
@@ -45,9 +42,7 @@ export default function FeatureGate({
   if (status === 'loading') {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
-        <div
-          className={`w-6 h-6 border-2 ${spinnerClass} border-t-transparent rounded-full animate-spin`}
-        />
+        <div className="size-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />
       </div>
     );
   }
@@ -55,8 +50,8 @@ export default function FeatureGate({
   if (status === 'error') {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
-        <p className="text-red-500">
-          Could not check which modules are available. Please refresh.
+        <p className="text-[13.5px] font-medium text-accent-danger-deep">
+          We couldn&apos;t check which modules your school has. Refresh to try again.
         </p>
       </div>
     );
@@ -65,21 +60,21 @@ export default function FeatureGate({
   if (!enabled) {
     return (
       <div className="flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface p-8 text-center shadow-sm">
-          <div className="relative mx-auto mb-5 w-16 h-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 dark:bg-surface-secondary text-3xl">
+        <div className="w-full max-w-md rounded-xl border border-line bg-surface p-8 text-center shadow-soft">
+          <div className="relative mx-auto mb-5 size-14">
+            <div className="grid size-14 place-items-center rounded-xl bg-brand-tint text-brand [&_svg]:size-6">
               {icon}
             </div>
-            <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-white dark:bg-surface border border-slate-200 dark:border-white/10">
-              <Lock className="h-3.5 w-3.5 text-ink-muted" aria-hidden />
+            <span className="absolute -right-1 -bottom-1 grid size-6 place-items-center rounded-full border border-line bg-surface">
+              <Lock className="size-3 text-ink-muted" aria-hidden />
             </span>
           </div>
 
-          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-            {title} is not part of your plan
+          <h2 className="font-display text-[17px] font-semibold text-ink">
+            {`${title} isn’t part of your plan`}
           </h2>
 
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-[13.5px] text-ink-muted">
             {description ??
               `${title} is available on our higher plans.`}{' '}
             We would be glad to switch it on for you.
@@ -94,16 +89,16 @@ export default function FeatureGate({
             <>
               <Link
                 href="/dashboard/billing"
-                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-light"
+                className="mt-6 inline-flex h-10 items-center gap-2 rounded-md bg-brand px-4 text-[13.5px] font-semibold text-brand-contrast shadow-soft transition-all hover:bg-brand-deep hover:shadow-brand"
               >
-                <Sparkles className="h-4 w-4" aria-hidden />
+                <Sparkles className="size-4" aria-hidden />
                 See plans and upgrade
               </Link>
-              <p className="mt-3 text-xs text-slate-400">
+              <p className="mt-3 text-[12px] text-ink-faint">
                 Or write to{' '}
                 <a
                   href="mailto:support@appme.in"
-                  className="underline hover:text-slate-600 dark:hover:text-slate-300"
+                  className="underline hover:text-ink-muted"
                 >
                   support@appme.in
                 </a>{' '}
@@ -111,7 +106,7 @@ export default function FeatureGate({
               </p>
             </>
           ) : (
-            <p className="mt-6 text-xs text-slate-400">
+            <p className="mt-6 text-[12px] text-ink-faint">
               Ask your school&apos;s super admin to add it — they can do it from
               the Billing section.
             </p>

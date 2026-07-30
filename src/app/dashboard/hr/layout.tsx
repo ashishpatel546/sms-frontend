@@ -1,5 +1,6 @@
 'use client';
 
+import { Building2 } from 'lucide-react';
 import FeatureGate from '@/components/dashboard/FeatureGate';
 
 export default function HrLayout({ children }: { children: React.ReactNode }) {
@@ -7,8 +8,7 @@ export default function HrLayout({ children }: { children: React.ReactNode }) {
     <FeatureGate
       flag="hr_portal"
       title="HR Portal"
-      icon="🏢"
-      spinnerClass="border-blue-600"
+      icon={<Building2 />}
     >
       {children}
     </FeatureGate>

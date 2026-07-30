@@ -146,7 +146,7 @@ function LeaveDetailDrawer({
     return (
         <div className="fixed inset-0 z-50 flex">
             {/* Backdrop */}
-            <div className="flex-1 bg-black/40" onClick={onClose} />
+            <div className="flex-1 bg-walnut-950/50" onClick={onClose} />
             {/* Panel */}
             <div className="w-full max-w-md bg-white shadow-xl overflow-y-auto flex flex-col">
                 <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
@@ -257,7 +257,7 @@ function RejectModal({
 }) {
     const [reason, setReason] = useState("");
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/50">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
                 <h3 className="text-base font-semibold text-gray-900 mb-4">Reject Leave #{leave.id}</h3>
                 <p className="text-sm text-gray-600 mb-4">
@@ -478,7 +478,7 @@ export default function LeavesPage() {
         return pages;
     };
 
-    const inputCls = "bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg w-full p-2.5 focus:ring-blue-500 focus:border-blue-500";
+    const inputCls = "bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg w-full p-2.5 focus:ring-brand/40 focus:border-brand";
 
     return (
         <div className="p-4 sm:p-6 max-w-7xl mx-auto">
@@ -730,7 +730,7 @@ function RequestDocModal({
 }) {
     const [message, setMessage] = useState("");
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/50">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
                 <h3 className="text-base font-semibold text-gray-900 mb-1">Ask for Info — Leave #{leave.id}</h3>
                 <p className="text-sm text-gray-500 mb-4">

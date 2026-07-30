@@ -460,7 +460,7 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                             type="checkbox"
                                             checked={allCategoriesSelected}
                                             onChange={toggleAllCategories}
-                                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-brand/40"
                                         />
                                         <span className="font-medium text-slate-700">Show All Categories</span>
                                     </label>
@@ -470,7 +470,7 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                                 type="checkbox"
                                                 checked={selectedCategoryIds.has(cat.id)}
                                                 onChange={() => toggleCategory(cat.id)}
-                                                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-brand/40"
                                             />
                                             <span className="text-slate-600">{cat.name}</span>
                                         </label>
@@ -621,11 +621,11 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                                                     canEdit ? (
                                                                         <div className="flex flex-col items-center gap-1">
                                                                             <input type="number" min="0" placeholder="Tot"
-                                                                                className="w-14 p-1 text-center border border-gray-300 rounded text-[10px] focus:ring-blue-500 focus:border-blue-500"
+                                                                                className="w-14 p-1 text-center border border-gray-300 rounded text-[10px] focus:ring-brand/40 focus:border-brand"
                                                                                 value={m.theoryTotalMarks ?? ''}
                                                                                 onChange={e => handleMarkChange(subject.id, cat.id, 'theoryTotalMarks', e.target.value)} />
                                                                             <input type="number" min="0" placeholder="Obt"
-                                                                                className={`w-14 p-1 text-center border rounded text-[10px] ${isInvalidTh ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`}
+                                                                                className={`w-14 p-1 text-center border rounded text-[10px] ${isInvalidTh ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-300 focus:ring-brand/40 focus:border-brand'}`}
                                                                                 value={m.theoryObtainedMarks ?? ''}
                                                                                 onChange={e => handleMarkChange(subject.id, cat.id, 'theoryObtainedMarks', e.target.value)} />
                                                                         </div>
@@ -656,7 +656,7 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                                                 ) : (
                                                                     canEdit ? (
                                                                         <input type="number" min="0"
-                                                                            className="w-16 p-1 text-center border border-gray-300 rounded text-xs focus:ring-blue-500 focus:border-blue-500"
+                                                                            className="w-16 p-1 text-center border border-gray-300 rounded text-xs focus:ring-brand/40 focus:border-brand"
                                                                             value={m.totalMarks ?? ''}
                                                                             onChange={e => handleMarkChange(subject.id, cat.id, 'totalMarks', e.target.value)} />
                                                                     ) : (isLockedEnter
@@ -679,7 +679,7 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                                                 ) : (
                                                                     canEdit ? (
                                                                         <input type="number" min="0"
-                                                                            className={`w-16 p-1 text-center border rounded text-xs ${isInvalidBase ? 'border-red-500 ring-1 ring-red-500 bg-red-50 text-red-700' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`}
+                                                                            className={`w-16 p-1 text-center border rounded text-xs ${isInvalidBase ? 'border-red-500 ring-1 ring-red-500 bg-red-50 text-red-700' : 'border-gray-300 focus:ring-brand/40 focus:border-brand'}`}
                                                                             value={m.obtainedMarks ?? ''}
                                                                             onChange={e => handleMarkChange(subject.id, cat.id, 'obtainedMarks', e.target.value)} />
                                                                     ) : (

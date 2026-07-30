@@ -1,5 +1,6 @@
 'use client';
 
+import { BookOpen } from 'lucide-react';
 import FeatureGate from '@/components/dashboard/FeatureGate';
 
 export default function LibraryLayout({ children }: { children: React.ReactNode }) {
@@ -7,8 +8,8 @@ export default function LibraryLayout({ children }: { children: React.ReactNode 
     <FeatureGate
       flag="library_management"
       title="Library Management"
-      icon="📚"
-      spinnerClass="border-lime-600"
+      icon={<BookOpen />}
+
     >
       {children}
     </FeatureGate>

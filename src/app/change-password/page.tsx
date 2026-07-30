@@ -135,7 +135,7 @@ export default function ChangePasswordPage() {
                                     data-lpignore="true"
                                     data-form-type="other"
                                     placeholder="Enter your current password"
-                                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/70 focus:border-indigo-500/50 transition-all"
+                                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/40/70 focus:border-brand/50 transition-all"
                                 />
                                 <button type="button" onClick={() => toggleShow("current")}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-0.5">
@@ -160,7 +160,7 @@ export default function ChangePasswordPage() {
                                     data-lpignore="true"
                                     data-form-type="other"
                                     placeholder="Create a strong password"
-                                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/70 focus:border-indigo-500/50 transition-all"
+                                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/40/70 focus:border-brand/50 transition-all"
                                 />
                                 <button type="button" onClick={() => toggleShow("newPw")}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-0.5">
@@ -198,7 +198,7 @@ export default function ChangePasswordPage() {
                                     className={`w-full bg-slate-800/80 border rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 transition-all ${
                                         confirmMatch    ? "border-emerald-500/60 focus:ring-emerald-500/40" :
                                         confirmMismatch ? "border-red-500/60 focus:ring-red-500/40" :
-                                                          "border-slate-700 focus:ring-indigo-500/70 focus:border-indigo-500/50"
+                                                          "border-slate-700 focus:ring-brand/40/70 focus:border-brand/50"
                                     }`}
                                 />
                                 <button type="button" onClick={() => toggleShow("confirm")}
