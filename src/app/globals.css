@@ -168,15 +168,20 @@
 :root {
   color-scheme: light;
 
-  --background: #f0f0ef;
+  --background: #f2efe9;
   --foreground: #211c16;
 
-  /* Brand / action — brass. Solid buttons only. */
-  --brand: #a9670c;
-  --brand-light: #cd9036;
-  --brand-deep: #7d4907;
-  --brand-tint: #f9eeda;
-  --brand-edge: #f0d8ac;
+  /* Brand / action — brass. Solid buttons only.
+     The brass was deepened one step: #a9670c cleared white text by only
+     4.5:1, right on the AA line, and every primary button in the app is
+     white-on-brass. #7d4907 clears it at 7.4:1 and reads richer against warm
+     paper. The old brand tone is kept as `--brand-light`, so gradients that
+     ran brand → brand-light still travel the same distance. */
+  --brand: #7d4907;
+  --brand-light: #a9670c;
+  --brand-deep: #5c3505;
+  --brand-tint: #f7ecd6;
+  --brand-edge: #e9d3a6;
   --brand-contrast: #ffffff;
 
   /* Accent — the attention pigment. Chips and markers only, never a button. */
@@ -186,26 +191,33 @@
   --accent-edge: #f7dca8;
   --accent-contrast: #3d2503;
 
-  /* Surfaces */
+  /* Surfaces — warm paper, not cool grey.
+     These were neutral greys with a faint green cast (#f8f8f7, #f0f0ef,
+     #e8e8e6). Next to brass they read cold, which is what made the app feel
+     like a console rather than a school's. They now carry a little of the
+     walnut the type and brand already sit in. Kept low-chroma on purpose:
+     warm paper, not cream. */
   --surface: #ffffff;
-  --surface-secondary: #f8f8f7;
-  --surface-sunk: #f0f0ef;
+  --surface-secondary: #faf8f3;
+  --surface-sunk: #f2efe9;
   --surface-glass: rgba(255, 255, 255, 0.84);
-  --surface-inset: #e8e8e6;
+  --surface-inset: #eae5dc;
   /* The highlight that sweeps a skeleton. Brass, not white — a loading page
      should look like it belongs to this app, not like generic grey furniture. */
   --skeleton-sheen: rgba(169, 103, 12, 0.11);
 
-  /* Text — warm near-black, so type belongs to the walnut family even though
-     the paper it sits on stays cool. */
+  /* Text — warm near-black, the same walnut family as the paper it now sits
+     on. (It used to be warm type on deliberately cool paper; that mismatch is
+     gone.) */
   --ink: #211c16;
   --ink-soft: #57504a;
   --ink-muted: #756d65;
   --ink-faint: #948c83;
 
-  /* Rules */
-  --line: #dedddb;
-  --line-strong: #c8c7c3;
+  /* Rules — warmed to match the surfaces, or they read as grey wire laid over
+     paper. */
+  --line: #e2ddd3;
+  --line-strong: #cdc5b7;
 
   /* Status pigments, tuned for text on paper */
   --accent-success: #0e9f6e;
@@ -256,9 +268,12 @@
   --shadow-brand-base: 0 6px 16px -4px rgba(125, 73, 7, 0.34);
 
   /* Page field gradient */
-  --page-bg-start: #e8e8e6;
-  --page-bg-mid: #f0f0ef;
-  --page-bg-end: #f8f8f7;
+  /* The ground the whole app actually sits on — `.theme-bg` paints this
+     gradient over `--background`. It has to move with the surfaces above, or
+     warm cards sit on cool paper and the warming is invisible. */
+  --page-bg-start: #eae5dc;
+  --page-bg-mid: #f2efe9;
+  --page-bg-end: #faf8f3;
 }
 
 /* ───────────────────────────────────────────────────────────────────────────

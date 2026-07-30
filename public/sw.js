@@ -3,7 +3,12 @@
 // UPDATING THIS FILE: bump CACHE_NAME. The browser reinstalls the worker when
 // the bytes of this file change, and the activate handler deletes every cache
 // whose name doesn't match, so a bump is what actually evicts stale entries.
-const CACHE_NAME = 'school-ms-v6';
+// v7 — the redesign changed nearly every token in globals.css. Without a bump,
+// an installed PWA keeps serving the stylesheet it cached under v6, which is
+// what makes a device show old colours, an untilted stamp, or an avatar whose
+// gradient classes do not exist yet. The activate handler below deletes every
+// cache that is not this name.
+const CACHE_NAME = 'school-ms-v7';
 
 // App shell files to cache immediately
 const APP_SHELL = [
