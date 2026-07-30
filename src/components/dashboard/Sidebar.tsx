@@ -21,11 +21,12 @@ interface SidebarProps {
 }
 
 /**
- * THE INK RAIL — navigation for the admin/staff dashboard.
+ * THE WALNUT RAIL — navigation for the admin/staff dashboard.
  *
- * The rail is the dark half of the design and the only place it appears: ink
- * ground, chalk text, with a lapis bloom in the top corner so it reads as lit
- * rather than painted. It is chrome you stop seeing, which is exactly the job.
+ * The rail is the warm half of the design and the only place it appears in the
+ * staff app: walnut ground with a brass bloom in the top corner so it reads as
+ * lit rather than painted. It is chrome you stop seeing, which is exactly the
+ * job — the cool paper canvas beside it is where the work happens.
  *
  * The active item is marked by a marigold bar in the margin — the same marker
  * language as the register's margin rule on a table row.
@@ -102,7 +103,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
             {/* ── Mobile backdrop ──────────────────────────────────────── */}
             {isMobileOpen && (
                 <div
-                    className="fixed inset-0 z-30 bg-ink-950/60 backdrop-blur-sm md:hidden"
+                    className="fixed inset-0 z-30 bg-walnut-950/60 backdrop-blur-sm md:hidden"
                     onClick={onMobileClose}
                     aria-hidden="true"
                 />
@@ -138,7 +139,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                         className="flex min-w-0 items-center gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-brand-light"
                         title={school?.name || 'Dashboard'}
                     >
-                        <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-linear-to-br from-lapis-500 to-marigold-400 font-display text-[15px] font-bold text-white">
+                        <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-linear-to-br from-brass-500 to-marigold-400 font-display text-[15px] font-bold text-white">
                             {logoSrc ? (
                                 <Image
                                     src={logoSrc}
@@ -223,7 +224,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                                     'focus-visible:ring-2 focus-visible:ring-brand-light',
                                                     collapsed ? 'mx-1 justify-center px-0 py-2' : 'px-2.5 py-2',
                                                     active
-                                                        ? 'bg-linear-to-r from-lapis-500/34 to-lapis-500/8 text-white'
+                                                        ? 'bg-linear-to-r from-brass-400/34 to-brass-400/8 text-white'
                                                         : 'text-rail-ink-soft hover:bg-white/6 hover:text-white',
                                                 ].join(' ')}
                                             >
@@ -283,12 +284,18 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                         className="group flex w-full cursor-pointer items-center justify-between rounded-md px-2.5 pt-1 pb-1.5 transition-colors hover:bg-white/5"
                                         aria-expanded={isOpen}
                                     >
-                                        <span className="font-mono text-[10.5px] font-semibold tracking-[0.13em] text-rail-ink-muted uppercase transition-colors select-none group-hover:text-rail-ink">
+                                        {/* Same brightness as the nav items below it. Small
+                                            mono uppercase with wide tracking reads lighter
+                                            than 13.5px body text at the identical colour, so
+                                            matching the token still leaves the header
+                                            subordinate — the size and tracking carry the
+                                            hierarchy, not a dimmer ink. */}
+                                        <span className="font-mono text-[10.5px] font-semibold tracking-[0.11em] text-rail-ink-soft uppercase transition-colors select-none group-hover:text-rail-ink">
                                             {group.label}
                                         </span>
                                         {isOpen
-                                            ? <ChevronDown className="size-3 text-rail-ink-muted" />
-                                            : <ChevronRight className="size-3 text-rail-ink-muted" />
+                                            ? <ChevronDown className="size-3 text-rail-ink-soft" />
+                                            : <ChevronRight className="size-3 text-rail-ink-soft" />
                                         }
                                     </button>
                                 )}
@@ -311,7 +318,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                         <div>
                             {/* User info row */}
                             <div className="flex items-center gap-2.5 px-2 py-2">
-                                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-lapis-500 to-marigold-400 font-display text-[11.5px] font-bold text-white select-none">
+                                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-brass-500 to-marigold-400 font-display text-[11.5px] font-bold text-white select-none">
                                     {user?.firstName?.[0]}{user?.lastName?.[0]}
                                 </div>
                                 <div className="min-w-0 flex-1">
@@ -351,7 +358,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                             <Link
                                 href="/dashboard/profile"
                                 title={`${user?.firstName} ${user?.lastName} — my profile`}
-                                className="flex size-8 items-center justify-center rounded-lg bg-linear-to-br from-lapis-500 to-marigold-400 font-display text-[11.5px] font-bold text-white transition-all select-none hover:ring-2 hover:ring-brand-light/50"
+                                className="flex size-8 items-center justify-center rounded-lg bg-linear-to-br from-brass-500 to-marigold-400 font-display text-[11.5px] font-bold text-white transition-all select-none hover:ring-2 hover:ring-brand-light/50"
                             >
                                 {user?.firstName?.[0]}{user?.lastName?.[0]}
                             </Link>

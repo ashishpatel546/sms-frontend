@@ -43,17 +43,27 @@ export default function GreetingCard() {
                 className="absolute inset-0 bg-linear-to-r from-brand-tint via-surface to-surface"
             />
 
-            <div className="relative flex flex-row items-center gap-3 p-4 sm:gap-4 sm:px-5">
+            {/* The "Live" badge is taken OUT of the text row on a phone and
+                pinned to the corner instead. While it sat in the same flex row
+                it competed for width, and the name — the one thing that must
+                never be clipped — was what gave way. */}
+            <span className="absolute top-3 right-3 z-1 flex items-center gap-1.5 rounded-full border border-accent-success-edge bg-accent-success-tint px-2 py-0.5 text-[10.5px] font-semibold text-accent-success-deep sm:hidden">
+                <span className="relative flex size-1.5">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-success opacity-75" />
+                    <span className="relative inline-flex size-1.5 rounded-full bg-accent-success" />
+                </span>
+                Live
+            </span>
+
+            <div className="relative flex flex-row items-center gap-3 p-4 pt-9 sm:gap-4 sm:px-5 sm:pt-4">
                 <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-linear-to-br from-brass-500 to-marigold-400 font-display text-[15px] font-bold text-white sm:size-13 sm:text-[18px]">
                     {initials}
                 </span>
 
                 <div className="min-w-0 flex-1">
-                    {/* No truncate: on a narrow phone "Good evening, Ashish" is
-                        wider than the column, and clipping the person's own name
-                        is the one thing this line must never do. It wraps to two
-                        lines instead, and the greeting shortens below sm. */}
-                    <h2 className="font-display text-[16px] leading-tight font-semibold text-ink sm:text-[21px]">
+                    {/* Explicitly wrapping, and allowed to break inside a long
+                        name — no ellipsis anywhere on this line. */}
+                    <h2 className="font-display text-[16px] leading-tight font-semibold wrap-anywhere whitespace-normal text-ink sm:text-[21px]">
                         {`${greeting}, ${firstName}`}
                         <TimeIcon
                             className="ml-1.5 inline-block size-4 align-[-2px] text-accent sm:size-5"
@@ -74,8 +84,9 @@ export default function GreetingCard() {
                     </div>
                 </div>
 
-                {/* Live badge — sage, because a working connection is a settled fact */}
-                <span className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full border border-accent-success-edge bg-accent-success-tint px-2.5 py-1 text-[11px] font-semibold text-accent-success-deep">
+                {/* Live badge — sage, because a working connection is a settled
+                    fact. From sm up there is room for it beside the text. */}
+                <span className="ml-auto hidden shrink-0 items-center gap-1.5 rounded-full border border-accent-success-edge bg-accent-success-tint px-2.5 py-1 text-[11px] font-semibold text-accent-success-deep sm:flex">
                     <span className="relative flex size-1.5">
                         <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-success opacity-75" />
                         <span className="relative inline-flex size-1.5 rounded-full bg-accent-success" />

@@ -117,7 +117,7 @@ export function TopBar({ user, sidebarCollapsed, onToggleSidebar, onOpenMobileNa
 
                     {/* Identity pill — large screens only; the rail carries it elsewhere */}
                     <div className="hidden items-center gap-2 rounded-lg border border-line bg-surface py-1 pr-3 pl-1 lg:flex">
-                        <span className="grid size-7 place-items-center rounded-md bg-linear-to-br from-lapis-500 to-marigold-400 font-display text-[11px] font-bold text-white select-none">
+                        <span className="grid size-7 place-items-center rounded-md bg-linear-to-br from-brass-500 to-marigold-400 font-display text-[11px] font-bold text-white select-none">
                             {user?.firstName?.[0]}{user?.lastName?.[0]}
                         </span>
                         <span className="min-w-0">
