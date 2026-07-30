@@ -49,11 +49,16 @@ export default function GreetingCard() {
                 </span>
 
                 <div className="min-w-0 flex-1">
-                    <h2 className="flex items-center gap-2 font-display text-[17px] font-semibold text-ink sm:text-[21px]">
-                        <span className="truncate">
-                            {greeting}, {firstName}
-                        </span>
-                        <TimeIcon className="size-4 shrink-0 text-accent sm:size-5" aria-hidden />
+                    {/* No truncate: on a narrow phone "Good evening, Ashish" is
+                        wider than the column, and clipping the person's own name
+                        is the one thing this line must never do. It wraps to two
+                        lines instead, and the greeting shortens below sm. */}
+                    <h2 className="font-display text-[16px] leading-tight font-semibold text-ink sm:text-[21px]">
+                        {`${greeting}, ${firstName}`}
+                        <TimeIcon
+                            className="ml-1.5 inline-block size-4 align-[-2px] text-accent sm:size-5"
+                            aria-hidden
+                        />
                     </h2>
 
                     <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">

@@ -237,8 +237,10 @@
   --rail-raised: #453728;
   --rail-line: rgba(255, 255, 255, 0.09);
   --rail-ink: #ffffff;
-  --rail-ink-soft: #e0d6c6;
-  --rail-ink-muted: #a2988a;
+  --rail-ink-soft: #e6ddd0;
+  /* Group labels and meta on the rail. At 9.5px on walnut the old #a2988a only
+     reached 4.86:1 and visually sank into the wood; this is 8.8:1. */
+  --rail-ink-muted: #d8cdb9;
 
   /* Elevation. Shadows are warm-black, never grey — they belong to walnut. */
   --shadow-hairline: 0 0 0 1px rgba(33, 28, 22, 0.07);
@@ -326,8 +328,8 @@
   --rail-raised: #2a2218;
   --rail-line: rgba(255, 255, 255, 0.07);
   --rail-ink: #ffffff;
-  --rail-ink-soft: #e0d6c6;
-  --rail-ink-muted: #8a8071;
+  --rail-ink-soft: #e6ddd0;
+  --rail-ink-muted: #c9bda9;
 
   --shadow-hairline: 0 0 0 1px rgba(255, 255, 255, 0.06);
   --shadow-soft-base: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -994,8 +996,20 @@
    This is scaffolding, not architecture: as a page moves onto the component
    kernel its entries stop mattering, and the block shrinks. NEW CODE MUST NOT
    RELY ON IT — use the semantic tokens.
+   IT MUST LIVE IN `utilities`, NOT `components`.
+
+   Tailwind declares the layer order `theme, base, components, utilities`. For
+   any class Tailwind ALSO generates a utility for — `bg-blue-600`,
+   `text-slate-700`, `bg-slate-800` and friends all appear twice in the compiled
+   output — a rule sitting in `components` loses to Tailwind's copy in
+   `utilities` and does nothing at all. That is why primary buttons across
+   unmigrated pages stayed blue. Inside `utilities` these rules come later in
+   source order than Tailwind's, so they win.
+
+   (Curiously `bg-white` is emitted only once, so it worked either way. Don't
+   rely on that asymmetry — keep everything here in `utilities`.)
    ═══════════════════════════════════════════════════════════════════════════ */
-@layer components {
+@layer utilities {
   /* ── Neutral surfaces ────────────────────────────────────────────────── */
   .bg-white {
     background-color: var(--surface);
@@ -1020,6 +1034,48 @@
   .bg-slate-200,
   .bg-gray-200 {
     background-color: var(--surface-inset);
+  }
+
+  /* Pages that hand-wrote their own dark variants reach for slate-700/800/900,
+     which are BLUE-grey and read as a foreign panel dropped on walnut. Both the
+     bare and the `dark:`-prefixed forms are folded back into the surfaces. */
+  .bg-slate-700,
+  .bg-slate-800,
+  .bg-slate-900,
+  .bg-slate-950,
+  .bg-gray-800,
+  .bg-gray-900,
+  .dark\:bg-slate-700,
+  .dark\:bg-slate-800,
+  .dark\:bg-slate-900,
+  .dark\:bg-slate-950,
+  .dark\:bg-gray-800,
+  .dark\:bg-gray-900 {
+    background-color: var(--surface);
+  }
+  .dark\:bg-surface,
+  .dark\:bg-surface\/80,
+  .dark\:bg-surface\/90,
+  .dark\:bg-surface\/95,
+  .dark\:bg-surface\/98 {
+    background-color: var(--surface);
+  }
+  .dark\:border-slate-600,
+  .dark\:border-slate-700,
+  .dark\:border-slate-800,
+  .dark\:border-gray-700 {
+    border-color: var(--line);
+  }
+  .dark\:text-slate-100,
+  .dark\:text-slate-200,
+  .dark\:text-white {
+    color: var(--ink);
+  }
+  .dark\:text-slate-300,
+  .dark\:text-slate-400,
+  .dark\:text-gray-300,
+  .dark\:text-gray-400 {
+    color: var(--ink-muted);
   }
   .hover\:bg-slate-50:hover,
   .hover\:bg-slate-100:hover,
@@ -1071,6 +1127,101 @@
   .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
   .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
     border-color: var(--line);
+  }
+
+  /* ── SOLID action colours → the pigments ────────────────────────────────
+     The single most visible bridge rule. Pages written before the system paint
+     their primary buttons `bg-blue-600 text-white`, which on a walnut-and-brass
+     app reads as a foreign control. Mapping the solid steps (not just the pale
+     tints) is what makes an unmigrated page's buttons belong to the palette.
+
+     `!important` is needed here and only here: these compete with a
+     `hover:bg-*` utility on the same element, which would otherwise win on
+     hover and flash the old blue. */
+  .bg-blue-600,
+  .bg-blue-700,
+  .bg-blue-800,
+  .bg-indigo-600,
+  .bg-indigo-700,
+  .bg-violet-600,
+  .bg-purple-600,
+  .bg-sky-600 {
+    background-color: var(--brand) !important;
+    color: var(--brand-contrast);
+  }
+  .hover\:bg-blue-700:hover,
+  .hover\:bg-blue-800:hover,
+  .hover\:bg-blue-900:hover,
+  .hover\:bg-indigo-700:hover,
+  .hover\:bg-indigo-800:hover,
+  .hover\:bg-violet-700:hover,
+  .hover\:bg-purple-700:hover,
+  .hover\:bg-sky-700:hover {
+    background-color: var(--brand-deep) !important;
+  }
+  .border-blue-600,
+  .border-indigo-600 {
+    border-color: var(--brand);
+  }
+
+  .bg-green-600,
+  .bg-green-700,
+  .bg-emerald-600,
+  .bg-emerald-700,
+  .bg-teal-600 {
+    background-color: var(--accent-success) !important;
+    color: #fff;
+  }
+  .hover\:bg-green-700:hover,
+  .hover\:bg-green-800:hover,
+  .hover\:bg-emerald-700:hover,
+  .hover\:bg-teal-700:hover {
+    background-color: var(--accent-success-deep) !important;
+  }
+
+  .bg-red-600,
+  .bg-red-700,
+  .bg-rose-600 {
+    background-color: var(--accent-danger) !important;
+    color: #fff;
+  }
+  .hover\:bg-red-700:hover,
+  .hover\:bg-red-800:hover,
+  .hover\:bg-rose-700:hover {
+    background-color: var(--accent-danger-deep) !important;
+  }
+
+  /* Amber solids are the "act on this" pigment, so they take ink text rather
+     than white — white on marigold fails contrast. */
+  .bg-amber-500,
+  .bg-amber-600,
+  .bg-orange-600,
+  .bg-yellow-500 {
+    background-color: var(--accent) !important;
+    color: var(--accent-contrast) !important;
+  }
+  .hover\:bg-amber-600:hover,
+  .hover\:bg-amber-700:hover,
+  .hover\:bg-orange-700:hover {
+    background-color: var(--accent-warn) !important;
+  }
+
+  /* Icon medallions and avatars painted as blue/violet gradients: flatten to a
+     brass gradient so they stop introducing a second brand colour. */
+  .bg-linear-to-br.from-indigo-500,
+  .bg-linear-to-br.from-indigo-600,
+  .bg-linear-to-br.from-purple-500,
+  .bg-linear-to-br.from-violet-500,
+  .bg-linear-to-br.from-blue-500,
+  .bg-linear-to-br.from-blue-600,
+  .bg-linear-to-r.from-indigo-600,
+  .bg-linear-to-r.from-indigo-500 {
+    background-image: linear-gradient(
+      140deg,
+      var(--color-brass-500),
+      var(--color-marigold-400)
+    ) !important;
+    color: #fff;
   }
 
   /* ── Colour tints → the four pigments ───────────────────────────────────

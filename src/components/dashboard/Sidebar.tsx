@@ -283,7 +283,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                         className="group flex w-full cursor-pointer items-center justify-between rounded-md px-2.5 pt-1 pb-1.5 transition-colors hover:bg-white/5"
                                         aria-expanded={isOpen}
                                     >
-                                        <span className="font-mono text-[9.5px] font-medium tracking-[0.14em] text-rail-ink-muted uppercase transition-colors select-none group-hover:text-rail-ink-soft">
+                                        <span className="font-mono text-[10.5px] font-semibold tracking-[0.13em] text-rail-ink-muted uppercase transition-colors select-none group-hover:text-rail-ink">
                                             {group.label}
                                         </span>
                                         {isOpen
