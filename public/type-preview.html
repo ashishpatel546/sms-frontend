@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Type & colour directions — parent portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Calistoga&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin:0; background:#e9e7e3; color:#211c16; font-family:'Figtree',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 72px; }
+  .intro h1 { font-family:'Fraunces',serif; font-size: clamp(26px,5vw,40px); margin:.2em 0 .1em; font-weight:600; }
+  .intro p { color:#57504a; max-width: 62ch; line-height:1.6; margin:.4em 0; }
+  .note { font-size:13.5px; background:#fff; border:1px solid #dcd8d2; border-left:3px solid #a9670c; padding:12px 14px; border-radius:8px; margin:18px 0 8px; }
+
+  .grid { display:grid; gap:22px; margin-top:26px; }
+  @media (min-width: 900px){ .grid { grid-template-columns: repeat(3,1fr); } }
+
+  .card { border-radius:16px; overflow:hidden; border:1px solid var(--line); background:var(--surface); box-shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px -12px rgba(0,0,0,.14); display:flex; flex-direction:column; }
+  .card header { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .badge { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; background:var(--brand); color:var(--onbrand); padding:4px 8px; border-radius:5px; font-weight:600; }
+  .card h2 { margin:0; font-size:15px; font-weight:700; font-family:var(--display); color:var(--ink); }
+  .body { padding:16px; display:flex; flex-direction:column; gap:16px; flex:1; }
+
+  /* the sample UI */
+  .name { font-family:var(--display); font-size:23px; font-weight:var(--dispw); color:var(--ink); line-height:1.15; margin:0; }
+  .sub  { font-size:13px; color:var(--muted); margin:3px 0 0; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:9px; }
+  .chip { font-family:var(--mono); font-size:10.5px; padding:3px 7px; border:1px solid var(--line); border-radius:5px; color:var(--muted); background:var(--inset); }
+
+  .stamp { align-self:center; border:2.5px solid var(--ok); color:var(--okdeep); background:var(--oktint); border-radius:12px; padding:16px 26px; text-align:center; transform:rotate(-2.5deg); position:relative; min-width:168px; }
+  .stamp::after { content:''; position:absolute; inset:4px; border:1px solid currentColor; opacity:.3; border-radius:8px; }
+  .stamp .w { font-family:var(--display); font-weight:800; font-size:14px; letter-spacing:.13em; text-transform:uppercase; display:block; }
+  .stamp .d { font-family:var(--mono); font-size:9.5px; letter-spacing:.22em; opacity:.65; display:block; margin-top:6px; font-weight:600; }
+
+  .band { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .band span { font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); font-weight:600; white-space:nowrap; }
+  .band::after { content:''; flex:1; height:1px; background:var(--line); }
+
+  .row { display:flex; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px; align-items:flex-start; }
+  .row:last-child { border-bottom:0; }
+  .row .s { font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--brand); width:62px; flex:none; padding-top:2px; font-weight:600; }
+  .row .t { color:var(--ink); line-height:1.4; }
+
+  .due { display:flex; align-items:center; gap:11px; border:1px solid var(--warnedge); background:var(--warntint); border-radius:11px; padding:12px; }
+  .due .amt { font-family:var(--mono); font-weight:700; font-size:16px; color:var(--ink); }
+  .due .lbl { font-size:12px; color:var(--muted); }
+  .pay { margin-left:auto; background:var(--brand); color:var(--onbrand); border:0; border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:600; font-family:inherit; }
+
+  .tiles { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+  .tile { border:1px solid var(--line); border-left:3px solid var(--ok); border-radius:10px; padding:10px 11px; background:var(--surface); }
+  .tile.b { border-left-color:var(--info); }
+  .tile .k { font-family:var(--mono); font-size:9px; letter-spacing:.13em; text-transform:uppercase; color:var(--faint); font-weight:600; }
+  .tile .v { font-family:var(--display); font-size:21px; font-weight:700; color:var(--ink); margin-top:5px; line-height:1; }
+
+  .sw { display:flex; gap:6px; margin-top:2px; }
+  .sw i { width:26px; height:26px; border-radius:6px; display:block; border:1px solid rgba(0,0,0,.09); }
+
+  .spec { font-family:var(--mono); font-size:11px; color:var(--muted); line-height:1.7; border-top:1px solid var(--line); padding-top:11px; }
+  .spec b { color:var(--ink); font-weight:600; }
+
+  /* ── A: Fraunces + warm walnut ───────────────────────────── */
+  .a {
+    --display:'Fraunces',serif; --dispw:600; --mono:'IBM Plex Mono',monospace;
+    --surface:#fffdfa; --inset:#f4f0ea; --line:#e5ded4; --ink:#211c16; --muted:#57504a; --faint:#8a8071;
+    --brand:#a9670c; --onbrand:#fff;
+    --ok:#0e9f6e; --okdeep:#046c4e; --oktint:#e7f6ef; --info:#1e4fd8;
+    --warntint:#fdf3e2; --warnedge:#f0d8ac;
+    font-family:'Figtree',sans-serif;
+  }
+  /* ── B: Calistoga + brass & teal ─────────────────────────── */
+  .b2 {
+    --display:'Calistoga',serif; --dispw:400; --mono:'JetBrains Mono',monospace;
+    --surface:#fffdf6; --inset:#f6f1e3; --line:#e7dfc9; --ink:#1c1917; --muted:#57534e; --faint:#8a8071;
+    --brand:#0f766e; --onbrand:#fff;
+    --ok:#0f766e; --okdeep:#115e59; --oktint:#e6f4f2; --info:#a9670c;
+    --warntint:#fffbeb; --warnedge:#f3e2b6;
+    font-family:'Inter',sans-serif;
+  }
+  /* ── C: Sora unchanged, warmer colour ────────────────────── */
+  .c {
+    --display:'Sora',sans-serif; --dispw:700; --mono:'IBM Plex Mono',monospace;
+    --surface:#fff; --inset:#f2efe9; --line:#e3ded6; --ink:#211c16; --muted:#57504a; --faint:#8a8071;
+    --brand:#7d4907; --onbrand:#fff;
+    --ok:#0e9f6e; --okdeep:#046c4e; --oktint:#e7f6ef; --info:#1e4fd8;
+    --warntint:#faf2e4; --warnedge:#ecd9b2;
+    font-family:'Figtree',sans-serif;
+  }
+
+  .dark { --surface:#1c150d; --inset:#2a2218; --line:#3a2f22; --ink:#f2ede4; --muted:#a89d8d; --faint:#8a8071;
+          --brand:#e2b871; --onbrand:#1c150d; --oktint:rgba(14,159,110,.18); --okdeep:#5fd0a4;
+          --warntint:rgba(229,147,16,.16); --warnedge:rgba(229,147,16,.34); }
+  .darkbar { background:#141009; padding:26px 16px; margin-top:44px; border-radius:16px; }
+  .darkbar > p { color:#cfc4b3; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; margin:0 0 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="intro">
+    <h1>Three directions for the portal</h1>
+    <p>The same screen drawn three ways — a child's record on the diary layout. Compare the headline face, the way numbers and labels are set, and how warm the paper feels. Everything else is identical.</p>
+    <div class="note"><b>Fonts and colour are app-wide.</b> Whichever you pick moves the staff console too, not just the parent portal. Open this on your phone as well — the type sizes are the real ones.</div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="darkbar">
+    <p>The same three, dark theme</p>
+    <div class="grid" id="griddark"></div>
+  </div>
+</div>
+
+<script>
+const SPECS = [
+  { cls:'a',  badge:'A', title:'Fraunces + warm walnut',
+    spec:'<b>Display</b> Fraunces 600<br><b>Body</b> Figtree<br><b>Data</b> IBM Plex Mono<br><b>Brand</b> #a9670c brass',
+    sw:['#7d4907','#a9670c','#faf8f4','#1c150d','#0e9f6e','#e02424'] },
+  { cls:'b2', badge:'B', title:'Calistoga + brass & teal',
+    spec:'<b>Display</b> Calistoga<br><b>Body</b> Inter<br><b>Data</b> JetBrains Mono<br><b>Brand</b> #0f766e teal',
+    sw:['#0f766e','#a9670c','#fffbeb','#1c1917','#0f766e','#dc2626'] },
+  { cls:'c',  badge:'C', title:'Sora kept, colour warmed',
+    spec:'<b>Display</b> Sora 700 (current)<br><b>Body</b> Figtree (current)<br><b>Data</b> IBM Plex Mono<br><b>Brand</b> #7d4907 deep brass',
+    sw:['#7d4907','#a9670c','#f5f3ef','#17110a','#0e9f6e','#e02424'] },
+];
+
+function card(s, dark){
+  return `
+  <div class="card ${s.cls}${dark?' dark':''}">
+    <header>
+      <h2>${s.title}</h2>
+      <span class="badge">${s.badge}</span>
+    </header>
+    <div class="body">
+      <div>
+        <p class="name">Prakhar Patel</p>
+        <p class="sub">Class 9 · Section A</p>
+        <div class="chips"><span class="chip">ROLL 6</span><span class="chip">2026–2027</span></div>
+      </div>
+
+      <div class="stamp">
+        <span class="w">Present</span>
+        <span class="d">31 JUL</span>
+      </div>
+
+      <div>
+        <div class="band"><span>Set today</span></div>
+        <div class="row"><span class="s">Maths</span><span class="t">Exercise 4.2, questions 1–8</span></div>
+        <div class="row"><span class="s">Science</span><span class="t">Read chapter 7 before Monday</span></div>
+      </div>
+
+      <div>
+        <div class="band"><span>Needs you</span></div>
+        <div class="due">
+          <div>
+            <div class="amt">₹9,190</div>
+            <div class="lbl">Fees outstanding</div>
+          </div>
+          <button class="pay">Pay</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="band"><span>This month</span></div>
+        <div class="tiles">
+          <div class="tile"><div class="k">Days present</div><div class="v">21</div></div>
+          <div class="tile b"><div class="k">Latest exam</div><div class="v">96.3%</div></div>
+        </div>
+      </div>
+
+      <div class="sw">${s.sw.map(c=>`<i style="background:${c}"></i>`).join('')}</div>
+      <div class="spec">${s.spec}</div>
+    </div>
+  </div>`;
+}
+document.getElementById('grid').innerHTML = SPECS.map(s=>card(s,false)).join('');
+document.getElementById('griddark').innerHTML = SPECS.map(s=>card(s,true)).join('');
+</script>
+</body>
+</html>

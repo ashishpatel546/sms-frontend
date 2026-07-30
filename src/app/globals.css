@@ -998,6 +998,94 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   THE DIARY — the parent portal's own dialect of the system.
+
+   A parent is not administering a school; they are checking on a child. The
+   portal is modelled on the artifact it replaces — the school diary that goes
+   home in the bag, where the teacher writes the day's work and the parent
+   signs it.
+
+   Two devices carry that: the STAMP (today's attendance, the one thing the app
+   is opened for) and the RULED BAND (a section label with a hairline running
+   out to the margin, the way a diary page is divided).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* A rubber stamp does not fade in. It comes down hard, squashes, and settles
+   very slightly off-square — which is why the rest angle is not zero. */
+@keyframes stamp-press {
+  0% {
+    opacity: 0;
+    transform: rotate(-9deg) scale(1.55);
+  }
+  55% {
+    opacity: 1;
+    transform: rotate(-2.5deg) scale(0.94);
+  }
+  78% {
+    transform: rotate(-2.5deg) scale(1.03);
+  }
+  100% {
+    transform: rotate(-2.5deg) scale(1);
+  }
+}
+
+/* The ink spreading out from under the stamp as it lifts. */
+@keyframes stamp-halo {
+  0%,
+  40% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  62% {
+    opacity: 0.42;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+@layer components {
+  .stamp {
+    animation: stamp-press 0.42s var(--ease-out-ink) both;
+  }
+
+  .stamp-halo {
+    animation: stamp-halo 0.9s var(--ease-out-ink) both;
+  }
+
+  /* `today ─────────────────` — the label sits at the left, the rule runs to
+     the margin. Encodes the division of a page, not decoration. */
+  .diary-band {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .diary-band::after {
+    content: '';
+    flex: 1 1 auto;
+    height: 1px;
+    background-color: var(--line);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stamp,
+  .stamp-halo {
+    animation: none;
+  }
+  /* The stamp still rests off-square — that is its shape, not its motion. */
+  .stamp {
+    transform: rotate(-2.5deg);
+    opacity: 1;
+  }
+  .stamp-halo {
+    display: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    SKELETONS
 
    A loading state should be a picture of the page that is coming — not a

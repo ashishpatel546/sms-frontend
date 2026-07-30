@@ -51,6 +51,74 @@ import { StatusChip } from "@/components/ui/StatusChip";
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 /**
+ * Every section, all visible in the grid. Ordered by the shape of a school day
+ * — did they get in, what was set, what is owed, how did they do — then the
+ * look-ups.
+ */
+type SectionDef = [ActiveSection, LucideIcon, string];
+
+const ALL_SECTIONS: SectionDef[] = [
+    ["home", House, "Today"],
+    ["attendance", CalendarCheck, "Attendance"],
+    ["homework", BookOpen, "Homework"],
+    ["fees", IndianRupee, "Fees"],
+    ["results", FileText, "Results"],
+    ["ai-tutor", Sparkles, "AI tutor"],
+    ["library", Library, "Library"],
+    ["leaves", CalendarDays, "Leaves"],
+    ["pickup", QrCode, "QR codes"],
+    ["exam-schedule", ClipboardList, "Schedule"],
+    ["holidays", Palmtree, "Holidays"],
+    ["info", UserRound, "Profile"],
+];
+
+/** One tab, used by both the strip and the More sheet so they cannot drift. */
+function SectionTab({
+    sectionKey,
+    Icon,
+    label,
+    active,
+    onSelect,
+}: {
+    sectionKey: ActiveSection;
+    Icon: LucideIcon;
+    label: string;
+    active: boolean;
+    onSelect: (key: ActiveSection) => void;
+}) {
+    return (
+        <button
+            role="tab"
+            aria-selected={active}
+            aria-controls={`tabpanel-${sectionKey}`}
+            id={`tab-${sectionKey}`}
+            onClick={() => onSelect(sectionKey)}
+            className={`group/tab flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border px-1 py-2 font-medium transition-all duration-200 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none ${
+                active
+                    ? "border-brand bg-brand text-brand-contrast shadow-soft"
+                    : "border-line bg-surface text-ink-soft hover:-translate-y-0.5 hover:border-brand-edge hover:shadow-soft"
+            }`}
+        >
+            {/* The icon sits in its own tinted medallion, keyed to what the
+                section IS — presence, school work, money, AI. Identical grey
+                glyphs were unscannable; the colour is how you find "Fees"
+                without reading every label. Selected inverts to brass so
+                selection stays one language across the app. */}
+            <span
+                className={`grid size-7 shrink-0 place-items-center rounded-md transition-colors duration-200 ${
+                    active ? "bg-brand-contrast/18 text-brand-contrast" : SECTION_TONE[sectionKey]
+                }`}
+            >
+                <Icon className="size-4" aria-hidden="true" />
+            </span>
+            <span className="w-full overflow-hidden text-center text-[10px] leading-tight whitespace-nowrap">
+                {label}
+            </span>
+        </button>
+    );
+}
+
+/**
  * Section colour, grouped by what a section IS — so the colour carries
  * information rather than just breaking up the grid:
  *
@@ -576,6 +644,30 @@ export default function StudentDashboardPage() {
     // donut cannot drift apart.
     const getStatusColor = attendanceCellClass;
 
+    /**
+     * Selecting a section. Lifted out of the tab's inline handler unchanged so
+     * the strip and the More sheet share one path — behaviour is identical to
+     * before: attendance/homework/fees still open a bottom sheet under 768px,
+     * re-tapping the current tab still re-fetches, and the same six sections
+     * still skip the loading state because they hold their own data.
+     */
+    const goToSection = (section: ActiveSection) => {
+        const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+        if (isMobile && section === "attendance") { setShowAttendanceSheet(true); return; }
+        if (isMobile && section === "homework") { setShowHomeworkSheet(true); return; }
+        if (isMobile && section === "fees") { setShowFeesSheet(true); return; }
+        if (section === activeSection) {
+            // Already on this tab — re-fetch directly
+            if (section === "leaves") fetchLeaves(leavesPage);
+            else if (section === "fees") { setSectionLoading(true); fetchFees(); }
+            else if (section === "results") { setSectionLoading(true); fetchExamResults(); }
+            else if (section === "holidays") { setSectionLoading(true); fetchHolidays(); }
+        } else {
+            setActiveSection(section);
+            if (section !== 'info' && section !== 'exam-schedule' && section !== 'pickup' && section !== 'home' && section !== 'library' && section !== 'ai-tutor') setSectionLoading(true);
+        }
+    };
+
     const dueMonths = fees?.months?.filter((m: any) => !m.paid && m.amount > 0) || [];
     const paidMonths = fees?.months?.filter((m: any) => m.paid && m.amount > 0) || [];
 
@@ -658,86 +750,34 @@ export default function StudentDashboardPage() {
             {/* ── Student Header Card ── */}
             <StudentBanner studentId={studentId as string} />
 
-            {/* ── Section Nav Tabs ── */}
+            {/* ── Section Nav ─────────────────────────────────────────────
+                Five daily destinations, then More.
+
+                Twelve equal tabs said everything here matters equally, which
+                is how the portal ended up reading as an admin console. Four of
+                them carry nearly all the traffic; the other seven are things a
+                parent looks up a few times a term. Nothing is removed — the
+                rest move one tap away, and every panel below is untouched.
+            ──────────────────────────────────────────────────────────────── */}
+            {/* All twelve visible — four across on a phone, six on a tablet,
+                twelve in one row on a laptop. Every count divides evenly, so
+                there is never a stranded tile on the last row. */}
             <div
                 role="tablist"
                 aria-label="Student sections"
                 className="grid grid-cols-4 gap-2 rounded-xl border border-line bg-surface p-2.5 shadow-soft sm:grid-cols-6 lg:grid-cols-12"
                 style={{ animationDelay: '50ms' }}
             >
-                {([
-                    ["home",          House,         "Home"],
-                    ["attendance",    CalendarCheck, "Attendance"],
-                    ["homework",      BookOpen,      "Homework"],
-                    ["ai-tutor",      Sparkles,      "AI tutor"],
-                    ["fees",          IndianRupee,   "Fees"],
-                    ["results",       FileText,      "Results"],
-                    ["library",       Library,       "Library"],
-                    ["leaves",        CalendarDays,  "Leaves"],
-                    ["pickup",        QrCode,        "QR codes"],
-                    ["exam-schedule", ClipboardList, "Schedule"],
-                    ["holidays",      Palmtree,      "Holidays"],
-                    ["info",          UserRound,     "Profile"],
-                ] as [ActiveSection, LucideIcon, string][]).map(([key, Icon, label]) => {
-                    const tone = SECTION_TONE[key];
-                    return (
-                    <button
+                {ALL_SECTIONS.map(([key, Icon, label]) => (
+                    <SectionTab
                         key={key}
-                        role="tab"
-                        aria-selected={activeSection === key}
-                        aria-controls={`tabpanel-${key}`}
-                        id={`tab-${key}`}
-                        onClick={() => {
-                            const section = key as ActiveSection;
-                            // Attendance, Homework and Fees open a bottom sheet on mobile/tablet only
-                            const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-                            if (isMobile && section === "attendance") {
-                                setShowAttendanceSheet(true);
-                                return;
-                            }
-                            if (isMobile && section === "homework") {
-                                setShowHomeworkSheet(true);
-                                return;
-                            }
-                            if (isMobile && section === "fees") {
-                                setShowFeesSheet(true);
-                                return;
-                            }
-                            if (section === activeSection) {
-                                // Already on this tab — re-fetch directly
-                                if (section === "leaves") fetchLeaves(leavesPage);
-                                else if (section === "fees") { setSectionLoading(true); fetchFees(); }
-                                else if (section === "results") { setSectionLoading(true); fetchExamResults(); }
-                                else if (section === "holidays") { setSectionLoading(true); fetchHolidays(); }
-                            } else {
-                                setActiveSection(section);
-                                if (section !== 'info' && section !== 'exam-schedule' && section !== 'pickup' && section !== 'home' && section !== 'library' && section !== 'ai-tutor') setSectionLoading(true);
-                            }
-                        }}
-                        className={`group/tab flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border px-1 py-2 font-medium transition-all duration-200 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none ${
-                            activeSection === key
-                                ? "border-brand bg-brand text-brand-contrast shadow-soft"
-                                : "border-line bg-surface text-ink-soft hover:-translate-y-0.5 hover:border-brand-edge hover:shadow-soft"
-                        }`}
-                    >
-                        {/* The icon sits in its own tinted medallion, keyed to what
-                            the section IS — presence, school work, money, AI. Twelve
-                            identical grey glyphs were unscannable; the colour is how
-                            you find "Fees" without reading all twelve labels.
-                            Selected inverts to brass so selection stays one language. */}
-                        <span
-                            className={`grid size-7 shrink-0 place-items-center rounded-md transition-colors duration-200 ${
-                                activeSection === key
-                                    ? "bg-brand-contrast/18 text-brand-contrast"
-                                    : tone
-                            }`}
-                        >
-                            <Icon className="size-4" aria-hidden="true" />
-                        </span>
-                        <span className="w-full overflow-hidden text-center text-[10px] leading-tight whitespace-nowrap">{label}</span>
-                    </button>
-                    );
-                })}
+                        sectionKey={key}
+                        Icon={Icon}
+                        label={label}
+                        active={activeSection === key}
+                        onSelect={goToSection}
+                    />
+                ))}
             </div>
 
             {sectionLoading ? (
