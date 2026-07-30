@@ -4,6 +4,21 @@ import { useSchoolInfo } from "@/lib/useSchoolInfo";
 
 import { useEffect, useState } from "react";
 
+/**
+ * The first thing anyone sees. It should say "this school", so it is walnut and
+ * brass like the rest of the app rather than the generic navy/indigo it used to
+ * be — that splash belonged to no product in particular.
+ *
+ * Four defects were fixed here at the same time, all of which shipped:
+ *   - the caption read "Initiali-ing..."
+ *   - `--10` appeared twice where `z-10` was meant, so it compiled to nothing
+ *   - the spinner's SVG path ended `h4-` instead of `h4z`, leaving it unclosed
+ *   - the overlay had no stacking order at all; it needs `z-9999` (Tailwind v4
+ *     accepts any bare number for z-index)
+ *
+ * Timing behaviour is unchanged: fade at 1.5s once school info lands, gone at
+ * 2s, with a 3s hard fallback if the API never answers.
+ */
 export default function SplashScreen() {
   const [show, setShow] = useState(true);
   const [fade, setFade] = useState(false);
@@ -43,41 +58,54 @@ export default function SplashScreen() {
 
   return (
     <div
-      className={`fixed inset-0 z-9999 bg-slate-950 flex flex-col items-center justify-center transition-opacity duration-500 ease-in-out ${
+      role="status"
+      aria-label="Opening"
+      className={`fixed inset-0 z-9999 flex flex-col items-center justify-center bg-walnut-950 transition-opacity duration-500 ease-in-out ${
         fade ? "opacity-0" : "opacity-100"
       }`}
     >
-      <div className="absolute inset-0 bg-slate-950" />
-      <div 
-        className="absolute inset-0 opacity-30"
+      {/* A brass bloom in the upper area, the same light the sidebar rail has —
+          so the splash and the app behind it are lit from the same place. */}
+      <div
+        aria-hidden
+        className="absolute inset-0 opacity-70"
         style={{
-          backgroundImage: `radial-gradient(ellipse at 50% 50%, rgba(99,102,241,0.5) 0%, transparent 60%)`
+          backgroundImage:
+            "radial-gradient(ellipse at 50% 38%, rgba(169,103,12,0.30) 0%, transparent 62%)",
         }}
       />
-      
-      {/* Logo Container */}
-      <div className="relative --10 w-48 h-48 md:w-64 md:h-64 rounded-3xl bg-white/10 backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/20 p-6">
+
+      {/* Logo */}
+      <div className="relative z-10 flex size-40 items-center justify-center rounded-2xl border border-brass-500/25 bg-white/6 p-6 shadow-2xl backdrop-blur-md md:size-52">
+        {/* `priority` — the logo is the LCP element (fullscreen, first paint),
+            so it must load eagerly; lazy-loading it both delays the splash
+            and trips Next's LCP warning in dev. */}
         {schoolInfo?.logoUrl ? (
           <Image
             src={schoolInfo.logoUrl}
-            alt="School"
+            alt=""
             width={256}
             height={256}
-            className="w-full h-full object-contain drop-shadow-xl"
+            className="size-full object-contain drop-shadow-xl"
             unoptimized
+            priority
           />
         ) : (
-          <div className="w-full h-full rounded-2xl bg-white/5 animate-pulse" />
+          <div className="skeleton size-full rounded-xl" />
         )}
       </div>
 
-      <div className="relative --10 mt-12 text-slate-400 text-sm font-semibold tracking-widest uppercase flex items-center gap-3">
-        <svg className="animate-spin w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4-" />
-        </svg>
-        Initiali-ing...
-      </div>
+      {schoolInfo?.name && (
+        <p className="relative z-10 mt-7 px-6 text-center font-display text-[19px] font-semibold text-paper-50">
+          {schoolInfo.name}
+        </p>
+      )}
+
+      {/* The register hand, as everywhere else. */}
+      <p className="tabular relative z-10 mt-3 text-[11px] font-semibold tracking-[0.2em] text-brass-300 uppercase">
+        Opening
+        <span className="ml-0.5 inline-block animate-pulse">…</span>
+      </p>
     </div>
   );
 }

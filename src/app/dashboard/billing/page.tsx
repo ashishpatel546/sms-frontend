@@ -310,7 +310,7 @@ export default function BillingPage() {
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-5xl">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Billing</h1>
+        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Billing</h1>
         <p className="text-sm text-gray-500 mt-0.5">
           Your subscription, invoices and payments
         </p>

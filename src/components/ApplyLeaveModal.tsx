@@ -115,7 +115,7 @@ export default function ApplyLeaveModal({ studentId, studentName, onClose, onSuc
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/50">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 shrink-0">
@@ -138,7 +138,7 @@ export default function ApplyLeaveModal({ studentId, studentName, onClose, onSuc
                         <select
                             value={leaveType}
                             onChange={e => handleLeaveTypeChange(e.target.value as LeaveType)}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 bg-white"
                         >
                             {LEAVE_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select>
@@ -205,7 +205,7 @@ export default function ApplyLeaveModal({ studentId, studentName, onClose, onSuc
                             rows={3}
                             maxLength={1000}
                             placeholder="Describe the reason for leave..."
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 resize-none"
                             required
                         />
                         <p className="text-right text-xs text-gray-400 mt-0.5">{reason.length}/1000</p>

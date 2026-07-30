@@ -232,12 +232,12 @@ export default function ExaminationsDataEntryPage() {
     };
 
     return (
-        <main className="p-4 bg-slate-50 min-h-screen">
+        <main className="p-4 sm:p-5">
             <Toaster position="top-right" />
 
             {/* Audit info card */}
             {auditCard && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30" onClick={() => setAuditCard(null)}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/40" onClick={() => setAuditCard(null)}>
                     <div className="bg-white rounded-xl shadow-2xl border border-gray-200 p-5 w-full max-w-xs" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-4">
                             <h4 className="text-sm font-bold text-slate-800">Marks Audit Info</h4>
@@ -269,7 +269,7 @@ export default function ExaminationsDataEntryPage() {
             )}
             <div className="max-w-7xl mx-auto">
                 <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-slate-800">Bulk Data Entry</h1>
+                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Bulk Data Entry</h1>
                     <Link href="/dashboard/examinations" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                         Back to Examinations
@@ -326,7 +326,7 @@ export default function ExaminationsDataEntryPage() {
                         </div>
                     </div>
                     <div className="flex justify-end">
-                        <button onClick={handleFetchStudents} disabled={loading} className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 disabled:opacity-75 disabled:cursor-not-allowed">
+                        <button onClick={handleFetchStudents} disabled={loading} className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-brand/40 disabled:opacity-75 disabled:cursor-not-allowed">
                             {loading ? 'Fetching...' : 'Fetch Students'}
                         </button>
                     </div>
@@ -426,7 +426,7 @@ export default function ExaminationsDataEntryPage() {
                                                 <td className="px-4 py-2 text-center text-slate-600">{m.rollNo || '-'}</td>
                                                 <td className="px-4 py-2">
                                                     {isRowEditable(m) ? (
-                                                        <input type="number" min="0" value={(isSplit ? m.theoryTotalMarks : m.totalMarks) ?? ''} onChange={e => handleMarkChange(m.studentId, isSplit ? 'theoryTotalMarks' : 'totalMarks', e.target.value)} className="w-full text-sm border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 p-1.5" placeholder="Total" />
+                                                        <input type="number" min="0" value={(isSplit ? m.theoryTotalMarks : m.totalMarks) ?? ''} onChange={e => handleMarkChange(m.studentId, isSplit ? 'theoryTotalMarks' : 'totalMarks', e.target.value)} className="w-full text-sm border-gray-300 rounded focus:ring-brand/40 focus:border-brand p-1.5" placeholder="Total" />
                                                     ) : (
                                                         <span className="text-sm text-slate-600">{(isSplit ? m.theoryTotalMarks : m.totalMarks) ?? '-'}</span>
                                                     )}
@@ -434,7 +434,7 @@ export default function ExaminationsDataEntryPage() {
                                                 <td className="px-4 py-2">
                                                     {isRowEditable(m) ? (
                                                         <>
-                                                            <input type="number" min="0" max={(isSplit ? m.theoryTotalMarks : m.totalMarks) ?? ''} value={(isSplit ? m.theoryObtainedMarks : m.obtainedMarks) ?? ''} onChange={e => handleMarkChange(m.studentId, isSplit ? 'theoryObtainedMarks' : 'obtainedMarks', e.target.value)} className={`w-full text-sm rounded p-1.5 ${(isSplit ? isInvalidTh : isInvalidBase) ? 'border-red-500 ring-1 ring-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50 text-red-700' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`} placeholder="Obtained" title={(isSplit ? isInvalidTh : isInvalidBase) ? "Obtained marks cannot exceed Total marks" : ""} />
+                                                            <input type="number" min="0" max={(isSplit ? m.theoryTotalMarks : m.totalMarks) ?? ''} value={(isSplit ? m.theoryObtainedMarks : m.obtainedMarks) ?? ''} onChange={e => handleMarkChange(m.studentId, isSplit ? 'theoryObtainedMarks' : 'obtainedMarks', e.target.value)} className={`w-full text-sm rounded p-1.5 ${(isSplit ? isInvalidTh : isInvalidBase) ? 'border-red-500 ring-1 ring-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50 text-red-700' : 'border-gray-300 focus:ring-brand/40 focus:border-brand'}`} placeholder="Obtained" title={(isSplit ? isInvalidTh : isInvalidBase) ? "Obtained marks cannot exceed Total marks" : ""} />
                                                             {(isSplit ? isInvalidTh : isInvalidBase) && <p className="text-[10px] text-red-600 font-bold mt-1 text-center">Exceeds Total</p>}
                                                         </>
                                                     ) : (

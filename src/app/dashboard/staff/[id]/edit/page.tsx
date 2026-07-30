@@ -354,7 +354,7 @@ export default function EditStaffPage() {
     const sectionsForClass = classes.find(c => c.id.toString() === selectedClass)?.sections || [];
 
     return (
-        <main className="p-4 bg-slate-50 min-h-screen space-y-6">
+        <main className="p-4 sm:p-5 space-y-6">
             <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-slate-200">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold text-slate-800">Edit Staff</h2>
@@ -377,17 +377,17 @@ export default function EditStaffPage() {
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">First Name <span className="text-red-500">*</span></label>
                                 <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} required
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                             </div>
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">Last Name <span className="text-red-500">*</span></label>
                                 <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} required
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                             </div>
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">Gender</label>
                                 <select name="gender" value={formData.gender} onChange={handleChange} required
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
                                     <option value="">Select Gender</option>
                                     <option value="Male">Male</option>
                                     <option value="Female">Female</option>
@@ -397,12 +397,12 @@ export default function EditStaffPage() {
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">Date of Birth</label>
                                 <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} required
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                             </div>
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">Blood Group</label>
                                 <select name="bloodGroup" value={formData.bloodGroup} onChange={handleChange}
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
                                     <option value="">Select Group</option>
                                     <option value="A+">A+</option><option value="A-">A-</option>
                                     <option value="B+">B+</option><option value="B-">B-</option>
@@ -413,7 +413,7 @@ export default function EditStaffPage() {
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">Aadhaar Number <span className="text-gray-400 font-normal">(Optional)</span></label>
                                 <input type="text" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} maxLength={14}
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                             </div>
                         </div>
                     </div>
@@ -431,7 +431,7 @@ export default function EditStaffPage() {
                                 <label className="block mb-1 text-sm font-medium text-gray-900">Mobile <span className="text-red-500">*</span></label>
                                 <input type="tel" name="mobile" value={formData.mobile} onChange={handleChange} required
                                     maxLength={10} inputMode="numeric" placeholder="10-digit number"
-                                    className={`bg-gray-50 border ${formData.mobile.length > 0 && !isValidMobile(formData.mobile) ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5`} />
+                                    className={`bg-gray-50 border ${formData.mobile.length > 0 && !isValidMobile(formData.mobile) ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5`} />
                                 {formData.mobile.length > 0 && !isValidMobile(formData.mobile) && (
                                     <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
                                 )}
@@ -440,7 +440,7 @@ export default function EditStaffPage() {
                                 <label className="block mb-1 text-sm font-medium text-gray-900">Alternate Mobile <span className="text-gray-400 font-normal">(Optional)</span></label>
                                 <input type="tel" name="alternateMobile" value={formData.alternateMobile} onChange={handleChange}
                                     maxLength={10} inputMode="numeric" placeholder="10-digit number"
-                                    className={`bg-gray-50 border ${formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5`} />
+                                    className={`bg-gray-50 border ${formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5`} />
                                 {formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) && (
                                     <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
                                 )}
@@ -512,7 +512,7 @@ export default function EditStaffPage() {
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">Category</label>
                                 <select name="category" value={formData.category} onChange={handleChange} required
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
                                     <option value="">Select Category</option>
                                     {["General", "SC", "ST", "OBC", "EWS"].map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
@@ -520,7 +520,7 @@ export default function EditStaffPage() {
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">Religion</label>
                                 <select name="religion" value={formData.religion} onChange={handleChange} required
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
                                     <option value="">Select Religion</option>
                                     {["HINDU", "MUSLIM", "SIKH", "CHRISTIAN", "PARSI", "OTHERS"].map(r => (
                                         <option key={r} value={r}>{r[0] + r.slice(1).toLowerCase()}</option>
@@ -530,12 +530,12 @@ export default function EditStaffPage() {
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">Father&apos;s Name <span className="text-gray-400 font-normal">(Optional)</span></label>
                                 <input type="text" name="fathersName" value={formData.fathersName} onChange={handleChange}
-                                    placeholder="Father's name" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                    placeholder="Father's name" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                             </div>
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">Mother&apos;s Name <span className="text-gray-400 font-normal">(Optional)</span></label>
                                 <input type="text" name="mothersName" value={formData.mothersName} onChange={handleChange}
-                                    placeholder="Mother's name" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                    placeholder="Mother's name" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                             </div>
                         </div>
                     </div>
@@ -547,7 +547,7 @@ export default function EditStaffPage() {
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">Staff Category <span className="text-red-500">*</span></label>
                                 <select name="staffCategory" value={formData.staffCategory} onChange={handleChange} required
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
                                     <option value="">Select Category</option>
                                     <option value="Teaching Staff">Teaching Staff</option>
                                     <option value="Management">Management</option>
@@ -558,7 +558,7 @@ export default function EditStaffPage() {
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">Designation <span className="text-red-500">*</span></label>
                                 <select name="designationId" value={String(formData.designationId)} onChange={handleChange} required
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
                                     <option value="">Select Designation</option>
                                     {designations.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
                                     {isAdmin && <option value="CREATE_NEW" className="font-bold text-blue-600">+ Create New Designation</option>}
@@ -567,12 +567,12 @@ export default function EditStaffPage() {
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">Joining Date <span className="text-red-500">*</span></label>
                                 <input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleChange} required
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                             </div>
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-900">Exit Date</label>
                                 <input type="date" name="exitDate" value={formData.exitDate} onChange={handleChange}
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                             </div>
                         </div>
                     </div>
@@ -580,15 +580,15 @@ export default function EditStaffPage() {
                     {/* ── ACCOUNT STATUS ── */}
                     <div className="flex items-center">
                         <input id="isActive" name="isActive" type="checkbox" checked={formData.isActive} onChange={handleChange}
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-brand/40" />
                         <label htmlFor="isActive" className="ml-2 text-sm font-medium text-gray-900">Account Active</label>
                     </div>
 
                     <div className="flex items-center space-x-4 border-t pt-6">
-                        <button type="submit" disabled={saving} className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50">
+                        <button type="submit" disabled={saving} className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50">
                             {saving ? 'Saving...' : 'Save Changes'}
                         </button>
-                        <Link href="/dashboard/staff" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5">
+                        <Link href="/dashboard/staff" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-line-strong font-medium rounded-lg text-sm px-5 py-2.5">
                             Cancel
                         </Link>
                     </div>
@@ -643,7 +643,7 @@ export default function EditStaffPage() {
                     <form onSubmit={handleAssignSubject} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                         <div>
                             <label className="block mb-2 text-sm font-medium text-gray-900">Class</label>
-                            <select value={selectedClass} onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection(""); }} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                            <select value={selectedClass} onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection(""); }} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
                                 <option value="">Select Class</option>
                                 {classes.map((c: any) => (
                                     <option key={c.id} value={c.id}>{c.name}</option>
@@ -652,7 +652,7 @@ export default function EditStaffPage() {
                         </div>
                         <div>
                             <label className="block mb-2 text-sm font-medium text-gray-900">Section</label>
-                            <select value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} disabled={!selectedClass} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 disabled:opacity-50">
+                            <select value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} disabled={!selectedClass} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5 disabled:opacity-50">
                                 <option value="">Select Section</option>
                                 {sectionsForClass.map((s: any) => (
                                     <option key={s.id} value={s.id}>{s.name}</option>
@@ -661,7 +661,7 @@ export default function EditStaffPage() {
                         </div>
                         <div>
                             <label className="block mb-2 text-sm font-medium text-gray-900">Subject</label>
-                            <select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                            <select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
                                 <option value="">Select Subject</option>
                                 {subjects.map((s: any) => (
                                     <option key={s.id} value={s.id}>{s.name}</option>
@@ -683,11 +683,11 @@ export default function EditStaffPage() {
 
             {/* Designation Creation Modal */}
             {showDesModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55">
                     <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-sm">
                         <h3 className="text-lg font-bold mb-4">Create New Designation</h3>
                         <form onSubmit={handleCreateDesignation}>
-                            <input type="text" value={newDesTitle} onChange={e => setNewDesTitle(e.target.value)} placeholder="Designation Title (e.g. Principal)" className="w-full border p-2 rounded mb-4 focus:ring-2 focus:ring-blue-500 focus:outline-none" autoFocus required />
+                            <input type="text" value={newDesTitle} onChange={e => setNewDesTitle(e.target.value)} placeholder="Designation Title (e.g. Principal)" className="w-full border p-2 rounded mb-4 focus:ring-2 focus:ring-brand/40 focus:outline-none" autoFocus required />
                             <div className="flex justify-end gap-2">
                                 <button type="button" onClick={() => { setShowDesModal(false); setNewDesTitle(""); setFormData({...formData, designationId: ""}); }} className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
                                 <button type="submit" disabled={creatingDes} className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">{creatingDes ? "Creating..." : "Create"}</button>

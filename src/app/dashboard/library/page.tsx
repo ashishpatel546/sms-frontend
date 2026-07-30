@@ -379,7 +379,7 @@ function BooksTab() {
 
       {/* Bulk Upload Modal */}
       {showBulkModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/55">
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between p-4 border-b dark:border-slate-700">
               <h3 className="text-lg font-semibold">Bulk Import Books</h3>
@@ -421,8 +421,8 @@ function BooksTab() {
                 {bulkResult && (
                   <div className={`p-4 mb-4 text-sm rounded-lg border ${bulkResult.failed > 0 ? 'bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300' : 'bg-green-50 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300'}`}>
                     <p className="font-bold mb-2">Import Results:</p>
-                    <p>✅ {bulkResult.successful} books successfully imported.</p>
-                    {bulkResult.failed > 0 && <p>❌ {bulkResult.failed} failed.</p>}
+                    <p>{bulkResult.successful} books successfully imported.</p>
+                    {bulkResult.failed > 0 && <p>{bulkResult.failed} failed.</p>}
                     {bulkResult.errors.length > 0 && (
                       <div className="mt-2 max-h-32 overflow-y-auto text-xs bg-white dark:bg-slate-800 p-2 rounded border border-orange-100">
                         {bulkResult.errors.map((err, i) => (
@@ -509,7 +509,7 @@ function BookFormModal({ book, onClose, onSaved }: { book: Book | null; onClose:
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-walnut-950/55 flex items-center justify-center p-4">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
         <h3 className="text-lg font-semibold mb-4">{isEdit ? 'Edit Book' : 'Add Book'}</h3>
         <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
@@ -573,7 +573,7 @@ function IncreaseCopiesModal({ book, onClose, onSaved }: { book: Book; onClose: 
   const n = parseInt(additionalCopies) || 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-walnut-950/55 flex items-center justify-center p-4">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-sm p-6">
         <h3 className="text-lg font-semibold mb-1">Increase Copies</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
@@ -664,7 +664,7 @@ function DiscardModal({ book, onClose, onDiscarded }: { book: Book; onClose: () 
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div className="fixed inset-0 z-50 bg-walnut-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md overflow-hidden">
         {/* Header */}
         <div className="bg-linear-to-r from-red-500 to-rose-600 p-5 text-white">
@@ -744,7 +744,7 @@ function DiscardModal({ book, onClose, onDiscarded }: { book: Book; onClose: () 
             <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Cancel</button>
             <button type="submit" disabled={saving || (!isAll && (copies < 1 || copies > book.availableCopies))}
               className="flex-1 py-2.5 rounded-xl bg-linear-to-r from-red-500 to-rose-600 text-white text-sm font-semibold hover:from-red-600 hover:to-rose-700 disabled:opacity-50 transition-all shadow-sm shadow-red-500/20">
-              {saving ? 'Discarding…' : isFullDiscard ? '⚠️ Discard All' : `Discard ${effectiveCopies || '—'} ${effectiveCopies === 1 ? 'Copy' : 'Copies'}`}
+              {saving ? 'Discarding…' : isFullDiscard ? 'Discard All' : `Discard ${effectiveCopies || '—'} ${effectiveCopies === 1 ? 'Copy' : 'Copies'}`}
             </button>
           </div>
         </form>
@@ -1287,7 +1287,7 @@ function ReturnModal({ issuance, onClose, onReturned }: { issuance: Issuance; on
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-walnut-950/55 flex items-center justify-center p-4">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6">
         <h3 className="text-lg font-semibold mb-3">Return Book</h3>
 
@@ -1821,7 +1821,7 @@ export default function LibraryPage() {
     : ['My Books'];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-6">
+    <div className="p-4 sm:p-5">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
@@ -1829,7 +1829,7 @@ export default function LibraryPage() {
             <BookOpen className="w-6 h-6 text-lime-700 dark:text-lime-400" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Library</h1>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Library</h1>
             <p className="text-xs text-slate-500">Manage books, issuances and late fees</p>
           </div>
         </div>

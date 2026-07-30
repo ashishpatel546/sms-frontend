@@ -32,7 +32,7 @@ export default function LeaveCancellationModal({ leave, isApproved, onClose, onC
     const canConfirm = !isApproved || action !== "";
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/50">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
@@ -103,7 +103,7 @@ export default function LeaveCancellationModal({ leave, isApproved, onClose, onC
                             rows={3}
                             maxLength={500}
                             placeholder="Add a note for the parent/student..."
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 resize-none"
                         />
                         <p className="text-right text-xs text-gray-400 mt-0.5">{note.length}/500</p>
                     </div>

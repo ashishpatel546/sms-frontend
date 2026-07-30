@@ -207,7 +207,7 @@ export default function BulkPromotionsPage() {
 
     return (
         <main className="p-4 max-w-7xl mx-auto">
-            <h1 className="text-2xl font-bold text-slate-800 mb-6">Bulk Student Promotions</h1>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Bulk Student Promotions</h1>
 
             {/* Top Bar: Source Filters & Destination Settings */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -224,7 +224,7 @@ export default function BulkPromotionsPage() {
                             <select
                                 value={fromSessionId}
                                 onChange={(e) => setFromSessionId(e.target.value)}
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                             >
                                 <option value="">Select Session...</option>
                                 {sessions.map(s => <option key={s.id} value={s.id}>{s.name} {s.isActive ? '(Active)' : ''}</option>)}
@@ -235,7 +235,7 @@ export default function BulkPromotionsPage() {
                             <select
                                 value={fromClassId}
                                 onChange={handleFromClassChange}
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                             >
                                 <option value="">Select Class...</option>
                                 {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -247,7 +247,7 @@ export default function BulkPromotionsPage() {
                                 value={fromSectionId}
                                 onChange={(e) => setFromSectionId(e.target.value)}
                                 disabled={!fromClassId}
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <option value="">Select Section...</option>
                                 {fromSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -458,7 +458,7 @@ export default function BulkPromotionsPage() {
 
             {/* History Modal */}
             {historyModalStudent && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 overflow-y-auto">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/55 overflow-y-auto">
                     <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                         <div className="flex justify-between items-center p-6 border-b border-slate-200">
                             <div>

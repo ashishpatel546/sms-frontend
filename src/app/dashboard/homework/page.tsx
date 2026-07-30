@@ -312,7 +312,7 @@ export default function HomeworkPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">📚 Homework</h1>
+                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Homework</h1>
                     <p className="text-slate-500 text-sm mt-0.5">Manage and send homework to students by class and section.</p>
                 </div>
                 <button
@@ -339,7 +339,7 @@ export default function HomeworkPage() {
                                 setSelectedClassName(cls?.name || "");
                                 setHomework([]);
                             }}
-                            className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand/40"
                         >
                             <option value="">— Select Class —</option>
                             {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -356,7 +356,7 @@ export default function HomeworkPage() {
                                 setSelectedSectionId(id || null);
                                 setSelectedSectionName(sec?.name || "");
                             }}
-                            className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand/40 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <option value="">— Select Section —</option>
                             {sections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -496,12 +496,12 @@ export default function HomeworkPage() {
 
             {/* ── Send Homework Modal ── */}
             {showSendModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/55 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
                         {/* Modal Header */}
                         <div className="px-4 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
                             <div>
-                                <h2 className="text-lg font-bold text-slate-900">📝 Send Homework</h2>
+                                <h2 className="text-lg font-bold text-slate-900">Send Homework</h2>
                                 <p className="text-xs text-slate-500 mt-0.5">{selectedClassName} — Section {selectedSectionName}</p>
                             </div>
                             <button onClick={() => setShowSendModal(false)} className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
@@ -588,7 +588,7 @@ export default function HomeworkPage() {
                                                 placeholder="e.g. Mathematics"
                                                 value={row.subject}
                                                 onChange={(e) => updateRow(i, "subject", e.target.value)}
-                                                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                                                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 bg-white"
                                             />
                                             <div className="flex flex-col gap-1 sm:contents">
                                                 <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide sm:hidden">Homework</span>
@@ -597,7 +597,7 @@ export default function HomeworkPage() {
                                                     value={row.message}
                                                     onChange={(e) => updateRow(i, "message", e.target.value)}
                                                     rows={4}
-                                                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white sm:rows-2"
+                                                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand/40 bg-white sm:rows-2"
                                                 />
                                             </div>
                                             <button
@@ -647,7 +647,7 @@ export default function HomeworkPage() {
 
                             {modalRows.some((r) => r.file) && (
                                 <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-700">
-                                    ⚠️ Uploaded worksheets are kept for <strong>60 days only</strong>, then deleted automatically along with the homework.
+                                    Uploaded worksheets are kept for <strong>60 days only</strong>, then deleted automatically along with the homework.
                                 </div>
                             )}
 
@@ -675,7 +675,7 @@ export default function HomeworkPage() {
 
             {/* ── Edit Modal ── */}
             {editEntry && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/55 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
                         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                             <h2 className="text-lg font-bold text-slate-900">✏️ Edit Homework</h2>
@@ -692,7 +692,7 @@ export default function HomeworkPage() {
                                     value={editSubject}
                                     onChange={(e) => setEditSubject(e.target.value)}
                                     placeholder="e.g. Mathematics"
-                                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
                                 />
                             </div>
                             <div>
@@ -701,7 +701,7 @@ export default function HomeworkPage() {
                                     value={editMessage}
                                     onChange={(e) => setEditMessage(e.target.value)}
                                     rows={4}
-                                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand/40"
                                 />
                             </div>
                             <div>
@@ -729,7 +729,7 @@ export default function HomeworkPage() {
                                             onChange={(e) => { const f = e.target.files?.[0]; if (f) handleEditWorksheetFile(f); e.target.value = ""; }} />
                                     </label>
                                 )}
-                                <p className="mt-1.5 text-[11px] text-amber-600">⚠️ Worksheets are kept for 60 days only.</p>
+                                <p className="mt-1.5 text-[11px] text-amber-600">Worksheets are kept for 60 days only.</p>
                             </div>
                         </div>
                         <div className="px-6 py-4 border-t border-slate-100 flex gap-3 justify-end">

@@ -8,7 +8,9 @@ import {
     Plus,
     Menu,
     QrCode,
+    type LucideIcon,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface BottomTabBarProps {
     /** Called when the "More" tab is tapped — parent toggles the sidebar drawer */
@@ -18,12 +20,12 @@ interface BottomTabBarProps {
 }
 
 /**
- * Mobile-only bottom tab bar for the admin/staff dashboard.
- * Hidden on md+ (tablet & desktop use the sidebar instead).
+ * Mobile-only bottom tab bar. Hidden on md+ (tablet and desktop use the rail).
  *
- * 5 tabs: Home | Scan QR | + (Quick Actions) | Alerts | More
- * – "+" opens a Quick Actions bottom sheet.
- * – "More" opens the sidebar drawer which contains all nav + Profile + Sign out.
+ * Five destinations is the ceiling for a bottom bar, and this is exactly five:
+ * Home | Scan QR | + (quick actions) | Alerts | More. The active tab is marked
+ * by a lapis bar above the icon — the same marker as the rail and the tabs, so
+ * "you are here" looks the same everywhere in the app.
  */
 export function BottomTabBar({ onMoreClick, onPlusClick }: BottomTabBarProps) {
     const pathname = usePathname();
@@ -33,81 +35,45 @@ export function BottomTabBar({ onMoreClick, onPlusClick }: BottomTabBarProps) {
             ? pathname === "/dashboard"
             : pathname.startsWith(href);
 
-    const tabs = [
-        { label: "Home",   href: "/dashboard",              icon: LayoutDashboard },
-        { label: "Alerts", href: "/dashboard/notifications", icon: Bell            },
-    ] as const;
-
     return (
         <nav
-            aria-label="Main navigation"
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white/92 dark:bg-surface/95 backdrop-blur-xl border-t border-slate-200/60 dark:border-white/10 shadow-[0_-4px_20px_-2px_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom)] md:hidden"
+            aria-label="Primary"
+            className="fixed right-0 bottom-0 left-0 z-50 border-t border-line bg-surface-glass pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_-2px_rgba(16,23,40,0.08)] backdrop-blur-xl md:hidden"
         >
-            <div className="flex items-center justify-between px-2 h-[60px] relative">
-                {/* 1. Home */}
-                <Link
-                    href="/dashboard"
-                    aria-current={isActive("/dashboard") ? "page" : undefined}
-                    className={`relative flex flex-col items-center justify-center w-full h-full gap-0.5 transition-colors ${
-                        isActive("/dashboard") ? "text-violet-500" : "text-ink-muted"
-                    }`}
-                >
-                    {isActive("/dashboard") && (
-                        <span className="absolute top-1 w-5 h-0.5 rounded-full bg-violet-500" />
-                    )}
-                    <LayoutDashboard className="w-5 h-5" aria-hidden />
-                    <span className="text-[10px] font-medium">Home</span>
-                </Link>
-
-                {/* 2. Scan QR */}
-                <Link
+            <div className="relative flex h-15 items-stretch justify-between px-1">
+                <Tab href="/dashboard" label="Home" icon={LayoutDashboard} active={isActive("/dashboard")} />
+                <Tab
                     href="/dashboard/pickup/scan"
-                    aria-current={isActive("/dashboard/pickup/scan") ? "page" : undefined}
-                    className={`relative flex flex-col items-center justify-center w-full h-full gap-0.5 transition-colors ${
-                        isActive("/dashboard/pickup/scan") ? "text-teal-500" : "text-ink-muted"
-                    }`}
-                >
-                    {isActive("/dashboard/pickup/scan") && (
-                        <span className="absolute top-1 w-5 h-0.5 rounded-full bg-teal-500" />
-                    )}
-                    <QrCode className="w-5 h-5" aria-hidden />
-                    <span className="text-[10px] font-medium">Scan QR</span>
-                </Link>
+                    label="Scan"
+                    icon={QrCode}
+                    active={isActive("/dashboard/pickup/scan")}
+                />
 
-                {/* 3. Quick Actions "+" — centre focal button */}
-                <div className="flex flex-col items-center justify-center w-full h-full relative">
+                {/* Quick actions — the centre focal control */}
+                <div className="relative flex w-full flex-col items-center justify-end pb-1.5">
                     <button
                         onClick={onPlusClick}
                         aria-label="Quick actions"
-                        className="absolute -top-6 flex items-center justify-center w-14 h-14 rounded-full bg-linear-to-br from-brand to-brand-light shadow-lg shadow-brand/30 border-4 border-white dark:border-surface hover:scale-105 active:scale-95 transition-transform"
+                        className="absolute -top-5 flex size-13 cursor-pointer items-center justify-center rounded-full border-4 border-surface bg-linear-to-br from-brass-400 to-brass-600 shadow-brand transition-transform active:scale-95"
                     >
-                        <Plus className="w-6 h-6 text-white" aria-hidden />
+                        <Plus className="size-6 text-white" aria-hidden />
                     </button>
-                    <span className="text-[10px] font-medium mt-auto mb-1 text-ink-muted">Actions</span>
+                    <span className="text-[10px] font-medium text-ink-faint">Actions</span>
                 </div>
 
-                {/* 4. Alerts */}
-                <Link
+                <Tab
                     href="/dashboard/notifications"
-                    aria-current={isActive("/dashboard/notifications") ? "page" : undefined}
-                    className={`relative flex flex-col items-center justify-center w-full h-full gap-0.5 transition-colors ${
-                        isActive("/dashboard/notifications") ? "text-sky-500" : "text-ink-muted"
-                    }`}
-                >
-                    {isActive("/dashboard/notifications") && (
-                        <span className="absolute top-1 w-5 h-0.5 rounded-full bg-sky-500" />
-                    )}
-                    <Bell className="w-5 h-5" aria-hidden />
-                    <span className="text-[10px] font-medium">Alerts</span>
-                </Link>
+                    label="Alerts"
+                    icon={Bell}
+                    active={isActive("/dashboard/notifications")}
+                />
 
-                {/* 5. More — opens the sidebar drawer */}
                 <button
                     onClick={onMoreClick}
-                    className="flex flex-col items-center justify-center w-full h-full gap-0.5 text-ink-muted"
+                    className="flex w-full cursor-pointer flex-col items-center justify-center gap-0.5 text-ink-muted transition-colors active:text-ink"
                     aria-label="Open navigation menu"
                 >
-                    <Menu className="w-5 h-5" aria-hidden />
+                    <Menu className="size-5" aria-hidden />
                     <span className="text-[10px] font-medium">More</span>
                 </button>
             </div>
@@ -115,3 +81,31 @@ export function BottomTabBar({ onMoreClick, onPlusClick }: BottomTabBarProps) {
     );
 }
 
+function Tab({
+    href,
+    label,
+    icon: Icon,
+    active,
+}: {
+    href: string;
+    label: string;
+    icon: LucideIcon;
+    active: boolean;
+}) {
+    return (
+        <Link
+            href={href}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+                "relative flex w-full flex-col items-center justify-center gap-0.5 transition-colors",
+                active ? "text-brand" : "text-ink-muted active:text-ink",
+            )}
+        >
+            {active && (
+                <span aria-hidden className="absolute top-1 h-0.5 w-5 rounded-full bg-brand" />
+            )}
+            <Icon className="size-5" aria-hidden />
+            <span className="text-[10px] font-medium">{label}</span>
+        </Link>
+    );
+}

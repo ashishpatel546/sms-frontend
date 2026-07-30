@@ -90,7 +90,7 @@ export default function SalaryConfigPage() {
   return (
     <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
-      <h1 className="text-xl font-bold text-gray-900">Salary Configuration</h1>
+      <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Salary Configuration</h1>
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200">
@@ -355,7 +355,7 @@ export default function SalaryConfigPage() {
 
       {/* Component form modal */}
       {showCompForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+        <div className="fixed inset-0 bg-walnut-950/55 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 w-full sm:max-w-md space-y-4 max-h-[90vh] overflow-y-auto">
             <h2 className="font-semibold text-lg">{compEditId ? "Edit" : "New"} Component</h2>
             <div className="grid grid-cols-2 gap-3">
@@ -405,7 +405,7 @@ export default function SalaryConfigPage() {
 
       {/* CTC form modal */}
       {showCtcForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-walnut-950/55 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm space-y-4">
             <h2 className="font-semibold text-lg">Set Employee CTC</h2>
             <StaffPicker

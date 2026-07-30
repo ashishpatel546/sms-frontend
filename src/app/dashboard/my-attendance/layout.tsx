@@ -1,5 +1,6 @@
 'use client';
 
+import { Clock } from 'lucide-react';
 import FeatureGate from '@/components/dashboard/FeatureGate';
 
 export default function MyAttendanceLayout({ children }: { children: React.ReactNode }) {
@@ -7,8 +8,7 @@ export default function MyAttendanceLayout({ children }: { children: React.React
     <FeatureGate
       flag="hr_portal"
       title="HR Portal"
-      icon="🕒"
-      spinnerClass="border-emerald-600"
+      icon={<Clock />}
     >
       {children}
     </FeatureGate>

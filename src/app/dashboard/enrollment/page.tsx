@@ -274,7 +274,7 @@ export default function EnrollmentPage() {
             header: (
                 <input
                     type="checkbox"
-                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-brand/40 cursor-pointer"
                     checked={filteredStudents.length > 0 && selectedStudentIds.length === filteredStudents.length}
                     onChange={(e) => {
                         if (e.target.checked) {
@@ -289,7 +289,7 @@ export default function EnrollmentPage() {
             render: (s: any) => (
                 <input
                     type="checkbox"
-                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-brand/40 cursor-pointer"
                     checked={selectedStudentIds.includes(s.id)}
                     onChange={(e) => {
                         if (e.target.checked) {
@@ -343,7 +343,7 @@ export default function EnrollmentPage() {
     ];
 
     return (
-        <main className="p-4 bg-slate-50 min-h-screen">
+        <main className="p-4 sm:p-5">
             <Toaster position="top-right" />
             <div className="max-w-6xl mx-auto">
                 <div className="bg-white p-8 rounded-lg shadow-sm border border-slate-200 mb-6">
@@ -357,7 +357,7 @@ export default function EnrollmentPage() {
                                 <select
                                     value={filterClass}
                                     onChange={(e) => setFilterClass(e.target.value)}
-                                    className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                    className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                 >
                                     <option value="">All Classes</option>
                                     {classes.map((c: any) => (
@@ -370,7 +370,7 @@ export default function EnrollmentPage() {
                                 <select
                                     value={filterSection}
                                     onChange={(e) => setFilterSection(e.target.value)}
-                                    className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                    className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                     disabled={!filterClass || loadingFilterSections}
                                 >
                                     <option value="">{loadingFilterSections ? "Loading sections..." : "All Sections"}</option>
@@ -386,7 +386,7 @@ export default function EnrollmentPage() {
                                     placeholder="ID, Name or Email"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                    className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                 />
                             </div>
                         </div>
@@ -394,7 +394,7 @@ export default function EnrollmentPage() {
                             <button
                                 onClick={handleSearch}
                                 disabled={searchLoading}
-                                className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 focus:outline-none"
+                                className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-brand/40 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 focus:outline-none"
                             >
                                 {searchLoading ? 'Searching...' : 'Search Students'}
                             </button>
@@ -430,7 +430,7 @@ export default function EnrollmentPage() {
 
                     {/* Enrollment Form Modal */}
                     {showEditModal && selectedStudent && studentData && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm">
                             <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
                                 <h3 className="text-xl font-bold mb-6 text-slate-800">
                                     Edit Enrollment: <span className="text-blue-600">[#{studentData.id}] {studentData.firstName} {studentData.lastName}</span>
@@ -447,7 +447,7 @@ export default function EnrollmentPage() {
                                                     id="class"
                                                     value={selectedClass}
                                                     onChange={(e) => setSelectedClass(e.target.value)}
-                                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                                     required
                                                 >
                                                     <option value="">Choose a class</option>
@@ -464,7 +464,7 @@ export default function EnrollmentPage() {
                                                     id="section"
                                                     value={selectedSection}
                                                     onChange={(e) => setSelectedSection(e.target.value)}
-                                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                                     required
                                                     disabled={!selectedClass || loadingModalSections}
                                                 >
@@ -482,7 +482,7 @@ export default function EnrollmentPage() {
                                                     id="session"
                                                     value={selectedSessionId}
                                                     onChange={(e) => setSelectedSessionId(e.target.value === "" ? "" : Number(e.target.value))}
-                                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                                     required
                                                 >
                                                     <option value="">Choose a session</option>
@@ -529,7 +529,7 @@ export default function EnrollmentPage() {
                                                         value={subject.id}
                                                         checked={selectedSubjects.includes(subject.id.toString())}
                                                         onChange={() => handleSubjectToggle(subject.id.toString())}
-                                                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                                                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-brand/40 focus:ring-2 cursor-pointer"
                                                     />
                                                     <label htmlFor={`subject-${subject.id}`} className="ml-2 text-sm font-medium text-gray-900 cursor-pointer select-none">
                                                         {subject.name}
@@ -551,7 +551,7 @@ export default function EnrollmentPage() {
                                         <button
                                             type="submit"
                                             disabled={loading}
-                                            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50"
+                                            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50"
                                         >
                                             {loading ? 'Saving Enrollment...' : 'Update Enrollment'}
                                         </button>
@@ -563,7 +563,7 @@ export default function EnrollmentPage() {
 
                     {/* Bulk Assign Subjects Modal */}
                     {showBulkModal && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm">
                             <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                                 <h3 className="text-xl font-bold mb-6 text-slate-800">
                                     Bulk Assign Subjects ({selectedStudentIds.length} students)
@@ -580,7 +580,7 @@ export default function EnrollmentPage() {
                                                     value="REPLACE"
                                                     checked={bulkActionType === "REPLACE"}
                                                     onChange={(e) => setBulkActionType(e.target.value as "ADD" | "REPLACE")}
-                                                    className="text-blue-600 focus:ring-blue-500"
+                                                    className="text-blue-600 focus:ring-brand/40"
                                                 />
                                                 <span className="text-sm font-medium text-gray-900">Replace existing subjects</span>
                                             </label>
@@ -591,7 +591,7 @@ export default function EnrollmentPage() {
                                                     value="ADD"
                                                     checked={bulkActionType === "ADD"}
                                                     onChange={(e) => setBulkActionType(e.target.value as "ADD" | "REPLACE")}
-                                                    className="text-blue-600 focus:ring-blue-500"
+                                                    className="text-blue-600 focus:ring-brand/40"
                                                 />
                                                 <span className="text-sm font-medium text-gray-900">Add to existing subjects</span>
                                             </label>
@@ -616,7 +616,7 @@ export default function EnrollmentPage() {
                                                                     : prev.filter(id => id !== idStr)
                                                             );
                                                         }}
-                                                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                                                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-brand/40 focus:ring-2 cursor-pointer"
                                                     />
                                                     <label htmlFor={`bulk-subject-${subject.id}`} className="ml-2 text-sm font-medium text-gray-900 cursor-pointer select-none">
                                                         {subject.name}

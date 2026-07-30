@@ -1,12 +1,27 @@
+/* eslint-disable @typescript-eslint/no-explicit-any --
+   This file's whole job is to accept the old, untyped column shape so existing
+   callers keep working. `any` is the compatibility surface, not an oversight —
+   new code uses DataTable directly, which is generic over the row type. */
 import React from 'react';
+import { DataTable, type Column as DataColumn } from '@/components/ui/DataTable';
 
+/**
+ * DEPRECATED — an adapter, kept so the pages already using it pick up the new
+ * table treatment without being rewritten.
+ *
+ * It maps the old column shape onto <DataTable/>, which is where sorting, the
+ * register's margin rule, the sticky header, the mobile card fallback and the
+ * empty/loading states now live. New code should use DataTable directly: it
+ * gives typed rows, per-column alignment, and control over how a row collapses
+ * into a card on a phone.
+ */
 interface Column {
     header: React.ReactNode;
-    accessor?: string; // Key to access data
-    render?: (row: any) => React.ReactNode; // Custom render function
-    className?: string; // Custom class for header/cell
-    sortable?: boolean; // Enable sorting for this column
-    sortKey?: string; // Key to sort by if different from accessor (or if accessor is missing)
+    accessor?: string;
+    render?: (row: any) => React.ReactNode;
+    className?: string;
+    sortable?: boolean;
+    sortKey?: string;
 }
 
 interface TableProps {
@@ -18,100 +33,60 @@ interface TableProps {
     defaultSortDirection?: 'asc' | 'desc';
 }
 
+/** "Status"/"Actions" read better pinned to the top-right corner of a card. */
+function cardRole(header: React.ReactNode, index: number): DataColumn<any>['card'] {
+    const text = typeof header === 'string' ? header.toLowerCase() : '';
+    if (text === 'status' || text === 'actions' || text === 'action') return 'trailing';
+    // The card needs a headline, but an "ID" column makes a poor one — so when
+    // the first column is an id, the second one leads instead.
+    if (index === 0 && text !== 'id' && text !== '#') return 'title';
+    if (index === 1 && text !== 'id') return 'title';
+    return 'field';
+}
+
 const Table: React.FC<TableProps> = ({
     columns,
     data,
     loading = false,
-    emptyMessage = "No data found",
+    emptyMessage = 'No data found',
     defaultSortColumn,
-    defaultSortDirection = 'asc'
+    defaultSortDirection = 'asc',
 }) => {
-    const [sortConfig, setSortConfig] = React.useState<{ key: string | null; direction: 'asc' | 'desc' }>({
-        key: defaultSortColumn || null,
-        direction: defaultSortDirection,
-    });
+    const mapped: DataColumn<any>[] = React.useMemo(() => {
+        // Only the first column that qualifies becomes the card's headline; any
+        // later candidate falls back to a labelled field. Resolved up front so
+        // the map below stays a pure transform.
+        const titleIndex = columns.findIndex((col, i) => cardRole(col.header, i) === 'title');
 
-    const handleSort = (key: string) => {
-        let direction: 'asc' | 'desc' = 'asc';
-        if (sortConfig.key === key && sortConfig.direction === 'asc') {
-            direction = 'desc';
-        }
-        setSortConfig({ key, direction });
-    };
-
-    const sortedData = React.useMemo(() => {
-        if (!sortConfig.key || !data) return data;
-
-        return [...data].sort((a, b) => {
-            const aValue = a[sortConfig.key!];
-            const bValue = b[sortConfig.key!];
-
-            if (aValue < bValue) {
-                return sortConfig.direction === 'asc' ? -1 : 1;
-            }
-            if (aValue > bValue) {
-                return sortConfig.direction === 'asc' ? 1 : -1;
-            }
-            return 0;
+        return columns.map((col, index) => {
+            const key = col.sortKey || col.accessor || `col-${index}`;
+            const role = cardRole(col.header, index);
+            const card = role === 'title' && index !== titleIndex ? 'field' : role;
+            return {
+                key,
+                header: col.header,
+                accessor: col.accessor ? (row: any) => row[col.accessor!] : undefined,
+                render: col.render ? (row: any) => col.render!(row) : undefined,
+                sortValue: (row: any) => row[col.sortKey || col.accessor || ''],
+                sortable: col.sortable,
+                className: col.className,
+                card,
+            };
         });
-    }, [data, sortConfig]);
-
-    if (loading) {
-        return <div className="p-4 text-center text-gray-500">Loading...</div>;
-    }
-
-    if (!data || data.length === 0) {
-        return <div className="p-4 text-center text-gray-500">{emptyMessage}</div>;
-    }
+    }, [columns]);
 
     return (
-        <div className="overflow-x-auto relative shadow-md sm:rounded-lg border border-gray-200">
-            <table className="w-full text-sm text-left text-gray-500">
-                <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                    <tr>
-                        {columns.map((col, index) => {
-                            const sortKey = col.sortKey || col.accessor;
-                            const isSorted = sortConfig.key === sortKey;
-
-                            return (
-                                <th
-                                    key={index}
-                                    scope="col"
-                                    className={`py-3 px-6 ${col.className || ''} ${col.sortable ? 'cursor-pointer hover:bg-gray-100 select-none group' : ''}`}
-                                    onClick={() => col.sortable && sortKey && handleSort(sortKey)}
-                                >
-                                    <div className="flex items-center gap-1">
-                                        {col.header}
-                                        {col.sortable && (
-                                            <span className="text-gray-400">
-                                                {isSorted ? (
-                                                    sortConfig.direction === 'asc' ? '↑' : '↓'
-                                                ) : (
-                                                    <span className="opacity-0 group-hover:opacity-50">↕</span>
-                                                )}
-                                            </span>
-                                        )}
-                                    </div>
-                                </th>
-                            );
-                        })}
-                    </tr>
-                </thead>
-                <tbody>
-                    {sortedData.map((row, rowIndex) => (
-                        <tr key={rowIndex} className="bg-white border-b hover:bg-gray-50">
-                            {columns.map((col, colIndex) => (
-                                <td key={colIndex} className={`py-4 px-6 ${col.className || ''}`}>
-                                    {col.render
-                                        ? col.render(row)
-                                        : (col.accessor ? row[col.accessor] : '-')}
-                                </td>
-                            ))}
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
+        <DataTable
+            columns={mapped}
+            data={data}
+            loading={loading}
+            emptyMessage={emptyMessage}
+            defaultSort={
+                defaultSortColumn
+                    ? { key: defaultSortColumn, direction: defaultSortDirection }
+                    : undefined
+            }
+        />
     );
 };
 

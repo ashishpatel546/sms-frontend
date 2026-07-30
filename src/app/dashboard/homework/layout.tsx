@@ -1,5 +1,6 @@
 'use client';
 
+import { Pencil } from 'lucide-react';
 import FeatureGate from '@/components/dashboard/FeatureGate';
 
 export default function HomeworkLayout({ children }: { children: React.ReactNode }) {
@@ -7,8 +8,8 @@ export default function HomeworkLayout({ children }: { children: React.ReactNode
     <FeatureGate
       flag="homework_management"
       title="Homework"
-      icon="📝"
-      spinnerClass="border-pink-600"
+      icon={<Pencil />}
+
     >
       {children}
     </FeatureGate>

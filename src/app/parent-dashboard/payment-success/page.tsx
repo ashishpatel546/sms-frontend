@@ -71,7 +71,7 @@ function PaymentSuccessContent() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </div>
-                    <h1 className="text-ink text-2xl font-bold mb-2">Verification Failed</h1>
+                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Verification Failed</h1>
                     <p className="text-red-400 mb-8">{error}</p>
                     <Link href="/parent-dashboard" className="w-full inline-flex justify-center items-center py-3 px-4 bg-slate-100 hover:bg-slate-200 text-ink font-semibold rounded-xl transition-all shadow-lg">
                         Return to Dashboard
@@ -89,7 +89,7 @@ function PaymentSuccessContent() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
                 </div>
-                <h1 className="text-ink text-3xl font-bold mb-2">Payment Successful!</h1>
+                <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Payment Successful!</h1>
                 <p className="text-ink-muted mb-8">
                     Thank you for your payment. Your transaction has been securely processed and recorded.
                 </p>

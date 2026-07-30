@@ -162,7 +162,7 @@ export default function StaffPicker({
                         onChange={handleInputChange}
                         placeholder={placeholder}
                         required={required && !selected}
-                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 pr-8"
+                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5 pr-8"
                     />
                     {loading && (
                         <div className="absolute right-2.5 top-1/2 -translate-y-1/2">

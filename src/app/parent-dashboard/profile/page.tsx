@@ -1,5 +1,6 @@
 "use client";
 
+import { Smartphone, Monitor } from 'lucide-react';
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getUser, getRefreshToken, setTokens, removeToken, authFetch, logout } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
@@ -179,7 +180,7 @@ export default function ParentProfilePage() {
 
     return (
         <div className="max-w-4xl mx-auto">
-            <h1 className="text-2xl font-bold text-ink mb-6">Account Settings</h1>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Account Settings</h1>
 
             {/* Sign Out card — quick logout for the current device.
                 Works on tenant-aware logout() helper (clears tokens for this user only). */}
@@ -387,7 +388,9 @@ export default function ParentProfilePage() {
                                         <li key={session.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-brand/5 transition-colors">
                                             <div className="flex items-start gap-4">
                                                 <div className="p-2.5 bg-brand/10 text-brand rounded-xl text-lg flex-shrink-0">
-                                                    {session.deviceInfo?.toLowerCase().includes("mobile") || session.deviceInfo?.toLowerCase().includes("android") || session.deviceInfo?.toLowerCase().includes("iphone") ? '📱' : '💻'}
+                                                    {session.deviceInfo?.toLowerCase().includes("mobile") || session.deviceInfo?.toLowerCase().includes("android") || session.deviceInfo?.toLowerCase().includes("iphone")
+                                                        ? <Smartphone className="size-5" aria-hidden />
+                                                        : <Monitor className="size-5" aria-hidden />}
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="font-semibold text-ink flex flex-wrap items-center gap-2">

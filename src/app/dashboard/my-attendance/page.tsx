@@ -10,6 +10,7 @@ import { startRegistration, startAuthentication } from "@simplewebauthn/browser"
 import { getOrCreateDeviceKeyPair, signChallenge, getDevicePublicKey, clearDeviceKeyPair } from "@/lib/device-crypto";
 import { todayLocalDate } from "@/lib/utils";
 import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
+import { CheckCircle2 } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import dayjs from "dayjs";
@@ -456,13 +457,13 @@ export default function MyAttendancePage() {
   return (
     <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
-      <h1 className="text-xl font-bold text-gray-900">My Attendance</h1>
+      <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">My Attendance</h1>
 
       {/* ── Pending checkout banner — blocks new check-in ── */}
       {pendingCheckOut && (
         <div className="rounded-xl border-2 border-red-300 bg-red-50 p-4 flex flex-col gap-3">
           <div>
-            <p className="text-sm font-bold text-red-800">⚠️ Unclosed Check-In from {pendingCheckOut.date}</p>
+            <p className="text-sm font-bold text-red-800">Unclosed Check-In from {pendingCheckOut.date}</p>
             <p className="text-xs text-red-600 mt-0.5">
               You checked in at {dayjs(pendingCheckOut.checkInTime).format('YYYY-MM-DD HH:mm:ss')} but never checked out.
               Please resolve this before checking in today.
@@ -530,7 +531,7 @@ export default function MyAttendancePage() {
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value as typeof selectedStatus)}
-                className="text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand/40"
               >
                 <option value="PRESENT">Present</option>
                 <option value="LATE">Late</option>
@@ -600,8 +601,8 @@ export default function MyAttendancePage() {
 
         {/* Fully checked out */}
         {todayRecord?.checkOutTime && (
-          <div className="flex items-center gap-2 text-green-700 font-semibold text-sm">
-            <span>✅</span> Checked out
+          <div className="flex items-center gap-2 text-sm font-semibold text-accent-success-deep">
+            <CheckCircle2 className="size-4" aria-hidden /> Checked out
           </div>
         )}
       </div>

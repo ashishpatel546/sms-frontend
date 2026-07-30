@@ -1,5 +1,6 @@
 'use client';
 
+import { QrCode } from 'lucide-react';
 import FeatureGate from '@/components/dashboard/FeatureGate';
 
 export default function PickupLayout({ children }: { children: React.ReactNode }) {
@@ -7,8 +8,7 @@ export default function PickupLayout({ children }: { children: React.ReactNode }
     <FeatureGate
       flag="pickup_management"
       title="Student Pickup"
-      icon="🚸"
-      spinnerClass="border-cyan-600"
+      icon={<QrCode />}
     >
       {children}
     </FeatureGate>

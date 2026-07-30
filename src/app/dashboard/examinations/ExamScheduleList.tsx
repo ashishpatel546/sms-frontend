@@ -130,7 +130,7 @@ export default function ExamScheduleList({ onView }: { onView: (id: number) => v
                         <select
                             value={searchSessionId}
                             onChange={e => setSearchSessionId(e.target.value)}
-                            className="w-full p-2 text-sm border border-gray-300 rounded-md bg-white focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full p-2 text-sm border border-gray-300 rounded-md bg-white focus:ring-brand/40 focus:border-brand"
                         >
                             <option value="">All Sessions</option>
                             {sessions?.map((s: any) => (
@@ -143,7 +143,7 @@ export default function ExamScheduleList({ onView }: { onView: (id: number) => v
                         <select
                             value={searchStatus}
                             onChange={e => setSearchStatus(e.target.value)}
-                            className="w-full p-2 text-sm border border-gray-300 rounded-md bg-white focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full p-2 text-sm border border-gray-300 rounded-md bg-white focus:ring-brand/40 focus:border-brand"
                         >
                             <option value="">All Statuses</option>
                             <option value="DRAFT">Draft</option>
@@ -155,7 +155,7 @@ export default function ExamScheduleList({ onView }: { onView: (id: number) => v
                         <select
                             value={searchIsActive}
                             onChange={e => setSearchIsActive(e.target.value)}
-                            className="w-full p-2 text-sm border border-gray-300 rounded-md bg-white focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full p-2 text-sm border border-gray-300 rounded-md bg-white focus:ring-brand/40 focus:border-brand"
                         >
                             <option value="">All</option>
                             <option value="true">Active</option>
@@ -251,7 +251,7 @@ function CreateScheduleModal({
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-walnut-950/55 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
                 <div className="flex justify-between items-center p-6 border-b">
                     <h3 className="text-lg font-semibold text-gray-800">Create Exam Schedule</h3>
@@ -274,7 +274,7 @@ function CreateScheduleModal({
                                 required
                                 value={academicSessionId}
                                 onChange={e => { setAcademicSessionId(e.target.value); setExamCategoryId(""); }}
-                                className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                className="w-full p-2 border border-gray-300 rounded-md focus:ring-brand/40 focus:border-brand text-sm"
                             >
                                 <option value="">Select session...</option>
                                 {sessions.map((s: any) => (
@@ -291,7 +291,7 @@ function CreateScheduleModal({
                                 value={examCategoryId}
                                 onChange={e => setExamCategoryId(e.target.value)}
                                 disabled={!academicSessionId}
-                                className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full p-2 border border-gray-300 rounded-md focus:ring-brand/40 focus:border-brand text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <option value="">{!academicSessionId ? "Select a session first..." : "Select category..."}</option>
                                 {examCategories?.map((c: any) => (
@@ -326,14 +326,14 @@ function CreateScheduleModal({
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand/40"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand/40 disabled:opacity-50"
                             >
                                 {loading ? "Creating..." : "Create Schedule"}
                             </button>

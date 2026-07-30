@@ -150,7 +150,7 @@ export default function NotificationPermissionBanner() {
             aria-label={isSubscribing ? "Enabling notifications…" : "Enable push notifications"}
             className="bg-brand text-white px-5 py-1.5 rounded-lg text-sm font-bold shadow hover:bg-brand-light transition-colors disabled:opacity-50 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
           >
-            {isSubscribing ? "Enabling…" : "🔔 Enable Alerts"}
+            {isSubscribing ? "Enabling…" : "Enable Alerts"}
           </button>
           <button
             onClick={() => setState('hidden')}

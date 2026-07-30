@@ -1,3 +1,4 @@
+import { CalendarCheck } from 'lucide-react';
 import type { Metadata } from 'next';
 import FeatureGate from '@/components/dashboard/FeatureGate';
 
@@ -10,8 +11,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <FeatureGate
       flag="attendance_management"
       title="Attendance"
-      icon="✅"
-      spinnerClass="border-green-600"
+      icon={<CalendarCheck />}
     >
       {children}
     </FeatureGate>

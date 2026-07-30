@@ -1,3 +1,4 @@
+import { IndianRupee } from 'lucide-react';
 import type { Metadata } from 'next';
 import FeatureGate from '@/components/dashboard/FeatureGate';
 
@@ -10,8 +11,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <FeatureGate
       flag="fee_management"
       title="Fees"
-      icon="💰"
-      spinnerClass="border-rose-600"
+      icon={<IndianRupee />}
     >
       {children}
     </FeatureGate>

@@ -74,9 +74,16 @@ The AI service is a *separate deployment* the browser talks to directly (not pro
 - **`src/lib/ai-access.ts`**: `useAiAccess()` fetches `{AI_API_URL}/api/v1/subscription/status` and caches the plan/features/roles in `sessionStorage` for 5 minutes (`ai_access_v2`); distinguishes "no active plan" from `unreachable` (service down) so gates never show the wrong message.
 - Env vars: `AI_API_URL` is the public/tunneled URL of school-ai reachable from the browser (not `localhost` in anything but same-machine dev); must be CORS-allowlisted on the school-ai side.
 
-## Theming
+## Theming & design system — read `DESIGN.md` before adding UI
 
-CSS custom properties defined in `src/app/globals.css`, switched via a `data-theme` attribute (not `.dark` class) using `next-themes`' `ThemeProvider` (`attribute="data-theme"`, themes: `light`, `dark`, `teal`). Tailwind v4's `dark:` variant is remapped to key off `[data-theme="dark"]` via `@custom-variant dark (...)` at the top of `globals.css` — don't rely on the default `prefers-color-scheme` behavior. Semantic tokens (`--brand`, `--surface`, `--ink`, `--ink-muted`, `--accent-*`) are what components should reference, not raw Tailwind color utilities, so all three themes stay consistent.
+The visual language is **"Register & Ink"**: a warm walnut navigation rail against a cool-neutral paper canvas, brass as the single action colour, and pigments that each carry one fixed meaning (brass = brand/primary action, marigold = "act on this", sage = settled, vermilion = correction, lapis = informational only, iris = AI). `DESIGN.md` is the full spec — palette, type, the two signature elements, the component kernel, and the quality floor.
+
+CSS custom properties are defined in `src/app/globals.css`, switched via a `data-theme` attribute (not a `.dark` class) using `next-themes`' `ThemeProvider` (`attribute="data-theme"`, themes: `light`, `dark`; the old `teal` theme is retired). Tailwind v4's `dark:` variant is remapped to key off `[data-theme="dark"]` via `@custom-variant dark (...)` at the top of `globals.css` — don't rely on the default `prefers-color-scheme` behavior. Semantic tokens (`--brand`, `--surface`, `--ink`, `--ink-muted`, `--line`, `--accent-*`) are what components should reference, not raw Tailwind color utilities.
+
+Three gotchas that will silently break things:
+- The raw palette block uses **`@theme static`**. Tailwind only emits theme variables it sees used in a *utility*, and the component classes further down `globals.css` reference them via plain `var()` — without `static`, `--font-display` and `--container-wide` resolve to nothing.
+- The `next/font` variables must be applied to **`<html>`**, not `<body>`. `--font-sans` is declared at `:root` in terms of them, and a `var()` that can't resolve where it is *declared* computes to invalid and then inherits as empty — killing every font in the app.
+- A **legacy bridge** at the bottom of `globals.css` re-points old raw utilities (`bg-white`, `text-slate-700`, `bg-blue-50`) onto the tokens so unmigrated pages still render in both themes. It is scaffolding — new code must not depend on it.
 
 ## UI components
 

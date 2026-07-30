@@ -126,7 +126,7 @@ export default function PromoteStudentPage() {
                         <label htmlFor="class" className="block mb-2 text-sm font-medium text-gray-900">New Class</label>
                         <select
                             id="class"
-                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                             value={selectedClassId || ""}
                             onChange={(e) => {
                                 setSelectedClassId(parseInt(e.target.value));
@@ -145,7 +145,7 @@ export default function PromoteStudentPage() {
                         <label htmlFor="section" className="block mb-2 text-sm font-medium text-gray-900">New Section</label>
                         <select
                             id="section"
-                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                             value={selectedSectionId || ""}
                             onChange={(e) => setSelectedSectionId(parseInt(e.target.value))}
                             required
@@ -166,7 +166,7 @@ export default function PromoteStudentPage() {
                         >
                             {saving ? 'Promoting...' : 'Promote Student'}
                         </button>
-                        <Link href="/dashboard/students" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5">
+                        <Link href="/dashboard/students" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-line-strong font-medium rounded-lg text-sm px-5 py-2.5">
                             Cancel
                         </Link>
                     </div>

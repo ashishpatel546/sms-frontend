@@ -1,5 +1,6 @@
 'use client';
 
+import { CalendarDays } from 'lucide-react';
 import FeatureGate from '@/components/dashboard/FeatureGate';
 
 export default function MyLeavesLayout({ children }: { children: React.ReactNode }) {
@@ -7,8 +8,7 @@ export default function MyLeavesLayout({ children }: { children: React.ReactNode
     <FeatureGate
       flag="hr_portal"
       title="HR Portal"
-      icon="🗓️"
-      spinnerClass="border-teal-600"
+      icon={<CalendarDays />}
     >
       {children}
     </FeatureGate>

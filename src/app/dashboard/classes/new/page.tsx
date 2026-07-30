@@ -160,7 +160,7 @@ export default function AddClassPage() {
                             id="name"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                             placeholder="e.g. Class 10"
                             required
                         />
@@ -209,7 +209,7 @@ export default function AddClassPage() {
                                                     <select
                                                         value={section.sectionId ?? ""}
                                                         onChange={(e) => handleExistingSectionSelect(index, e.target.value)}
-                                                        className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                                        className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                                         required
                                                     >
                                                         <option value="">Select section…</option>
@@ -225,7 +225,7 @@ export default function AddClassPage() {
                                                         type="text"
                                                         value={section.name}
                                                         onChange={(e) => handleSectionChange(index, "name", e.target.value)}
-                                                        className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                                        className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                                         placeholder="e.g. A"
                                                         required
                                                     />
@@ -239,7 +239,7 @@ export default function AddClassPage() {
                                             <select
                                                 value={section.teacherId}
                                                 onChange={(e) => handleSectionChange(index, "teacherId", e.target.value)}
-                                                className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                                className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                             >
                                                 <option value="">Select Teacher</option>
                                                 {teachers.map((t: any) => (
@@ -278,11 +278,11 @@ export default function AddClassPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50"
+                            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50"
                         >
                             {loading ? 'Creating...' : 'Create Class'}
                         </button>
-                        <Link href="/dashboard/classes" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5">
+                        <Link href="/dashboard/classes" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-line-strong font-medium rounded-lg text-sm px-5 py-2.5">
                             Cancel
                         </Link>
                     </div>
