@@ -24,15 +24,41 @@ import { AttendanceBottomSheet } from "./components/AttendanceBottomSheet";
 import { HomeworkBottomSheet } from "./components/HomeworkBottomSheet";
 import FeesBottomSheet from "./components/FeesBottomSheet";
 import { useLibraryIssuances } from "./hooks/useStudentData";
+import {
+    BookOpen,
+    CalendarCheck,
+    CalendarDays,
+    House,
+    ChevronLeft,
+    ClipboardList,
+    FileText,
+    IndianRupee,
+    Library,
+    Palmtree,
+    QrCode,
+    Sparkles,
+    UserRound,
+    type LucideIcon,
+    CheckCircle2,
+    AlertCircle,
+    CreditCard,
+} from "lucide-react";
+import { PageBody, PageHeader, PageShell } from "@/components/ui/PageHeader";
+import { StatusChip } from "@/components/ui/StatusChip";
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-const LEAVE_STATUS_STYLES: Record<string, string> = {
-    PENDING: "bg-amber-50 text-amber-700 border border-amber-200",
-    FIRST_APPROVED: "bg-blue-50 text-blue-700 border border-blue-200",
-    APPROVED: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-    REJECTED: "bg-red-50 text-red-700 border border-red-200",
-    CANCELLED: "bg-slate-100 text-slate-500 border border-slate-200",
+/**
+ * Leave states resolve through the pigment map like every other status in the
+ * app: pending wants action, approved is settled, rejected is a correction.
+ * `FIRST_APPROVED` is informational — it is a real step, not a finished one.
+ */
+const LEAVE_STATUS_PIGMENT: Record<string, 'attn' | 'info' | 'success' | 'danger' | 'neutral'> = {
+    PENDING: 'attn',
+    FIRST_APPROVED: 'info',
+    APPROVED: 'success',
+    REJECTED: 'danger',
+    CANCELLED: 'neutral',
 };
 const LEAVE_STATUS_LABELS: Record<string, string> = {
     PENDING: "Pending",
@@ -541,21 +567,24 @@ export default function StudentDashboardPage() {
     }, 0);
 
     return (
-        <div className="space-y-4 max-w-5xl">
+        <div className="max-w-5xl space-y-4 px-3 py-4 sm:px-5 sm:py-6">
             <Toaster position="top-right" />
 
             {/* Back — only when multi-student (single-student parents never see the card grid) */}
             {siblings.length > 0 && (
-                <Link href="/parent-dashboard" className="inline-flex items-center gap-1.5 text-ink-muted hover:text-brand transition-colors text-sm animate-fade-in">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                    All Students
+                <Link
+                    href="/parent-dashboard"
+                    className="inline-flex items-center gap-1 text-[12.5px] font-medium text-ink-muted transition-colors hover:text-brand"
+                >
+                    <ChevronLeft className="size-3.5" aria-hidden />
+                    All children
                 </Link>
             )}
 
             {/* ── Student Switcher (shown when parent has 2+ students) ── */}
             {siblings.length > 0 && (
                 <div className="animate-fade-in">
-                    <p className="text-ink-muted text-xs font-medium mb-2 px-0.5 uppercase tracking-wide">Switch Student</p>
+                    <p className="eyebrow mb-2 px-0.5">Switch child</p>
                     <div className="flex gap-2.5 overflow-x-auto pb-1 no-scrollbar snap-x snap-mandatory">
                         {siblings.map((s, idx) => {
                             const isActive = String(s.id) === String(studentId);
@@ -604,23 +633,23 @@ export default function StudentDashboardPage() {
             <div
                 role="tablist"
                 aria-label="Student sections"
-                className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2 bg-surface border border-slate-200 rounded-2xl p-2.5 animate-slide-up shadow-soft"
+                className="grid grid-cols-4 gap-2 rounded-xl border border-line bg-surface p-2.5 shadow-soft sm:grid-cols-6 lg:grid-cols-12"
                 style={{ animationDelay: '50ms' }}
             >
                 {([
-                    ["home",          "🏠", "Home"],
-                    ["attendance",    "📊", "Attendance"],
-                    ["homework",      "📚", "Homework"],
-                    ["ai-tutor",      "✨", "AI Tutor"],
-                    ["fees",          "💰", "Fees"],
-                    ["results",       "📝", "Results"],
-                    ["library",       "📖", "Library"],
-                    ["leaves",        "🗓️", "Leaves"],
-                    ["pickup",        "📱", "QR Codes"],
-                    ["exam-schedule", "📅", "Schedule"],
-                    ["holidays",      "🏝️", "Holidays"],
-                    ["info",          "👤", "Profile"],
-                ] as const).map(([key, icon, label]) => (
+                    ["home",          House,         "Home"],
+                    ["attendance",    CalendarCheck, "Attendance"],
+                    ["homework",      BookOpen,      "Homework"],
+                    ["ai-tutor",      Sparkles,      "AI tutor"],
+                    ["fees",          IndianRupee,   "Fees"],
+                    ["results",       FileText,      "Results"],
+                    ["library",       Library,       "Library"],
+                    ["leaves",        CalendarDays,  "Leaves"],
+                    ["pickup",        QrCode,        "QR codes"],
+                    ["exam-schedule", ClipboardList, "Schedule"],
+                    ["holidays",      Palmtree,      "Holidays"],
+                    ["info",          UserRound,     "Profile"],
+                ] as [ActiveSection, LucideIcon, string][]).map(([key, Icon, label]) => (
                     <button
                         key={key}
                         role="tab"
@@ -654,10 +683,14 @@ export default function StudentDashboardPage() {
                                 if (section !== 'info' && section !== 'exam-schedule' && section !== 'pickup' && section !== 'home' && section !== 'library' && section !== 'ai-tutor') setSectionLoading(true);
                             }
                         }}
-                        className={`flex flex-col items-center justify-center gap-1 py-2 px-1 min-h-14 rounded-xl font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${activeSection === key ? "bg-brand text-white shadow-md shadow-brand/20 dark:bg-white dark:text-slate-900 dark:shadow-slate-900/20" : "text-ink-muted hover:text-ink hover:bg-brand/5 bg-white border border-slate-200 hover:border-brand/30 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20"}`}
+                        className={`flex min-h-15 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border px-1 py-2 font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+                            activeSection === key
+                                ? "border-brand bg-brand text-brand-contrast shadow-soft"
+                                : "border-line bg-surface text-ink-muted hover:border-brand-edge hover:bg-brand-tint hover:text-brand"
+                        }`}
                     >
-                        <span className="text-[15px] leading-none shrink-0" aria-hidden="true">{icon}</span>
-                        <span className="text-[10px] leading-tight text-center whitespace-nowrap overflow-hidden w-full">{label}</span>
+                        <Icon className="size-4.5 shrink-0" aria-hidden="true" />
+                        <span className="w-full overflow-hidden text-center text-[10px] leading-tight whitespace-nowrap">{label}</span>
                     </button>
                 ))}
             </div>
@@ -751,7 +784,7 @@ export default function StudentDashboardPage() {
 
                             {allDueItems.length === 0 ? (
                                 <div className="text-center py-12 flex-1 flex flex-col justify-center">
-                                    <div className="text-4xl mb-3">🎉</div>
+                                    <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-accent-success-tint text-accent-success-deep"><CheckCircle2 className="size-6" aria-hidden /></div>
                                     <p className="text-emerald-400 font-semibold text-base">All fees cleared!</p>
                                     <p className="text-slate-500 text-sm mt-1">No pending dues for this session.</p>
                                 </div>
@@ -1080,7 +1113,7 @@ export default function StudentDashboardPage() {
             {activeSection === "attendance" && (
                 <div id="tabpanel-attendance" role="tabpanel" aria-labelledby="tab-attendance" className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-6 animate-scale-in">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-                        <h2 className="text-ink font-bold text-lg">📊 Attendance</h2>
+                        <h2 className="text-ink font-bold text-lg">Attendance</h2>
                         <div className="flex gap-2">
                             <AppMonthPicker
                                 value={attendanceMonth}
@@ -1166,7 +1199,7 @@ export default function StudentDashboardPage() {
                         </div>
                     ) : (
                         <div className="py-16 text-center border-2 border-dashed border-slate-200 rounded-xl">
-                            <div className="text-4xl mb-3 opacity-60">📅</div>
+                            <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-surface-secondary text-ink-faint"><CalendarDays className="size-6" aria-hidden /></div>
                             <p className="text-slate-400 font-medium">No attendance data for {MONTH_NAMES[currentMonth - 1]} {currentYear}</p>
                             <p className="text-slate-500 text-sm mt-1">There are no records found for this month.</p>
                         </div>
@@ -1402,8 +1435,8 @@ export default function StudentDashboardPage() {
                 <div id="tabpanel-holidays" role="tabpanel" aria-labelledby="tab-holidays" className="space-y-4 animate-scale-in">
                     <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-6">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-xl">
-                                🏝️
+                            <div className="grid size-10 place-items-center rounded-lg bg-accent-info-tint text-accent-info-deep">
+                                <Palmtree className="size-5" aria-hidden />
                             </div>
                             <div>
                                 <h2 className="text-ink font-bold text-lg">School Holidays</h2>
@@ -1413,7 +1446,7 @@ export default function StudentDashboardPage() {
 
                         {holidays.length === 0 ? (
                             <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
-                                <div className="text-4xl mb-3 opacity-50">📅</div>
+                                <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-surface-secondary text-ink-faint"><CalendarDays className="size-6" aria-hidden /></div>
                                 <p className="text-slate-400 text-sm font-medium">No holidays declared at this moment.</p>
                             </div>
                         ) : (
@@ -1482,7 +1515,7 @@ export default function StudentDashboardPage() {
                     )}
                     {/* Personal details */}
                     <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-5">
-                        <h2 className="text-ink font-bold mb-4">👤 Student Information</h2>
+                        <h2 className="mb-4 font-display text-[16px] font-semibold text-ink">Student information</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {[
                                 { label: "Father's Name", value: info.fathersName },
@@ -1569,7 +1602,7 @@ export default function StudentDashboardPage() {
                             <>
                                 {/* ── Header ── */}
                                 <div className="flex items-center gap-3 mb-5">
-                                    <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl shrink-0">📚</div>
+                                    <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-accent-info-tint text-accent-info-deep"><BookOpen className="size-5" aria-hidden /></div>
                                     <div>
                                         <h2 className="text-ink font-bold text-lg leading-tight">Homework</h2>
                                         <p className="text-slate-400 text-sm">{info?.firstName}&apos;s class assignments</p>
@@ -1602,7 +1635,7 @@ export default function StudentDashboardPage() {
                                                         <p className="text-slate-500 text-[10px] leading-tight">{homeworkDate}</p>
                                                     )}
                                                 </div>
-                                                <span className="text-indigo-400 group-hover:text-indigo-300 transition-colors text-base leading-none">📅</span>
+                                                <CalendarDays className="size-4 text-brand transition-colors" aria-hidden />
                                             </button>
                                             {/* Input positioned at bottom-center so picker opens near the icon */}
                                             <input
@@ -1634,7 +1667,7 @@ export default function StudentDashboardPage() {
                                     </div>
                                 ) : homework.length === 0 ? (
                                     <div className="text-center py-16">
-                                        <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-3xl mx-auto mb-4">🎉</div>
+                                        <div className="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-accent-success-tint text-accent-success-deep"><CheckCircle2 className="size-7" aria-hidden /></div>
                                         <p className="text-ink font-medium">No homework for {displayDate.toLowerCase()}!</p>
                                         <p className="text-slate-500 text-sm mt-1">Check another date or enjoy the break.</p>
                                     </div>
@@ -1680,7 +1713,7 @@ export default function StudentDashboardPage() {
             {activeSection === "pickup" && (
                 <div id="tabpanel-pickup" role="tabpanel" aria-labelledby="tab-pickup" className="space-y-4 animate-scale-in">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl shrink-0">📱</div>
+                        <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-accent-info-tint text-accent-info-deep"><QrCode className="size-5" aria-hidden /></div>
                         <div>
                             <h2 className="text-ink font-bold text-lg leading-tight">{visitorMgmtEnabled ? "QR Codes" : "Pickup QR"}</h2>
                             <p className="text-slate-400 text-sm">
@@ -1723,7 +1756,7 @@ export default function StudentDashboardPage() {
                 <div id="tabpanel-leaves" role="tabpanel" aria-labelledby="tab-leaves" className="space-y-4 animate-scale-in">
                     <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl shrink-0">🗓️</div>
+                            <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-accent-info-tint text-accent-info-deep"><CalendarDays className="size-5" aria-hidden /></div>
                             <div>
                                 <h2 className="text-ink font-bold text-lg leading-tight">Leave Requests</h2>
                                 <p className="text-slate-400 text-sm">Track and apply for leaves</p>
@@ -1748,9 +1781,11 @@ export default function StudentDashboardPage() {
                                                 {fmtDate(leave.fromDate)}{leave.fromDate !== leave.toDate ? ` → ${fmtDate(leave.toDate)}` : ""} · {leave.leaveDuration === "HALF_DAY" ? "Half Day" : "Full Day"}
                                             </p>
                                         </div>
-                                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap shrink-0 ${LEAVE_STATUS_STYLES[leave.status] ?? ""}`}>
-                                            {LEAVE_STATUS_LABELS[leave.status] ?? leave.status}
-                                        </span>
+                                        <StatusChip
+                                            className="shrink-0"
+                                            pigment={LEAVE_STATUS_PIGMENT[leave.status] ?? 'neutral'}
+                                            label={LEAVE_STATUS_LABELS[leave.status] ?? leave.status}
+                                        />
                                     </div>
                                     {leave.isActionRequired && (
                                         <div className="mt-2 flex items-center gap-1.5">
@@ -1782,7 +1817,7 @@ export default function StudentDashboardPage() {
                         </div>
                     ) : (
                         <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-8 text-center">
-                            <div className="text-4xl mb-3">🗓️</div>
+                            <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-surface-secondary text-ink-faint"><CalendarDays className="size-6" aria-hidden /></div>
                             <p className="text-slate-400 text-sm">No leave requests yet</p>
                             <p className="text-slate-600 text-xs mt-1">Tap &quot;Apply Leave&quot; to submit a new request</p>
                         </div>
@@ -1812,8 +1847,8 @@ export default function StudentDashboardPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/60 backdrop-blur-sm">
                     <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
                         <div className="mb-5 text-center">
-                            <div className="w-16 h-16 bg-indigo-500/20 text-indigo-400 rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
-                                💳
+                            <div className="mx-auto mb-3 grid size-14 place-items-center rounded-full bg-brand-tint text-brand">
+                                <CreditCard className="size-6" aria-hidden />
                             </div>
                             <h3 className="text-ink font-bold text-xl">Confirm Payment</h3>
                             <p className="text-slate-400 text-sm mt-1">You are paying for {selectedMonths2Pay.length} months</p>
@@ -1949,9 +1984,10 @@ export default function StudentDashboardPage() {
                                 </p>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                                <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${LEAVE_STATUS_STYLES[viewLeave.status] ?? ""}`}>
-                                    {LEAVE_STATUS_LABELS[viewLeave.status] ?? viewLeave.status}
-                                </span>
+                                <StatusChip
+                                    pigment={LEAVE_STATUS_PIGMENT[viewLeave.status] ?? 'neutral'}
+                                    label={LEAVE_STATUS_LABELS[viewLeave.status] ?? viewLeave.status}
+                                />
                                 <button onClick={() => setViewLeave(null)} className="p-1 rounded-lg text-slate-400 hover:text-ink transition-colors">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
@@ -2177,11 +2213,11 @@ function StudentLibrarySection({ studentId }: { studentId: string }) {
     return (
         <div className="space-y-4">
             {/* Header card */}
-            <div className="flex items-center gap-3 bg-linear-to-r from-lime-500 to-emerald-600 rounded-2xl p-5 text-white shadow-lg shadow-emerald-500/20">
-                <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl shrink-0">📖</div>
+            <div className="flex items-center gap-3 rounded-xl border border-line bg-surface p-4 shadow-soft">
+                <div className="grid size-11 shrink-0 place-items-center rounded-lg bg-accent-success-tint text-accent-success-deep"><Library className="size-5.5" aria-hidden /></div>
                 <div>
-                    <h2 className="font-bold text-lg leading-tight">My Library Books</h2>
-                    <p className="text-emerald-100 text-sm">Books currently issued or recently returned</p>
+                    <h2 className="font-display text-[16px] leading-tight font-semibold text-ink">Library books</h2>
+                    <p className="text-[12.5px] text-ink-muted">Books currently issued or recently returned</p>
                 </div>
             </div>
 
@@ -2191,13 +2227,13 @@ function StudentLibrarySection({ studentId }: { studentId: string }) {
                 </div>
             ) : error ? (
                 <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-2xl p-8 text-center">
-                    <div className="text-4xl mb-3">📚</div>
+                    <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-surface-secondary text-ink-faint"><BookOpen className="size-6" aria-hidden /></div>
                     <p className="text-ink font-semibold">Library not available</p>
                     <p className="text-ink-muted text-sm mt-1">Library feature may not be enabled for your school.</p>
                 </div>
             ) : !data?.data?.length ? (
                 <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-2xl p-8 text-center">
-                    <div className="text-5xl mb-3">📚</div>
+                    <div className="mx-auto mb-3 grid size-14 place-items-center rounded-full bg-surface-secondary text-ink-faint"><BookOpen className="size-7" aria-hidden /></div>
                     <p className="text-ink font-semibold text-lg">No books issued</p>
                     <p className="text-ink-muted text-sm mt-1">You have no books currently issued or in recent history.</p>
                 </div>
@@ -2215,7 +2251,7 @@ function StudentLibrarySection({ studentId }: { studentId: string }) {
                                 <div className="flex items-start gap-3">
                                     {/* Book icon */}
                                     <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 border ${cfg.bg}`}>
-                                        {item.status === 'RETURNED' ? '✅' : isOverdue ? '⚠️' : '📗'}
+                                        {item.status === 'RETURNED' ? <CheckCircle2 className="size-4" aria-hidden /> : isOverdue ? <AlertCircle className="size-4" aria-hidden /> : <BookOpen className="size-4" aria-hidden />}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-start justify-between gap-2 flex-wrap">
@@ -2246,7 +2282,7 @@ function StudentLibrarySection({ studentId }: { studentId: string }) {
                                         )}
                                         {hasLateFee && item.status === 'RETURNED' && (
                                             <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
-                                                <span>💰</span>
+                                                <IndianRupee className="size-3.5" aria-hidden />
                                                 <span>Late fee charged: ₹{item.lateFeeCharged} · Paid: ₹{item.lateFeePayment?.amountPaid ?? 0}</span>
                                             </div>
                                         )}

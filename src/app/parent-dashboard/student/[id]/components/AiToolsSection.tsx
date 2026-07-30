@@ -33,13 +33,15 @@ export function AiToolsSection({ info }: AiToolsSectionProps) {
     <AiFeatureGate>
       <div className="space-y-4">
         {/* Header card */}
-        <div className="flex items-center gap-3 bg-linear-to-r from-violet-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg shadow-violet-500/20">
-          <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-            <Sparkles className="w-6 h-6" />
+        {/* Iris is the reserved AI pigment (same convention as the hub), so the
+            section identifies itself without a gradient of its own. */}
+        <div className="flex items-center gap-3 rounded-xl border border-line bg-surface p-4 shadow-soft">
+          <div className="grid size-11 shrink-0 place-items-center rounded-lg bg-accent-ai-tint text-accent-ai">
+            <Sparkles className="size-5.5" />
           </div>
           <div>
-            <h2 className="font-bold text-lg leading-tight">AI Tutor</h2>
-            <p className="text-violet-100 text-sm">Personalized help, explanations, quizzes &amp; study plans</p>
+            <h2 className="font-display text-[16px] leading-tight font-semibold text-ink">AI tutor</h2>
+            <p className="text-[12.5px] text-ink-muted">Explanations, quizzes and study plans, tailored to your child</p>
           </div>
         </div>
 

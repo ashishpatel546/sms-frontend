@@ -48,7 +48,7 @@ export default function FeePaymentPage() {
                                 {["UPI", "Card", "Net Banking"].map(m => (
                                     <button key={m} type="button" onClick={() => setPaymentMethod(m)}
                                         className={`py-2.5 px-3 rounded-xl text-sm font-medium border transition-all ${paymentMethod === m ? 'border-brand bg-brand/10 text-brand' : 'border-slate-200 text-ink-muted hover:border-brand/30 hover:bg-brand/5'}`}>
-                                        {m === "UPI" ? "📱 " : m === "Card" ? "💳 " : "🏦 "}{m}
+                                        {m}
                                     </button>
                                 ))}
                             </div>

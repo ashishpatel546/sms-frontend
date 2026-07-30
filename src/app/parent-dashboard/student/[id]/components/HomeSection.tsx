@@ -192,7 +192,7 @@ export const HomeSection = ({ studentId, academicYearString, sessionId, onChange
             <Skeleton className="h-12 w-full" />
           </div>
         ) : !homeworkItems || homeworkItems.length === 0 ? (
-          <p className="text-sm text-ink-muted">No homework today 🎉</p>
+          <p className="text-sm text-ink-muted">No homework today</p>
         ) : (
           <div className="space-y-3">
             {homeworkItems.slice(0, 3).map((h: any) => (

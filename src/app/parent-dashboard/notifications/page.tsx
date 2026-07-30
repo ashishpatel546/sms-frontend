@@ -1,5 +1,6 @@
 "use client";
 
+import { Bell } from 'lucide-react';
 import useSWR from "swr";
 import Link from "next/link";
 import { authFetch } from "@/lib/auth";
@@ -50,7 +51,7 @@ export default function NotificationsPage() {
         </div>
       ) : !notifications || notifications.length === 0 ? (
         <Panel className="p-10 text-center">
-          <div className="text-4xl mb-3">🔔</div>
+          <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-surface-secondary text-ink-faint"><Bell className="size-6" aria-hidden /></div>
           <p className="text-ink font-semibold">No notifications yet</p>
           <p className="text-sm text-ink-muted mt-1">
             School announcements will appear here
