@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { fetcher } from './api';
-import { getSchoolSlug } from './env';
+import { getSchoolSlug, getEnv } from './env';
 
 export interface SchoolInfo {
   name: string;
@@ -13,6 +13,17 @@ export interface SchoolInfo {
   logoUrl?: string | null;
   logoDataUrl?: string | null;
   logoUpdatedAt?: string | null;
+}
+
+export interface SchoolInfoState {
+  info: SchoolInfo | null;
+  /**
+   * True once the network fetch has finished (successfully or not) for this
+   * page load. Lets the splash screen distinguish "still loading" from
+   * "failed / no tenant" and fall back to a welcome message instead of
+   * waiting out its full timeout.
+   */
+  settled: boolean;
 }
 
 /**
@@ -26,17 +37,23 @@ export interface SchoolInfo {
 let _cache: SchoolInfo | null = null;
 let _cacheKey: string | null = null;
 let _inflight: Promise<SchoolInfo | null> | null = null;
+let _settled = false;
+
+/** Lazily-fetched base64 logo, kept out of `/school/info` (see below). */
+let _logoDataUrl: string | null = null;
+let _logoInflight: Promise<string | null> | null = null;
 
 /**
- * Returns the current school's public info (name, tagline, address, …).
- * Fetches once from `GET /school/info`, then serves from an in-memory cache
- * or localStorage — so subsequent callers (e.g. ReceiptModal) get the value
- * instantly with zero extra API calls.
+ * Returns the current school's public info plus whether the fetch has
+ * settled. `GET /school/info` is intentionally lightweight (no base64 logo);
+ * the logo itself is loaded by the browser straight from `logoUrl`.
  */
-export function useSchoolInfo(): SchoolInfo | null {
+export function useSchoolInfoState(): SchoolInfoState {
   const [info, setInfo] = useState<SchoolInfo | null>(_cache);
+  const [settled, setSettled] = useState(_settled);
 
   useEffect(() => {
+    let cancelled = false;
     const slug = getSchoolSlug() || '';
     // v2: schema now includes `logoDataUrl`. The key bump abandons older entries
     // that may have been written with a quota-failing payload (huge base64 logo).
@@ -53,19 +70,17 @@ export function useSchoolInfo(): SchoolInfo | null {
       setInfo(_cache);
     }
 
-    // 2. localStorage hit — only the lightweight metadata is stored here
-    //    (no `logoDataUrl`, which can be hundreds of KB and blow the quota).
-    //    The data URL is restored from the in-memory cache or refetched.
+    // 2. localStorage hit — instant logo URL on repeat visits, even before
+    //    the network answers.
     try {
       const raw = localStorage.getItem(lsKey);
       if (raw) {
         const parsed: SchoolInfo = JSON.parse(raw);
-        // If we have a richer in-memory cache (with logoDataUrl), prefer it.
-        if (!(_cache && _cache.logoDataUrl)) {
+        if (!_cache) {
           _cache = parsed;
           _cacheKey = lsKey;
-          setInfo(parsed);
         }
+        setInfo(_cache);
       }
     } catch {
       // localStorage unavailable or corrupt — ignore.
@@ -84,13 +99,11 @@ export function useSchoolInfo(): SchoolInfo | null {
               phone: data.phone ?? null,
               email: data.email ?? null,
               logoUrl: data.logoUrl ?? null,
-              logoDataUrl: data.logoDataUrl ?? null,
+              logoDataUrl: null,
               logoUpdatedAt: data.logoUpdatedAt ?? null,
             };
             _cache = result;
             _cacheKey = lsKey;
-            // Persist WITHOUT the data URL so we never hit the quota.
-            // The data URL stays in _cache for the lifetime of the tab.
             try {
               const { logoDataUrl: _drop, ...lightweight } = result;
               localStorage.setItem(lsKey, JSON.stringify(lightweight));
@@ -101,16 +114,76 @@ export function useSchoolInfo(): SchoolInfo | null {
         })
         .catch(() => null)
         .finally(() => {
+          _settled = true;
           _inflight = null;
         });
     }
 
     // Always update state when fresh data arrives. Use a fresh object reference
     // so React always re-renders, even if the user previously saw a stale copy.
-    _inflight.then((data) => {
-      if (data) setInfo({ ...data });
-    });
+    if (_inflight) {
+      _inflight.then((data) => {
+        if (cancelled) return;
+        if (data) setInfo({ ...data });
+        setSettled(true);
+      });
+    } else {
+      setSettled(true);
+    }
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  return info;
+  return { info, settled };
+}
+
+/**
+ * Returns the current school's public info (name, tagline, address, …).
+ * Fetches once from `GET /school/info`, then serves from an in-memory cache
+ * or localStorage — so subsequent callers (e.g. ReceiptModal) get the value
+ * instantly with zero extra API calls.
+ */
+export function useSchoolInfo(): SchoolInfo | null {
+  return useSchoolInfoState().info;
+}
+
+/**
+ * Lazily fetches the school logo as a base64 data URL, for embedding in PDFs
+ * and print/PNG output where a cross-origin S3 URL would taint the canvas.
+ *
+ * This used to ride along on every `GET /school/info` response, which made
+ * that hot endpoint hundreds of KB; now callers that actually need it (salary
+ * slip PDF, visitor QR poster) request it at generation time via the API's
+ * `/school/logo` proxy. Cached per tab after the first call.
+ */
+export async function getSchoolLogoDataUrl(): Promise<string | null> {
+  if (_logoDataUrl) return _logoDataUrl;
+  if (_logoInflight) return _logoInflight;
+
+  const apiBase = getEnv('API_URL') || 'http://localhost:3000';
+  const slug = getSchoolSlug() || '';
+
+  _logoInflight = fetch(`${apiBase}/school/logo`, {
+    headers: slug ? { 'X-School-Slug': slug } : undefined,
+  })
+    .then(async (res) => {
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+      _logoDataUrl = dataUrl;
+      return dataUrl;
+    })
+    .catch(() => null)
+    .finally(() => {
+      _logoInflight = null;
+    });
+
+  return _logoInflight;
 }

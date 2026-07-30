@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
 import { getSchoolSlug } from "@/lib/env";
@@ -51,23 +51,30 @@ export default function LoginPage() {
   const [staffIdentifier, setStaffIdentifier] = useState("");
   const [password, setPassword] = useState("");
 
-  // Redirect if already logged in
+  // Where the splash should land when it finishes. Set only for users who are
+  // already signed in; a ref so the splash's onDone never reads a stale value.
+  const pendingRouteRef = useRef<string | null>(null);
+
+  // Already signed in (staff or parent): keep the login form hidden, let the
+  // splash play in full, and hand off straight to the right dashboard when it
+  // ends — the sign-in screen is never seen.
   useEffect(() => {
     const user = getUser();
     if (user) {
-      setShowSplash(true);
-      setTimeout(() => {
-        if (user.mustChangePassword) {
-          markMustChangePasswordFlow();
-          router.replace("/change-password");
-        } else {
-          router.replace(getDashboardRoute(user.role));
-        }
-      }, 1500);
+      if (user.mustChangePassword) {
+        markMustChangePasswordFlow();
+        pendingRouteRef.current = "/change-password";
+      } else {
+        pendingRouteRef.current = getDashboardRoute(user.role);
+      }
     } else {
       setIsCheckingAuth(false);
     }
   }, [router]);
+
+  const handleSplashDone = () => {
+    if (pendingRouteRef.current) router.replace(pendingRouteRef.current);
+  };
 
   const handleParentLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,7 +149,7 @@ export default function LoginPage() {
 
   return (
     <div className="theme-bg min-h-dvh">
-      {showSplash && <SplashScreen />}
+      {showSplash && <SplashScreen onDone={handleSplashDone} />}
 
       {!isCheckingAuth && (
         <div className="mx-auto flex min-h-dvh w-full max-w-6xl items-center px-3 py-6 sm:px-6 sm:py-10">

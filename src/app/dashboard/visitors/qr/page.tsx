@@ -6,6 +6,7 @@ import Link from "next/link";
 import QRCode from "react-qr-code";
 import toast, { Toaster } from "react-hot-toast";
 import { API_BASE_URL, fetcher } from "@/lib/api";
+import { getSchoolLogoDataUrl } from "@/lib/useSchoolInfo";
 import { useRbac } from "@/lib/rbac";
 import useSWR from "swr";
 import { ArrowLeft, Download, Printer, RefreshCw } from "lucide-react";
@@ -21,12 +22,17 @@ export default function VisitorQrPosterPage() {
     const posterRef = useRef<HTMLDivElement>(null);
     const [visitUrl, setVisitUrl] = useState("");
     const [downloading, setDownloading] = useState(false);
+    // Base64 logo for the poster: html-to-image / print need a data URL — a
+    // cross-origin S3 image would taint the canvas. Fetched lazily via the
+    // API's /school/logo proxy (no longer part of /school/info).
+    const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
 
     const { data: school } = useSWR(`${API_BASE_URL}/school/info`, fetcher);
 
     useEffect(() => {
         if (!rbac.isAdmin) router.replace("/dashboard");
         setVisitUrl(`${window.location.origin}/visit`);
+        void getSchoolLogoDataUrl().then(setLogoDataUrl);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -70,9 +76,9 @@ export default function VisitorQrPosterPage() {
 
             {/* Poster — white background always, so print/PNG look identical */}
             <div ref={posterRef} data-poster className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-10 text-center print:border-0 print:rounded-none">
-                {school?.logoDataUrl || school?.logoUrl ? (
+                {logoDataUrl || school?.logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={school.logoDataUrl || school.logoUrl} alt="School logo" className="w-20 h-20 mx-auto object-contain mb-3" />
+                    <img src={logoDataUrl || school.logoUrl} alt="School logo" className="w-20 h-20 mx-auto object-contain mb-3" />
                 ) : null}
                 <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{school?.name || "Our School"}</h1>
                 <p className="text-slate-500 text-sm mt-1 mb-6">Visitor Entry Registration</p>
