@@ -140,8 +140,9 @@ export const HomeSection = ({ studentId, academicYearString, sessionId, onChange
         </div>
       </div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* KPI Grid — two up on a phone, four across once there is room, so a
+          laptop doesn't show four tiles stacked in a tall 2×2 block. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         <StatTile
           label="Attendance"
           value={isAttLoading ? <Skeleton className="h-7 w-16" /> : `${attendance?.percentage ?? 0}%`}
@@ -237,7 +238,7 @@ export const HomeSection = ({ studentId, academicYearString, sessionId, onChange
             <Skeleton className="h-10 w-full" />
           </div>
         ) : upcomingHolidays.length === 0 ? (
-          <p className="text-sm text-ink-muted">No upcoming holidays 💪</p>
+          <p className="text-sm text-ink-muted">No upcoming holidays</p>
         ) : (
           <div className="space-y-2">
             {upcomingHolidays.map((h: any) => {

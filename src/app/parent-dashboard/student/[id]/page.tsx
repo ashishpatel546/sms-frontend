@@ -19,7 +19,9 @@ import { AppMonthPicker } from "@/components/ui/AppDatePicker";
 import { HomeSection } from "./components/HomeSection";
 import { StudentBanner } from "./components/StudentBanner";
 import { AiToolsSection } from "./components/AiToolsSection";
-import { AnimatedLoader } from "@/components/ui/AnimatedLoader";
+import { SectionSkeleton, StudentRecordSkeleton } from "@/components/ui/Skeletons";
+import { ATTENDANCE_LEGEND, ATTENDANCE_TONE, attendanceCellClass } from "@/lib/attendanceColors";
+import { InitialsAvatar } from "@/components/ui/InitialsAvatar";
 import { AttendanceBottomSheet } from "./components/AttendanceBottomSheet";
 import { HomeworkBottomSheet } from "./components/HomeworkBottomSheet";
 import FeesBottomSheet from "./components/FeesBottomSheet";
@@ -47,6 +49,35 @@ import { PageBody, PageHeader, PageShell } from "@/components/ui/PageHeader";
 import { StatusChip } from "@/components/ui/StatusChip";
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/**
+ * Section colour, grouped by what a section IS — so the colour carries
+ * information rather than just breaking up the grid:
+ *
+ *   brass     home, profile            this child
+ *   sage      attendance, results      how they are doing
+ *   lapis     homework, schedule,      school work
+ *             library
+ *   marigold  fees, leaves             things needing a parent's action
+ *   iris      AI tutor                 the AI platform (reserved pigment)
+ *   stone     QR codes, holidays       logistics — deliberately quiet
+ *
+ * Vermilion is absent on purpose: nothing here is an error.
+ */
+const SECTION_TONE: Record<string, string> = {
+    home: 'bg-brand-tint text-brand',
+    info: 'bg-brand-tint text-brand',
+    attendance: 'bg-accent-success-tint text-accent-success-deep',
+    results: 'bg-accent-success-tint text-accent-success-deep',
+    homework: 'bg-accent-info-tint text-accent-info-deep',
+    'exam-schedule': 'bg-accent-info-tint text-accent-info-deep',
+    library: 'bg-accent-info-tint text-accent-info-deep',
+    fees: 'bg-accent-warn-tint text-accent-warn-deep',
+    leaves: 'bg-accent-warn-tint text-accent-warn-deep',
+    'ai-tutor': 'bg-accent-ai-tint text-accent-ai',
+    pickup: 'bg-surface-inset text-ink-muted',
+    holidays: 'bg-surface-inset text-ink-muted',
+};
 
 /**
  * Leave states resolve through the pigment map like every other status in the
@@ -506,20 +537,24 @@ export default function StudentDashboardPage() {
         }
     };
 
-    if (loading || !info) return (
-        <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <AnimatedLoader size="lg" text="Loading student dashboard..." />
-        </div>
-    );
+    // Traces this screen's own layout — identity strip, the 12 section tabs,
+    // then the panels — so the tab grid is already in place under the thumb
+    // that is reaching for it.
+    if (loading || !info) return <StudentRecordSkeleton />;
 
-    const pieData = attendance ? [
-        { name: "Present", value: attendance.present || 0, color: "#22c55e", fill: "#22c55e" },
-        { name: "Late", value: attendance.late || 0, color: "#facc15", fill: "#facc15" },
-        { name: "Half Day", value: attendance.halfDay || 0, color: "#a855f7", fill: "#a855f7" },
-        { name: "Leave", value: attendance.leave || 0, color: "#3b82f6", fill: "#3b82f6" },
-        { name: "Absent", value: attendance.absent || 0, color: "#ef4444", fill: "#ef4444" },
-        { name: "Holiday", value: attendance.holiday || 0, color: "#0ea5e9", fill: "#0ea5e9" },
-    ].filter(d => d.value > 0) : [];
+    const pieData = attendance ? ([
+        ["PRESENT", attendance.present],
+        ["LATE", attendance.late],
+        ["HALF_DAY", attendance.halfDay],
+        ["LEAVE", attendance.leave],
+        ["ABSENT", attendance.absent],
+        ["HOLIDAY", attendance.holiday],
+    ] as const).map(([status, value]) => ({
+        name: ATTENDANCE_TONE[status].label,
+        value: value || 0,
+        color: ATTENDANCE_TONE[status].fill,
+        fill: ATTENDANCE_TONE[status].fill,
+    })).filter(d => d.value > 0) : [];
 
     // Calendar logic
     const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
@@ -537,18 +572,9 @@ export default function StudentDashboardPage() {
         return { day: null, date: null, status: null, isSunday: false };
     });
 
-    const getStatusColor = (status: string | null | undefined) => {
-        switch (status) {
-            case 'PRESENT': return 'bg-green-500 border-green-600 text-white shadow-sm shadow-green-500/20';
-            case 'LATE': return 'bg-yellow-400 border-yellow-500 text-white shadow-sm shadow-yellow-400/20';
-            case 'HALF_DAY': return 'bg-purple-500 border-purple-600 text-white shadow-sm shadow-purple-500/20';
-            case 'LEAVE': return 'bg-blue-500 border-blue-600 text-white shadow-sm shadow-blue-500/20';
-            case 'ABSENT': return 'bg-red-500 border-red-600 text-white shadow-sm shadow-red-500/20';
-            case 'HOLIDAY': return 'bg-sky-500 border-sky-600 text-white shadow-sm shadow-sky-500/20';
-            case 'SUNDAY': return 'bg-orange-100 border-orange-300 text-orange-700';
-            default: return 'bg-slate-100 border-slate-200 text-ink hover:bg-slate-100/50';
-        }
-    };
+    // Colour comes from lib/attendanceColors so the cells, the legend and the
+    // donut cannot drift apart.
+    const getStatusColor = attendanceCellClass;
 
     const dueMonths = fees?.months?.filter((m: any) => !m.paid && m.amount > 0) || [];
     const paidMonths = fees?.months?.filter((m: any) => m.paid && m.amount > 0) || [];
@@ -589,36 +615,39 @@ export default function StudentDashboardPage() {
                         {siblings.map((s, idx) => {
                             const isActive = String(s.id) === String(studentId);
                             const initials = `${s.firstName?.[0] ?? ""}${s.lastName?.[0] ?? ""}`;
-                            const palettes = [
-                                { grad: "from-violet-500 to-purple-600", active: "bg-violet-50 border-violet-300 shadow-sm shadow-violet-200", dot: "bg-violet-500", nameActive: "text-violet-700" },
-                                { grad: "from-teal-500 to-cyan-500",     active: "bg-teal-50 border-teal-300 shadow-sm shadow-teal-200",     dot: "bg-teal-500",   nameActive: "text-teal-700"   },
-                                { grad: "from-rose-500 to-pink-500",     active: "bg-rose-50 border-rose-300 shadow-sm shadow-rose-200",     dot: "bg-rose-500",   nameActive: "text-rose-700"   },
-                                { grad: "from-amber-500 to-orange-500",  active: "bg-amber-50 border-amber-300 shadow-sm shadow-amber-200",  dot: "bg-amber-500",  nameActive: "text-amber-700"  },
-                                { grad: "from-green-500 to-emerald-500", active: "bg-green-50 border-green-300 shadow-sm shadow-green-200", dot: "bg-green-500",  nameActive: "text-green-700"  },
-                            ];
-                            const p = palettes[idx % palettes.length];
+                            /*
+                             * Identity and selection are different jobs, and this
+                             * used to conflate them: each sibling owned a whole
+                             * violet/teal/rose/amber/green palette that coloured
+                             * the chip, the border and the dot when selected — so
+                             * "which child am I looking at" was said in a colour
+                             * that means nothing anywhere else in the app.
+                             *
+                             * Now the AVATAR carries identity (InitialsAvatar owns
+                             * the tones) and SELECTION is brass everywhere, exactly
+                             * as it is for tabs, nav and buttons.
+                             */
                             return (
                                 <button
                                     key={s.id}
                                     onClick={() => !isActive && router.push(`/parent-dashboard/student/${s.id}`)}
-                                    className={`shrink-0 snap-start flex items-center gap-3 px-3.5 py-2.5 rounded-2xl border-2 transition-all text-left min-w-40
+                                    aria-current={isActive ? "true" : undefined}
+                                    className={`flex min-w-40 shrink-0 snap-start cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-all duration-200
                                         ${isActive
-                                            ? `${p.active}`
-                                            : "bg-white/80 border-slate-200 hover:border-slate-300 hover:shadow-sm"
+                                            ? "border-brand bg-brand-tint shadow-soft"
+                                            : "border-line bg-surface hover:-translate-y-0.5 hover:border-brand-edge hover:shadow-soft"
                                         }`}
                                 >
-                                    <div className={`w-10 h-10 rounded-xl bg-linear-to-br ${p.grad} flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-md`}>
-                                        {initials}
-                                    </div>
+                                    <InitialsAvatar initials={initials} index={idx} size="md" className="shadow-soft" />
                                     <div className="min-w-0 flex-1">
-                                        <p className={`text-sm font-bold leading-tight truncate ${isActive ? p.nameActive : "text-ink"}`}>
+                                        <p className={`truncate text-sm leading-tight font-semibold ${isActive ? "text-brand-deep" : "text-ink"}`}>
                                             {s.firstName} {s.lastName}
                                         </p>
-                                        <p className="text-[11px] text-ink-muted leading-tight truncate mt-0.5">
+                                        <p className="mt-0.5 truncate text-[11px] leading-tight text-ink-muted">
                                             {[s.className, s.sectionName ? `Sec ${s.sectionName}` : null].filter(Boolean).join(" · ")}
                                         </p>
                                     </div>
-                                    {isActive && <div className={`w-2 h-2 rounded-full ${p.dot} shrink-0 ring-2 ring-white`} />}
+                                    {isActive && <div className="size-2 shrink-0 rounded-full bg-brand" />}
                                 </button>
                             );
                         })}
@@ -649,7 +678,9 @@ export default function StudentDashboardPage() {
                     ["exam-schedule", ClipboardList, "Schedule"],
                     ["holidays",      Palmtree,      "Holidays"],
                     ["info",          UserRound,     "Profile"],
-                ] as [ActiveSection, LucideIcon, string][]).map(([key, Icon, label]) => (
+                ] as [ActiveSection, LucideIcon, string][]).map(([key, Icon, label]) => {
+                    const tone = SECTION_TONE[key];
+                    return (
                     <button
                         key={key}
                         role="tab"
@@ -683,22 +714,36 @@ export default function StudentDashboardPage() {
                                 if (section !== 'info' && section !== 'exam-schedule' && section !== 'pickup' && section !== 'home' && section !== 'library' && section !== 'ai-tutor') setSectionLoading(true);
                             }
                         }}
-                        className={`flex min-h-15 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border px-1 py-2 font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+                        className={`group/tab flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border px-1 py-2 font-medium transition-all duration-200 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none ${
                             activeSection === key
                                 ? "border-brand bg-brand text-brand-contrast shadow-soft"
-                                : "border-line bg-surface text-ink-muted hover:border-brand-edge hover:bg-brand-tint hover:text-brand"
+                                : "border-line bg-surface text-ink-soft hover:-translate-y-0.5 hover:border-brand-edge hover:shadow-soft"
                         }`}
                     >
-                        <Icon className="size-4.5 shrink-0" aria-hidden="true" />
+                        {/* The icon sits in its own tinted medallion, keyed to what
+                            the section IS — presence, school work, money, AI. Twelve
+                            identical grey glyphs were unscannable; the colour is how
+                            you find "Fees" without reading all twelve labels.
+                            Selected inverts to brass so selection stays one language. */}
+                        <span
+                            className={`grid size-7 shrink-0 place-items-center rounded-md transition-colors duration-200 ${
+                                activeSection === key
+                                    ? "bg-brand-contrast/18 text-brand-contrast"
+                                    : tone
+                            }`}
+                        >
+                            <Icon className="size-4" aria-hidden="true" />
+                        </span>
                         <span className="w-full overflow-hidden text-center text-[10px] leading-tight whitespace-nowrap">{label}</span>
                     </button>
-                ))}
+                    );
+                })}
             </div>
 
             {sectionLoading ? (
-                <div role="status" aria-label="Loading section" className="flex flex-col items-center justify-center py-24 gap-4 animate-fade-in">
-                    <AnimatedLoader size="md" text="Loading data..." />
-                </div>
+                // The frame above is already on screen and stays put; only the
+                // panel area is unknown, so only the panel area is drawn.
+                <SectionSkeleton stats={activeSection === "attendance" || activeSection === "fees"} />
             ) : (
                 <>
                     {/* ════════════════════════════════
@@ -1150,14 +1195,13 @@ export default function StudentDashboardPage() {
                                         ));
                                     })}
                                 </div>
-                                <div className="flex flex-wrap justify-center gap-4 mt-6 text-xs text-ink">
-                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-green-500 shadow-sm shadow-green-500/30"></span> Present</div>
-                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-yellow-400 shadow-sm shadow-yellow-400/30"></span> Late</div>
-                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-purple-500 shadow-sm shadow-purple-500/30"></span> Half Day</div>
-                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-blue-500 shadow-sm shadow-blue-500/30"></span> Leave</div>
-                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500 shadow-sm shadow-red-500/30"></span> Absent</div>
-                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-sky-500 shadow-sm shadow-sky-500/30"></span> Holiday</div>
-                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-orange-500/60 border border-orange-500/40"></span> Sunday</div>
+                                <div className="mt-6 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-ink">
+                                    {ATTENDANCE_LEGEND.map(status => (
+                                        <div key={status} className="flex items-center gap-1.5">
+                                            <span className={`size-3 rounded-full ${ATTENDANCE_TONE[status].dot}`} />
+                                            {ATTENDANCE_TONE[status].label}
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
 
@@ -1167,7 +1211,20 @@ export default function StudentDashboardPage() {
                                         <ResponsiveContainer width={220} height={220}>
                                             <PieChart>
                                                 <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value" />
-                                                <Tooltip formatter={(val: any, name: any) => [`${val} days`, name]} contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.1)' }} />
+                                                {/* Tokens, not hex — this used to be a hardcoded
+                                                    white card with near-black text, which was an
+                                                    unreadable flash of white in the dark theme. */}
+                                                <Tooltip
+                                                    formatter={(val: any, name: any) => [`${val} days`, name]}
+                                                    contentStyle={{
+                                                        background: 'var(--surface)',
+                                                        border: '1px solid var(--line)',
+                                                        borderRadius: 'var(--radius-md)',
+                                                        color: 'var(--ink)',
+                                                        boxShadow: 'var(--shadow-raised)',
+                                                    }}
+                                                    itemStyle={{ color: 'var(--ink)' }}
+                                                />
                                             </PieChart>
                                         </ResponsiveContainer>
                                         <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
@@ -1177,17 +1234,22 @@ export default function StudentDashboardPage() {
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
-                                    {[
-                                        { label: "Present", value: attendance.present, color: "text-green-600", bg: "bg-green-50 border-green-200" },
-                                        { label: "Late", value: attendance.late || 0, color: "text-yellow-600", bg: "bg-yellow-50 border-yellow-200" },
-                                        { label: "Half Day", value: attendance.halfDay || 0, color: "text-purple-600", bg: "bg-purple-50 border-purple-200" },
-                                        { label: "Leave", value: attendance.leave || 0, color: "text-blue-600", bg: "bg-blue-50 border-blue-200" },
-                                        { label: "Absent", value: attendance.absent, color: "text-red-600", bg: "bg-red-50 border-red-200" },
-                                        { label: "Holiday", value: attendance.holiday || 0, color: "text-sky-600", bg: "bg-sky-50 border-sky-200" },
-                                    ].map(item => (
-                                        <div key={item.label} className={`border rounded-xl p-3 text-center shadow-sm ${item.bg}`}>
-                                            <div className={`text-2xl font-bold ${item.color} mb-1`}>{item.value}</div>
-                                            <div className="text-ink-muted font-medium text-[10px] uppercase">{item.label}</div>
+                                    {([
+                                        ["PRESENT", attendance.present],
+                                        ["LATE", attendance.late],
+                                        ["HALF_DAY", attendance.halfDay],
+                                        ["LEAVE", attendance.leave],
+                                        ["ABSENT", attendance.absent],
+                                        ["HOLIDAY", attendance.holiday],
+                                    ] as const).map(([status, value]) => (
+                                        <div
+                                            key={status}
+                                            className={`rounded-xl border p-3 text-center ${ATTENDANCE_TONE[status].tile}`}
+                                        >
+                                            <div className={`tabular mb-1 text-2xl font-bold ${ATTENDANCE_TONE[status].figure}`}>
+                                                {value || 0}
+                                            </div>
+                                            <div className="eyebrow">{ATTENDANCE_TONE[status].label}</div>
                                         </div>
                                     ))}
                                 </div>

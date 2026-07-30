@@ -10,6 +10,7 @@ import { startRegistration, startAuthentication } from "@simplewebauthn/browser"
 import { getOrCreateDeviceKeyPair, signChallenge, getDevicePublicKey, clearDeviceKeyPair } from "@/lib/device-crypto";
 import { todayLocalDate } from "@/lib/utils";
 import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
+import { CheckCircle2 } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import dayjs from "dayjs";
@@ -600,8 +601,8 @@ export default function MyAttendancePage() {
 
         {/* Fully checked out */}
         {todayRecord?.checkOutTime && (
-          <div className="flex items-center gap-2 text-green-700 font-semibold text-sm">
-            <span>✅</span> Checked out
+          <div className="flex items-center gap-2 text-sm font-semibold text-accent-success-deep">
+            <CheckCircle2 className="size-4" aria-hidden /> Checked out
           </div>
         )}
       </div>

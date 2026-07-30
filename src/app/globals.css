@@ -192,6 +192,9 @@
   --surface-sunk: #f0f0ef;
   --surface-glass: rgba(255, 255, 255, 0.84);
   --surface-inset: #e8e8e6;
+  /* The highlight that sweeps a skeleton. Brass, not white — a loading page
+     should look like it belongs to this app, not like generic grey furniture. */
+  --skeleton-sheen: rgba(169, 103, 12, 0.11);
 
   /* Text — warm near-black, so type belongs to the walnut family even though
      the paper it sits on stays cool. */
@@ -289,6 +292,9 @@
   --surface-sunk: #140f09;
   --surface-glass: rgba(28, 21, 13, 0.88);
   --surface-inset: #2a2218;
+  /* Lighter and weaker on walnut: a sheen reads as a light source, and a dark
+     surface needs far less of it before it starts to glare. */
+  --skeleton-sheen: rgba(240, 216, 172, 0.08);
 
   --ink: #f2ede4;
   --ink-soft: #cfc4b3;
@@ -991,6 +997,58 @@
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   SKELETONS
+
+   A loading state should be a picture of the page that is coming — not a
+   spinner parked on top of it. Two reasons this matters more than it looks:
+
+     - Nothing moves when the data lands. The bars are laid out on the same
+       grid as the real content, so the page does not reflow under a thumb
+       that is already reaching for a card.
+     - It reads as "your page, arriving" instead of "the app is busy". In the
+       Register & Ink language it is a blank ruled ledger waiting for ink.
+
+   The sweep is an ::after overlay rather than an animated background-position
+   so it composites on the GPU — a screen showing thirty of these costs the
+   same as one.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@layer components {
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--surface-inset);
+    border-radius: var(--radius-sm);
+  }
+
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--skeleton-sheen) 55%,
+      transparent 100%
+    );
+    animation: shimmer 1.6s var(--ease-out-ink) infinite;
+  }
+
+  /* Staggering the sweep by column stops a grid of cards from pulsing in
+     lockstep, which reads as a single flashing block rather than content. */
+  .skeleton-delay-1::after {
+    animation-delay: 0.12s;
+  }
+  .skeleton-delay-2::after {
+    animation-delay: 0.24s;
+  }
+  .skeleton-delay-3::after {
+    animation-delay: 0.36s;
+  }
+}
+
 @theme inline {
   --animate-fade-in: fade-in 0.32s var(--ease-out-ink) both;
   --animate-ink-rise: ink-rise 0.34s var(--ease-out-ink) both;
@@ -1043,6 +1101,12 @@
   }
   .stagger > * {
     animation: none;
+  }
+  /* Explicit, because the blanket `animation-duration: 0.01ms` below would
+     leave an infinite shimmer cycling ~100x a second instead of stopping it.
+     The bar itself stays — it still communicates "content is coming". */
+  .skeleton::after {
+    display: none;
   }
   *,
   *::before,
