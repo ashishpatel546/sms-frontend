@@ -11,6 +11,7 @@ import { API_BASE_URL } from "@/lib/api";
 import NotificationPermissionBanner from "@/components/NotificationPermissionBanner";
 import { useSchoolInfo } from "@/lib/useSchoolInfo";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import PullToRefresh from "@/components/ui/PullToRefresh";
 import { cn } from "@/lib/utils";
 
 /**
@@ -109,6 +110,9 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
                                     width={36}
                                     height={36}
                                     unoptimized
+                                    // Always above the fold (sticky header) and can be
+                                    // the LCP on sparse pages — load it eagerly.
+                                    priority
                                     className="size-full bg-white object-contain"
                                 />
                             ) : (
@@ -177,7 +181,7 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
             </header>
 
             <main id="main-content" className="mx-auto w-full max-w-5xl">
-                {children}
+                <PullToRefresh>{children}</PullToRefresh>
             </main>
 
             {/* ── Mobile bottom tabs ─────────────────────────────────────── */}

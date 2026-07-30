@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, Hash, School, Users } from "lucide-react";
@@ -12,6 +12,7 @@ import { ChildGridSkeleton } from "@/components/ui/Skeletons";
 import { PageBody, PageHeader, PageShell } from "@/components/ui/PageHeader";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Panel } from "@/components/ui/Panel";
+import { usePullToRefresh } from "@/components/ui/PullToRefresh";
 
 export default function ParentDashboardPage() {
     const router = useRouter();
@@ -19,28 +20,34 @@ export default function ParentDashboardPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
-    useEffect(() => {
-        const fetchStudents = async () => {
-            try {
-                const res = await authFetch(`${API_BASE_URL}/parent/my-students`, {
-                    headers: { Authorization: `Bearer ${getToken()}` },
-                });
-                if (!res.ok) throw new Error("Failed to load students");
-                const data = await res.json();
-                // If there is exactly one student, go straight to their dashboard
-                if (data.length === 1) {
-                    router.replace(`/parent-dashboard/student/${data[0].id}`);
-                    return;
-                }
-                setStudents(data);
-            } catch (err: any) {
-                setError(err.message || "Failed to load students");
-            } finally {
-                setLoading(false);
+    const fetchStudents = useCallback(async () => {
+        try {
+            const res = await authFetch(`${API_BASE_URL}/parent/my-students`, {
+                headers: { Authorization: `Bearer ${getToken()}` },
+            });
+            if (!res.ok) throw new Error("Failed to load students");
+            const data = await res.json();
+            // If there is exactly one student, go straight to their dashboard
+            if (data.length === 1) {
+                router.replace(`/parent-dashboard/student/${data[0].id}`);
+                return;
             }
-        };
-        fetchStudents();
+            setError("");
+            setStudents(data);
+        } catch (err: any) {
+            setError(err.message || "Failed to load students");
+        } finally {
+            setLoading(false);
+        }
     }, [router]);
+
+    useEffect(() => {
+        fetchStudents();
+    }, [fetchStudents]);
+
+    // Pull-down re-runs the same fetch, silently — the ledger rule is the
+    // loading state, so the skeleton must not flash underneath it.
+    usePullToRefresh(fetchStudents);
 
     /*
      * Loading draws the page that is coming rather than covering it.
@@ -118,7 +125,7 @@ export default function ParentDashboardPage() {
                                     on the same edge that identifies it. */}
                                 <span
                                     aria-hidden
-                                    className="absolute top-0 bottom-0 left-0 w-[3px] bg-brand transition-all duration-200 group-hover/child:w-[5px]"
+                                    className="absolute top-0 bottom-0 left-0 w-0.75 bg-brand transition-all duration-200 group-hover/child:w-1.25"
                                 />
 
                                 <div className="flex items-center gap-3.5">

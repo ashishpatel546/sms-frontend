@@ -147,6 +147,9 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                     width={32}
                                     height={32}
                                     unoptimized
+                                    // Always above the fold (rail header) and can be
+                                    // the LCP on sparse pages — load it eagerly.
+                                    priority
                                     className="size-full bg-white object-contain"
                                 />
                             ) : (
@@ -233,7 +236,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                                     <span
                                                         aria-hidden
                                                         className={[
-                                                            'absolute top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-sm bg-accent',
+                                                            'absolute top-1/2 h-5 w-0.75 -translate-y-1/2 rounded-r-sm bg-accent',
                                                             collapsed ? '-left-1' : '-left-2',
                                                         ].join(' ')}
                                                     />
@@ -325,7 +328,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                     <p className="truncate text-[13px] leading-tight font-semibold text-rail-ink">
                                         {user?.firstName} {user?.lastName}
                                     </p>
-                                    <p className="truncate font-mono text-[9.5px] leading-tight tracking-[0.1em] text-rail-ink-muted uppercase">
+                                    <p className="truncate font-mono text-[9.5px] leading-tight tracking-widest text-rail-ink-muted uppercase">
                                         {user?.role?.replace(/_/g, ' ')}
                                     </p>
                                 </div>

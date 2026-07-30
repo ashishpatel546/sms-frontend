@@ -12,6 +12,7 @@ import { X } from "lucide-react";
 import { usePinnedActions } from "@/hooks/usePinnedActions";
 import { useQuickActionTiles } from "@/lib/quickActions";
 import { QuickActionPicker } from "@/components/dashboard/QuickActionPicker";
+import PullToRefresh from "@/components/ui/PullToRefresh";
 
 /**
  * The "+" bottom-tab sheet: choose which quick actions sit on the dashboard.
@@ -189,7 +190,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     "pb-[calc(env(safe-area-inset-bottom)+64px)] md:pb-0",
                 ].join(" ")}
             >
-                {children}
+                <PullToRefresh>{children}</PullToRefresh>
             </main>
 
             <BottomTabBar

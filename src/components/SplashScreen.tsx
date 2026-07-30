@@ -13,8 +13,8 @@ import { useEffect, useState } from "react";
  *   - the caption read "Initiali-ing..."
  *   - `--10` appeared twice where `z-10` was meant, so it compiled to nothing
  *   - the spinner's SVG path ended `h4-` instead of `h4z`, leaving it unclosed
- *   - `z-9999` is not on Tailwind's z-scale (0/10/20/30/40/50/auto), so the
- *     overlay had no stacking order at all; it needs `z-[9999]`
+ *   - the overlay had no stacking order at all; it needs `z-9999` (Tailwind v4
+ *     accepts any bare number for z-index)
  *
  * Timing behaviour is unchanged: fade at 1.5s once school info lands, gone at
  * 2s, with a 3s hard fallback if the API never answers.
@@ -60,7 +60,7 @@ export default function SplashScreen() {
     <div
       role="status"
       aria-label="Opening"
-      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-walnut-950 transition-opacity duration-500 ease-in-out ${
+      className={`fixed inset-0 z-9999 flex flex-col items-center justify-center bg-walnut-950 transition-opacity duration-500 ease-in-out ${
         fade ? "opacity-0" : "opacity-100"
       }`}
     >
@@ -77,6 +77,9 @@ export default function SplashScreen() {
 
       {/* Logo */}
       <div className="relative z-10 flex size-40 items-center justify-center rounded-2xl border border-brass-500/25 bg-white/6 p-6 shadow-2xl backdrop-blur-md md:size-52">
+        {/* `priority` — the logo is the LCP element (fullscreen, first paint),
+            so it must load eagerly; lazy-loading it both delays the splash
+            and trips Next's LCP warning in dev. */}
         {schoolInfo?.logoUrl ? (
           <Image
             src={schoolInfo.logoUrl}
@@ -85,6 +88,7 @@ export default function SplashScreen() {
             height={256}
             className="size-full object-contain drop-shadow-xl"
             unoptimized
+            priority
           />
         ) : (
           <div className="skeleton size-full rounded-xl" />
