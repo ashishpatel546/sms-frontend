@@ -146,7 +146,7 @@ export default function ProfilePage() {
 
     return (
         <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-            <h1 className="text-2xl font-bold text-slate-900 mb-6">My Profile</h1>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">My Profile</h1>
 
             {/* Tabs */}
             <div className="bg-slate-100 border border-slate-200 rounded-2xl p-1.5 flex gap-1.5 mb-6">

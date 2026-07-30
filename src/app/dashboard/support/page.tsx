@@ -67,7 +67,7 @@ export default function DashboardSupportPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Help & Support</h1>
+        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Help & Support</h1>
         <p className="text-slate-500 mt-2">Find answers in our FAQs or connect directly with our support team.</p>
       </div>
 

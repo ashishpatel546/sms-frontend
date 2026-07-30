@@ -486,7 +486,7 @@ export default function LeavesPage() {
 
             {/* Header */}
             <div className="mb-6">
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Leave Requests</h1>
+                <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Leave Requests</h1>
                 <p className="text-sm text-gray-500 mt-1">Review and manage student leave applications</p>
             </div>
 

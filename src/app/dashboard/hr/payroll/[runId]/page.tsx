@@ -118,7 +118,7 @@ export default function PayrollRunPage() {
       <Toaster />
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <button onClick={() => router.back()} className="text-gray-500 hover:text-gray-700 text-sm">← Back</button>
-        <h1 className="text-xl font-bold text-gray-900">
+        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">
           Payroll — {run ? `${MONTHS[run.month - 1]} ${run.year}` : `Run #${runId}`}
         </h1>
         {run && (

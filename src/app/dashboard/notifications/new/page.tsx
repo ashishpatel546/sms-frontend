@@ -181,7 +181,7 @@ export default function NewNotificationPage() {
           </svg>
         </Link>
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">Create Notification</h1>
+          <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Create Notification</h1>
           <p className="mt-1 text-sm text-slate-500">Draft a new message and select your target audience.</p>
         </div>
       </div>

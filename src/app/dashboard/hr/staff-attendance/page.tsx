@@ -284,7 +284,7 @@ export default function StaffAttendancePage() {
     <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
       <div className="space-y-2 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
-        <h1 className="text-xl font-bold text-gray-900">Staff Attendance</h1>
+        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Staff Attendance</h1>
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
           <Link href="/dashboard/hr/staff-attendance/kiosk" className="bg-slate-700 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 text-center">
             Kiosk Mode

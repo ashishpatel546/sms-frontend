@@ -1829,7 +1829,7 @@ export default function LibraryPage() {
             <BookOpen className="w-6 h-6 text-lime-700 dark:text-lime-400" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Library</h1>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Library</h1>
             <p className="text-xs text-slate-500">Manage books, issuances and late fees</p>
           </div>
         </div>

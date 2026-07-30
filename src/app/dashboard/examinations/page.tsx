@@ -248,7 +248,7 @@ export default function ExaminationsPage() {
         <main className="p-4 sm:p-5">
             <div className="max-w-7xl mx-auto">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                    <h1 className="text-2xl font-bold text-slate-800">Examinations</h1>
+                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Examinations</h1>
                     <Link href="/dashboard/examinations/data-entry" className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-brand/40 font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-none w-full sm:w-auto text-center whitespace-nowrap">
                         Bulk Data Entry
                     </Link>

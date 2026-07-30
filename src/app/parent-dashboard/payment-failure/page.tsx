@@ -17,7 +17,7 @@ function PaymentFailureContent() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </div>
-                <h1 className="text-ink text-3xl font-bold mb-2">Payment Failed</h1>
+                <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Payment Failed</h1>
                 <p className="text-ink-muted mb-8">
                     {errorMsg}
                 </p>

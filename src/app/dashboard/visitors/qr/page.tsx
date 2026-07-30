@@ -74,7 +74,7 @@ export default function VisitorQrPosterPage() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={school.logoDataUrl || school.logoUrl} alt="School logo" className="w-20 h-20 mx-auto object-contain mb-3" />
                 ) : null}
-                <h1 className="text-slate-900 font-extrabold text-2xl">{school?.name || "Our School"}</h1>
+                <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{school?.name || "Our School"}</h1>
                 <p className="text-slate-500 text-sm mt-1 mb-6">Visitor Entry Registration</p>
 
                 <div className="inline-block bg-white p-3 sm:p-4 rounded-2xl border-4 border-slate-900 max-w-full">

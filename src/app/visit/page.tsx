@@ -139,7 +139,7 @@ export default function VisitorFormPage() {
                             <QrCode className="w-7 h-7 text-white" />
                         </div>
                     )}
-                    <h1 className="text-white text-2xl font-bold">{school?.name || "Visitor Entry"}</h1>
+                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{school?.name || "Visitor Entry"}</h1>
                     <p className="text-brass-100/70 text-sm mt-1">Fill this form to get your gate-entry QR code</p>
                 </div>
 

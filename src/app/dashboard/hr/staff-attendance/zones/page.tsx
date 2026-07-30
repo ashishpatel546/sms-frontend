@@ -144,7 +144,7 @@ export default function AttendanceZonesPage() {
         <Link href="/dashboard/hr/staff-attendance" className="text-gray-400 hover:text-gray-700 transition-colors" title="Back to Staff Attendance">
           ← Back
         </Link>
-        <h1 className="text-xl font-bold text-gray-900">Attendance Geo-Zones</h1>
+        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Attendance Geo-Zones</h1>
         <div className="flex-1" />
         {rbac.canManageHR && (
           <button onClick={openCreate} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">

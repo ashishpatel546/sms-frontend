@@ -207,7 +207,7 @@ export default function BulkPromotionsPage() {
 
     return (
         <main className="p-4 max-w-7xl mx-auto">
-            <h1 className="text-2xl font-bold text-slate-800 mb-6">Bulk Student Promotions</h1>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Bulk Student Promotions</h1>
 
             {/* Top Bar: Source Filters & Destination Settings */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

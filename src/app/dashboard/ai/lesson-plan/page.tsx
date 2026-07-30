@@ -74,7 +74,7 @@ export default function LessonPlanPage() {
           <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-ink">Lesson Plan Generator</h1>
+          <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Lesson Plan Generator</h1>
           <p className="text-sm text-ink-muted">AI-powered lesson plans tailored to your curriculum</p>
         </div>
       </div>

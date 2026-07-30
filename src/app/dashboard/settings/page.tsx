@@ -479,7 +479,7 @@ export default function SettingsPage() {
             {error && <div className="p-4 text-red-600 mb-4 bg-red-50 rounded">Error loading sessions</div>}
             <Toaster position="top-right" />
             <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4 border-b pb-4 border-gray-200">
-                <h1 className="text-3xl font-bold text-slate-800 pb-2 md:pb-0">Settings</h1>
+                <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Settings</h1>
                 <div className="flex p-1 bg-slate-100 rounded-xl w-full md:w-fit shadow-inner border border-slate-200/60 overflow-x-auto">
                     <button
                         onClick={() => setActiveTab('system')}

@@ -280,7 +280,7 @@ export default function VisitorsPage() {
                         <Users className="w-5 h-5" />
                     </div>
                     <div>
-                        <h1 className="text-ink font-bold text-xl leading-tight">Visitor Management</h1>
+                        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Visitor Management</h1>
                         <p className="text-ink-muted text-sm">Gate entries, exits and reports</p>
                     </div>
                 </div>

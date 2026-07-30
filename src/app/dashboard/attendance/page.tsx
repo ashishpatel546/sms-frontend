@@ -447,7 +447,7 @@ export default function AttendancePage() {
         <main className="p-4 flex-1 h-full overflow-y-auto w-full max-w-7xl mx-auto relative">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <div className="flex items-center gap-4">
-                    <h1 className="text-3xl font-bold text-slate-800">Attendance Dashboard</h1>
+                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Attendance Dashboard</h1>
                 </div>
                 {activeSession && (
                     <div className="bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-lg w-full sm:w-auto flex justify-between sm:justify-start items-center">

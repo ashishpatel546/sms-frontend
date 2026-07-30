@@ -36,7 +36,7 @@ export default function NotificationsPage() {
           </svg>
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-ink leading-tight">Notifications</h1>
+          <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Notifications</h1>
           <p className="text-xs text-ink-muted">School announcements &amp; alerts</p>
         </div>
       </div>

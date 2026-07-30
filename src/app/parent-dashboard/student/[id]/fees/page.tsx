@@ -25,7 +25,7 @@ export default function FeePaymentPage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                 Back to Dashboard
             </Link>
-            <h1 className="text-ink text-2xl font-bold mb-6">Pay Fee Online</h1>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Pay Fee Online</h1>
 
             {step === "form" && (
                 <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 shadow-soft">

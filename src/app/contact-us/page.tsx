@@ -57,7 +57,7 @@ export default function ContactUsPage() {
           </button>
 
           <div className="mb-10">
-            <h1 className="text-white text-4xl lg:text-5xl font-extrabold leading-tight mb-4 drop-shadow-md">
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">
               Get in Touch
             </h1>
             <p className="text-brass-100/85 text-lg leading-relaxed font-medium">

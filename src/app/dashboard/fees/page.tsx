@@ -941,7 +941,7 @@ export default function FeesDashboardPage() {
             <Toaster position="top-right" />
 
 
-            <h1 className="text-3xl font-bold mb-6 text-slate-800 no-print">Fee Management</h1>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Fee Management</h1>
 
             {/* Receipt Modal */}
             {receiptData && (

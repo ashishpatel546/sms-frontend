@@ -665,7 +665,7 @@ export default function ReportsDashboard() {
         <main className="p-4 flex-1 h-full overflow-y-auto w-full max-w-7xl mx-auto">
             <Toaster position="top-right" />
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-slate-800">Reports Dashboard</h1>
+                <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Reports Dashboard</h1>
             </div>
 
             {/* TABS */}

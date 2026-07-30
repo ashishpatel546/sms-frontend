@@ -71,7 +71,7 @@ export default function PayrollPage() {
     <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Payroll</h1>
+        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Payroll</h1>
         {rbac.canManagePayroll && (
           <button onClick={() => setShowDraft(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
             + Generate Draft

@@ -90,7 +90,7 @@ export default function SalaryConfigPage() {
   return (
     <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
-      <h1 className="text-xl font-bold text-gray-900">Salary Configuration</h1>
+      <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Salary Configuration</h1>
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200">

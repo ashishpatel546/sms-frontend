@@ -179,7 +179,7 @@ export default function ParentProfilePage() {
 
     return (
         <div className="max-w-4xl mx-auto">
-            <h1 className="text-2xl font-bold text-ink mb-6">Account Settings</h1>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Account Settings</h1>
 
             {/* Sign Out card — quick logout for the current device.
                 Works on tenant-aware logout() helper (clears tokens for this user only). */}

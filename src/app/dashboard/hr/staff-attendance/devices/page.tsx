@@ -95,7 +95,7 @@ export default function DeviceRegistrationsPage() {
         <Link href="/dashboard/hr/staff-attendance" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-2">
           ← Staff Attendance
         </Link>
-        <h1 className="text-xl font-bold text-gray-900">Device Registrations</h1>
+        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Device Registrations</h1>
         <p className="text-sm text-gray-500 mt-0.5">
           Track which staff have registered a device for biometric self check-in.
         </p>

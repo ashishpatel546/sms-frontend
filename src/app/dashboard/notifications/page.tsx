@@ -61,7 +61,7 @@ export default function NotificationsPage() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">Notifications & Reminders</h1>
+          <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Notifications & Reminders</h1>
           <p className="mt-1 text-sm text-slate-500">Manage broadcasts and send fee reminders.</p>
         </div>
         {activeTab === 'BROADCASTS' && canSendNotifications && (

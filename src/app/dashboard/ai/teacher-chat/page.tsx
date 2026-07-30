@@ -122,7 +122,7 @@ export default function TeacherChatPage() {
             <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-ink">Teacher Chat</h1>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Teacher Chat</h1>
             <p className="text-xs text-ink-muted">Ask curriculum, pedagogy, or subject questions</p>
           </div>
         </div>

@@ -109,7 +109,7 @@ export default function DesignationsAdminPage() {
             <Toaster position="top-right" />
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Designations Management</h1>
+                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Designations Management</h1>
                     <p className="text-sm text-slate-500">Manage staff roles and titles.</p>
                 </div>
             </div>
