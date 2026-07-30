@@ -71,6 +71,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const [user, setUser] = useState<any>(null);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [isWide, setIsWide] = useState(true);
+    const [isTabletUp, setIsTabletUp] = useState(true);
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
     const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
 
@@ -101,16 +102,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         } catch { /* localStorage unavailable — use default */ }
     }, []);
 
-    // Below lg the rail is icon-only whatever the saved preference says: a
-    // 256px rail on a 768px tablet takes a third of the screen, and these are
-    // data-dense pages that need the width. The preference still governs
-    // desktop, where there is room for labels.
+    // Three bands, not two — see railCollapsed below.
     useEffect(() => {
-        const mq = window.matchMedia("(min-width: 1024px)");
-        const apply = () => setIsWide(mq.matches);
+        const desktop = window.matchMedia("(min-width: 1024px)");
+        const tabletUp = window.matchMedia("(min-width: 768px)");
+        const apply = () => {
+            setIsWide(desktop.matches);
+            setIsTabletUp(tabletUp.matches);
+        };
         apply();
-        mq.addEventListener("change", apply);
-        return () => mq.removeEventListener("change", apply);
+        desktop.addEventListener("change", apply);
+        tabletUp.addEventListener("change", apply);
+        return () => {
+            desktop.removeEventListener("change", apply);
+            tabletUp.removeEventListener("change", apply);
+        };
     }, []);
 
     useEffect(() => {
@@ -127,9 +133,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setIsQuickActionsOpen(false);
     }, [pathname]);
 
-    // What the rail actually renders as. The stored preference only applies on
-    // desktop; below lg the rail is always the icon variant.
-    const railCollapsed = sidebarCollapsed || !isWide;
+    /**
+     * What the rail actually renders as, in three bands:
+     *
+     *   mobile  (<md)  a full-width slide-in DRAWER. Never icon-only — there is
+     *                  a whole screen of room and the labels are the point.
+     *   tablet  (md–lg) a permanent 64px icon rail. A 256px rail on a 768px
+     *                  screen takes a third of it, and these pages need width.
+     *   desktop (≥lg)  whatever the person chose, remembered in localStorage.
+     */
+    const railCollapsed = !isTabletUp ? false : sidebarCollapsed || !isWide;
 
     const toggleSidebar = () => {
         setSidebarCollapsed(prev => {
