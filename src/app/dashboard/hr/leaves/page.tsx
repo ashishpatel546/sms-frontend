@@ -100,7 +100,7 @@ export default function StaffLeavesPage() {
     <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Staff Leaves</h1>
+        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Staff Leaves</h1>
         <button onClick={() => setShowApply(true)} className="bg-blue-600 text-white px-3 py-2 sm:px-4 rounded-lg text-sm font-medium hover:bg-blue-700">
           + Apply Leave
         </button>
@@ -234,7 +234,7 @@ export default function StaffLeavesPage() {
 
       {/* Apply modal */}
       {showApply && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+        <div className="fixed inset-0 bg-walnut-950/55 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 w-full sm:max-w-md space-y-4 max-h-[90vh] overflow-y-auto">
             <h2 className="font-semibold text-lg">Apply Leave</h2>
             {rbac.canAccessHR && (
@@ -286,7 +286,7 @@ export default function StaffLeavesPage() {
 
       {/* Reject modal */}
       {rejectId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-walnut-950/55 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm space-y-4">
             <h2 className="font-semibold text-lg">Reject Leave</h2>
             <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Reason for rejection…" rows={3} className="w-full border rounded-lg px-3 py-2 text-sm" />

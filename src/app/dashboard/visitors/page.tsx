@@ -7,6 +7,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
+import NumberInput from "@/components/ui/NumberInput";
 import {
     Download, LogOut, Plus, QrCode, Search, Settings2, X, Users, RefreshCw, Archive,
 } from "lucide-react";
@@ -279,7 +280,7 @@ export default function VisitorsPage() {
                         <Users className="w-5 h-5" />
                     </div>
                     <div>
-                        <h1 className="text-ink font-bold text-xl leading-tight">Visitor Management</h1>
+                        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Visitor Management</h1>
                         <p className="text-ink-muted text-sm">Gate entries, exits and reports</p>
                     </div>
                 </div>
@@ -430,7 +431,7 @@ export default function VisitorsPage() {
 
             {/* ── Manual entry modal ── */}
             {manualOpen && (
-                <div className="fixed inset-0 z-80 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={() => setManualOpen(false)}>
+                <div className="fixed inset-0 z-80 flex items-end sm:items-center justify-center bg-walnut-950/55 backdrop-blur-sm p-0 sm:p-4" onClick={() => setManualOpen(false)}>
                     <div className="bg-surface w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-ink font-semibold text-base">Manual Visitor Entry</h3>
@@ -440,7 +441,7 @@ export default function VisitorsPage() {
                             <input type="text" value={manualForm.visitorName} onChange={e => setManualForm(p => ({ ...p, visitorName: e.target.value }))} maxLength={150} placeholder="Visitor name *" className={`${inputCls} w-full`} required />
                             <div className="grid grid-cols-2 gap-2">
                                 <input type="tel" value={manualForm.mobile} onChange={e => setManualForm(p => ({ ...p, mobile: e.target.value.replace(/\D/g, "").slice(0, 10) }))} maxLength={10} placeholder="Mobile *" className={`${inputCls} w-full`} required />
-                                <input type="number" min={1} max={50} value={manualForm.personsCount} onChange={e => setManualForm(p => ({ ...p, personsCount: Number(e.target.value) }))} placeholder="Persons" className={`${inputCls} w-full`} />
+                                <NumberInput min={1} max={50} value={manualForm.personsCount} emptyValue={1} onChange={v => setManualForm(p => ({ ...p, personsCount: v ?? 1 }))} placeholder="Persons" className={`${inputCls} w-full`} />
                             </div>
                             <select value={manualForm.purpose} onChange={e => setManualForm(p => ({ ...p, purpose: e.target.value }))} className={`${inputCls} w-full`} required>
                                 <option value="" disabled>Purpose *</option>
@@ -469,7 +470,7 @@ export default function VisitorsPage() {
 
             {/* ── Archived history modal (SUB_ADMIN+) ── */}
             {archivesOpen && (
-                <div className="fixed inset-0 z-80 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={() => setArchivesOpen(false)}>
+                <div className="fixed inset-0 z-80 flex items-end sm:items-center justify-center bg-walnut-950/55 backdrop-blur-sm p-0 sm:p-4" onClick={() => setArchivesOpen(false)}>
                     <div className="bg-surface w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl p-5 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-1">
                             <h3 className="text-ink font-semibold text-base flex items-center gap-2"><Archive className="w-4 h-4 text-teal-600 dark:text-teal-400" /> Archived Visitor History</h3>
@@ -503,7 +504,7 @@ export default function VisitorsPage() {
 
             {/* ── Settings modal (SUPER_ADMIN) ── */}
             {settingsOpen && settings && (
-                <div className="fixed inset-0 z-80 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setSettingsOpen(false)}>
+                <div className="fixed inset-0 z-80 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm p-4" onClick={() => setSettingsOpen(false)}>
                     <div className="bg-surface w-full max-w-sm rounded-2xl p-5" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-ink font-semibold text-base">Visitor Management Settings</h3>
@@ -512,8 +513,8 @@ export default function VisitorsPage() {
                         <form onSubmit={saveSettings} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-ink mb-1.5">QR validity for entry (minutes)</label>
-                                <input type="number" min={5} max={720} value={settings.qrValidityMinutes}
-                                    onChange={e => setSettings(s => s && ({ ...s, qrValidityMinutes: Number(e.target.value) }))}
+                                <NumberInput min={5} max={720} value={settings.qrValidityMinutes} emptyValue={30}
+                                    onChange={v => setSettings(s => s && ({ ...s, qrValidityMinutes: v ?? 30 }))}
                                     className={`${inputCls} w-full`} />
                                 <p className="text-xs text-ink-muted mt-1">Default 30. Applies immediately, even to already-generated QRs.</p>
                             </div>

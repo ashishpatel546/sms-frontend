@@ -74,7 +74,7 @@ export default function StaffAttendanceModal({ staffId, staffLabel, onClose }: P
     const pct = workingMarked > 0 ? Math.round((presentish / workingMarked) * 100) : 0;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/55 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
                     <div>

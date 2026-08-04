@@ -1,10 +1,11 @@
 "use client";
 
-import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { PanelLeftClose, PanelLeftOpen, Menu } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
-import { useSchoolInfo } from "@/lib/useSchoolInfo";
+import { NAV_CONFIG } from "@/lib/navConfig";
 
 interface TopBarProps {
     user: any;
@@ -12,94 +13,124 @@ interface TopBarProps {
     sidebarCollapsed: boolean;
     /** Called when the sidebar toggle button is clicked (tablet/desktop only) */
     onToggleSidebar: () => void;
+    /** Called when the mobile menu button is tapped */
+    onOpenMobileNav?: () => void;
 }
 
 /**
- * Fixed glass top bar for the admin/staff dashboard.
- * – Mobile  (<md): school logo + name | ThemeToggle + NotificationBell
- * – Tablet (md-lg): sidebar toggle added on the left
- * – Desktop (≥lg):  user pill shown on the right
- *
- * School branding is always pulled from useSchoolInfo() (multi-tenant safe).
+ * Resolve the current route to "Group / Page" using NAV_CONFIG, so the
+ * breadcrumb can never drift from the navigation. Deeper routes
+ * (/dashboard/students/42/edit) resolve to their nearest nav ancestor rather
+ * than inventing a label from the URL.
  */
-export function TopBar({ user, sidebarCollapsed, onToggleSidebar }: TopBarProps) {
-    const schoolInfo = useSchoolInfo();
-    // Prefer the S3 URL for fast loading; data-url is used only for PDF generation.
-    const logoSrc = schoolInfo?.logoUrl || schoolInfo?.logoDataUrl || null;
+function useCrumb(pathname: string): { group?: string; page: string } {
+    // Flatten and try the longest href first, ACROSS groups — otherwise
+    // /dashboard (the overview item) prefix-matches every route in the app and
+    // every page would call itself "Dashboard".
+    const all = NAV_CONFIG.flatMap(group =>
+        group.items.map(item => ({ ...item, group: group.label })),
+    ).sort((a, b) => b.href.length - a.href.length);
+
+    for (const item of all) {
+        // "/dashboard" only ever matches itself; everything else may match a
+        // deeper route (/dashboard/students/42/edit → Students).
+        const matches =
+            item.href === "/dashboard"
+                ? pathname === "/dashboard"
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
+        if (matches) return { group: item.group, page: item.label };
+    }
+    return { page: "Dashboard" };
+}
+
+/**
+ * The glass bar over the canvas. It spans only the content area — the ink rail
+ * carries its own masthead — so the dark and light halves of the design meet
+ * on a single vertical seam instead of overlapping.
+ *
+ * – Mobile  (<md): menu button + page name | theme + bell
+ * – Tablet+ (≥md): rail collapse toggle + breadcrumb | theme + bell + user pill
+ */
+export function TopBar({ user, sidebarCollapsed, onToggleSidebar, onOpenMobileNav }: TopBarProps) {
+    const pathname = usePathname();
+    const { group, page } = useCrumb(pathname);
 
     return (
-        <nav className="h-14 bg-white/80 dark:bg-surface/90 backdrop-blur-xl border-b border-slate-200/60 dark:border-white/10 px-3 sm:px-4 fixed left-0 right-0 top-0 z-50 shadow-sm">
-            <div className="flex items-center justify-between h-full w-full gap-2 sm:gap-3">
+        <header
+            className={[
+                "fixed top-0 right-0 z-30 h-14",
+                "border-b border-line bg-surface-glass backdrop-blur-xl",
+                // Sits beside the rail on tablet+, full width on mobile
+                "left-0",
+                sidebarCollapsed ? "md:left-16" : "md:left-64",
+                "transition-[left] duration-300 ease-out",
+                "px-3 sm:px-4",
+                "pt-[env(safe-area-inset-top)]",
+            ].join(" ")}
+        >
+            <div className="flex h-full w-full items-center gap-2 sm:gap-3">
 
-                {/* ── Left: toggle + school identity ── */}
-                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                {/* ── Left: rail control + where you are ── */}
+                {/* lg and up only: below that the rail is forced icon-only, so a
+                    toggle would be a control that does nothing. */}
+                <button
+                    onClick={onToggleSidebar}
+                    className="hidden size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink lg:flex"
+                    aria-label={sidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
+                >
+                    {sidebarCollapsed
+                        ? <PanelLeftOpen className="size-4" />
+                        : <PanelLeftClose className="size-4" />
+                    }
+                </button>
 
-                    {/* Sidebar collapse toggle — tablet & desktop only */}
-                    <button
-                        onClick={onToggleSidebar}
-                        className="hidden md:flex items-center justify-center w-8 h-8 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-secondary transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50"
-                        aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                    >
-                        {sidebarCollapsed
-                            ? <ChevronRight className="w-4 h-4" />
-                            : <ChevronLeft className="w-4 h-4" />
-                        }
-                    </button>
+                <button
+                    onClick={onOpenMobileNav}
+                    className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink md:hidden"
+                    aria-label="Open navigation menu"
+                >
+                    <Menu className="size-5" />
+                </button>
 
-                    {/* School logo (rounded square, brand gradient fallback) */}
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-linear-to-br from-brand to-brand-light flex items-center justify-center shadow-sm overflow-hidden shrink-0">
-                        {logoSrc ? (
-                            <Image
-                                src={logoSrc}
-                                alt={`${schoolInfo?.name || 'School'} logo`}
-                                width={36}
-                                height={36}
-                                unoptimized
-                                className="w-full h-full object-contain bg-white"
-                            />
-                        ) : (
-                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253" />
-                            </svg>
+                <nav aria-label="Breadcrumb" className="min-w-0">
+                    <ol className="flex items-center gap-1.5 text-[12.5px]">
+                        <li className="hidden sm:block">
+                            <Link href="/dashboard" className="text-ink-faint transition-colors hover:text-brand">
+                                Home
+                            </Link>
+                        </li>
+                        {group && (
+                            <>
+                                <li aria-hidden className="hidden text-ink-faint sm:block">/</li>
+                                <li className="hidden truncate text-ink-muted sm:block">{group}</li>
+                            </>
                         )}
-                    </div>
+                        <li aria-hidden className="hidden text-ink-faint sm:block">/</li>
+                        <li className="truncate font-semibold text-ink" aria-current="page">{page}</li>
+                    </ol>
+                </nav>
 
-                    {/* School name — truncated on narrow screens */}
-                    <div className="min-w-0">
-                        <p className="text-ink font-bold text-sm sm:text-base leading-tight truncate max-w-[130px] xs:max-w-[180px] sm:max-w-xs lg:max-w-sm">
-                            {schoolInfo?.name || 'School'}
-                        </p>
-                        <p className="hidden sm:block text-ink-muted text-[11px] leading-tight">
-                            Management Portal
-                        </p>
-                    </div>
-                </div>
-
-                {/* ── Right: user pill (desktop) + theme + bell ── */}
-                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-
-                    {/* User identity pill — large screens only */}
-                    <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-surface-secondary rounded-xl">
-                        <div className="w-6 h-6 rounded-full bg-linear-to-br from-brand to-brand-light flex items-center justify-center text-white text-xs font-bold select-none">
-                            {user?.firstName?.[0]}{user?.lastName?.[0]}
-                        </div>
-                        <span className="text-ink text-sm font-medium max-w-[140px] truncate">
-                            {user?.firstName} {user?.lastName}
-                        </span>
-                        <span className="text-xs text-ink-muted border-l border-slate-200 dark:border-white/10 pl-2 max-w-[90px] truncate capitalize">
-                            {user?.role?.replace(/_/g, ' ').toLowerCase()}
-                        </span>
-                    </div>
-
-                    {/* Theme toggle */}
-                    <div className="flex items-center bg-surface-secondary border border-slate-200/80 dark:border-white/10 rounded-xl px-1.5 py-1 shadow-sm">
-                        <ThemeToggle />
-                    </div>
-
-                    {/* Notification bell */}
+                {/* ── Right: theme, alerts, identity ── */}
+                <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+                    <ThemeToggle />
                     <NotificationBell variant="light" />
+
+                    {/* Identity pill — large screens only; the rail carries it elsewhere */}
+                    <div className="hidden items-center gap-2 rounded-lg border border-line bg-surface py-1 pr-3 pl-1 lg:flex">
+                        <span className="grid size-7 place-items-center rounded-md bg-linear-to-br from-brass-500 to-marigold-400 font-display text-[11px] font-bold text-white select-none">
+                            {user?.firstName?.[0]}{user?.lastName?.[0]}
+                        </span>
+                        <span className="min-w-0">
+                            <span className="block max-w-36 truncate text-[12.5px] leading-tight font-semibold text-ink">
+                                {user?.firstName} {user?.lastName}
+                            </span>
+                            <span className="block max-w-36 truncate font-mono text-[9px] leading-tight tracking-[0.1em] text-ink-faint uppercase">
+                                {user?.role?.replace(/_/g, " ")}
+                            </span>
+                        </span>
+                    </div>
                 </div>
             </div>
-        </nav>
+        </header>
     );
 }

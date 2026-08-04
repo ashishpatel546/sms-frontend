@@ -141,9 +141,13 @@ export default function AdminPanel() {
             if (searchRole) params.set("role", searchRole);
             if (searchMobile) params.set("mobile", searchMobile);
             if (searchDesignation) params.set("designationId", searchDesignation);
-            // staffOnly=true by default unless user explicitly chose to show all or selected a non-staff role
+            // staffOnly=true by default unless the user explicitly chose to show all,
+            // selected a non-staff role, or is looking someone up by mobile number —
+            // a mobile lookup must surface every matching account (the same number
+            // belongs to a parent and their children's student logins).
             const isNonStaffRole = searchRole && !["SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "HR_ADMIN", "TEACHER", ""].includes(searchRole);
-            if (!showAllUsers && !isNonStaffRole) params.set("staffOnly", "true");
+            const isMobileLookup = Boolean(searchMobile.trim());
+            if (!showAllUsers && !isNonStaffRole && !isMobileLookup) params.set("staffOnly", "true");
             params.set("page", String(overridePage ?? page));
             params.set("limit", String(overrideSize ?? pageSize));
 
@@ -206,12 +210,17 @@ export default function AdminPanel() {
     };
 
     const handleResetPassword = async (userId: number, name: string) => {
-        if (!confirm(`Reset password for ${name} to default?`)) return;
+        if (!confirm(`Reset password for ${name} to default?\n\nThey will be logged out everywhere and must change the password at next login.`)) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/users/${userId}/reset-password`, { method: "PATCH", headers: authHeaders });
-            if (res.ok) toast.success("Password reset. User must change on next login.");
-            else toast.error("Failed to reset password");
-        } catch { toast.error("Failed to reset password"); }
+            if (res.ok) {
+                const d = await res.json().catch(() => null);
+                toast.success(d?.message || "Password reset. User must change on next login.");
+            } else {
+                const d = await res.json().catch(() => null);
+                toast.error(d?.message ? `Reset failed: ${d.message}` : `Failed to reset password (HTTP ${res.status})`);
+            }
+        } catch { toast.error("Failed to reset password — network error"); }
     };
 
     const handleToggleStatus = async (userId: number, isActive: boolean, name: string) => {
@@ -261,7 +270,7 @@ export default function AdminPanel() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                             </svg>
                         </div>
-                        <h1 className="text-2xl font-bold text-slate-800">
+                        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">
                             {isSuperAdmin ? "Super Admin Panel" : "Admin Panel"}
                         </h1>
                     </div>
@@ -295,7 +304,7 @@ export default function AdminPanel() {
                                 <input
                                     type="text" value={searchName} onChange={e => setSearchName(e.target.value)}
                                     placeholder="Search by name..."
-                                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
                                 />
                             </div>
                             <div className="relative">
@@ -305,7 +314,7 @@ export default function AdminPanel() {
                                 <input
                                     type="text" value={searchEmail} onChange={e => setSearchEmail(e.target.value)}
                                     placeholder="Search by email..."
-                                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
                                 />
                             </div>
                             <div className="relative">
@@ -315,12 +324,12 @@ export default function AdminPanel() {
                                 <input
                                     type="text" value={searchMobile} onChange={e => setSearchMobile(e.target.value)}
                                     placeholder="Search by mobile..."
-                                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
                                 />
                             </div>
                             <select
                                 value={searchRole} onChange={e => setSearchRole(e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/40"
                             >
                                 <option value="">All Roles</option>
                                 {ALL_ROLES.filter(r => r).map(r => (
@@ -329,7 +338,7 @@ export default function AdminPanel() {
                             </select>
                             <select
                                 value={searchDesignation} onChange={e => setSearchDesignation(e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/40"
                             >
                                 <option value="">All Designations</option>
                                 {designations.map(d => (
@@ -414,7 +423,7 @@ export default function AdminPanel() {
                                                         <select
                                                             defaultValue={user.role}
                                                             onChange={e => handleRoleChange(user.id, e.target.value)}
-                                                            className="text-xs bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                                                            className="text-xs bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand/40 cursor-pointer"
                                                         >
                                                             {/* Current role stays visible even when it is not assignable (e.g. SUPER_ADMIN, PARENT) */}
                                                             {!ASSIGNABLE_ROLES.includes(user.role) && (
@@ -464,7 +473,7 @@ export default function AdminPanel() {
                                                                     <button
                                                                         onClick={() => { setOpenDropdownId(null); handleToggleStatus(user.id, user.isActive, `${user.firstName} ${user.lastName}`); }}
                                                                         className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 ${user.isActive ? "text-orange-700" : "text-green-700"}`}>
-                                                                        {user.isActive ? "🔒 Deactivate" : "✅ Activate"}
+                                                                        {user.isActive ? "🔒 Deactivate" : "Activate"}
                                                                     </button>
                                                                     {isSuperAdmin && (
                                                                         <>
@@ -497,7 +506,7 @@ export default function AdminPanel() {
                                 <select
                                     value={pageSize}
                                     onChange={handlePageSizeChange}
-                                    className="border border-slate-200 rounded-lg text-sm p-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    className="border border-slate-200 rounded-lg text-sm p-1 focus:outline-none focus:ring-1 focus:ring-brand/40"
                                 >
                                     {PAGE_SIZE_OPTIONS.map(opt => (
                                         <option key={opt} value={opt}>{opt}</option>
@@ -594,7 +603,7 @@ export default function AdminPanel() {
                         ) : isConfirmingSetup ? (
                             <div className="flex flex-wrap items-center gap-3">
                                 <button onClick={executeSchoolSetup} disabled={!setupFile || setupLoading} className="w-full sm:w-auto px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all shadow-sm disabled:opacity-50 flex justify-center items-center gap-2">
-                                    {setupLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "⚠️ Confirm Execution"}
+                                    {setupLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Confirm Execution"}
                                 </button>
                                 <button onClick={() => { setIsConfirmingSetup(false); setSetupTimer(0); }} className="w-full sm:w-auto px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all disabled:opacity-50">
                                     Cancel
@@ -611,7 +620,7 @@ export default function AdminPanel() {
 
             {/* ─── VIEW PROFILE MODAL ─── */}
             {viewModalUser && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 p-4">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between p-6 border-b border-slate-100">
                             <h3 className="text-lg font-bold text-slate-800">User Profile</h3>

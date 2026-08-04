@@ -59,7 +59,7 @@ export default function MySalaryPage() {
       <Toaster />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Salary Slips</h1>
+          <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">My Salary Slips</h1>
           <p className="text-sm text-gray-500 mt-1">View and download your finalized payslips.</p>
         </div>
       </div>

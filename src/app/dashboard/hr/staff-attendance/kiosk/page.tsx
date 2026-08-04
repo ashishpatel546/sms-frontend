@@ -77,7 +77,7 @@ export default function AttendanceKioskPage() {
 
       <div className="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-sm text-center space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Attendance Kiosk</h1>
+          <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Attendance Kiosk</h1>
           <p className="text-sm text-gray-500 mt-1">{new Date().toLocaleString()}</p>
         </div>
 
@@ -92,7 +92,7 @@ export default function AttendanceKioskPage() {
                 onChange={(e) => { setEmployeeCode(e.target.value); setStep("entering"); }}
                 onKeyDown={(e) => e.key === "Enter" && handleAuthenticate()}
                 placeholder="e.g. 1001"
-                className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-2xl text-center tracking-widest focus:outline-none focus:border-blue-500"
+                className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-2xl text-center tracking-widest focus:outline-none focus:border-brand"
                 autoComplete="off"
               />
             </div>

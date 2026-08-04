@@ -375,7 +375,7 @@ export default function PickupScanner() {
                 value={enteredName}
                 onChange={(e) => setEnteredName(e.target.value)}
                 placeholder="Enter the name they stated"
-                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-slate-600"
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 placeholder-slate-600"
                 autoFocus
               />
               <p className="text-slate-600 text-xs mt-1">Expected: <span className="text-slate-400">{verifyResult.authorizedPersonName}</span></p>
@@ -429,7 +429,7 @@ export default function PickupScanner() {
                 setEnteredPin(v);
               }}
               placeholder="_ _ _ _"
-              className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 font-mono tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-slate-600 text-center text-lg"
+              className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 font-mono tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-brand/40 placeholder-slate-600 text-center text-lg"
               autoFocus
             />
           </div>

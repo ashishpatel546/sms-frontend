@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckCircle2 } from 'lucide-react';
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useHomework } from "../hooks/useStudentData";
@@ -64,7 +65,7 @@ export const HomeworkBottomSheet = ({ studentId, isOpen, onClose, onViewFull }: 
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-walnut-950/50 backdrop-blur-[2px]"
         onClick={onClose}
       />
 
@@ -82,7 +83,7 @@ export const HomeworkBottomSheet = ({ studentId, isOpen, onClose, onViewFull }: 
           {/* Header */}
           <div className="flex items-center justify-between mb-1">
             <div>
-              <h2 className="text-lg font-bold text-ink">📚 Today&apos;s Homework</h2>
+              <h2 className="text-lg font-bold text-ink">Today&apos;s Homework</h2>
               <p className="text-xs text-ink-muted mt-0.5">{displayDate}</p>
             </div>
             <button
@@ -103,7 +104,7 @@ export const HomeworkBottomSheet = ({ studentId, isOpen, onClose, onViewFull }: 
               </div>
             ) : items.length === 0 ? (
               <div className="py-12 text-center">
-                <div className="text-4xl mb-3">🎉</div>
+                <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-accent-success-tint text-accent-success-deep"><CheckCircle2 className="size-6" aria-hidden /></div>
                 <p className="text-ink font-semibold text-base">No homework today!</p>
                 <p className="text-ink-muted text-sm mt-1">Enjoy your free time.</p>
               </div>

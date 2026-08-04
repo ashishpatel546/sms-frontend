@@ -44,7 +44,7 @@ export default function HrOverviewPage() {
   return (
     <div className="p-3 sm:p-6 space-y-6">
       <Toaster />
-      <h1 className="text-xl sm:text-2xl font-bold text-gray-900">HR Portal Overview</h1>
+      <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">HR Portal Overview</h1>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

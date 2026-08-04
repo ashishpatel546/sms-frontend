@@ -237,7 +237,7 @@ export default function EditClassPage() {
                             name="name"
                             value={formData.name}
                             onChange={handleChange}
-                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                             required
                         />
                     </div>
@@ -269,7 +269,7 @@ export default function EditClassPage() {
                                             <select
                                                 value={section.teacherId}
                                                 onChange={(e) => handleTeacherChange(index, e.target.value)}
-                                                className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                                className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                             >
                                                 <option value="">Select Teacher</option>
                                                 {teachers.map((t: any) => (
@@ -399,11 +399,11 @@ export default function EditClassPage() {
                         <button
                             type="submit"
                             disabled={saving}
-                            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50"
+                            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50"
                         >
                             {saving ? 'Saving...' : 'Save Changes'}
                         </button>
-                        <Link href="/dashboard/classes" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5">
+                        <Link href="/dashboard/classes" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-line-strong font-medium rounded-lg text-sm px-5 py-2.5">
                             Cancel
                         </Link>
                     </div>

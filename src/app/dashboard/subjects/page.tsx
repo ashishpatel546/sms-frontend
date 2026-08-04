@@ -7,6 +7,9 @@ import useSWR from "swr";
 import { fetcher } from "@/lib/api";
 import { Loader } from "@/components/ui/Loader";
 import { useRbac } from "@/lib/rbac";
+import { Plus } from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/button";
 
 export default function SubjectsPage() {
     const rbac = useRbac();
@@ -111,33 +114,37 @@ export default function SubjectsPage() {
     if (error) return <div className="p-4 text-red-500">Failed to load subjects</div>;
 
     return (
-        <main className="p-4 bg-slate-50 min-h-screen">
+        <main className="p-4 sm:p-5">
             <div className="max-w-7xl mx-auto">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                    <h1 className="text-2xl font-bold text-slate-800">Subjects</h1>
-                    {rbac.canManageSubjects && (
-                        <Link href="/dashboard/subjects/new" className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-none w-full sm:w-auto text-center whitespace-nowrap">
-                            + Add Subject
-                        </Link>
-                    )}
-                </div>
+                <PageHeader
+                    className="mb-4"
+                    section="Academics · Subjects"
+                    title="Subjects"
+                    description="Subjects taught, and the classes they belong to."
+                    actions={rbac.canManageSubjects ? (
+                        <Button render={<Link href="/dashboard/subjects/new" />}>
+                            <Plus />
+                            Add subject
+                        </Button>
+                    ) : undefined}
+                />
 
                 {/* Search Filter */}
-                <div className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 mb-6">
-                    <h2 className="text-lg font-semibold text-slate-700 mb-4">Search Subjects</h2>
+                <div className="mb-4 rounded-xl border border-line bg-surface p-4 shadow-soft">
+                    <h2 className="mb-3.5 font-display text-[15px] font-semibold text-ink">Search Subjects</h2>
                     <form onSubmit={handleSearch}>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Subject ID</label>
-                                <input type="text" value={searchId} onChange={e => setSearchId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="e.g. 1" />
+                                <label className="eyebrow mb-1.5 block">Subject ID</label>
+                                <input type="text" value={searchId} onChange={e => setSearchId(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none" placeholder="e.g. 1" />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Subject Name</label>
-                                <input type="text" value={searchName} onChange={e => setSearchName(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="Subject Name" />
+                                <label className="eyebrow mb-1.5 block">Subject Name</label>
+                                <input type="text" value={searchName} onChange={e => setSearchName(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none" placeholder="Subject Name" />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
-                                <select value={searchCategory} onChange={e => setSearchCategory(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2">
+                                <label className="eyebrow mb-1.5 block">Category</label>
+                                <select value={searchCategory} onChange={e => setSearchCategory(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none">
                                     <option value="">All Categories</option>
                                     {uniqueCategories.map(c => (
                                         <option key={c as string} value={c as string}>{c as string}</option>
@@ -145,8 +152,8 @@ export default function SubjectsPage() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Components</label>
-                                <select value={searchComponent} onChange={e => setSearchComponent(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2">
+                                <label className="eyebrow mb-1.5 block">Components</label>
+                                <select value={searchComponent} onChange={e => setSearchComponent(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none">
                                     <option value="">All Items</option>
                                     <option value="Theory">Has Theory</option>
                                     <option value="Practical">Has Practical</option>
@@ -155,17 +162,17 @@ export default function SubjectsPage() {
                             </div>
                         </div>
                         <div className="flex justify-end gap-2">
-                            <button type="button" onClick={handleReset} className="px-5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-200">
+                            <button type="button" onClick={handleReset} className="h-10 cursor-pointer rounded-md px-3.5 text-[13.5px] font-semibold text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink">
                                 Reset
                             </button>
-                            <button type="submit" className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300">
+                            <button type="submit" className="h-10 cursor-pointer rounded-md bg-brand px-4 text-[13.5px] font-semibold text-brand-contrast shadow-soft transition-all hover:bg-brand-deep hover:shadow-brand">
                                 Search
                             </button>
                         </div>
                     </form>
                 </div>
 
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+                <div className="rounded-xl border border-line bg-surface shadow-soft">
                     {!hasSearched ? (
                          <div className="text-center py-12 text-slate-500">
                             <svg className="mx-auto h-12 w-12 text-slate-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { hrApi, StaffLeavePolicy, LeavePolicyDefault, HrSettings, AccrualFrequency } from "@/lib/hr-api";
 import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
+import NumberInput from "@/components/ui/NumberInput";
 
 const EMPTY: Partial<StaffLeavePolicy> = {
   name: "", code: "", totalDaysPerYear: 12, carryForward: false, maxCarryForwardDays: 0,
@@ -125,7 +126,7 @@ export default function LeavePoliciesPage() {
     <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Leave Policies</h1>
+        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Leave Policies</h1>
         {rbac.canManageHR && policies.length > 0 && (
           <button onClick={openCreate} className="bg-blue-600 text-white px-3 py-2 sm:px-4 rounded-lg text-sm font-medium hover:bg-blue-700">
             + New Policy
@@ -346,7 +347,7 @@ export default function LeavePoliciesPage() {
 
       {/* Create / Edit Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+        <div className="fixed inset-0 bg-walnut-950/55 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 w-full sm:max-w-md space-y-4 max-h-[90vh] overflow-y-auto">
             <h2 className="font-semibold text-lg">{editId ? "Edit" : "New"} Leave Policy</h2>
             <div className="grid grid-cols-2 gap-3">
@@ -360,7 +361,7 @@ export default function LeavePoliciesPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Days / Year</label>
-                <input type="number" min={0} step={1} value={form.totalDaysPerYear ?? 0} onChange={(e) => setForm((f) => ({ ...f, totalDaysPerYear: parseInt(e.target.value) || 0 }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
+                <NumberInput min={0} step={1} value={form.totalDaysPerYear ?? 0} emptyValue={0} onChange={(v) => setForm((f) => ({ ...f, totalDaysPerYear: v ?? 0 }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
               </div>
               <div className="flex items-center gap-2">
                 <input id="cf" type="checkbox" checked={form.carryForward ?? false} onChange={(e) => setForm((f) => ({ ...f, carryForward: e.target.checked }))} className="rounded" />
@@ -368,7 +369,7 @@ export default function LeavePoliciesPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Max Carry-Forward Days</label>
-                <input type="number" min={0} step={1} value={form.maxCarryForwardDays ?? 0} onChange={(e) => setForm((f) => ({ ...f, maxCarryForwardDays: parseInt(e.target.value) || 0 }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" disabled={!form.carryForward} />
+                <NumberInput min={0} step={1} value={form.maxCarryForwardDays ?? 0} emptyValue={0} onChange={(v) => setForm((f) => ({ ...f, maxCarryForwardDays: v ?? 0 }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" disabled={!form.carryForward} />
               </div>
               <div className="flex items-center gap-2">
                 <input id="paid" type="checkbox" checked={form.isPaid ?? true} onChange={(e) => setForm((f) => ({ ...f, isPaid: e.target.checked }))} className="rounded" />

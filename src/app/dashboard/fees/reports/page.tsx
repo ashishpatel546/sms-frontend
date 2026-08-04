@@ -47,14 +47,14 @@ export default function FeeReportsDashboard() {
                     <div className="flex items-center gap-3 mb-2 no-print">
                         <Link href="/dashboard/fees" className="text-sm font-medium text-blue-600 hover:underline">← Back to Fees Management</Link>
                     </div>
-                    <h1 className="text-3xl font-bold text-slate-800">Fee Intelligence Dashboard</h1>
+                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Fee Intelligence Dashboard</h1>
                     <p className="text-gray-500">Comprehensive overview of school financials</p>
                 </div>
                 <div className="flex gap-4 items-center no-print">
                     <select
                         value={academicYear}
                         onChange={(e) => setAcademicYear(e.target.value)}
-                        className="bg-white border border-gray-300 text-sm rounded-lg p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                        className="bg-white border border-gray-300 text-sm rounded-lg p-2.5 shadow-sm focus:ring-brand/40 focus:border-brand"
                     >
                         <option value="2025-2026">2025-2026</option>
                         <option value="2026-2027">2026-2027</option>

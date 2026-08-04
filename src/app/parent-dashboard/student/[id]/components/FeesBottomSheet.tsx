@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckCircle2 } from 'lucide-react';
 import { useState, useEffect } from "react";
 import { useFees } from "../hooks/useStudentData";
 
@@ -109,7 +110,7 @@ export default function FeesBottomSheet({
         >
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                className="absolute inset-0 bg-walnut-950/55 backdrop-blur-sm"
                 onClick={onClose}
                 aria-hidden="true"
             />
@@ -127,7 +128,7 @@ export default function FeesBottomSheet({
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 shrink-0">
                     <div>
-                        <h2 className="text-base font-bold text-slate-800">💰 Fee Summary</h2>
+                        <h2 className="text-base font-bold text-slate-800">Fee Summary</h2>
                         {academicYearString && (
                             <p className="text-xs text-slate-400 mt-0.5">{academicYearString}</p>
                         )}
@@ -163,7 +164,7 @@ export default function FeesBottomSheet({
                                 {/* ── Pending Dues ── */}
                                 {allDueItems.length === 0 ? (
                                     <div className="text-center py-8">
-                                        <div className="text-3xl mb-2">🎉</div>
+                                        <div className="mx-auto mb-2 grid size-11 place-items-center rounded-full bg-accent-success-tint text-accent-success-deep"><CheckCircle2 className="size-5" aria-hidden /></div>
                                         <p className="text-slate-700 font-semibold">All fees paid!</p>
                                         <p className="text-slate-400 text-sm mt-1">No pending dues for {academicYearString}</p>
                                     </div>

@@ -10,6 +10,7 @@ import { useRbac } from "@/lib/rbac";
 import { authFetch } from "@/lib/auth";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
 import { sortByName } from "@/lib/utils";
+import { formatMobileInput, isValidMobile, MOBILE_ERROR } from "@/lib/mobile";
 
 export default function AddStudentPage() {
     const router = useRouter();
@@ -164,6 +165,13 @@ export default function AddStudentPage() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
+
+        // Mobile is a login identifier — strip formatting as it is typed/pasted
+        if (name === 'mobile' || name === 'alternateMobile') {
+            setFormData({ ...formData, [name]: formatMobileInput(value) });
+            return;
+        }
+
         setFormData({ ...formData, [name]: value });
 
         // Auto-apply Girl discount
@@ -261,8 +269,18 @@ export default function AddStudentPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
         setError("");
+
+        if (!isValidMobile(formData.mobile)) {
+            setError(`Mobile Number: ${MOBILE_ERROR}`);
+            return;
+        }
+        if (formData.alternateMobile && !isValidMobile(formData.alternateMobile)) {
+            setError(`Alternate Mobile: ${MOBILE_ERROR}`);
+            return;
+        }
+
+        setLoading(true);
 
         try {
             const payload = {
@@ -348,7 +366,7 @@ export default function AddStudentPage() {
     };
 
     return (
-        <main className="p-4 bg-slate-50 min-h-screen">
+        <main className="p-4 sm:p-5">
             <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-slate-200 relative">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold text-slate-800">Add New Student</h2>
@@ -443,11 +461,17 @@ export default function AddStudentPage() {
                             </div>
                             <div>
                                 <label htmlFor="mobile" className="block mb-2 text-sm font-medium text-gray-900">Mobile Number <span className="text-red-500">*</span></label>
-                                <input type="tel" id="mobile" name="mobile" value={formData.mobile} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required />
+                                <input type="tel" id="mobile" name="mobile" value={formData.mobile} onChange={handleChange} maxLength={10} inputMode="numeric" placeholder="10-digit number" className={`bg-gray-50 border ${formData.mobile.length > 0 && !isValidMobile(formData.mobile) ? 'border-red-500' : 'border-gray-300'} text-sm rounded-lg block w-full p-2.5`} required />
+                                {formData.mobile.length > 0 && !isValidMobile(formData.mobile) && (
+                                    <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
+                                )}
                             </div>
                             <div>
                                 <label htmlFor="alternateMobile" className="block mb-2 text-sm font-medium text-gray-900">Alternate Mobile</label>
-                                <input type="tel" id="alternateMobile" name="alternateMobile" value={formData.alternateMobile} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                                <input type="tel" id="alternateMobile" name="alternateMobile" value={formData.alternateMobile} onChange={handleChange} maxLength={10} inputMode="numeric" placeholder="10-digit number" className={`bg-gray-50 border ${formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) ? 'border-red-500' : 'border-gray-300'} text-sm rounded-lg block w-full p-2.5`} />
+                                {formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) && (
+                                    <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -631,7 +655,7 @@ export default function AddStudentPage() {
                                                     if (e.target.checked) setSelectedDiscounts([...selectedDiscounts, d.id]);
                                                     else setSelectedDiscounts(selectedDiscounts.filter(did => did !== d.id));
                                                 }}
-                                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-brand/40"
                                             />
                                             <span className="ml-2 text-sm font-medium text-gray-900">{d.name}</span>
                                         </div>
@@ -652,7 +676,7 @@ export default function AddStudentPage() {
                                 type="checkbox"
                                 checked={enrollStudent}
                                 onChange={(e) => setEnrollStudent(e.target.checked)}
-                                className="w-5 h-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500"
+                                className="w-5 h-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-brand/40"
                             />
                             <span className="text-base font-bold text-blue-900">Enroll this student immediately?</span>
                         </label>
@@ -664,7 +688,7 @@ export default function AddStudentPage() {
                                     <div>
                                         <label className="block mb-1 text-sm font-medium">Academic Session</label>
                                         <select
-                                            className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 bg-white"
+                                            className="w-full border p-2 rounded focus:ring-2 focus:ring-brand/40 bg-white"
                                             value={selectedSessionId}
                                             onChange={e => setSelectedSessionId(e.target.value === "" ? "" : parseInt(e.target.value))}
                                         >
@@ -677,7 +701,7 @@ export default function AddStudentPage() {
                                     <div>
                                         <label className="block mb-1 text-sm font-medium">Class <span className="text-red-500">*</span></label>
                                         <select
-                                            className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 bg-white"
+                                            className="w-full border p-2 rounded focus:ring-2 focus:ring-brand/40 bg-white"
                                             value={selectedClass}
                                             onChange={e => {
                                                 setSelectedClass(e.target.value);
@@ -694,7 +718,7 @@ export default function AddStudentPage() {
                                     <div>
                                         <label className="block mb-1 text-sm font-medium">Section <span className="text-red-500">*</span></label>
                                         <select
-                                            className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-slate-100"
+                                            className="w-full border p-2 rounded focus:ring-2 focus:ring-brand/40 bg-white disabled:bg-slate-100"
                                             value={selectedSection}
                                             onChange={e => setSelectedSection(e.target.value)}
                                             disabled={!selectedClass || sections.length === 0}
@@ -722,7 +746,7 @@ export default function AddStudentPage() {
                                                             type="checkbox"
                                                             checked={selectedSubjects.includes(sub.id.toString())}
                                                             onChange={() => handleSubjectToggle(sub.id.toString())}
-                                                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                            className="rounded border-gray-300 text-blue-600 focus:ring-brand/40"
                                                         />
                                                         <span className="flex flex-col text-sm">
                                                             <span>{sub.name}</span>
@@ -743,10 +767,10 @@ export default function AddStudentPage() {
                     </div>
 
                     <div className="flex items-center space-x-4 pt-4 border-t">
-                        <button type="submit" disabled={loading} className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-bold rounded-lg text-lg w-full sm:w-auto px-8 py-3 text-center disabled:opacity-50">
+                        <button type="submit" disabled={loading} className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-bold rounded-lg text-lg w-full sm:w-auto px-8 py-3 text-center disabled:opacity-50">
                             {loading ? 'Registering...' : 'Register Student'}
                         </button>
-                        <Link href="/dashboard/students" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-3">
+                        <Link href="/dashboard/students" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-line-strong font-medium rounded-lg text-sm px-5 py-3">
                             Cancel
                         </Link>
                     </div>
@@ -754,7 +778,7 @@ export default function AddStudentPage() {
 
                 {/* Sibling Search Modal */}
                 {showSiblingModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/55 backdrop-blur-sm">
                         <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                             <div className="flex items-center justify-between p-4 border-b">
                                 <div>
@@ -798,7 +822,7 @@ export default function AddStudentPage() {
                                         value={siblingSearch}
                                         onChange={e => setSiblingSearch(e.target.value)}
                                         placeholder={siblingSearchMode === 'id' ? 'Enter student ID (e.g. 42)' : 'Search by first or last name (e.g. Raj)'}
-                                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                     />
                                     <button type="submit" className="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5" disabled={siblingLoading}>{siblingLoading ? '...' : 'Search'}</button>
                                 </form>

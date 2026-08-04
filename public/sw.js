@@ -1,5 +1,14 @@
 // Service Worker for School Management System PWA
-const CACHE_NAME = 'school-ms-v5';
+//
+// UPDATING THIS FILE: bump CACHE_NAME. The browser reinstalls the worker when
+// the bytes of this file change, and the activate handler deletes every cache
+// whose name doesn't match, so a bump is what actually evicts stale entries.
+// v7 — the redesign changed nearly every token in globals.css. Without a bump,
+// an installed PWA keeps serving the stylesheet it cached under v6, which is
+// what makes a device show old colours, an untilted stamp, or an avatar whose
+// gradient classes do not exist yet. The activate handler below deletes every
+// cache that is not this name.
+const CACHE_NAME = 'school-ms-v7';
 
 // App shell files to cache immediately
 const APP_SHELL = [
@@ -92,22 +101,37 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-first for HTML pages (so content stays fresh)
+  // Everything from here down is the PAGE strategy, and it must apply ONLY to
+  // real navigations.
+  //
+  // It previously applied to every remaining GET, which swept up Next's RSC
+  // payload requests (`?_rsc=…`) and any other same-origin fetch and wrote them
+  // into the page cache. Those then came back stale, and because a stale
+  // document references chunk URLs that no longer exist, the app looked broken
+  // until the user cleared site data by hand.
+  if (event.request.mode !== 'navigate') return;
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        const cloned = response.clone();
-        caches
-          .open(CACHE_NAME)
-          .then((cache) => cache.put(event.request, cloned));
+        // Only store a response that is genuinely a page we could replay
+        // offline. Caching redirects or error pages means serving them back
+        // later as if they were the real thing.
+        if (response.ok && response.type === 'basic' && !response.redirected) {
+          const cloned = response.clone();
+          caches
+            .open(CACHE_NAME)
+            .then((cache) => cache.put(event.request, cloned))
+            .catch(() => {
+              /* quota or private mode — caching is best-effort */
+            });
+        }
         return response;
       })
       .catch(() =>
-        caches.match(event.request).then((cached) => {
-          if (cached) return cached;
-          // Serve offline page fallback
-          return caches.match('/');
-        }),
+        // Reached only when the network genuinely failed, which is the one case
+        // where showing a stale page beats showing nothing.
+        caches.match(event.request).then((cached) => cached || caches.match('/')),
       ),
   );
 });

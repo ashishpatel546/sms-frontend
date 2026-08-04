@@ -9,6 +9,7 @@ import { authFetch } from "@/lib/auth";
 import { Country, State, City } from "country-state-city";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
 import { useRbac } from "@/lib/rbac";
+import { formatMobileInput, isValidMobile, MOBILE_ERROR } from "@/lib/mobile";
 
 export default function EditStudentPage() {
     const router = useRouter();
@@ -201,6 +202,13 @@ export default function EditStudentPage() {
         const target = e.target as HTMLInputElement;
         const value = target.type === 'checkbox' ? target.checked : target.value;
         const name = target.name;
+
+        // Mobile is a login identifier — strip formatting as it is typed/pasted
+        if (name === 'mobile' || name === 'alternateMobile') {
+            setFormData({ ...formData, [name]: formatMobileInput(target.value) });
+            return;
+        }
+
         setFormData({ ...formData, [name]: value });
 
         // Auto-suggest Girl discount
@@ -299,8 +307,18 @@ export default function EditStudentPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setSaving(true);
         setError("");
+
+        if (formData.mobile && !isValidMobile(formData.mobile)) {
+            setError(`Mobile Number: ${MOBILE_ERROR}`);
+            return;
+        }
+        if (formData.alternateMobile && !isValidMobile(formData.alternateMobile)) {
+            setError(`Alternate Mobile: ${MOBILE_ERROR}`);
+            return;
+        }
+
+        setSaving(true);
 
         try {
             const addressPayload = formData.address?.addressLine1 ? (() => {
@@ -359,7 +377,7 @@ export default function EditStudentPage() {
     if (error && !formData.firstName) return <div className="p-4 text-red-600">{error}</div>;
 
     return (
-        <main className="p-4 bg-slate-50 min-h-screen">
+        <main className="p-4 sm:p-5">
             <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-slate-200 relative">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold text-slate-800">Edit Student</h2>
@@ -507,11 +525,17 @@ export default function EditStudentPage() {
                             </div>
                             <div>
                                 <label htmlFor="mobile" className="block mb-2 text-sm font-medium text-gray-900">Mobile Number</label>
-                                <input type="tel" id="mobile" name="mobile" value={formData.mobile} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                                <input type="tel" id="mobile" name="mobile" value={formData.mobile} onChange={handleChange} maxLength={10} inputMode="numeric" placeholder="10-digit number" className={`bg-gray-50 border ${formData.mobile.length > 0 && !isValidMobile(formData.mobile) ? 'border-red-500' : 'border-gray-300'} text-sm rounded-lg block w-full p-2.5`} />
+                                {formData.mobile.length > 0 && !isValidMobile(formData.mobile) && (
+                                    <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
+                                )}
                             </div>
                             <div>
                                 <label htmlFor="alternateMobile" className="block mb-2 text-sm font-medium text-gray-900">Alternate Mobile</label>
-                                <input type="tel" id="alternateMobile" name="alternateMobile" value={formData.alternateMobile} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                                <input type="tel" id="alternateMobile" name="alternateMobile" value={formData.alternateMobile} onChange={handleChange} maxLength={10} inputMode="numeric" placeholder="10-digit number" className={`bg-gray-50 border ${formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) ? 'border-red-500' : 'border-gray-300'} text-sm rounded-lg block w-full p-2.5`} />
+                                {formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) && (
+                                    <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -635,7 +659,7 @@ export default function EditStudentPage() {
                                 type="checkbox"
                                 checked={formData.isActive}
                                 onChange={handleChange}
-                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-brand/40"
                             />
                             <label htmlFor="isActive" className="ml-2 text-sm font-medium text-gray-900">Account Active</label>
                         </div>
@@ -654,7 +678,7 @@ export default function EditStudentPage() {
                                                         if (e.target.checked) setSelectedDiscounts([...selectedDiscounts, d.id]);
                                                         else setSelectedDiscounts(selectedDiscounts.filter(did => did !== d.id));
                                                     }}
-                                                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-brand/40"
                                                 />
                                                 <span className="ml-2 text-sm font-medium text-gray-900">{d.name}</span>
                                             </div>
@@ -673,11 +697,11 @@ export default function EditStudentPage() {
                         <button
                             type="submit"
                             disabled={saving}
-                            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-bold rounded-lg text-lg w-full sm:w-auto px-8 py-3 text-center disabled:opacity-50"
+                            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-bold rounded-lg text-lg w-full sm:w-auto px-8 py-3 text-center disabled:opacity-50"
                         >
                             {saving ? 'Saving...' : 'Save Changes'}
                         </button>
-                        <Link href="/dashboard/students" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-3">
+                        <Link href="/dashboard/students" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-line-strong font-medium rounded-lg text-sm px-5 py-3">
                             Cancel
                         </Link>
                     </div>
@@ -685,7 +709,7 @@ export default function EditStudentPage() {
 
                 {/* Sibling Search Modal */}
                 {showSiblingModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/55 backdrop-blur-sm">
                         <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                             <div className="flex items-center justify-between p-4 border-b">
                                 <div>
@@ -729,7 +753,7 @@ export default function EditStudentPage() {
                                         value={siblingSearch}
                                         onChange={e => setSiblingSearch(e.target.value)}
                                         placeholder={siblingSearchMode === 'id' ? 'Enter student ID (e.g. 42)' : 'Search by first or last name (e.g. Raj)'}
-                                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                     />
                                     <button type="submit" className="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5" disabled={siblingLoading}>{siblingLoading ? '...' : 'Search'}</button>
                                 </form>

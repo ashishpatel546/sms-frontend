@@ -5,6 +5,8 @@ import DashboardStats from "./DashboardStats";
 import RecentActivity from "@/components/RecentActivity";
 import GreetingCard from "./GreetingCardDynamic";
 import { GuardSwitch } from "./GuardDashboard";
+import BillingDueBanner from "@/components/dashboard/BillingDueBanner";
+import { PageBody, PageHeader, PageShell } from "@/components/ui/PageHeader";
 import { todayLocalDate } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -19,35 +21,37 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
     return (
         <GuardSwitch>
-        <div className="min-h-screen p-4 sm:p-6">
-            <div className="max-w-7xl mx-auto space-y-5">
+            <PageShell>
+                {/* ── Subscription dues, for the school owner ───────── */}
+                <BillingDueBanner />
 
-                {/* ── Personalised greeting ─────────────────────────── */}
-                <GreetingCard />
+                <PageHeader
+                    section="Overview"
+                    title="Today at a glance"
+                    description={
+                        isToday
+                            ? "Roll call, collections and activity for today."
+                            : `Roll call, collections and activity for ${selectedDate}.`
+                    }
+                    actions={<DashboardDatePicker defaultDate={selectedDate} />}
+                />
 
-                {/* ── Page header + date picker ─────────────────────── */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                        <h1 className="text-2xl sm:text-3xl font-bold text-ink tracking-tight">Overview</h1>
-                        <p className="mt-0.5 text-ink-muted text-sm">
-                            {isToday ? "Here's what's happening today." : `Showing data for ${selectedDate}.`}
-                        </p>
+                <PageBody>
+                    {/* ── Personalised greeting ─────────────────────── */}
+                    <GreetingCard />
+
+                    {/* ── Stat tiles ────────────────────────────────── */}
+                    <DashboardStats selectedDate={selectedDate} />
+
+                    {/* ── Bottom two-column grid. items-start so a short
+                        quick-actions panel doesn't stretch to match the
+                        activity feed's height. ───────────────────────── */}
+                    <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+                        <QuickActions />
+                        <RecentActivity />
                     </div>
-                    <div className="shrink-0">
-                        <DashboardDatePicker defaultDate={selectedDate} />
-                    </div>
-                </div>
-
-                {/* ── Stats tiles ───────────────────────────────────── */}
-                <DashboardStats selectedDate={selectedDate} />
-
-                {/* ── Bottom two-column grid ────────────────────────── */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                    <QuickActions />
-                    <RecentActivity />
-                </div>
-            </div>
-        </div>
+                </PageBody>
+            </PageShell>
         </GuardSwitch>
     );
 }

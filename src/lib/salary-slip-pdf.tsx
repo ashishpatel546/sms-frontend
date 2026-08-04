@@ -1,7 +1,7 @@
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet, pdf } from "@react-pdf/renderer";
 import { ComponentSnapshotItem, PayrollEntry } from "./hr-api";
-import { SchoolInfo } from "./useSchoolInfo";
+import { SchoolInfo, getSchoolLogoDataUrl } from "./useSchoolInfo";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -253,12 +253,20 @@ export async function generateSalarySlipPdf(
   entry: PayrollEntry,
   opts?: { schoolInfo?: SchoolInfo; fileName?: string; month?: number; year?: number },
 ) {
+  // `/school/info` no longer carries the base64 logo (it made the hot
+  // endpoint huge); fetch it here, at generation time, where it's needed.
+  let schoolInfo = opts?.schoolInfo;
+  if (schoolInfo && !schoolInfo.logoDataUrl) {
+    const logoDataUrl = await getSchoolLogoDataUrl();
+    if (logoDataUrl) schoolInfo = { ...schoolInfo, logoDataUrl };
+  }
+
   const blob = await pdf(
-    <SalarySlipDocument 
-      entry={entry} 
-      schoolInfo={opts?.schoolInfo} 
-      month={opts?.month} 
-      year={opts?.year} 
+    <SalarySlipDocument
+      entry={entry}
+      schoolInfo={schoolInfo}
+      month={opts?.month}
+      year={opts?.year}
     />
   ).toBlob();
   

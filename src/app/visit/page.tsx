@@ -121,13 +121,13 @@ export default function VisitorFormPage() {
 
     const resetAll = () => { setQr(null); setForm({ ...emptyForm }); setError(""); };
 
-    const inputCls = "w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500";
-    const labelCls = "block text-sm font-medium text-slate-300 mb-1.5";
+    const inputCls = "w-full bg-walnut-800 border border-white/12 text-white placeholder-brass-100/40 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40";
+    const labelCls = "block text-sm font-medium text-brass-100/85 mb-1.5";
 
     const fmtRemaining = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`;
 
     return (
-        <div className="min-h-screen bg-slate-950 flex justify-center p-4 py-8">
+        <div className="min-h-dvh ink-field flex justify-center p-4 py-8">
             <div className="w-full max-w-md">
                 {/* Header */}
                 <div className="flex flex-col items-center mb-6 text-center">
@@ -139,8 +139,8 @@ export default function VisitorFormPage() {
                             <QrCode className="w-7 h-7 text-white" />
                         </div>
                     )}
-                    <h1 className="text-white text-2xl font-bold">{school?.name || "Visitor Entry"}</h1>
-                    <p className="text-slate-400 text-sm mt-1">Fill this form to get your gate-entry QR code</p>
+                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{school?.name || "Visitor Entry"}</h1>
+                    <p className="text-brass-100/70 text-sm mt-1">Fill this form to get your gate-entry QR code</p>
                 </div>
 
                 {featureEnabled === null ? (
@@ -148,15 +148,15 @@ export default function VisitorFormPage() {
                         <div className="w-7 h-7 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : !featureEnabled ? (
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center space-y-3">
+                    <div className="bg-walnut-850 border border-white/10 rounded-2xl p-8 shadow-2xl text-center space-y-3">
                         <div className="text-5xl">🛂</div>
                         <h2 className="text-white font-bold text-lg">Visitor registration is not available</h2>
-                        <p className="text-slate-400 text-sm">
+                        <p className="text-brass-100/70 text-sm">
                             This school has not enabled online visitor registration. Please contact the staff at the school gate.
                         </p>
                     </div>
                 ) : !qr ? (
-                    <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
+                    <form onSubmit={handleSubmit} className="bg-walnut-850 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
                         <div>
                             <label className={labelCls}><UserRound className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />Full Name *</label>
                             <input type="text" value={form.visitorName} onChange={set("visitorName")} maxLength={150} placeholder="Your name" className={inputCls} required />
@@ -186,23 +186,23 @@ export default function VisitorFormPage() {
                         </div>
 
                         <div>
-                            <label className={labelCls}>Whom to Meet <span className="text-slate-500">(optional)</span></label>
+                            <label className={labelCls}>Whom to Meet <span className="text-brass-100/55">(optional)</span></label>
                             <input type="text" value={form.toMeet} onChange={set("toMeet")} maxLength={150} placeholder="e.g. Principal, Class Teacher of 5-A" className={inputCls} />
                         </div>
 
                         <div>
-                            <label className={labelCls}><MessageSquareText className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />Description <span className="text-slate-500">(optional)</span></label>
+                            <label className={labelCls}><MessageSquareText className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />Description <span className="text-brass-100/55">(optional)</span></label>
                             <textarea value={form.description} onChange={set("description")} maxLength={500} rows={2} placeholder="Briefly describe the purpose of your visit" className={inputCls} />
                         </div>
 
                         <div>
-                            <label className={labelCls}><Car className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />Vehicle Number <span className="text-slate-500">(optional)</span></label>
+                            <label className={labelCls}><Car className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />Vehicle Number <span className="text-brass-100/55">(optional)</span></label>
                             <input type="text" value={form.vehicleNumber} onChange={set("vehicleNumber")} maxLength={20} placeholder="e.g. GJ01AB1234" className={inputCls} />
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className={labelCls}><IdCard className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />ID Proof <span className="text-slate-500">(optional)</span></label>
+                                <label className={labelCls}><IdCard className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />ID Proof <span className="text-brass-100/55">(optional)</span></label>
                                 <select value={form.idProofType} onChange={set("idProofType")} className={inputCls}>
                                     {ID_PROOFS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                                 </select>
@@ -232,12 +232,12 @@ export default function VisitorFormPage() {
                             )}
                         </button>
 
-                        <p className="text-slate-500 text-xs text-center">
+                        <p className="text-brass-100/55 text-xs text-center">
                             Nothing is saved until the gate staff scans and allows your entry.
                         </p>
                     </form>
                 ) : (
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-5">
+                    <div className="bg-walnut-850 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-5">
                         <div className="flex flex-col items-center text-center">
                             <div className="flex items-center gap-2 text-emerald-400 mb-3">
                                 <CheckCircle2 className="w-5 h-5" />
@@ -250,7 +250,7 @@ export default function VisitorFormPage() {
                                     style={{ width: "100%", maxWidth: 220, height: "auto" }}
                                 />
                             </div>
-                            <div className={`mt-3 flex items-center gap-1.5 text-sm ${remaining > 0 ? "text-slate-300" : "text-red-400"}`}>
+                            <div className={`mt-3 flex items-center gap-1.5 text-sm ${remaining > 0 ? "text-brass-100/85" : "text-red-400"}`}>
                                 <Clock className="w-4 h-4" />
                                 {remaining > 0
                                     ? <>Valid for entry: <span className="font-mono font-semibold">{fmtRemaining}</span></>
@@ -259,7 +259,7 @@ export default function VisitorFormPage() {
                         </div>
 
                         {/* Summary */}
-                        <div className="border border-slate-800 rounded-xl divide-y divide-slate-800 text-sm">
+                        <div className="border border-white/10 rounded-xl divide-y divide-slate-800 text-sm">
                             {[
                                 ["Name", form.visitorName],
                                 ["Mobile", form.mobile],
@@ -269,7 +269,7 @@ export default function VisitorFormPage() {
                                 ...(form.vehicleNumber ? [["Vehicle", form.vehicleNumber]] : []),
                             ].map(([k, v]) => (
                                 <div key={k} className="flex justify-between px-4 py-2.5">
-                                    <span className="text-slate-400">{k}</span>
+                                    <span className="text-brass-100/70">{k}</span>
                                     <span className="text-white font-medium text-right">{v}</span>
                                 </div>
                             ))}
@@ -277,7 +277,7 @@ export default function VisitorFormPage() {
 
                         <button
                             onClick={resetAll}
-                            className="w-full py-3 rounded-xl font-semibold text-slate-300 border border-slate-700 hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+                            className="w-full py-3 rounded-xl font-semibold text-brass-100/85 border border-white/12 hover:bg-walnut-800 transition-all flex items-center justify-center gap-2"
                         >
                             <RefreshCw className="w-4 h-4" /> New Visitor Entry
                         </button>

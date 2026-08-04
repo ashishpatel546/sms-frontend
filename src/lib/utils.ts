@@ -1,8 +1,18 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import dayjs from 'dayjs';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+/**
+ * Formats an ISO timestamp as "YYYY-MM-DD HH:mm:ss" in the viewer's local
+ * timezone. Legacy time-only values ("HH:mm:ss") are returned unchanged.
+ */
+export function formatTime(val?: string | null, fallback = '—'): string {
+  if (!val) return fallback;
+  return val.includes('T') ? dayjs(val).format('YYYY-MM-DD HH:mm:ss') : val;
 }
 
 /**

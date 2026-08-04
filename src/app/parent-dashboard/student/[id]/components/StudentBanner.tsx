@@ -1,46 +1,52 @@
 import React from "react";
-import { GlassCard } from "@/components/ui/GlassCard";
+import { Panel } from "@/components/ui/Panel";
 import { useStudentInfo } from "../hooks/useStudentData";
 import { Skeleton } from "@/components/ui/skeleton";
+import { InitialsAvatar, initialsOf } from "@/components/ui/InitialsAvatar";
 
 export const StudentBanner = ({ studentId }: { studentId: string }) => {
   const { data: info, isLoading } = useStudentInfo(studentId);
 
   if (isLoading) {
     return (
-      <GlassCard className="p-4 mx-2 mt-4 flex items-center gap-4">
+      <Panel className="p-4 mx-2 mt-4 flex items-center gap-4">
         <Skeleton className="w-16 h-16 rounded-full" />
         <div className="space-y-2">
           <Skeleton className="h-6 w-48" />
           <Skeleton className="h-4 w-32" />
         </div>
-      </GlassCard>
+      </Panel>
     );
   }
 
   if (!info) return null;
 
   return (
-    <GlassCard className="p-4 mx-2 mt-4 flex items-center gap-4 relative overflow-hidden">
+    <Panel className="p-4 mx-2 mt-4 flex items-center gap-4 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-32 h-32 bg-brand/5 rounded-bl-full -z-10" />
       
-      <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-brand to-brand-light flex items-center justify-center text-white text-2xl font-bold shadow-md shrink-0">
-        {info.firstName?.[0]}{info.lastName?.[0]}
-      </div>
+      <InitialsAvatar
+        initials={initialsOf(info.firstName, info.lastName)}
+        size="xl"
+        className="shadow-soft"
+      />
       
       <div className="flex-1 min-w-0">
         <h2 className="text-2xl font-bold text-ink truncate">
           {info.firstName} {info.lastName}
         </h2>
-        <div className="flex flex-wrap gap-2 mt-1">
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-surface-secondary text-ink-muted border border-slate-200">
-            Class {info.className} - {info.sectionName}
+        <div className="mt-1.5 flex flex-wrap gap-2">
+          {/* `className` already reads "Class 9" — prefixing it again produced
+              "Class Class 9 - A" on screen. */}
+          <span className="inline-flex items-center rounded border border-line bg-surface-secondary px-2 py-0.5 text-xs font-medium text-ink-muted">
+            {info.className}
+            {info.sectionName ? ` · Section ${info.sectionName}` : ''}
           </span>
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-surface-secondary text-ink-muted border border-slate-200">
-            Roll: {info.rollNo || 'N/A'}
+          <span className="inline-flex items-center rounded border border-line bg-surface-secondary px-2 py-0.5 text-xs font-medium text-ink-muted">
+            Roll {info.rollNo || '—'}
           </span>
         </div>
       </div>
-    </GlassCard>
+    </Panel>
   );
 };

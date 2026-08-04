@@ -665,7 +665,7 @@ export default function ReportsDashboard() {
         <main className="p-4 flex-1 h-full overflow-y-auto w-full max-w-7xl mx-auto">
             <Toaster position="top-right" />
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-slate-800">Reports Dashboard</h1>
+                <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Reports Dashboard</h1>
             </div>
 
             {/* TABS */}
@@ -784,7 +784,7 @@ export default function ReportsDashboard() {
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="text-lg font-bold text-slate-800">Monthly Fee Collection Trend</h2>
                                 <select 
-                                    className="border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    className="border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={feeCollectionSession}
                                     onChange={(e) => setFeeCollectionSession(e.target.value)}
                                 >
@@ -981,7 +981,7 @@ export default function ReportsDashboard() {
                                     <p className="text-sm text-gray-500">Comparison of waived-off fees.</p>
                                 </div>
                                 <select 
-                                    className="border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    className="border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={waivedOffTrendSession}
                                     onChange={(e) => setWaivedOffTrendSession(e.target.value)}
                                 >
@@ -1044,7 +1044,7 @@ export default function ReportsDashboard() {
                             <div>
                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Session</label>
                                 <select
-                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={pendingSessionId}
                                     onChange={(e) => setPendingSessionId(e.target.value)}
                                 >
@@ -1057,7 +1057,7 @@ export default function ReportsDashboard() {
                             <div>
                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Class</label>
                                 <select
-                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={pendingClassId}
                                     onChange={(e) => {
                                         setPendingClassId(e.target.value);
@@ -1075,7 +1075,7 @@ export default function ReportsDashboard() {
                             <div>
                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Section</label>
                                 <select
-                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50 disabled:opacity-50"
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50 disabled:opacity-50"
                                     value={pendingSectionId}
                                     onChange={(e) => setPendingSectionId(e.target.value)}
                                     disabled={!pendingClassId}
@@ -1091,7 +1091,7 @@ export default function ReportsDashboard() {
                                 <input
                                     type="text"
                                     placeholder="Search by ID, Roll No, or Name..."
-                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={pendingSearchQuery}
                                     onChange={(e) => setPendingSearchQuery(e.target.value)}
                                 />
@@ -1101,7 +1101,7 @@ export default function ReportsDashboard() {
                                 <input
                                     type="text"
                                     placeholder="Mobile..."
-                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={pendingMobile}
                                     onChange={(e) => setPendingMobile(e.target.value)}
                                 />
@@ -1109,7 +1109,7 @@ export default function ReportsDashboard() {
                             <div>
                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Month</label>
                                 <select 
-                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={pendingMonth}
                                     onChange={(e) => setPendingMonth(e.target.value)}
                                 >
@@ -1167,7 +1167,7 @@ export default function ReportsDashboard() {
                                                             setSelectedPendingStudents([]);
                                                         }
                                                     }}
-                                                    className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 focus:ring-2"
+                                                    className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-brand/40 focus:ring-2"
                                                 />
                                             </th>
                                             <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100 group select-none" onClick={() => handlePendingSort('studentId')}>
@@ -1243,7 +1243,7 @@ export default function ReportsDashboard() {
                                                                     setSelectedPendingStudents(prev => prev.filter(id => id !== row.studentId));
                                                                 }
                                                             }}
-                                                            className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 focus:ring-2"
+                                                            className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-brand/40 focus:ring-2"
                                                         />
                                                     </td>
                                                     <td className="px-5 py-3 font-medium text-blue-600">{row.studentId}</td>
@@ -1335,7 +1335,7 @@ export default function ReportsDashboard() {
                             <div>
                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Session</label>
                                 <select
-                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={receivedSessionId}
                                     onChange={(e) => setReceivedSessionId(e.target.value)}
                                 >
@@ -1348,7 +1348,7 @@ export default function ReportsDashboard() {
                             <div>
                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Class</label>
                                 <select
-                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={receivedClassId}
                                     onChange={(e) => {
                                         setReceivedClassId(e.target.value);
@@ -1366,7 +1366,7 @@ export default function ReportsDashboard() {
                             <div>
                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Section</label>
                                 <select
-                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50 disabled:opacity-50"
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50 disabled:opacity-50"
                                     value={receivedSectionId}
                                     onChange={(e) => setReceivedSectionId(e.target.value)}
                                     disabled={!receivedClassId}
@@ -1380,7 +1380,7 @@ export default function ReportsDashboard() {
                             <div>
                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Method</label>
                                 <select
-                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={receivedMethod}
                                     onChange={(e) => setReceivedMethod(e.target.value)}
                                 >
@@ -1396,7 +1396,7 @@ export default function ReportsDashboard() {
                                 <input
                                     type="text"
                                     placeholder="Search by ID..."
-                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={receivedSearchQuery}
                                     onChange={(e) => setReceivedSearchQuery(e.target.value)}
                                 />
@@ -1406,7 +1406,7 @@ export default function ReportsDashboard() {
                                 <input
                                     type="text"
                                     placeholder="Mobile..."
-                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={receivedMobile}
                                     onChange={(e) => setReceivedMobile(e.target.value)}
                                 />
@@ -1551,7 +1551,7 @@ export default function ReportsDashboard() {
                         <div className="flex-1 min-w-[150px]">
                             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Academic Year</label>
                             <select 
-                                className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-white"
+                                className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-white"
                                 value={selectedExamYear}
                                 onChange={(e) => setSelectedExamYear(e.target.value)}
                             >
@@ -1564,7 +1564,7 @@ export default function ReportsDashboard() {
                         <div className="flex-1 min-w-[150px]">
                             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Exam Term</label>
                             <select 
-                                className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-white"
+                                className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-white"
                                 value={selectedExamTerm}
                                 onChange={(e) => setSelectedExamTerm(e.target.value)}
                             >
@@ -1577,7 +1577,7 @@ export default function ReportsDashboard() {
                         <div className="flex-1 min-w-[150px]">
                             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Class</label>
                             <select 
-                                className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-white"
+                                className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-white"
                                 value={selectedExamClass}
                                 onChange={(e) => {
                                     setSelectedExamClass(e.target.value);
@@ -1596,7 +1596,7 @@ export default function ReportsDashboard() {
                             <div className="flex-1 min-w-[150px]">
                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Section</label>
                                 <select 
-                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-white"
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-white"
                                     value={selectedExamSection}
                                     onChange={(e) => setSelectedExamSection(e.target.value)}
                                 >
@@ -1670,7 +1670,7 @@ export default function ReportsDashboard() {
                             <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
                                 <h2 className="text-lg font-bold text-slate-800">Average Attendance by Class</h2>
                                 <select 
-                                    className="border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50 mr-2"
+                                    className="border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50 mr-2"
                                     value={attendanceSession}
                                     onChange={(e) => setAttendanceSession(e.target.value)}
                                 >
@@ -1680,7 +1680,7 @@ export default function ReportsDashboard() {
                                     ))}
                                 </select>
                                 <select 
-                                    className="border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                    className="border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={attendanceMonth}
                                     onChange={(e) => setAttendanceMonth(e.target.value)}
                                 >
@@ -1699,12 +1699,13 @@ export default function ReportsDashboard() {
                                     <option value="3">March</option>
                                 </select>
                             </div>
-                            <div className="h-72">
+                            {/* Grow with the class count so many classes don't squish the bars. */}
+                            <div style={{ height: Math.max(288, attendanceByClass.length * 28) }}>
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={attendanceByClass} layout="vertical">
                                         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
                                         <XAxis type="number" domain={[0, 100]} axisLine={false} tickLine={false} tick={{fill: '#64748B'}} />
-                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: '#64748B'}} width={60} />
+                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: '#64748B'}} width={80} />
                                         <Tooltip formatter={(val: any) => `${val}%`} cursor={{fill: '#F1F5F9'}} />
                                         <Bar dataKey="attendance" name="Attendance %" fill="#10b981" radius={[0,4,4,0]} />
                                     </BarChart>
@@ -1756,7 +1757,7 @@ export default function ReportsDashboard() {
                                 <h2 className="text-lg font-bold text-slate-800">Student Enrollment by Class</h2>
                                 <div className="flex items-center gap-2">
                                     <select 
-                                        className="border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                        className="border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                         value={enrollmentFromSession}
                                         onChange={(e) => setEnrollmentFromSession(e.target.value)}
                                     >
@@ -1785,7 +1786,7 @@ export default function ReportsDashboard() {
                                 <h2 className="text-lg font-bold text-slate-800">New Admissions Trend</h2>
                                 <div className="flex items-center gap-2">
                                     <select 
-                                        className="w-32 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                        className="w-32 border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                         value={admissionsFromSession}
                                         onChange={(e) => setAdmissionsFromSession(e.target.value)}
                                     >
@@ -1796,7 +1797,7 @@ export default function ReportsDashboard() {
                                     </select>
                                     <span className="text-slate-500 text-sm">to</span>
                                     <select 
-                                        className="w-32 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2 bg-gray-50"
+                                        className="w-32 border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                         value={admissionsToSession}
                                         onChange={(e) => setAdmissionsToSession(e.target.value)}
                                     >
@@ -1923,7 +1924,7 @@ export default function ReportsDashboard() {
             )}
 
             {showNotifModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/55 backdrop-blur-sm animate-fade-in">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-scale-in">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                             <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -1951,7 +1952,7 @@ export default function ReportsDashboard() {
                                 <div className="flex items-center justify-between">
                                     <label className="text-sm font-semibold text-slate-700">Message Content</label>
                                     <label className="flex items-center gap-2 cursor-pointer">
-                                        <input type="checkbox" checked={useCustomMessage} onChange={(e) => setUseCustomMessage(e.target.checked)} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                                        <input type="checkbox" checked={useCustomMessage} onChange={(e) => setUseCustomMessage(e.target.checked)} className="rounded border-slate-300 text-indigo-600 focus:ring-brand/40" />
                                         <span className="text-xs text-slate-600 font-medium">Use custom message</span>
                                     </label>
                                 </div>
@@ -1961,7 +1962,7 @@ export default function ReportsDashboard() {
                                         value={customNotifMessage}
                                         onChange={(e) => setCustomNotifMessage(e.target.value)}
                                         placeholder="Write your custom reminder message here..."
-                                        className="w-full border-slate-300 rounded-lg p-3 text-sm focus:ring-indigo-500 focus:border-indigo-500 min-h-[120px]"
+                                        className="w-full border-slate-300 rounded-lg p-3 text-sm focus:ring-brand/40 focus:border-brand min-h-[120px]"
                                     />
                                 ) : (
                                     <div className="w-full border border-slate-200 bg-slate-50 rounded-lg p-4 text-sm text-slate-500 italic">

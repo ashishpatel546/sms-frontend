@@ -3,12 +3,20 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Papa from "papaparse";
-import Table from "../../../components/Table";
 import { API_BASE_URL } from "@/lib/api";
 import { toast } from "react-hot-toast";
 import { useRbac } from "@/lib/rbac";
 import { authFetch } from "@/lib/auth";
 import { sortByName } from "@/lib/utils";
+import { Search, Upload, UserPlus } from "lucide-react";
+import { PageBody, PageHeader, PageShell } from "@/components/ui/PageHeader";
+import { DataTable, TableCount, TableTitle, type Column } from "@/components/ui/DataTable";
+import { Pagination } from "@/components/ui/FilterBar";
+import { Field, FieldGrid, Input, Select } from "@/components/ui/Field";
+import { StatusChip } from "@/components/ui/StatusChip";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/button";
+import { Note, Panel } from "@/components/ui/Panel";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -259,66 +267,97 @@ export default function StudentsPage() {
         }
     };
 
-    const columns = [
-        { header: "ID", accessor: "id", sortable: true },
+    /**
+     * Which enrollment a cell reads from: the one for the session that was
+     * searched, else the one matching the searched status, else the active one.
+     * Logic unchanged — only the rendering moved into DataTable columns.
+     */
+    const enrollmentFor = (row: any) =>
+        row.enrollments?.find((e: any) => e.academicSession?.id === parseInt(committedSessionId))
+        ?? (committedStatus ? row.enrollments?.find((e: any) => e.status === committedStatus) : undefined)
+        ?? row.enrollments?.find((e: any) => e.status === 'ACTIVE');
+
+    const columns: Column<any>[] = [
         {
-            header: "Roll No",
+            key: 'id',
+            header: 'ID',
+            accessor: (row) => row.id,
             sortable: true,
-            render: (row: any) => {
-                const enrollment = row.enrollments?.find((e: any) => e.academicSession?.id === parseInt(committedSessionId))
-                    ?? (committedStatus ? row.enrollments?.find((e: any) => e.status === committedStatus) : undefined)
-                    ?? row.enrollments?.find((e: any) => e.status === 'ACTIVE');
-                const rollNo = enrollment?.rollNo ?? row.rollNo;
-                return (rollNo && rollNo !== 0) ? rollNo : 'N/A';
-            }
+            width: 'w-14',
+            className: 'tabular',
+            card: 'meta',
         },
-        { header: "First Name", accessor: "firstName", sortable: true },
-        { header: "Last Name", accessor: "lastName", sortable: true },
         {
-            header: "Class / Section",
-            render: (row: any) => {
+            key: 'rollNo',
+            header: 'Roll no',
+            sortable: true,
+            className: 'tabular',
+            card: 'meta',
+            sortValue: (row) => enrollmentFor(row)?.rollNo ?? row.rollNo,
+            render: (row) => {
+                const rollNo = enrollmentFor(row)?.rollNo ?? row.rollNo;
+                return (rollNo && rollNo !== 0) ? rollNo : '—';
+            },
+        },
+        {
+            key: 'name',
+            header: 'Student',
+            sortable: true,
+            card: 'title',
+            sortValue: (row) => `${row.firstName ?? ''} ${row.lastName ?? ''}`.trim(),
+            render: (row) => (
+                <span className="font-semibold text-ink">
+                    {[row.firstName, row.lastName].filter(Boolean).join(' ') || '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'class',
+            header: 'Class / section',
+            hideBelow: 'lg',
+            render: (row) => {
                 const enrollment = row.enrollments?.find((e: any) => e.academicSession?.id === parseInt(searchSessionId))
                     ?? (committedStatus ? row.enrollments?.find((e: any) => e.status === committedStatus) : undefined);
                 if (enrollment) {
                     return `${enrollment.class?.name || '-'} ${enrollment.section ? '- ' + enrollment.section.name : ''}`;
                 }
-                return row.class ? `${row.class.name} ${row.section ? '- ' + row.section.name : ''}` : '-';
-            }
+                return row.class ? `${row.class.name} ${row.section ? '- ' + row.section.name : ''}` : '—';
+            },
         },
         {
-            header: "Subjects",
-            render: (row: any) => row.studentSubjects && row.studentSubjects.length > 0
+            key: 'subjects',
+            header: 'Subjects',
+            hideBelow: 'xl',
+            card: 'hidden',
+            render: (row) => row.studentSubjects && row.studentSubjects.length > 0
                 ? row.studentSubjects.map((ss: any) => (ss.subject || ss.extraSubject)?.name).filter(Boolean).join(', ')
-                : '-'
+                : '—',
         },
         {
-            header: "Status",
-            render: (row: any) => {
-                const enrollment = row.enrollments?.find((e: any) => e.academicSession?.id === parseInt(committedSessionId))
-                    ?? (committedStatus ? row.enrollments?.find((e: any) => e.status === committedStatus) : undefined)
-                    ?? row.enrollments?.find((e: any) => e.status === 'ACTIVE');
-                const displayStatus = enrollment ? enrollment.status : (row.isActive ? 'ACTIVE' : 'INACTIVE');
-
-                let colorClass = 'bg-slate-100 text-slate-800';
-                if (displayStatus === 'ACTIVE') colorClass = 'bg-green-100 text-green-800';
-                else if (displayStatus === 'PROMOTED') colorClass = 'bg-blue-100 text-blue-800';
-                else if (displayStatus === 'ALUMNI') colorClass = 'bg-purple-100 text-purple-800';
-                else if (displayStatus === 'WITHDRAWN' || displayStatus === 'INACTIVE') colorClass = 'bg-red-100 text-red-800';
-
-                return (
-                    <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${colorClass}`}>
-                        {displayStatus}
-                    </span>
-                );
-            }
+            key: 'status',
+            header: 'Status',
+            card: 'trailing',
+            render: (row) => {
+                const enrollment = enrollmentFor(row);
+                return <StatusChip status={enrollment ? enrollment.status : (row.isActive ? 'ACTIVE' : 'INACTIVE')} />;
+            },
         },
         {
-            header: "Actions",
-            render: (row: any) => (
-                <Link href={`/dashboard/students/${row.id}`} className="font-medium text-blue-600 hover:underline">View</Link>
-            )
-        }
+            key: 'actions',
+            header: '',
+            align: 'right',
+            card: 'hidden',
+            render: (row) => (
+                <Link
+                    href={`/dashboard/students/${row.id}`}
+                    className="font-semibold text-brand hover:underline"
+                >
+                    View
+                </Link>
+            ),
+        },
     ];
+
 
     const getPageNumbers = () => {
         const pages: (number | '...')[] = [];
@@ -337,207 +376,170 @@ export default function StudentsPage() {
     };
 
     return (
-        <main className="p-4 bg-slate-50 min-h-screen">
-            <div className="max-w-7xl mx-auto">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                    <h1 className="text-2xl font-bold text-slate-800">Students Management</h1>
-                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+        <PageShell>
+            <PageHeader
+                section="Academics · Students"
+                title="Students"
+                description="Search the register, then open a student for their full record."
+                actions={
+                    <>
                         {rbac.canManageStudents && (
-                            <button
+                            <Button
+                                variant="outline"
                                 onClick={() => {
                                     setBulkFile(null);
                                     setBulkResult(null);
                                     setShowBulkModal(true);
                                 }}
-                                className="flex-1 sm:flex-none text-center text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-none whitespace-nowrap"
                             >
-                                Bulk Import
-                            </button>
+                                <Upload />
+                                Bulk import
+                            </Button>
                         )}
                         {rbac.canBulkOperateStudents && (
-                            <Link href="/dashboard/students/promotions" className="flex-1 sm:flex-none text-center text-white bg-amber-600 hover:bg-amber-700 focus:ring-4 focus:ring-amber-300 font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-none whitespace-nowrap">
-                                Bulk Promotions
-                            </Link>
+                            <Button variant="attn" render={<Link href="/dashboard/students/promotions" />}>
+                                Bulk promotions
+                            </Button>
                         )}
                         {rbac.canManageStudents && (
-                            <Link href="/dashboard/students/new" className="flex-1 sm:flex-none text-center text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-none whitespace-nowrap">
-                                Add Student
-                            </Link>
+                            <Button render={<Link href="/dashboard/students/new" />}>
+                                <UserPlus />
+                                Add student
+                            </Button>
                         )}
-                    </div>
-                </div>
+                    </>
+                }
+            />
 
-                {/* Advanced Search Filter */}
-                <div className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 mb-6">
-                    <h2 className="text-lg font-semibold text-slate-700 mb-4">Search Students</h2>
-                    <form onSubmit={handleSearch}>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Student ID</label>
-                                <input type="text" value={searchId} onChange={e => setSearchId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="e.g. 1" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">First Name</label>
-                                <input type="text" value={searchFirstName} onChange={e => setSearchFirstName(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="First Name" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Last Name</label>
-                                <input type="text" value={searchLastName} onChange={e => setSearchLastName(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="Last Name" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
-                                <input type="text" value={searchEmail} onChange={e => setSearchEmail(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="Email Address" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Mobile Number</label>
-                                <input type="text" value={searchMobile} onChange={e => setSearchMobile(e.target.value.replace(/\D/g, ''))} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="Exact Mobile No." />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Parent's Name</label>
-                                <input type="text" value={searchParents} onChange={e => setSearchParents(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="Mother or Father" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">PEN (Permanent Enrollment Number)</label>
-                                <input type="text" value={searchPen} onChange={e => setSearchPen(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" placeholder="e.g. 1234567890" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
-                                <select value={searchStatus} onChange={e => setSearchStatus(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2">
+            <PageBody>
+                {/* ── Search ─────────────────────────────────────────── */}
+                <Panel>
+                    <form onSubmit={handleSearch} className="p-4">
+                        <FieldGrid columns={3}>
+                            <Field label="Student ID" htmlFor="f-id">
+                                <Input id="f-id" value={searchId} onChange={e => setSearchId(e.target.value)} placeholder="e.g. 1" />
+                            </Field>
+                            <Field label="First name" htmlFor="f-first">
+                                <Input id="f-first" value={searchFirstName} onChange={e => setSearchFirstName(e.target.value)} placeholder="First name" />
+                            </Field>
+                            <Field label="Last name" htmlFor="f-last">
+                                <Input id="f-last" value={searchLastName} onChange={e => setSearchLastName(e.target.value)} placeholder="Last name" />
+                            </Field>
+                            <Field label="Email" htmlFor="f-email">
+                                <Input id="f-email" value={searchEmail} onChange={e => setSearchEmail(e.target.value)} placeholder="Email address" />
+                            </Field>
+                            <Field label="Mobile number" htmlFor="f-mobile" hint="Matches the whole number">
+                                <Input id="f-mobile" inputMode="numeric" value={searchMobile} onChange={e => setSearchMobile(e.target.value.replace(/\D/g, ''))} placeholder="Exact mobile no." />
+                            </Field>
+                            <Field label="Parent's name" htmlFor="f-parent">
+                                <Input id="f-parent" value={searchParents} onChange={e => setSearchParents(e.target.value)} placeholder="Mother or father" />
+                            </Field>
+                            <Field label="PEN" htmlFor="f-pen" hint="Permanent enrollment number">
+                                <Input id="f-pen" value={searchPen} onChange={e => setSearchPen(e.target.value)} placeholder="e.g. 1234567890" />
+                            </Field>
+                            <Field label="Status" htmlFor="f-status">
+                                <Select id="f-status" value={searchStatus} onChange={e => setSearchStatus(e.target.value)}>
                                     <option value="">All</option>
                                     <option value="ACTIVE">Active</option>
                                     <option value="PROMOTED">Promoted</option>
                                     <option value="ALUMNI">Alumni</option>
                                     <option value="WITHDRAWN">Withdrawn</option>
                                     <option value="GRADUATED">Graduated</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Academic Year</label>
-                                <select value={searchSessionId} onChange={e => setSearchSessionId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2">
-                                    <option value="">All Sessions</option>
+                                </Select>
+                            </Field>
+                            <Field label="Academic year" htmlFor="f-session">
+                                <Select id="f-session" value={searchSessionId} onChange={e => setSearchSessionId(e.target.value)}>
+                                    <option value="">All sessions</option>
                                     {sessions.map((s: any) => (
-                                        <option key={s.id} value={s.id}>{s.name} {s.isActive ? '(Active)' : ''}</option>
+                                        <option key={s.id} value={s.id}>{s.name} {s.isActive ? '(active)' : ''}</option>
                                     ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Class</label>
-                                <select value={searchClassId} onChange={handleClassChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2">
-                                    <option value="">All Classes</option>
+                                </Select>
+                            </Field>
+                            <Field label="Class" htmlFor="f-class">
+                                <Select id="f-class" value={searchClassId} onChange={handleClassChange}>
+                                    <option value="">All classes</option>
                                     {classes.map((c: any) => (
                                         <option key={c.id} value={c.id}>{c.name}</option>
                                     ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Section</label>
-                                <select value={searchSectionId} onChange={e => setSearchSectionId(e.target.value)} disabled={!searchClassId || loadingSections} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    <option value="">{loadingSections ? "Loading sections..." : "All Sections"}</option>
+                                </Select>
+                            </Field>
+                            <Field label="Section" htmlFor="f-section">
+                                <Select id="f-section" value={searchSectionId} onChange={e => setSearchSectionId(e.target.value)} disabled={!searchClassId || loadingSections}>
+                                    <option value="">{loadingSections ? 'Loading sections…' : 'All sections'}</option>
                                     {sections.map((s: any) => (
                                         <option key={s.id} value={s.id}>{s.name}</option>
                                     ))}
-                                </select>
-                            </div>
-                        </div>
-                        <div className="flex justify-end gap-2">
-                            <button type="button" onClick={handleReset} className="px-5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-200">
-                                Reset
-                            </button>
-                            <button type="submit" className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300">
+                                </Select>
+                            </Field>
+                        </FieldGrid>
+
+                        <div className="mt-4 flex justify-end gap-2 border-t border-line pt-4">
+                            <Button type="button" variant="ghost" onClick={handleReset}>Reset</Button>
+                            <Button type="submit">
+                                <Search />
                                 Search
-                            </button>
+                            </Button>
                         </div>
                     </form>
-                </div>
+                </Panel>
 
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                    {!hasSearched ? (
-                        <div className="text-center py-12 text-slate-500">
-                            <svg className="mx-auto h-12 w-12 text-slate-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            <h3 className="text-lg font-medium text-slate-900 mb-1">Find Students</h3>
-                            <p className="text-sm">Please apply filters and click Search to view the student list.</p>
-                        </div>
-                    ) : (
-                        <>
-                            <Table
-                                columns={columns}
-                                data={students}
-                                loading={loading}
-                                defaultSortColumn="id"
-                                defaultSortDirection="asc"
-                                emptyMessage="No students found matching the search criteria."
+                {/* ── Results ────────────────────────────────────────── */}
+                {!hasSearched ? (
+                    <Panel>
+                        <EmptyState
+                            icon={<Search />}
+                            title="Search the register"
+                            description="Narrow by class, section, status or name, then search. Results appear here."
+                        />
+                    </Panel>
+                ) : (
+                    <DataTable
+                        columns={columns}
+                        data={students}
+                        loading={loading}
+                        rowKey={(row) => row.id}
+                        defaultSort={{ key: 'id', direction: 'asc' }}
+                        emptyMessage="No students match those filters"
+                        toolbar={
+                            <>
+                                <TableTitle>Students</TableTitle>
+                                <TableCount>{total.toLocaleString('en-IN')} found</TableCount>
+                                <label className="ml-auto flex items-center gap-2">
+                                    <span className="eyebrow">Rows</span>
+                                    <select
+                                        value={pageSize}
+                                        onChange={handlePageSizeChange}
+                                        className="cursor-pointer rounded-md border border-line-strong bg-surface px-2 py-1 text-[12px] text-ink"
+                                        aria-label="Rows per page"
+                                    >
+                                        {PAGE_SIZE_OPTIONS.map(opt => (
+                                            <option key={opt} value={opt}>{opt}</option>
+                                        ))}
+                                    </select>
+                                </label>
+                            </>
+                        }
+                        footer={
+                            <Pagination
+                                page={page}
+                                pageCount={totalPages}
+                                onPageChange={handlePageChange}
+                                total={total}
+                                pageSize={pageSize}
                             />
+                        }
+                    />
+                )}
+            </PageBody>
 
-                            {/* Pagination Controls */}
-                            {!loading && total > 0 && (
-                                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 pt-4 border-t border-slate-200">
-                                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                                        <span>Rows per page:</span>
-                                        <select
-                                            value={pageSize}
-                                            onChange={handlePageSizeChange}
-                                            className="border border-gray-300 rounded-md text-sm p-1"
-                                        >
-                                            {PAGE_SIZE_OPTIONS.map(opt => (
-                                                <option key={opt} value={opt}>{opt}</option>
-                                            ))}
-                                        </select>
-                                        <span className="ml-2">
-                                            {Math.min((page - 1) * pageSize + 1, total)}–{Math.min(page * pageSize, total)} of {total}
-                                        </span>
-                                    </div>
-
-                                    <div className="flex items-center gap-1">
-                                        <button
-                                            onClick={() => handlePageChange(page - 1)}
-                                            disabled={page === 1}
-                                            className="px-3 py-1.5 text-sm rounded-md border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                                        >
-                                            ← Prev
-                                        </button>
-
-                                        {getPageNumbers().map((p, idx) =>
-                                            p === '...' ? (
-                                                <span key={`ellipsis-${idx}`} className="px-2 py-1.5 text-sm text-slate-400">…</span>
-                                            ) : (
-                                                <button
-                                                    key={p}
-                                                    onClick={() => handlePageChange(p as number)}
-                                                    className={`px-3 py-1.5 text-sm rounded-md border ${page === p
-                                                        ? 'bg-blue-600 text-white border-blue-600'
-                                                        : 'border-gray-300 hover:bg-gray-50'
-                                                        }`}
-                                                >
-                                                    {p}
-                                                </button>
-                                            )
-                                        )}
-
-                                        <button
-                                            onClick={() => handlePageChange(page + 1)}
-                                            disabled={page === totalPages}
-                                            className="px-3 py-1.5 text-sm rounded-md border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                                        >
-                                            Next →
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
 
                 {/* Bulk Import Modal */}
                 {showBulkModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-                        <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-                            <div className="flex items-center justify-between p-4 border-b">
-                                <h3 className="text-xl font-semibold text-gray-900">Bulk Import Students</h3>
-                                <button onClick={closeBulkModal} className="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 p-4 backdrop-blur-sm">
+                        <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-glass">
+                            <div className="flex items-center justify-between border-b border-line bg-surface-secondary px-4 py-3">
+                                <h3 className="font-display text-[17px] font-semibold text-ink">Import students from a CSV</h3>
+                                <button onClick={closeBulkModal} className="ms-auto inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-surface-inset hover:text-ink" aria-label="Close">
                                     <svg className="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
                                         <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6" />
                                     </svg>
@@ -568,14 +570,14 @@ export default function StudentsPage() {
                                             a.click();
                                             URL.revokeObjectURL(url);
                                         }}
-                                        className="mt-3 inline-flex items-center gap-1 text-xs text-blue-700 hover:text-blue-900 font-medium underline"
+                                        className="mt-3 inline-flex cursor-pointer items-center gap-1 text-[12px] font-semibold text-brand underline hover:no-underline"
                                     >
-                                        ⬇ Download CSV Template
+                                        Download CSV template
                                     </button>
                                 </div>
 
                                 <form onSubmit={handleBulkUpload}>
-                                    <label className="block mb-2 text-sm font-medium text-gray-900">Upload CSV File</label>
+                                    <label className="eyebrow mb-2 block">CSV file</label>
                                     <input 
                                         type="file" 
                                         accept=".csv"
@@ -586,7 +588,7 @@ export default function StudentsPage() {
                                             if (f) validateBulkFile(f);
                                             else setBulkValidation(null);
                                         }}
-                                        className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none p-2 mb-4" 
+                                        className="mb-4 block w-full cursor-pointer rounded-md border border-line-strong bg-surface-secondary p-2 text-[13.5px] text-ink focus:outline-none" 
                                         required
                                     />
 
@@ -594,8 +596,8 @@ export default function StudentsPage() {
                                         <div className={`p-4 mb-4 text-sm rounded-lg border ${bulkValidation.errors.length > 0 ? 'bg-red-50 text-red-800 border-red-200' : 'bg-green-50 text-green-800 border-green-200'}`}>
                                             <p className="font-bold mb-1">
                                                 {bulkValidation.errors.length > 0
-                                                    ? `⚠️ Validation found ${bulkValidation.errors.length} issue(s) in ${bulkValidation.rowCount} row(s)`
-                                                    : `✅ File looks good — ${bulkValidation.rowCount} row(s) ready to import`}
+                                                    ? `Validation found ${bulkValidation.errors.length} issue(s) in ${bulkValidation.rowCount} row(s)`
+                                                    : `File looks good — ${bulkValidation.rowCount} row(s) ready to import`}
                                             </p>
                                             {bulkValidation.errors.length > 0 && (
                                                 <div className="mt-2 max-h-40 overflow-y-auto text-xs bg-white p-2 rounded border border-red-100">
@@ -620,8 +622,8 @@ export default function StudentsPage() {
                                     {bulkResult && (
                                         <div className={`p-4 mb-4 text-sm rounded-lg ${bulkResult.failed > 0 ? 'bg-orange-50 text-orange-800 border border-orange-200' : 'bg-green-50 text-green-800 border border-green-200'}`}>
                                             <p className="font-bold mb-2">Import Results:</p>
-                                            <p>✅ {bulkResult.successful} students successfully created and enrolled.</p>
-                                            {bulkResult.failed > 0 && <p>❌ {bulkResult.failed} failed.</p>}
+                                            <p>{bulkResult.successful} students successfully created and enrolled.</p>
+                                            {bulkResult.failed > 0 && <p>{bulkResult.failed} failed.</p>}
                                             {bulkResult.errors?.length > 0 && (
                                                 <div className="mt-2 max-h-32 overflow-y-auto text-xs bg-white p-2 rounded border border-orange-100">
                                                     {bulkResult.errors.map((err, i) => (
@@ -636,14 +638,14 @@ export default function StudentsPage() {
                                         <button 
                                             type="button" 
                                             onClick={closeBulkModal} 
-                                            className="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5"
+                                            className="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-4 focus:ring-line-strong font-medium rounded-lg text-sm px-5 py-2.5"
                                         >
                                             Close
                                         </button>
                                         <button 
                                             type="submit" 
                                             disabled={!bulkFile || bulkUploading}
-                                            className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 disabled:opacity-50"
+                                            className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-brand/40 font-medium rounded-lg text-sm px-5 py-2.5 disabled:opacity-50"
                                         >
                                             {bulkUploading ? 'Importing...' : 'Upload & Import'}
                                         </button>
@@ -653,7 +655,6 @@ export default function StudentsPage() {
                         </div>
                     </div>
                 )}
-            </div>
-        </main>
+        </PageShell>
     );
 }

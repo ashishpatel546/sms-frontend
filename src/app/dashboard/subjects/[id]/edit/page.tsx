@@ -125,7 +125,7 @@ export default function EditSubjectPage() {
                             name="name"
                             value={formData.name}
                             onChange={handleChange}
-                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                             required
                         />
                     </div>
@@ -137,7 +137,7 @@ export default function EditSubjectPage() {
                                 name="subjectCategory"
                                 value={formData.subjectCategory}
                                 onChange={handleChange}
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                             >
                                 <option value="BASE">Base / Compulsory</option>
                                 <option value="OPTIONAL">Optional</option>
@@ -152,7 +152,7 @@ export default function EditSubjectPage() {
                                 name="feeCategoryId"
                                 value={formData.feeCategoryId}
                                 onChange={handleChange}
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                             >
                                 <option value="">-- None (Implicit) --</option>
                                 {feeCategories.map(c => (
@@ -171,7 +171,7 @@ export default function EditSubjectPage() {
                                 name="hasTheory"
                                 checked={formData.hasTheory}
                                 onChange={handleChange}
-                                className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500"
+                                className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-brand/40"
                             />
                             <label htmlFor="hasTheory" className="text-sm font-medium text-gray-900">Has Theory Component?</label>
                         </div>
@@ -182,7 +182,7 @@ export default function EditSubjectPage() {
                                 name="hasPractical"
                                 checked={formData.hasPractical}
                                 onChange={handleChange}
-                                className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500"
+                                className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-brand/40"
                             />
                             <label htmlFor="hasPractical" className="text-sm font-medium text-gray-900">Has Practical Component?</label>
                         </div>
@@ -195,11 +195,11 @@ export default function EditSubjectPage() {
                         <button
                             type="submit"
                             disabled={saving}
-                            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50"
+                            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50"
                         >
                             {saving ? 'Saving...' : 'Save Changes'}
                         </button>
-                        <Link href="/dashboard/subjects" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5">
+                        <Link href="/dashboard/subjects" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-line-strong font-medium rounded-lg text-sm px-5 py-2.5">
                             Cancel
                         </Link>
                     </div>

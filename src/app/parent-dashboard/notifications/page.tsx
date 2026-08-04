@@ -1,10 +1,11 @@
 "use client";
 
+import { Bell } from 'lucide-react';
 import useSWR from "swr";
 import Link from "next/link";
 import { authFetch } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
-import { GlassCard } from "@/components/ui/GlassCard";
+import { Panel } from "@/components/ui/Panel";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const fetcher = (url: string) => authFetch(url).then((r) => r.json());
@@ -36,7 +37,7 @@ export default function NotificationsPage() {
           </svg>
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-ink leading-tight">Notifications</h1>
+          <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Notifications</h1>
           <p className="text-xs text-ink-muted">School announcements &amp; alerts</p>
         </div>
       </div>
@@ -49,17 +50,17 @@ export default function NotificationsPage() {
           ))}
         </div>
       ) : !notifications || notifications.length === 0 ? (
-        <GlassCard className="p-10 text-center">
-          <div className="text-4xl mb-3">🔔</div>
+        <Panel className="p-10 text-center">
+          <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-surface-secondary text-ink-faint"><Bell className="size-6" aria-hidden /></div>
           <p className="text-ink font-semibold">No notifications yet</p>
           <p className="text-sm text-ink-muted mt-1">
             School announcements will appear here
           </p>
-        </GlassCard>
+        </Panel>
       ) : (
         <div className="space-y-3">
           {notifications.map((n) => (
-            <GlassCard key={n.id} className="p-4">
+            <Panel key={n.id} className="p-4">
               <div className="flex items-start gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-brand mt-1.5 shrink-0" />
                 <div className="min-w-0 flex-1">
@@ -73,7 +74,7 @@ export default function NotificationsPage() {
                   </p>
                 </div>
               </div>
-            </GlassCard>
+            </Panel>
           ))}
         </div>
       )}

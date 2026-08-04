@@ -25,7 +25,7 @@ export default function FeePaymentPage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                 Back to Dashboard
             </Link>
-            <h1 className="text-ink text-2xl font-bold mb-6">Pay Fee Online</h1>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Pay Fee Online</h1>
 
             {step === "form" && (
                 <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 shadow-soft">
@@ -48,7 +48,7 @@ export default function FeePaymentPage() {
                                 {["UPI", "Card", "Net Banking"].map(m => (
                                     <button key={m} type="button" onClick={() => setPaymentMethod(m)}
                                         className={`py-2.5 px-3 rounded-xl text-sm font-medium border transition-all ${paymentMethod === m ? 'border-brand bg-brand/10 text-brand' : 'border-slate-200 text-ink-muted hover:border-brand/30 hover:bg-brand/5'}`}>
-                                        {m === "UPI" ? "📱 " : m === "Card" ? "💳 " : "🏦 "}{m}
+                                        {m}
                                     </button>
                                 ))}
                             </div>
@@ -96,7 +96,7 @@ export default function FeePaymentPage() {
                         <div className="flex justify-between text-sm"><span className="text-ink-muted">Transaction ID</span><span className="text-ink font-mono">{mockTransactionId}</span></div>
                         <div className="flex justify-between text-sm"><span className="text-ink-muted">Amount</span><span className="text-green-600 font-semibold">₹{Number(amount).toLocaleString()}</span></div>
                         <div className="flex justify-between text-sm"><span className="text-ink-muted">Method</span><span className="text-ink">{paymentMethod}</span></div>
-                        <div className="flex justify-between text-sm"><span className="text-ink-muted">Status</span><span className="text-green-600">✅ Success</span></div>
+                        <div className="flex justify-between text-sm"><span className="text-ink-muted">Status</span><span className="text-green-600">Success</span></div>
                     </div>
                     <Link href={`/parent-dashboard/student/${studentId}`}
                         className="inline-flex items-center gap-2 px-6 py-2.5 bg-brand hover:bg-brand-light text-white rounded-xl font-medium transition-colors">

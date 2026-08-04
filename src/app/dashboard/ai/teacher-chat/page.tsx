@@ -122,7 +122,7 @@ export default function TeacherChatPage() {
             <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-ink">Teacher Chat</h1>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Teacher Chat</h1>
             <p className="text-xs text-ink-muted">Ask curriculum, pedagogy, or subject questions</p>
           </div>
         </div>
@@ -145,25 +145,25 @@ export default function TeacherChatPage() {
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           placeholder="Subject (optional)"
-          className="flex-1 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+          className="flex-1 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-brand/40/40"
         />
         <input
           value={grade}
           onChange={(e) => setGrade(e.target.value)}
           placeholder="Grade (optional)"
-          className="w-28 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+          className="w-28 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-brand/40/40"
         />
         <select
           value={board}
           onChange={(e) => setBoard(e.target.value)}
-          className="w-28 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-2 py-2 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+          className="w-28 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-2 py-2 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-brand/40/40"
         >
           {["CBSE","ICSE","State Board","IB"].map((b) => <option key={b}>{b}</option>)}
         </select>
         <select
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
-          className="w-24 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-2 py-2 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+          className="w-24 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-2 py-2 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-brand/40/40"
         >
           <option value="en">English</option>
           <option value="hi">Hindi</option>
@@ -211,7 +211,7 @@ export default function TeacherChatPage() {
           onKeyDown={handleKey}
           placeholder="Type your question… (Enter to send, Shift+Enter for new line)"
           rows={2}
-          className="flex-1 resize-none rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+          className="flex-1 resize-none rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-brand/40/40"
         />
         {streaming ? (
           <button onClick={() => abortRef.current?.abort()} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors self-end">

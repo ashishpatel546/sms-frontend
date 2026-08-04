@@ -42,7 +42,7 @@ export default function TeacherHistoryPage() {
     return (
         <main className="p-4 space-y-8">
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-slate-800">Assignment History</h1>
+                <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Assignment History</h1>
                 <Link href="/dashboard/staff" className="text-blue-600 hover:underline">
                     &larr; Back to Teachers
                 </Link>

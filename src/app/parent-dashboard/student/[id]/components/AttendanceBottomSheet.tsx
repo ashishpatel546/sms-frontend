@@ -1,5 +1,6 @@
 "use client";
 
+import { CalendarDays } from 'lucide-react';
 import React, { useEffect } from "react";
 import { useAttendance } from "../hooks/useStudentData";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -82,7 +83,7 @@ export const AttendanceBottomSheet = ({ studentId, isOpen, onClose, onViewFull }
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-walnut-950/50 backdrop-blur-[2px]"
         onClick={onClose}
       />
 
@@ -99,7 +100,7 @@ export const AttendanceBottomSheet = ({ studentId, isOpen, onClose, onViewFull }
         <div className="px-5 pb-10 pt-2">
           {/* Header */}
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-bold text-ink">📊 Attendance Overview</h2>
+            <h2 className="text-lg font-bold text-ink">Attendance overview</h2>
             <button
               onClick={onClose}
               aria-label="Close"
@@ -117,7 +118,7 @@ export const AttendanceBottomSheet = ({ studentId, isOpen, onClose, onViewFull }
             </div>
           ) : !attendance || attendance.total === 0 ? (
             <div className="py-14 text-center">
-              <div className="text-4xl mb-3">📅</div>
+              <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-surface-secondary text-ink-faint"><CalendarDays className="size-6" aria-hidden /></div>
               <p className="text-ink-muted text-sm font-medium">No attendance data for this month</p>
             </div>
           ) : (

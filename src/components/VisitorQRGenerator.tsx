@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import QRCode from "react-qr-code";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch, getUser } from "@/lib/auth";
+import NumberInput from "@/components/ui/NumberInput";
 import {
     UserRound, Users, Car, IdCard, QrCode, RefreshCw, Clock, AlertTriangle, Info,
 } from "lucide-react";
@@ -169,7 +170,7 @@ export default function VisitorQRGenerator() {
                 </div>
                 <div>
                     <label className={labelCls}><Users className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />No. of Persons *</label>
-                    <input type="number" min={1} max={50} value={form.personsCount} onChange={e => setForm(p => ({ ...p, personsCount: Number(e.target.value) }))} className={inputCls} required />
+                    <NumberInput min={1} max={50} value={form.personsCount} emptyValue={1} onChange={v => setForm(p => ({ ...p, personsCount: v ?? 1 }))} className={inputCls} required />
                 </div>
             </div>
 

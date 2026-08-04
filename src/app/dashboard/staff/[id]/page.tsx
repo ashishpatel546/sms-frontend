@@ -69,7 +69,7 @@ export default function ViewStaffPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-slate-50">
+            <div className="flex min-h-[60vh] items-center justify-center">
                 <div className="text-slate-500 font-medium">Loading staff details...</div>
             </div>
         );
@@ -77,7 +77,7 @@ export default function ViewStaffPage() {
 
     if (error || !staff) {
         return (
-            <div className="p-4 bg-slate-50 min-h-screen">
+            <div className="p-4 sm:p-5">
                 <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg border border-red-200 text-red-600">
                     {error || "Staff not found"}
                     <div className="mt-4">
@@ -93,7 +93,7 @@ export default function ViewStaffPage() {
     const activeAssignments = staff.subjectAssignments?.filter((a: any) => a.isActive) || [];
 
     return (
-        <main className="p-4 bg-slate-50 min-h-screen space-y-6">
+        <main className="p-4 sm:p-5 space-y-6">
             <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-slate-200">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-6 mb-6 gap-4">
@@ -305,7 +305,7 @@ export default function ViewStaffPage() {
                 </div>
             )}
             {showExitModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
                         <h3 className="text-lg font-bold text-gray-900 mb-4">Mark Staff Exit</h3>
                         <p className="text-sm text-gray-600 mb-4">
@@ -319,14 +319,14 @@ export default function ViewStaffPage() {
                                     required
                                     value={exitDate}
                                     onChange={e => setExitDate(e.target.value)}
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                 />
                             </div>
                             <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
                                 <button
                                     type="button"
                                     onClick={() => { setShowExitModal(false); }}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-200"
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-line-strong"
                                 >
                                     Cancel
                                 </button>

@@ -362,7 +362,7 @@ export function AiPlanTool() {
       )}
       {status?.is_expiring_soon && !status?.is_expired && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 flex justify-between items-center">
-          <span>⚠️ <strong>Plan expires in {status.days_remaining} days.</strong> Renew soon to avoid interruption.</span>
+          <span><strong>Plan expires in {status.days_remaining} days.</strong> Renew soon to avoid interruption.</span>
           <button onClick={handleShowPlans} className="bg-amber-600 hover:bg-amber-700 transition-colors text-white px-3 py-1.5 rounded-lg font-medium text-xs">Renew Early</button>
         </div>
       )}
