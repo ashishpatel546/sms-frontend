@@ -191,6 +191,8 @@ export interface DailyAttendanceSummary {
   HALF_DAY: number;
   ON_LEAVE: number;
   HOLIDAY: number;
+  /** Active staff with no attendance record at all for the day. */
+  NOT_MARKED?: number;
 }
 
 export interface PaginatedDailyAttendance {
@@ -199,7 +201,47 @@ export interface PaginatedDailyAttendance {
   page: number;
   limit: number;
   totalPages: number;
+  /** Staff expected to mark attendance on the requested date. */
+  totalStaff?: number;
   summary: DailyAttendanceSummary;
+}
+
+export interface AttendanceReportSummaryRow {
+  staffId: number;
+  name: string;
+  employeeCode: number | null;
+  mobile: string | null;
+  present: number;
+  late: number;
+  halfDay: number;
+  absent: number;
+  onLeave: number;
+  holiday: number;
+  notMarked: number;
+  daysWithRecords: number;
+  totalWorkedHours: number;
+  avgWorkedHours: number | null;
+}
+
+export interface AttendanceReportDetailRow {
+  staffId: number;
+  name: string;
+  employeeCode: number | null;
+  mobile: string | null;
+  date: string;
+  status: StaffAttendanceStatus;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  workedHours: number | null;
+}
+
+export interface AttendanceReport {
+  from: string;
+  to: string;
+  generatedAt: string;
+  totalDaysInRange: number;
+  summary: AttendanceReportSummaryRow[];
+  rows: AttendanceReportDetailRow[];
 }
 
 export interface AttendanceZone {
@@ -523,6 +565,44 @@ export const hrApi = {
         'GET',
         `/hr/staff-attendance/daily?${p.toString()}`,
       );
+    },
+    getReport: (opts: { from: string; to: string; staffId?: number }) => {
+      const p = new URLSearchParams({ from: opts.from, to: opts.to });
+      if (opts.staffId) p.set('staffId', String(opts.staffId));
+      return req<AttendanceReport>(
+        'GET',
+        `/hr/staff-attendance/report?${p.toString()}`,
+      );
+    },
+    exportReportCsv: async (opts: {
+      from: string;
+      to: string;
+      staffId?: number;
+    }): Promise<void> => {
+      const p = new URLSearchParams({
+        from: opts.from,
+        to: opts.to,
+        format: 'csv',
+      });
+      if (opts.staffId) p.set('staffId', String(opts.staffId));
+      const res = await authFetch(
+        `${base()}/hr/staff-attendance/report?${p.toString()}`,
+      );
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const cd = res.headers.get('Content-Disposition') ?? '';
+      const match = cd.match(/filename="([^"]+)"/);
+      const filename = match
+        ? match[1]
+        : `staff-attendance-report_${opts.from}_${opts.to}.csv`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     },
     zones: {
       list: () => req<AttendanceZone[]>('GET', '/hr/staff-attendance/zones'),

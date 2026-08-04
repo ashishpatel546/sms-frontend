@@ -8,7 +8,7 @@ import { hrApi, StaffAttendanceRecord, StaffBiometric, WebauthnPermitStatus, Che
 import toast, { Toaster } from "react-hot-toast";
 import { startRegistration, startAuthentication } from "@simplewebauthn/browser";
 import { getOrCreateDeviceKeyPair, signChallenge, getDevicePublicKey, clearDeviceKeyPair } from "@/lib/device-crypto";
-import { todayLocalDate } from "@/lib/utils";
+import { todayLocalDate, formatTime } from "@/lib/utils";
 import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
 import { CheckCircle2 } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
@@ -57,11 +57,6 @@ function calcDuration(checkIn?: string, checkOut?: string): string | null {
   const mm = String(dur.minutes()).padStart(2, "0");
   const ss = String(dur.seconds()).padStart(2, "0");
   return `${hh}:${mm}:${ss}`;
-}
-
-function formatTime(val?: string, fallback = "—"): string {
-  if (!val) return fallback;
-  return val.includes("T") ? dayjs(val).format("YYYY-MM-DD HH:mm:ss") : val;
 }
 
 const DURATION_STYLES: Record<string, string> = {

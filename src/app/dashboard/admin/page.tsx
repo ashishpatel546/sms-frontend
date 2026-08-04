@@ -141,9 +141,13 @@ export default function AdminPanel() {
             if (searchRole) params.set("role", searchRole);
             if (searchMobile) params.set("mobile", searchMobile);
             if (searchDesignation) params.set("designationId", searchDesignation);
-            // staffOnly=true by default unless user explicitly chose to show all or selected a non-staff role
+            // staffOnly=true by default unless the user explicitly chose to show all,
+            // selected a non-staff role, or is looking someone up by mobile number —
+            // a mobile lookup must surface every matching account (the same number
+            // belongs to a parent and their children's student logins).
             const isNonStaffRole = searchRole && !["SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "HR_ADMIN", "TEACHER", ""].includes(searchRole);
-            if (!showAllUsers && !isNonStaffRole) params.set("staffOnly", "true");
+            const isMobileLookup = Boolean(searchMobile.trim());
+            if (!showAllUsers && !isNonStaffRole && !isMobileLookup) params.set("staffOnly", "true");
             params.set("page", String(overridePage ?? page));
             params.set("limit", String(overrideSize ?? pageSize));
 
@@ -206,12 +210,17 @@ export default function AdminPanel() {
     };
 
     const handleResetPassword = async (userId: number, name: string) => {
-        if (!confirm(`Reset password for ${name} to default?`)) return;
+        if (!confirm(`Reset password for ${name} to default?\n\nThey will be logged out everywhere and must change the password at next login.`)) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/users/${userId}/reset-password`, { method: "PATCH", headers: authHeaders });
-            if (res.ok) toast.success("Password reset. User must change on next login.");
-            else toast.error("Failed to reset password");
-        } catch { toast.error("Failed to reset password"); }
+            if (res.ok) {
+                const d = await res.json().catch(() => null);
+                toast.success(d?.message || "Password reset. User must change on next login.");
+            } else {
+                const d = await res.json().catch(() => null);
+                toast.error(d?.message ? `Reset failed: ${d.message}` : `Failed to reset password (HTTP ${res.status})`);
+            }
+        } catch { toast.error("Failed to reset password — network error"); }
     };
 
     const handleToggleStatus = async (userId: number, isActive: boolean, name: string) => {

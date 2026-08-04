@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
-import { getToken, setToken, setTokens, getUser, removeToken, authFetch, isMustChangePasswordFlow } from "@/lib/auth";
+import { getToken, setToken, setTokens, getUser, removeToken, authFetch } from "@/lib/auth";
 
 function EyeIcon({ open }: { open: boolean }) {
     return open ? (
@@ -41,7 +41,10 @@ export default function ChangePasswordPage() {
             router.replace(u.role === "PARENT" ? "/parent-dashboard" : "/dashboard");
             return;
         }
-        if (!isMustChangePasswordFlow()) { removeToken(); router.replace("/"); return; }
+        // The JWT's mustChangePassword claim is the source of truth. (An
+        // in-memory "flow" flag used to be checked here too, but it is only
+        // set during a manual login — dashboard-layout redirects and page
+        // refreshes would fail it and wipe the session.)
         setUser(u);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);

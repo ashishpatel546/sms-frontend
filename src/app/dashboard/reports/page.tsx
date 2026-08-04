@@ -1699,12 +1699,13 @@ export default function ReportsDashboard() {
                                     <option value="3">March</option>
                                 </select>
                             </div>
-                            <div className="h-72">
+                            {/* Grow with the class count so many classes don't squish the bars. */}
+                            <div style={{ height: Math.max(288, attendanceByClass.length * 28) }}>
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={attendanceByClass} layout="vertical">
                                         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
                                         <XAxis type="number" domain={[0, 100]} axisLine={false} tickLine={false} tick={{fill: '#64748B'}} />
-                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: '#64748B'}} width={60} />
+                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: '#64748B'}} width={80} />
                                         <Tooltip formatter={(val: any) => `${val}%`} cursor={{fill: '#F1F5F9'}} />
                                         <Bar dataKey="attendance" name="Attendance %" fill="#10b981" radius={[0,4,4,0]} />
                                     </BarChart>

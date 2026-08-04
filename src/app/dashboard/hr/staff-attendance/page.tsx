@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { hrApi, StaffAttendanceRecord, AttendanceBypassWindow, StaffBiometric, WebauthnRegistrationPermit, DailyAttendanceSummary, HrPendingCheckoutItem } from "@/lib/hr-api";
 import { useRbac } from "@/lib/rbac";
-import { todayLocalDate } from "@/lib/utils";
+import { todayLocalDate, formatTime } from "@/lib/utils";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
 import StaffPicker from "@/components/StaffPicker";
@@ -86,6 +86,15 @@ export default function StaffAttendancePage() {
   const [permits, setPermits] = useState<WebauthnRegistrationPermit[]>([]);
   const [permitTargetId, setPermitTargetId] = useState<number | null>(null);
   const [bioLoading, setBioLoading] = useState(false);
+
+  // Working-hours report download
+  const [showReport, setShowReport] = useState(false);
+  const [reportForm, setReportForm] = useState<{ from: string; to: string; staffId: number | null }>({
+    from: `${today.slice(0, 8)}01`,
+    to: today,
+    staffId: null,
+  });
+  const [reportBusy, setReportBusy] = useState<null | "csv" | "pdf">(null);
 
   // Pending checkouts
   const [showPendingCheckouts, setShowPendingCheckouts] = useState(false);
@@ -242,6 +251,61 @@ export default function StaffAttendancePage() {
     } finally { setResolving(false); }
   };
 
+  const REPORT_MAX_DAYS = 92;
+
+  const validateReportRange = (): boolean => {
+    if (!reportForm.from || !reportForm.to) {
+      toast.error("Select both dates");
+      return false;
+    }
+    if (reportForm.from > reportForm.to) {
+      toast.error("'From' must be on or before 'To'");
+      return false;
+    }
+    const span = dayjs(reportForm.to).diff(dayjs(reportForm.from), "day") + 1;
+    if (span > REPORT_MAX_DAYS) {
+      toast.error(`Date range too large — maximum ${REPORT_MAX_DAYS} days`);
+      return false;
+    }
+    return true;
+  };
+
+  const handleReportCsv = async () => {
+    if (!validateReportRange()) return;
+    setReportBusy("csv");
+    try {
+      await hrApi.attendance.exportReportCsv({
+        from: reportForm.from,
+        to: reportForm.to,
+        staffId: reportForm.staffId ?? undefined,
+      });
+      toast.success("Report downloaded");
+    } catch (e: any) {
+      toast.error(e?.info?.message ?? "Failed to download report");
+    } finally {
+      setReportBusy(null);
+    }
+  };
+
+  const handleReportPdf = async () => {
+    if (!validateReportRange()) return;
+    setReportBusy("pdf");
+    try {
+      const report = await hrApi.attendance.getReport({
+        from: reportForm.from,
+        to: reportForm.to,
+        staffId: reportForm.staffId ?? undefined,
+      });
+      const { buildAttendanceReportPdf } = await import("@/lib/attendance-report-pdf");
+      buildAttendanceReportPdf(report);
+      toast.success("Report downloaded");
+    } catch (e: any) {
+      toast.error(e?.info?.message ?? "Failed to download report");
+    } finally {
+      setReportBusy(null);
+    }
+  };
+
   const present = summary.PRESENT + summary.LATE;
   const absent = summary.ABSENT;
   const hasActiveSearch = Boolean(activeSearch.name || activeSearch.mobile || activeSearch.employeeCode || activeSearch.staffId);
@@ -317,6 +381,9 @@ export default function StaffAttendancePage() {
                     {pendingCheckoutsList.length}
                   </span>
                 )}
+              </button>
+              <button onClick={() => setShowReport(true)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700">
+                Download Report
               </button>
               <button onClick={() => setShowBypass(true)} className="bg-amber-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-amber-600">
                 {bypass ? "Bypass Active — New" : "Open Bypass Window"}
@@ -515,6 +582,9 @@ export default function StaffAttendancePage() {
         <span className="text-sm text-gray-600">Present: <strong className="text-green-700">{present}</strong></span>
         <span className="text-sm text-gray-600">Late: <strong className="text-amber-700">{summary.LATE}</strong></span>
         <span className="text-sm text-gray-600">Absent: <strong className="text-red-700">{absent}</strong></span>
+        <span className="text-sm text-gray-600" title="Active staff with no attendance record for this date">
+          Not Marked: <strong className="text-orange-600">{summary.NOT_MARKED ?? 0}</strong>
+        </span>
         <span className="text-sm text-gray-600">Total: <strong>{totalRecords}</strong></span>
         {hasActiveSearch && (
           <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded px-2 py-0.5">{totalRecords} result{totalRecords === 1 ? "" : "s"} for search</span>
@@ -610,8 +680,8 @@ export default function StaffAttendancePage() {
                     <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-600">
-                    <div><span className="text-gray-400">In: </span>{r.checkInTime ?? "—"}</div>
-                    <div><span className="text-gray-400">Out: </span>{r.checkOutTime ?? "—"}</div>
+                    <div><span className="text-gray-400">In: </span>{formatTime(r.checkInTime)}</div>
+                    <div><span className="text-gray-400">Out: </span>{formatTime(r.checkOutTime)}</div>
                     {dur && <div className={`col-span-2 ${DURATION_TEXT[r.status] ?? "text-gray-600"}`}>⏱ {dur}</div>}
                     <div className="col-span-2"><span className="text-gray-400">Marked: </span>{auditLabel(r)}</div>
                   </div>
@@ -655,8 +725,8 @@ export default function StaffAttendancePage() {
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
                       </td>
-                      <td className="px-4 py-3 tabular-nums">{r.checkInTime ?? "—"}</td>
-                      <td className="px-4 py-3 tabular-nums">{r.checkOutTime ?? "—"}</td>
+                      <td className="px-4 py-3 tabular-nums">{formatTime(r.checkInTime)}</td>
+                      <td className="px-4 py-3 tabular-nums">{formatTime(r.checkOutTime)}</td>
                       <td className={`px-4 py-3 tabular-nums ${dur ? (DURATION_TEXT[r.status] ?? "text-gray-600") : "text-gray-400"}`}>{dur ?? "—"}</td>
                       <td className="px-4 py-3 text-xs text-gray-600">{auditLabel(r)}</td>
                       <td className="px-4 py-3">
@@ -900,6 +970,55 @@ export default function StaffAttendancePage() {
             <div className="flex gap-2 justify-end">
               <button onClick={() => setShowMark(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={handleMark} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Mark</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Working-hours report modal */}
+      {showReport && (
+        <div className="fixed inset-0 bg-walnut-950/55 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-sm space-y-4 max-h-[90vh] overflow-y-auto">
+            <h2 className="font-semibold text-lg">Download Attendance Report</h2>
+            <p className="text-sm text-gray-600">
+              Working-hours report with per-staff totals (present/absent/not-marked days, worked hours) and a
+              day-by-day detail — for one staff member or everyone. Maximum range: {REPORT_MAX_DAYS} days.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">From</label>
+                <div className="mt-1">
+                  <AppDatePicker value={reportForm.from} max={today} onChange={(v) => setReportForm((f) => ({ ...f, from: v }))} />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">To</label>
+                <div className="mt-1">
+                  <AppDatePicker value={reportForm.to} max={today} onChange={(v) => setReportForm((f) => ({ ...f, to: v }))} />
+                </div>
+              </div>
+            </div>
+            <StaffPicker
+              label="Staff Member (leave empty for all staff)"
+              value={reportForm.staffId}
+              onChange={(id) => setReportForm((f) => ({ ...f, staffId: id }))}
+            />
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setShowReport(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Close</button>
+              <button
+                onClick={handleReportCsv}
+                disabled={reportBusy !== null}
+                className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-60"
+              >
+                {reportBusy === "csv" ? "Preparing…" : "Download CSV"}
+              </button>
+              <button
+                onClick={handleReportPdf}
+                disabled={reportBusy !== null}
+                className="px-4 py-2 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-60"
+              >
+                {reportBusy === "pdf" ? "Preparing…" : "Download PDF"}
+              </button>
             </div>
           </div>
         </div>
