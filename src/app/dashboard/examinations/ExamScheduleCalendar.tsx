@@ -9,6 +9,7 @@ import { authFetch } from "@/lib/auth";
 import toast, { Toaster } from "react-hot-toast";
 import { useRbac } from "@/lib/rbac";
 import ExamEntryModal from "./ExamEntryModal";
+import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 
 interface ExamScheduleCalendarProps {
     scheduleId: number;
@@ -26,6 +27,7 @@ interface SelectedCell {
 
 export default function ExamScheduleCalendar({ scheduleId, onBack }: ExamScheduleCalendarProps) {
     const { isAdmin } = useRbac();
+    const readOnly = useReadOnlySession();
     const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
     const [isDownloading, setIsDownloading] = useState(false);
 
@@ -41,7 +43,7 @@ export default function ExamScheduleCalendar({ scheduleId, onBack }: ExamSchedul
     if (isLoading) return <div className="text-center py-10 text-slate-500">Loading schedule...</div>;
     if (!schedule) return <div className="text-center py-10 text-slate-500">Schedule not found</div>;
 
-    const canEdit = schedule.status === "DRAFT" || isAdmin;
+    const canEdit = (schedule.status === "DRAFT" || isAdmin) && !readOnly;
 
     // Generate dates array (use local date parts to avoid UTC timezone shift)
     const toLocalDateStr = (d: Date) => {
@@ -233,11 +235,11 @@ export default function ExamScheduleCalendar({ scheduleId, onBack }: ExamSchedul
                     </button>
                     {isAdmin && (
                         <>
-                            <button onClick={handleToggleActive} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${schedule.isActive ? "bg-gray-100 text-gray-700 hover:bg-gray-200" : "bg-blue-100 text-blue-700 hover:bg-blue-200"}`}>
+                            <button onClick={handleToggleActive} disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${schedule.isActive ? "bg-gray-100 text-gray-700 hover:bg-gray-200" : "bg-blue-100 text-blue-700 hover:bg-blue-200"}`}>
                                 {schedule.isActive ? "Deactivate" : "Activate"}
                             </button>
                             {schedule.status === "DRAFT" && (
-                                <button onClick={handlePublish} className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors shadow-sm">
+                                <button onClick={handlePublish} disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
                                     Publish
                                 </button>
                             )}
@@ -269,7 +271,7 @@ export default function ExamScheduleCalendar({ scheduleId, onBack }: ExamSchedul
                                 const isHoliday = schedule.holidays?.some((h: any) => dateStr >= h.startDate && dateStr <= h.endDate);
                                 const d = new Date(dateStr + "T00:00:00");
                                 return (
-                                    <th key={dateStr} className={`px-3 py-3 text-center font-medium min-w-[140px] border-r border-slate-200 ${isToday ? "bg-blue-50 text-blue-700" : isHoliday ? "bg-amber-50 text-amber-700" : sunday ? "bg-slate-100 text-slate-400" : "text-slate-600"}`}>
+                                    <th key={dateStr} className={`px-3 py-3 text-center font-medium min-w-35 border-r border-slate-200 ${isToday ? "bg-blue-50 text-blue-700" : isHoliday ? "bg-amber-50 text-amber-700" : sunday ? "bg-slate-100 text-slate-400" : "text-slate-600"}`}>
                                         <div className="text-xs uppercase tracking-wide">{d.toLocaleDateString("en-US", { weekday: "short" })}</div>
                                         <div className={`text-base font-bold ${isToday ? "text-blue-700" : isHoliday ? "text-amber-700" : sunday ? "text-slate-400" : "text-slate-800"}`}>
                                             {d.toLocaleDateString("en-US", { day: "numeric", month: "short" })}
@@ -302,7 +304,7 @@ export default function ExamScheduleCalendar({ scheduleId, onBack }: ExamSchedul
                                         <td
                                             key={dateStr}
                                             onClick={() => canEdit && !isBlocked ? handleCellClick(cls, dateStr) : undefined}
-                                            className={`border-r border-b border-slate-200 px-2 py-2 align-top min-w-[140px] min-h-16 ${cellBg} ${canEdit && !isBlocked ? "cursor-pointer hover:bg-blue-50/60 transition-colors" : isBlocked ? "cursor-not-allowed" : ""}`}
+                                            className={`border-r border-b border-slate-200 px-2 py-2 align-top min-w-35 min-h-16 ${cellBg} ${canEdit && !isBlocked ? "cursor-pointer hover:bg-blue-50/60 transition-colors" : isBlocked ? "cursor-not-allowed" : ""}`}
                                         >
                                             {entry ? (
                                                 <div className="bg-white border border-slate-200 rounded-md p-2 shadow-sm text-xs space-y-0.5 hover:shadow-md transition-shadow">

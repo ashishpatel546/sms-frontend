@@ -4,6 +4,7 @@ import "./globals.css";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import ServiceUnavailableBanner from "@/components/ServiceUnavailableBanner";
+import SupportSessionNotices from "@/components/SupportSessionNotices";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 
 // Force dynamic rendering so process.env is read at request time (from SSM-loaded runtime env),
@@ -121,6 +122,7 @@ export default function RootLayout({
           <PWAInstallBanner />
           <ServiceWorkerRegistrar />
           <ServiceUnavailableBanner />
+          <SupportSessionNotices />
         </ThemeProvider>
       </body>
     </html>

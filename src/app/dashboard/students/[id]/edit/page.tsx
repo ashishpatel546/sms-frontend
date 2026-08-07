@@ -9,6 +9,7 @@ import { authFetch } from "@/lib/auth";
 import { Country, State, City } from "country-state-city";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
 import { useRbac } from "@/lib/rbac";
+import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 import { formatMobileInput, isValidMobile, MOBILE_ERROR } from "@/lib/mobile";
 
 export default function EditStudentPage() {
@@ -16,6 +17,7 @@ export default function EditStudentPage() {
     const params = useParams();
     const id = params?.id as string;
     const rbac = useRbac();
+    const readOnly = useReadOnlySession();
 
     // Redirect if user cannot manage students (only view)
     useEffect(() => {
@@ -307,6 +309,7 @@ export default function EditStudentPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         setError("");
 
         if (formData.mobile && !isValidMobile(formData.mobile)) {
@@ -696,7 +699,8 @@ export default function EditStudentPage() {
                     <div className="flex items-center space-x-4 pt-4 border-t">
                         <button
                             type="submit"
-                            disabled={saving}
+                            disabled={saving || readOnly}
+                            title={readOnly ? READ_ONLY_TITLE : undefined}
                             className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-bold rounded-lg text-lg w-full sm:w-auto px-8 py-3 text-center disabled:opacity-50"
                         >
                             {saving ? 'Saving...' : 'Save Changes'}

@@ -9,10 +9,12 @@ import { useRbac } from "@/lib/rbac";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { sortByName } from "@/lib/utils";
+import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 
 type NotificationAudience = "PARENT" | "STAFF" | "ALL" | "CUSTOM";
 
 export default function NewNotificationPage() {
+  const readOnly = useReadOnlySession();
   const { isSubAdmin, isAdmin, isSuperAdmin } = useRbac();
   const canSendNotifications = isSubAdmin || isAdmin || isSuperAdmin;
   const router = useRouter();
@@ -343,7 +345,8 @@ export default function NewNotificationPage() {
           <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || readOnly}
+                            title={readOnly ? READ_ONLY_TITLE : undefined}
               className="px-8 py-3 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
             >
               {isSubmitting ? (

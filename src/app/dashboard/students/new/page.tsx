@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { API_BASE_URL } from "@/lib/api";
 import { Country, State, City } from "country-state-city";
 import { useRbac } from "@/lib/rbac";
+import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 import { authFetch } from "@/lib/auth";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
 import { sortByName } from "@/lib/utils";
@@ -15,6 +16,7 @@ import { formatMobileInput, isValidMobile, MOBILE_ERROR } from "@/lib/mobile";
 export default function AddStudentPage() {
     const router = useRouter();
     const rbac = useRbac();
+    const readOnly = useReadOnlySession();
 
     // Route guard — only SUB_ADMIN and above can add students
     useEffect(() => {
@@ -269,6 +271,7 @@ export default function AddStudentPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         setError("");
 
         if (!isValidMobile(formData.mobile)) {
@@ -767,7 +770,7 @@ export default function AddStudentPage() {
                     </div>
 
                     <div className="flex items-center space-x-4 pt-4 border-t">
-                        <button type="submit" disabled={loading} className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-bold rounded-lg text-lg w-full sm:w-auto px-8 py-3 text-center disabled:opacity-50">
+                        <button type="submit" disabled={loading || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-bold rounded-lg text-lg w-full sm:w-auto px-8 py-3 text-center disabled:opacity-50">
                             {loading ? 'Registering...' : 'Register Student'}
                         </button>
                         <Link href="/dashboard/students" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-line-strong font-medium rounded-lg text-sm px-5 py-3">

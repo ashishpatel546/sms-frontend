@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { API_BASE_URL } from "@/lib/api";
 import { getUser, authFetch } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
+import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 import { Loader } from "@/components/ui/Loader";
 import { StudentDetailsModal } from "@/components/StudentDetailsModal";
 import StudentAttendanceModal from "@/components/StudentAttendanceModal";
@@ -31,6 +32,7 @@ interface ClassData {
 export default function AttendancePage() {
     const user = getUser();
     const { isSubAdmin } = useRbac();
+    const readOnly = useReadOnlySession();
 
     // Lightweight class list (id + name only) — loaded once on mount
     const [classes, setClasses] = useState<ClassData[]>([]);
@@ -360,10 +362,11 @@ export default function AttendancePage() {
         });
     };
 
-    const disableEdit = !!activeHolidayInfo || (existingAttendance && !isSubAdmin);
+    const disableEdit = readOnly || !!activeHolidayInfo || (existingAttendance && !isSubAdmin);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         setMessage({ text: "", type: "" });
 
         const payload = {
@@ -616,7 +619,7 @@ export default function AttendancePage() {
                             )}
 
                             {/* Absentee List Widget */}
-                            <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 lg:col-span-1 h-full max-h-[300px] flex flex-col">
+                            <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 lg:col-span-1 h-full max-h-75 flex flex-col">
                                 <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center justify-between">
                                     <span>Absent / On Leave</span>
                                     <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full font-bold">
@@ -838,6 +841,7 @@ export default function AttendancePage() {
                                         type="button"
                                         onClick={handleSubmit}
                                         disabled={loading || students.length === 0 || disableEdit}
+                                        title={readOnly ? READ_ONLY_TITLE : undefined}
                                         className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-brand/40 font-medium rounded-lg text-sm px-6 py-2.5 disabled:opacity-50"
                                     >
                                         {loading ? 'Saving...' : 'Save Attendance'}

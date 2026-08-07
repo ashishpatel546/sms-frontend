@@ -5,12 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
+import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 import { sortByName } from "@/lib/utils";
 
 export default function PromoteStudentPage() {
     const router = useRouter();
     const params = useParams();
     const id = params?.id as string;
+    const readOnly = useReadOnlySession();
     const [student, setStudent] = useState<any>(null);
     const [classes, setClasses] = useState<any[]>([]);
     const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
@@ -54,6 +56,7 @@ export default function PromoteStudentPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
 
         if (!selectedClassId || !selectedSectionId) {
             setError("Please select both a class and a section.");
@@ -161,7 +164,8 @@ export default function PromoteStudentPage() {
                     <div className="flex items-center space-x-4">
                         <button
                             type="submit"
-                            disabled={saving}
+                            disabled={saving || readOnly}
+                            title={readOnly ? READ_ONLY_TITLE : undefined}
                             className="text-white bg-amber-600 hover:bg-amber-700 focus:ring-4 focus:outline-none focus:ring-amber-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50"
                         >
                             {saving ? 'Promoting...' : 'Promote Student'}

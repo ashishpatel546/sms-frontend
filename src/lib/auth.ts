@@ -207,7 +207,7 @@ export async function authFetch(
   url: string,
   options: RequestInit = {},
 ): Promise<Response> {
-  let headers: Record<string, string> = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...getAuthHeaders(),
     ...((options.headers as Record<string, string>) || {}),
@@ -281,12 +281,13 @@ export async function authFetch(
         Authorization: `Bearer ${data.access_token}`,
       };
       res = await fetch(url, { ...options, headers: newHeaders });
-    } catch (error: any) {
+    } catch (error) {
       onRefreshFailed();
       // Only log out if it's a genuine auth rejection, NOT a transient network error or abort.
       // Transient errors (offline, Cloudflare 5xx, Android background abort) must not log the user out.
       const isNetworkError =
-        error instanceof TypeError || error?.name === 'AbortError';
+        error instanceof TypeError ||
+        (error as { name?: string } | null)?.name === 'AbortError';
       if (!isNetworkError) {
         logout();
       }
@@ -301,6 +302,28 @@ export async function authFetch(
 
   if (res.status === 503 && typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('service-unavailable'));
+  }
+
+  // Surface the server's own refusal message app-wide. Most screens catch
+  // errors with a generic "Failed to X, please try again", which hides the
+  // one thing a 403 always carries: WHY (e.g. a read-only support session,
+  // or a role below the route's minimum). `SupportSessionNotices` in the
+  // root layout listens and shows it; pages keep their local handling.
+  if (res.status === 403 && typeof window !== 'undefined') {
+    void res
+      .clone()
+      .json()
+      .then((body: { message?: string | string[] }) => {
+        const message = Array.isArray(body?.message)
+          ? body.message[0]
+          : body?.message;
+        if (message) {
+          window.dispatchEvent(
+            new CustomEvent('access-denied', { detail: { message } }),
+          );
+        }
+      })
+      .catch(() => {});
   }
 
   return res;

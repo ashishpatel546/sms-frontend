@@ -188,7 +188,7 @@ export function DataTable<T>({
             className={cn(
               headPad,
               'bg-surface-inset border-b border-line-strong',
-              'font-mono text-[10.5px] font-semibold tracking-[0.1em] whitespace-nowrap uppercase',
+              'font-mono text-[10.5px] font-semibold tracking-widest whitespace-nowrap uppercase',
               sorted ? 'text-ink' : 'text-ink-faint',
               alignClass[col.align ?? 'left'],
               col.hideBelow && hideBelowClass[col.hideBelow],
@@ -295,7 +295,7 @@ export function DataTable<T>({
               <span
                 aria-hidden
                 className={cn(
-                  'absolute top-0 bottom-0 left-0 w-[2px]',
+                  'absolute top-0 bottom-0 left-0 w-0.5',
                   flagged ? 'bg-accent-warn' : selected ? 'bg-brand' : 'bg-line-strong',
                 )}
               />

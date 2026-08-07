@@ -8,6 +8,7 @@ import { authFetch } from "@/lib/auth";
 import { todayLocalDate } from "@/lib/utils";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
 import { formatMobileInput, isValidMobile, MOBILE_ERROR } from "@/lib/mobile";
+import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 
 const ROLE_LABELS: Record<string, string> = {
     ADMIN: "Admin",
@@ -69,6 +70,7 @@ export default function AddStaffForm({
     allowRoleSelect = false,
     isSuperAdmin = false,
 }: Props) {
+    const readOnly = useReadOnlySession();
     const [formData, setFormData] = useState(EMPTY_FORM);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -180,6 +182,7 @@ export default function AddStaffForm({
 
     const handleCreateDesignation = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         if (!newDesTitle.trim()) return;
         setCreatingDes(true);
         try {
@@ -226,6 +229,7 @@ export default function AddStaffForm({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         setError("");
 
         if (!isValidMobile(formData.mobile)) {
@@ -656,7 +660,8 @@ export default function AddStaffForm({
 
                 {/* ── ACTIONS ── */}
                 <div className="flex items-center gap-3 border-t pt-6">
-                    <button type="submit" disabled={loading}
+                    <button type="submit" disabled={loading || readOnly}
+                        title={readOnly ? READ_ONLY_TITLE : undefined}
                         className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-medium rounded-lg text-sm px-6 py-2.5 disabled:opacity-50">
                         {loading ? "Creating..." : "Create Staff Member"}
                     </button>
@@ -683,7 +688,8 @@ export default function AddStaffForm({
                                 <button type="button"
                                     onClick={() => { setShowDesModal(false); setNewDesTitle(""); setFormData(prev => ({ ...prev, designationId: "" })); }}
                                     className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
-                                <button type="submit" disabled={creatingDes}
+                                <button type="submit" disabled={creatingDes || readOnly}
+                                    title={readOnly ? READ_ONLY_TITLE : undefined}
                                     className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
                                     {creatingDes ? "Creating..." : "Create"}
                                 </button>
