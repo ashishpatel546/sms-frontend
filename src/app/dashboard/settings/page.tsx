@@ -8,10 +8,12 @@ import { Loader } from "@/components/ui/Loader";
 import { Plus, Trash2, Edit2, CheckCircle2, XCircle, Settings2, GraduationCap, CalendarDays } from "lucide-react";
 import { useRbac } from "@/lib/rbac";
 import { authFetch } from "@/lib/auth";
+import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 
 export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState<'system' | 'examination' | 'holidays'>('system');
     const rbac = useRbac();
+    const readOnly = useReadOnlySession();
 
     // --- System Settings State ---
     const { data: sessions = [], error, isLoading: loading, mutate } = useSWR('/academic-sessions', fetcher);
@@ -541,7 +543,7 @@ export default function SettingsPage() {
                                         <input type="date" value={newSessionEnd} onChange={(e) => setNewSessionEnd(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand" />
                                     </div>
                                 </div>
-                                <button type="submit" className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition">Create Session</button>
+                                <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">Create Session</button>
                             </form>
                         )}
 
@@ -609,7 +611,7 @@ export default function SettingsPage() {
                                         <input type="text" value={newDesigDesc} onChange={(e) => setNewDesigDesc(e.target.value)} className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand" />
                                     </div>
                                 </div>
-                                <button type="submit" className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition">Create Designation</button>
+                                <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">Create Designation</button>
                             </form>
                         )}
 
@@ -648,7 +650,9 @@ export default function SettingsPage() {
                                             </button>
                                             <button
                                                 type="submit"
-                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                                disabled={readOnly}
+                                                title={readOnly ? READ_ONLY_TITLE : undefined}
+                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 Save Changes
                                             </button>
@@ -748,7 +752,7 @@ export default function SettingsPage() {
                                             <input type="text" value={newCategoryDesc} onChange={(e) => setNewCategoryDesc(e.target.value)} className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand" />
                                         </div>
                                     </div>
-                                    <button type="submit" className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition">Create Category</button>
+                                    <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">Create Category</button>
                                 </form>
                             )}
 
@@ -899,7 +903,7 @@ export default function SettingsPage() {
                                         </label>
                                     </div>
                                 </div>
-                                <button type="submit" disabled={!selectedGradingSessionId} className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition disabled:bg-blue-300">Add Grade Band</button>
+                                <button type="submit" disabled={!selectedGradingSessionId || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition disabled:bg-blue-300">Add Grade Band</button>
                             </form>
                         )}
 
@@ -1032,7 +1036,7 @@ export default function SettingsPage() {
 
             {/* Holiday Modal */}
             {showHolidayModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm">
                     <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6 border-b pb-4">
                             <h2 className="text-2xl font-bold text-slate-800">{editingHolidayId ? 'Edit Holiday' : 'Add New Holiday'}</h2>
@@ -1136,7 +1140,8 @@ export default function SettingsPage() {
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={isSavingHoliday || (!holidayIsEntireSchool && holidayClassIds.length === 0)}
+                                    disabled={isSavingHoliday || readOnly || (!holidayIsEntireSchool && holidayClassIds.length === 0)}
+                                    title={readOnly ? READ_ONLY_TITLE : undefined}
                                     className="px-5 py-2 text-sm font-medium text-white bg-sky-600 rounded-lg hover:bg-sky-700 focus:ring-4 focus:outline-none focus:ring-sky-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                 >
                                     {isSavingHoliday ? "Saving..." : (editingHolidayId ? "Update Holiday" : "Create Holiday")}

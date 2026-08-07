@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
 import AddStaffForm from "@/components/AddStaffForm";
+import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 
 type Tab = "users" | "add-staff" | "school-setup";
 
@@ -33,6 +34,7 @@ const ASSIGNABLE_ROLES = ["ADMIN", "SUB_ADMIN", "HR_ADMIN", "TEACHER"];
 export default function AdminPanel() {
     const router = useRouter();
     const currentUser = getUser();
+    const readOnly = useReadOnlySession();
     const [activeTab, setActiveTab] = useState<Tab>("users");
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -423,7 +425,9 @@ export default function AdminPanel() {
                                                         <select
                                                             defaultValue={user.role}
                                                             onChange={e => handleRoleChange(user.id, e.target.value)}
-                                                            className="text-xs bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand/40 cursor-pointer"
+                                                            disabled={readOnly}
+                                                            title={readOnly ? READ_ONLY_TITLE : undefined}
+                                                            className="text-xs bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand/40 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                                         >
                                                             {/* Current role stays visible even when it is not assignable (e.g. SUPER_ADMIN, PARENT) */}
                                                             {!ASSIGNABLE_ROLES.includes(user.role) && (
@@ -467,12 +471,16 @@ export default function AdminPanel() {
                                                                     </button>
                                                                     <button
                                                                         onClick={() => { setOpenDropdownId(null); handleResetPassword(user.id, `${user.firstName} ${user.lastName}`); }}
-                                                                        className="w-full text-left px-4 py-2 text-sm text-amber-700 hover:bg-amber-50">
+                                                                        disabled={readOnly}
+                                                                        title={readOnly ? READ_ONLY_TITLE : undefined}
+                                                                        className="w-full text-left px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed">
                                                                         🔑 Reset Password
                                                                     </button>
                                                                     <button
                                                                         onClick={() => { setOpenDropdownId(null); handleToggleStatus(user.id, user.isActive, `${user.firstName} ${user.lastName}`); }}
-                                                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 ${user.isActive ? "text-orange-700" : "text-green-700"}`}>
+                                                                        disabled={readOnly}
+                                                                        title={readOnly ? READ_ONLY_TITLE : undefined}
+                                                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed ${user.isActive ? "text-orange-700" : "text-green-700"}`}>
                                                                         {user.isActive ? "🔒 Deactivate" : "Activate"}
                                                                     </button>
                                                                     {isSuperAdmin && (
@@ -480,7 +488,9 @@ export default function AdminPanel() {
                                                                             <hr className="my-1 border-slate-100" />
                                                                             <button
                                                                                 onClick={() => { setOpenDropdownId(null); handleDeleteUser(user.id, `${user.firstName} ${user.lastName}`); }}
-                                                                                className="w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 font-medium">
+                                                                                disabled={readOnly}
+                                                                                title={readOnly ? READ_ONLY_TITLE : undefined}
+                                                                                className="w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 font-medium disabled:opacity-50 disabled:cursor-not-allowed">
                                                                                 🗑 Delete Account
                                                                             </button>
                                                                         </>
@@ -602,7 +612,7 @@ export default function AdminPanel() {
                             </button>
                         ) : isConfirmingSetup ? (
                             <div className="flex flex-wrap items-center gap-3">
-                                <button onClick={executeSchoolSetup} disabled={!setupFile || setupLoading} className="w-full sm:w-auto px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all shadow-sm disabled:opacity-50 flex justify-center items-center gap-2">
+                                <button onClick={executeSchoolSetup} disabled={!setupFile || setupLoading || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="w-full sm:w-auto px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all shadow-sm disabled:opacity-50 flex justify-center items-center gap-2">
                                     {setupLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Confirm Execution"}
                                 </button>
                                 <button onClick={() => { setIsConfirmingSetup(false); setSetupTimer(0); }} className="w-full sm:w-auto px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all disabled:opacity-50">
@@ -610,7 +620,7 @@ export default function AdminPanel() {
                                 </button>
                             </div>
                         ) : (
-                            <button onClick={() => { setIsConfirmingSetup(true); setSetupTimer(5); }} disabled={!setupFile} className="w-full sm:w-auto px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all shadow-sm disabled:opacity-50 focus:ring-4 focus:ring-rose-100">
+                            <button onClick={() => { setIsConfirmingSetup(true); setSetupTimer(5); }} disabled={!setupFile || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="w-full sm:w-auto px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all shadow-sm disabled:opacity-50 focus:ring-4 focus:ring-rose-100">
                                 Execute Setup
                             </button>
                         )}

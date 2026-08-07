@@ -6,6 +6,7 @@ import Papa from "papaparse";
 import { API_BASE_URL } from "@/lib/api";
 import { toast } from "react-hot-toast";
 import { useRbac } from "@/lib/rbac";
+import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 import { authFetch } from "@/lib/auth";
 import { sortByName } from "@/lib/utils";
 import { Search, Upload, UserPlus } from "lucide-react";
@@ -28,6 +29,7 @@ export default function StudentsPage() {
     const [loadingSections, setLoadingSections] = useState(false);
     const [sessions, setSessions] = useState<any[]>([]);
     const rbac = useRbac();
+    const readOnly = useReadOnlySession();
 
     // Search Params
     const [searchSessionId, setSearchSessionId] = useState("");
@@ -231,6 +233,7 @@ export default function StudentsPage() {
 
     const handleBulkUpload = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         if (!bulkFile) return;
 
         setBulkUploading(true);
@@ -644,7 +647,8 @@ export default function StudentsPage() {
                                         </button>
                                         <button 
                                             type="submit" 
-                                            disabled={!bulkFile || bulkUploading}
+                                            disabled={!bulkFile || bulkUploading || readOnly}
+                                            title={readOnly ? READ_ONLY_TITLE : undefined}
                                             className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-brand/40 font-medium rounded-lg text-sm px-5 py-2.5 disabled:opacity-50"
                                         >
                                             {bulkUploading ? 'Importing...' : 'Upload & Import'}

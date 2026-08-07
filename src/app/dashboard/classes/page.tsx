@@ -12,8 +12,10 @@ import { useRbac } from "@/lib/rbac";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
+import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 
 export default function ClassesPage() {
+    const readOnly = useReadOnlySession();
     const rbac = useRbac();
     
     // UI State & Filters
@@ -146,7 +148,8 @@ export default function ClassesPage() {
                     {rbac.isSuperAdmin && (
                         <button
                             onClick={() => handleDeleteClass(row.classId, row.className)}
-                            disabled={deletingClassId === row.classId}
+                            disabled={deletingClassId === row.classId || readOnly}
+                            title={readOnly ? READ_ONLY_TITLE : undefined}
                             className="font-medium text-red-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {deletingClassId === row.classId ? "Deleting…" : "Delete"}

@@ -7,6 +7,7 @@ import { getUser } from "@/lib/auth";
 import toast, { Toaster } from "react-hot-toast";
 import StaffPicker, { StaffResult } from "@/components/StaffPicker";
 import { InfoBanner } from "@/components/ui/InfoBanner";
+import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 
 const STATUS_STYLES: Record<StaffLeaveStatus, string> = {
   PENDING: "bg-amber-100 text-amber-700 border-amber-200",
@@ -20,6 +21,7 @@ const now = new Date();
 
 export default function StaffLeavesPage() {
   const rbac = useRbac();
+  const readOnly = useReadOnlySession();
   const user = getUser();
 
   const [leaves, setLeaves] = useState<StaffLeaveApplication[]>([]);
@@ -101,7 +103,7 @@ export default function StaffLeavesPage() {
       <Toaster />
       <div className="flex items-center justify-between">
         <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Staff Leaves</h1>
-        <button onClick={() => setShowApply(true)} className="bg-blue-600 text-white px-3 py-2 sm:px-4 rounded-lg text-sm font-medium hover:bg-blue-700">
+        <button onClick={() => setShowApply(true)} disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="bg-blue-600 text-white px-3 py-2 sm:px-4 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
           + Apply Leave
         </button>
       </div>
@@ -161,17 +163,17 @@ export default function StaffLeavesPage() {
                   <div className="flex gap-3">
                     {l.status === "PENDING" && (
                       <>
-                        <button onClick={() => handleApprove(l.id)} className="text-green-600 hover:underline text-xs">Approve</button>
-                        <button onClick={() => { setRejectId(l.id); setRejectReason(""); }} className="text-red-600 hover:underline text-xs">Reject</button>
+                        <button onClick={() => handleApprove(l.id)} disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-green-600 hover:underline text-xs disabled:opacity-50 disabled:cursor-not-allowed">Approve</button>
+                        <button onClick={() => { setRejectId(l.id); setRejectReason(""); }} disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-red-600 hover:underline text-xs disabled:opacity-50 disabled:cursor-not-allowed">Reject</button>
                       </>
                     )}
                     {["PENDING","APPROVED"].includes(l.status) && (
-                      <button onClick={() => handleCancel(l.id)} className="text-gray-500 hover:underline text-xs">Cancel</button>
+                      <button onClick={() => handleCancel(l.id)} disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-gray-500 hover:underline text-xs disabled:opacity-50 disabled:cursor-not-allowed">Cancel</button>
                     )}
                   </div>
                 )}
                 {!rbac.canAccessHR && ["PENDING","APPROVED"].includes(l.status) && (
-                  <button onClick={() => handleCancel(l.id)} className="text-red-500 hover:underline text-xs">Cancel application</button>
+                  <button onClick={() => handleCancel(l.id)} disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-red-500 hover:underline text-xs disabled:opacity-50 disabled:cursor-not-allowed">Cancel application</button>
                 )}
               </div>
             ))}
@@ -210,17 +212,17 @@ export default function StaffLeavesPage() {
                         <>
                           {l.status === "PENDING" && (
                             <>
-                              <button onClick={() => handleApprove(l.id)} className="text-green-600 hover:underline text-xs">Approve</button>
-                              <button onClick={() => { setRejectId(l.id); setRejectReason(""); }} className="text-red-600 hover:underline text-xs">Reject</button>
+                              <button onClick={() => handleApprove(l.id)} disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-green-600 hover:underline text-xs disabled:opacity-50 disabled:cursor-not-allowed">Approve</button>
+                              <button onClick={() => { setRejectId(l.id); setRejectReason(""); }} disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-red-600 hover:underline text-xs disabled:opacity-50 disabled:cursor-not-allowed">Reject</button>
                             </>
                           )}
                           {["PENDING","APPROVED"].includes(l.status) && (
-                            <button onClick={() => handleCancel(l.id)} className="text-gray-500 hover:underline text-xs">Cancel</button>
+                            <button onClick={() => handleCancel(l.id)} disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-gray-500 hover:underline text-xs disabled:opacity-50 disabled:cursor-not-allowed">Cancel</button>
                           )}
                         </>
                       ) : (
                         ["PENDING","APPROVED"].includes(l.status) && (
-                          <button onClick={() => handleCancel(l.id)} className="text-gray-500 hover:underline text-xs">Cancel</button>
+                          <button onClick={() => handleCancel(l.id)} disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-gray-500 hover:underline text-xs disabled:opacity-50 disabled:cursor-not-allowed">Cancel</button>
                         )
                       )}
                     </td>
@@ -278,7 +280,7 @@ export default function StaffLeavesPage() {
             </div>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setShowApply(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleApply} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Submit</button>
+              <button onClick={handleApply} disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">Submit</button>
             </div>
           </div>
         </div>
@@ -292,7 +294,7 @@ export default function StaffLeavesPage() {
             <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Reason for rejection…" rows={3} className="w-full border rounded-lg px-3 py-2 text-sm" />
             <div className="flex gap-2 justify-end">
               <button onClick={() => setRejectId(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleReject} className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700">Reject</button>
+              <button onClick={handleReject} disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">Reject</button>
             </div>
           </div>
         </div>

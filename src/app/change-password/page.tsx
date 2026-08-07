@@ -114,7 +114,7 @@ export default function ChangePasswordPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                         </svg>
                     </div>
-                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Create your password</h1>
+                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-white">Create your password</h1>
                     <p className="text-brass-100/70 text-sm mt-2">
                         Welcome, <span className="text-marigold-300 font-semibold">{user.firstName}</span>. Set a new password to get started.
                     </p>

@@ -6,6 +6,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { API_BASE_URL } from "@/lib/api";
 import { getToken, authFetch, getUser } from "@/lib/auth";
 import { sortByName } from "@/lib/utils";
+import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 
 const todayStr = () => {
     const d = new Date();
@@ -51,6 +52,7 @@ const HOMEWORK_ADMIN_ROLES = new Set(["SUPER_ADMIN", "ADMIN"]);
 
 export default function HomeworkPage() {
     const router = useRouter();
+    const readOnly = useReadOnlySession();
     const authHeaders = { Authorization: `Bearer ${getToken()}` };
     const currentUser = getUser();
     const canModify = (h: HomeworkEntry) =>
@@ -474,8 +476,9 @@ export default function HomeworkPage() {
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(h)}
-                                                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                        title="Delete"
+                                                        disabled={readOnly}
+                                                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        title={readOnly ? READ_ONLY_TITLE : "Delete"}
                                                     >
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                     </button>
@@ -738,7 +741,8 @@ export default function HomeworkPage() {
                             </button>
                             <button
                                 onClick={handleUpdate}
-                                disabled={editSaving}
+                                disabled={editSaving || readOnly}
+                                title={readOnly ? READ_ONLY_TITLE : undefined}
                                 className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-semibold rounded-xl text-sm transition-colors"
                             >
                                 {editSaving ? "Saving..." : "Save Changes"}
@@ -750,7 +754,7 @@ export default function HomeworkPage() {
 
             {/* ── Worksheet Viewer ── */}
             {viewerDoc && (
-                <div className="fixed inset-0 z-[60] flex flex-col bg-black/90" onClick={(e) => { if (e.target === e.currentTarget) setViewerDoc(null); }}>
+                <div className="fixed inset-0 z-60 flex flex-col bg-black/90" onClick={(e) => { if (e.target === e.currentTarget) setViewerDoc(null); }}>
                     <div className="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-700 shrink-0">
                         <span className="text-white text-sm font-medium truncate max-w-xs">{viewerDoc.fileName}</span>
                         <div className="flex items-center gap-2 shrink-0">

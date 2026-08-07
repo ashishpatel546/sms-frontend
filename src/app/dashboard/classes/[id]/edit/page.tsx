@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
+import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 
 type SectionRow = {
     /** undefined = newly added in this session (not yet saved) */
@@ -21,6 +22,7 @@ type PendingSection = {
 };
 
 export default function EditClassPage() {
+    const readOnly = useReadOnlySession();
     const router = useRouter();
     const params = useParams();
     const id = params?.id as string;
@@ -398,7 +400,8 @@ export default function EditClassPage() {
                     <div className="flex items-center space-x-4 border-t pt-6">
                         <button
                             type="submit"
-                            disabled={saving}
+                            disabled={saving || readOnly}
+                            title={readOnly ? READ_ONLY_TITLE : undefined}
                             className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50"
                         >
                             {saving ? 'Saving...' : 'Save Changes'}

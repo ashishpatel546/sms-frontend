@@ -5,6 +5,7 @@ import Link from "next/link";
 import Table from "../../../components/Table";
 import { API_BASE_URL } from "@/lib/api";
 import { useRbac } from "@/lib/rbac";
+import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 import { Upload, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ export default function TeachersPage() {
     const [teachers, setTeachers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const rbac = useRbac();
+    const readOnly = useReadOnlySession();
 
     const [openActionRowId, setOpenActionRowId] = useState<number | null>(null);
     const actionMenuRef = useRef<HTMLDivElement>(null);
@@ -130,6 +132,7 @@ export default function TeachersPage() {
 
     const handleConfirmExit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         if (!selectedStaffForExit) return;
         setIsExiting(true);
         try {
@@ -189,6 +192,7 @@ export default function TeachersPage() {
 
     const handleImportSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         if (!importFile) return;
 
         setImportLoading(true);
@@ -574,7 +578,7 @@ export default function TeachersPage() {
                                     <button type="button" onClick={() => setShowImportModal(false)} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-line-strong">
                                         Cancel
                                     </button>
-                                    <button type="submit" disabled={importLoading || !importFile} className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-brand/40 disabled:opacity-50 flex items-center">
+                                    <button type="submit" disabled={importLoading || !importFile || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-brand/40 disabled:opacity-50 flex items-center">
                                         {importLoading ? "Importing..." : "Start Import"}
                                     </button>
                                 </div>
@@ -611,7 +615,8 @@ export default function TeachersPage() {
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={isExiting}
+                                    disabled={isExiting || readOnly}
+                                    title={readOnly ? READ_ONLY_TITLE : undefined}
                                     className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-300 disabled:opacity-50"
                                 >
                                     {isExiting ? "Marking Exit..." : "Confirm Exit"}

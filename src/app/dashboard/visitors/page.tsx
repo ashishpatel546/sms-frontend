@@ -7,6 +7,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
+import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 import NumberInput from "@/components/ui/NumberInput";
 import {
     Download, LogOut, Plus, QrCode, Search, Settings2, X, Users, RefreshCw, Archive,
@@ -54,6 +55,7 @@ const emptyManualForm = {
 export default function VisitorsPage() {
     const router = useRouter();
     const rbac = useRbac();
+    const readOnly = useReadOnlySession();
 
     // Filters — individual entry boxes as required
     const [fName, setFName] = useState("");
@@ -458,7 +460,8 @@ export default function VisitorsPage() {
                             {manualForm.idProofType && (
                                 <input type="text" value={manualForm.idProofNumber} onChange={e => setManualForm(p => ({ ...p, idProofNumber: e.target.value }))} maxLength={30} placeholder="ID proof number" className={`${inputCls} w-full`} />
                             )}
-                            <button type="submit" disabled={!manualValid || manualSubmitting}
+                            <button type="submit" disabled={!manualValid || manualSubmitting || readOnly}
+                                title={readOnly ? READ_ONLY_TITLE : undefined}
                                 className="w-full py-2.5 rounded-xl font-semibold text-white bg-teal-600 hover:bg-teal-500 disabled:opacity-40 flex items-center justify-center gap-2">
                                 {manualSubmitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Allow Entry Now
                             </button>
@@ -524,7 +527,8 @@ export default function VisitorsPage() {
                                     onChange={e => setSettings(s => s && ({ ...s, exitTrackingEnabled: e.target.checked }))}
                                     className="w-4 h-4 accent-teal-600" />
                             </label>
-                            <button type="submit" disabled={settingsSaving}
+                            <button type="submit" disabled={settingsSaving || readOnly}
+                                title={readOnly ? READ_ONLY_TITLE : undefined}
                                 className="w-full py-2.5 rounded-xl font-semibold text-white bg-teal-600 hover:bg-teal-500 disabled:opacity-40">
                                 {settingsSaving ? "Saving…" : "Save Settings"}
                             </button>
