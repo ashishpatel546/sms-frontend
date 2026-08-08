@@ -1,5 +1,6 @@
 import { Button as ButtonPrimitive } from '@base-ui/react/button';
 import { cva, type VariantProps } from 'class-variance-authority';
+import { isValidElement } from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -75,16 +76,31 @@ const buttonVariants = cva(
   },
 );
 
+/**
+ * Base UI supplies button semantics (role, keyboard activation) when the thing
+ * rendered is not a real `<button>` — but it has to be told. A `render` of a
+ * Next `<Link>` or an `<a>` must carry `nativeButton={false}`, or it warns and
+ * leaves the element without them. Work that out from the `render` element so
+ * call sites never have to remember.
+ */
+function isNativeButton(render: ButtonPrimitive.Props['render']) {
+  return !isValidElement(render) || render.type === 'button';
+}
+
 function Button({
   className,
   variant,
   size,
   block,
+  render,
+  nativeButton,
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
   return (
     <ButtonPrimitive
       data-slot="button"
+      render={render}
+      nativeButton={nativeButton ?? isNativeButton(render)}
       className={cn(buttonVariants({ variant, size, block, className }))}
       {...props}
     />
@@ -100,6 +116,8 @@ function IconButton({
   className,
   variant = 'outline',
   size = 'icon-sm',
+  render,
+  nativeButton,
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants> & { label: string }) {
   return (
@@ -107,6 +125,8 @@ function IconButton({
       data-slot="button"
       aria-label={label}
       title={label}
+      render={render}
+      nativeButton={nativeButton ?? isNativeButton(render)}
       className={cn(buttonVariants({ variant, size }), className)}
       {...props}
     />

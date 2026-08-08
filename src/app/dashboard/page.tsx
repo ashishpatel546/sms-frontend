@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import DashboardDatePicker from "./DashboardDatePicker";
 import QuickActions from "./QuickActions";
 import DashboardStats from "./DashboardStats";
+import AttendanceSummaryTile from "./AttendanceSummaryTile";
 import RecentActivity from "@/components/RecentActivity";
 import GreetingCard from "./GreetingCardDynamic";
 import { GuardSwitch } from "./GuardDashboard";
@@ -42,6 +43,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
                     {/* ── Stat tiles ────────────────────────────────── */}
                     <DashboardStats selectedDate={selectedDate} />
+
+                    {/* ── Today's staff attendance (HR Portal plan gated) ── */}
+                    <AttendanceSummaryTile />
 
                     {/* ── Bottom two-column grid. items-start so a short
                         quick-actions panel doesn't stretch to match the

@@ -19,6 +19,7 @@ import { AppMonthPicker } from "@/components/ui/AppDatePicker";
 import { HomeSection } from "./components/HomeSection";
 import { StudentBanner } from "./components/StudentBanner";
 import { AiToolsSection } from "./components/AiToolsSection";
+import { IdCardSection } from "./components/IdCardSection";
 import { SectionSkeleton, StudentRecordSkeleton } from "@/components/ui/Skeletons";
 import { ATTENDANCE_LEGEND, ATTENDANCE_TONE, attendanceCellClass } from "@/lib/attendanceColors";
 import { InitialsAvatar } from "@/components/ui/InitialsAvatar";
@@ -33,6 +34,7 @@ import {
     House,
     ChevronLeft,
     ClipboardList,
+    IdCard,
     FileText,
     IndianRupee,
     Library,
@@ -67,6 +69,7 @@ const ALL_SECTIONS: SectionDef[] = [
     ["library", Library, "Library"],
     ["leaves", CalendarDays, "Leaves"],
     ["pickup", QrCode, "QR codes"],
+    ["id-card", IdCard, "ID card"],
     ["exam-schedule", ClipboardList, "Schedule"],
     ["holidays", Palmtree, "Holidays"],
     ["info", UserRound, "Profile"],
@@ -144,6 +147,7 @@ const SECTION_TONE: Record<string, string> = {
     leaves: 'bg-accent-warn-tint text-accent-warn-deep',
     'ai-tutor': 'bg-accent-ai-tint text-accent-ai',
     pickup: 'bg-surface-inset text-ink-muted',
+    'id-card': 'bg-surface-inset text-ink-muted',
     holidays: 'bg-surface-inset text-ink-muted',
 };
 
@@ -173,7 +177,7 @@ const LEAVE_TYPE_LABELS: Record<string, string> = {
 };
 const fmtDate = (d: string) => { const [y, m, day] = d.split("-"); return `${day}/${m}/${y}`; };
 
-type ActiveSection = "home" | "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework" | "pickup" | "leaves" | "library" | "ai-tutor";
+type ActiveSection = "home" | "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework" | "pickup" | "id-card" | "leaves" | "library" | "ai-tutor";
 
 declare global {
     interface Window {
@@ -1637,6 +1641,18 @@ export default function StudentDashboardPage() {
                             ))}
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* ════════════════════════════════
+                ID CARD TAB
+                Gated on the school's `id_cards` flag, which the section
+                resolves itself from the API's own 403 — a parent should never
+                see a broken panel because the school has not bought the module.
+            ════════════════════════════════ */}
+            {activeSection === "id-card" && (
+                <div id="tabpanel-id-card" role="tabpanel" aria-labelledby="tab-id-card" className="animate-scale-in">
+                    <IdCardSection studentId={String(studentId)} />
                 </div>
             )}
 

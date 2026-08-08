@@ -27,6 +27,7 @@ import {
   HelpCircle,
   Sparkles,
   Receipt,
+  IdCard,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -36,7 +37,11 @@ export interface NavItem {
   href: string;
   icon: LucideIcon;
   /** Key on the RbacPermissions object that must be truthy for the item to appear.
-   *  If omitted, the item is always visible (regardless of role). */
+   *  If omitted, the item is always visible (regardless of role).
+   *
+   *  Those permissions are resolved across EVERY role the user holds, so the
+   *  menu is the union of what each role opens: an admin who also holds
+   *  HR_ADMIN sees the Administration group AND the HR Portal group. */
   rbacKey?: string;
   /** Tailwind text-color class for the icon, e.g. "text-blue-500" */
   iconColor: string;
@@ -100,6 +105,19 @@ export const NAV_CONFIG: NavGroup[] = [
         href: '/dashboard/staff',
         icon: Users,
         iconColor: 'text-indigo-500',
+      },
+      {
+        // Cards are printed for students and staff, so it sits with the two
+        // registers it draws from. Gated on the `id_cards` plan feature, which
+        // is OFF by default — the same flag the backend controller requires,
+        // so the menu entry and the API agree about who has the module.
+        id: 'id-cards',
+        label: 'ID Cards',
+        href: '/dashboard/id-cards',
+        icon: IdCard,
+        iconColor: 'text-cyan-500',
+        featureFlag: 'id_cards',
+        rbacKey: 'canManageIdCards',
       },
       {
         id: 'subjects',

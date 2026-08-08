@@ -130,8 +130,8 @@ export function PageShell({
     <div
       className={cn(
         'mx-auto w-full px-3 py-4 sm:px-5 sm:py-6',
-        measure === 'wide' && 'max-w-(--container-wide)',
-        measure === 'reading' && 'max-w-(--container-reading)',
+        measure === 'wide' && 'max-w-wide',
+        measure === 'reading' && 'max-w-reading',
         className,
       )}
     >

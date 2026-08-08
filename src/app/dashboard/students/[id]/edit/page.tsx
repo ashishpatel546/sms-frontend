@@ -11,6 +11,9 @@ import { AppDatePicker } from "@/components/ui/AppDatePicker";
 import { useRbac } from "@/lib/rbac";
 import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 import { formatMobileInput, isValidMobile, MOBILE_ERROR } from "@/lib/mobile";
+import { PersonPhotosSection } from "@/components/person/PersonPhotosSection";
+import { PersonDocumentsSection } from "@/components/person/PersonDocumentsSection";
+import { personUserId } from "@/lib/person-documents-api";
 
 export default function EditStudentPage() {
     const router = useRouter();
@@ -42,6 +45,9 @@ export default function EditStudentPage() {
         motherPan: "",
         motherOccupation: "",
         motherIncome: "",
+        guardianName: "",
+        guardianRelation: "",
+        guardianPhone: "",
         aadhaarNumber: "",
         mobile: "",
         alternateMobile: "",
@@ -63,6 +69,9 @@ export default function EditStudentPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
+    // Photos and documents hang off the USER id, not the student id.
+    const [studentRecord, setStudentRecord] = useState<any>(null);
+    const [userId, setUserId] = useState<number | null>(null);
 
     useEffect(() => {
         if (formData.address?.country) {
@@ -102,6 +111,8 @@ export default function EditStudentPage() {
                 const student = await studRes.json();
 
                 if (student) {
+                    setStudentRecord(student);
+                    setUserId(personUserId(student));
                     // Reverse-map stored full country/state names to ISO codes for the dropdowns
                     let addressCountryCode = "IN";
                     let addressStateCode = "";
@@ -138,6 +149,9 @@ export default function EditStudentPage() {
                         motherPan: student.motherPan || "",
                         motherOccupation: student.motherOccupation || "",
                         motherIncome: student.motherIncome != null ? String(student.motherIncome) : "",
+                        guardianName: student.guardianName || "",
+                        guardianRelation: student.guardianRelation || "",
+                        guardianPhone: student.guardianPhone || "",
                         aadhaarNumber: student.aadhaarNumber || "",
                         mobile: student.mobile || "",
                         alternateMobile: student.alternateMobile || "",
@@ -206,7 +220,7 @@ export default function EditStudentPage() {
         const name = target.name;
 
         // Mobile is a login identifier — strip formatting as it is typed/pasted
-        if (name === 'mobile' || name === 'alternateMobile') {
+        if (name === 'mobile' || name === 'alternateMobile' || name === 'guardianPhone') {
             setFormData({ ...formData, [name]: formatMobileInput(target.value) });
             return;
         }
@@ -320,6 +334,10 @@ export default function EditStudentPage() {
             setError(`Alternate Mobile: ${MOBILE_ERROR}`);
             return;
         }
+        if (formData.guardianPhone && !isValidMobile(formData.guardianPhone)) {
+            setError(`Guardian Phone: ${MOBILE_ERROR}`);
+            return;
+        }
 
         setSaving(true);
 
@@ -345,7 +363,7 @@ export default function EditStudentPage() {
             if (!payload.address) delete (payload as any).address;
 
             // Remove optional empty string fields to prevent validation errors
-            const optionalFields = ['email', 'aadhaarNumber', 'pen', 'aparId', 'abhaId', 'mobile', 'alternateMobile', 'category', 'bloodGroup', 'religion', 'dateOfBirth', 'fatherAadhaarNumber', 'fatherPan', 'fatherOccupation', 'motherAadhaarNumber', 'motherPan', 'motherOccupation'];
+            const optionalFields = ['email', 'aadhaarNumber', 'pen', 'aparId', 'abhaId', 'mobile', 'alternateMobile', 'category', 'bloodGroup', 'religion', 'dateOfBirth', 'fatherAadhaarNumber', 'fatherPan', 'fatherOccupation', 'motherAadhaarNumber', 'motherPan', 'motherOccupation', 'guardianName', 'guardianRelation', 'guardianPhone'];
             optionalFields.forEach(field => {
                 const key = field as keyof typeof payload;
                 if (!(payload as any)[key]) {
@@ -600,6 +618,30 @@ export default function EditStudentPage() {
                             </div>
                         </div>
 
+                        {/* Guardian — filled in when someone other than a parent is the
+                            day-to-day contact. Optional throughout. */}
+                        <div className="mt-6">
+                            <h4 className="mb-1 text-base font-semibold text-slate-700">Guardian</h4>
+                            <p className="mb-4 text-xs text-gray-500">Only if someone other than the parents is the day-to-day contact.</p>
+                            <div className="grid gap-6 md:grid-cols-3">
+                                <div>
+                                    <label htmlFor="guardianName" className="block mb-2 text-sm font-medium text-gray-900">Guardian&apos;s Name <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                    <input type="text" id="guardianName" name="guardianName" value={formData.guardianName} onChange={handleChange} maxLength={150} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="e.g. Rekha Sharma" />
+                                </div>
+                                <div>
+                                    <label htmlFor="guardianRelation" className="block mb-2 text-sm font-medium text-gray-900">Relation to the student <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                    <input type="text" id="guardianRelation" name="guardianRelation" value={formData.guardianRelation} onChange={handleChange} maxLength={50} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="e.g. Grandmother" />
+                                </div>
+                                <div>
+                                    <label htmlFor="guardianPhone" className="block mb-2 text-sm font-medium text-gray-900">Guardian&apos;s Phone <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                    <input type="tel" id="guardianPhone" name="guardianPhone" value={formData.guardianPhone} onChange={handleChange} maxLength={10} inputMode="numeric" placeholder="10-digit number" className={`bg-gray-50 border ${formData.guardianPhone.length > 0 && !isValidMobile(formData.guardianPhone) ? 'border-red-500' : 'border-gray-300'} text-sm rounded-lg block w-full p-2.5`} />
+                                    {formData.guardianPhone.length > 0 && !isValidMobile(formData.guardianPhone) && (
+                                        <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
                         {selectedSiblingObj && (
                             <p className="mt-2 text-xs text-blue-600 italic">Parent names are locked and synced with the linked sibling.</p>
                         )}
@@ -621,6 +663,29 @@ export default function EditStudentPage() {
                             </div>
                         )}
                     </div>
+
+                    {/* Photos & documents — saved as you go, not on submit, because
+                        each one is its own upload. */}
+                    {userId !== null && (
+                        <div className="space-y-4">
+                            <PersonPhotosSection
+                                kinds={["self", "father", "mother", "guardian"]}
+                                selfLabel="Student photo"
+                                userId={userId}
+                                record={studentRecord}
+                                disabled={readOnly}
+                                disabledReason={readOnly ? READ_ONLY_TITLE : undefined}
+                            />
+                            <PersonDocumentsSection
+                                userId={userId}
+                                owners={["SELF", "FATHER", "MOTHER", "GUARDIAN"]}
+                                selfLabel="Student"
+                                showTraceLink
+                                disabled={readOnly}
+                                disabledReason={readOnly ? READ_ONLY_TITLE : undefined}
+                            />
+                        </div>
+                    )}
 
                     {/* Additional Demographics */}
                     <div>

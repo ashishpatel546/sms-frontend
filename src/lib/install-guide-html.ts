@@ -1,23 +1,76 @@
-<!DOCTYPE html>
+/**
+ * Builds the printable A4 "install this app" handout as a standalone HTML
+ * document, meant to be dropped into an `<iframe srcDoc={...}>`.
+ *
+ * This is a port of `pwa-install-generator.html` (repo root) — same tokens,
+ * same A4 sheet geometry, same `fitToPage()` one-page guarantee — with the
+ * generator chrome removed (the Support page's tab is the generator now)
+ * and the school's logo / office contact stamped in from `useSchoolInfo()`
+ * instead of being hand-typed. The same builder also exists, independently,
+ * in `sms-hub-frontend` (staff there generate the guide on behalf of a
+ * school they don't have a login for) — the two apps don't share a package,
+ * so this is a deliberate duplicate, not a drifted copy to reconcile.
+ */
+
+export interface InstallGuideInput {
+  /** Display name, e.g. "Edusphere". */
+  schoolName: string;
+  /** Full portal URL the QR/address point at, e.g. "https://edusphere.appme.in". */
+  portalUrl: string;
+  /** Pre-rendered QR code as a data: URI (see `qrcode` npm package). */
+  qrDataUrl: string;
+  /** Tenant logo, shown in the masthead when present. */
+  logoUrl?: string | null;
+  contactPhone?: string | null;
+  contactEmail?: string | null;
+}
+
+/** Minimal HTML-escape — every value below comes from an editable tenant record. */
+function esc(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+export function buildInstallGuideHtml({
+  schoolName,
+  portalUrl,
+  qrDataUrl,
+  logoUrl,
+  contactPhone,
+  contactEmail,
+}: InstallGuideInput): string {
+  const name = esc(schoolName || 'the school');
+  const url = esc(portalUrl);
+
+  const logoBlock = logoUrl
+    ? `<img class="school-logo" src="${esc(logoUrl)}" alt="" />`
+    : '';
+
+  const contactBits = [contactPhone, contactEmail].filter(
+    (v): v is string => !!v && v.trim().length > 0,
+  );
+  const helpLine =
+    contactBits.length > 0
+      ? contactBits.map(esc).join(' &middot; ')
+      : 'Contact the school office.';
+
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>App Installation Guide Generator</title>
+<title>${name} — install guide</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=Source+Serif+4:opsz,wght@8..60,400..700&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style>
-/* ───────────────────────────────────────────────────────────
-   Tokens
-   ─────────────────────────────────────────────────────────── */
 :root {
-  /* Sheet. Tuned for toner, not for screens: body copy stays near-black
-     so it survives a grayscale office printer, and every rule is at
-     least 1pt so nothing drops out as a hairline. */
   --paper:    #FFFFFF;
   --ink:      #0A101C;
   --graphite: #232C3E;
@@ -27,14 +80,6 @@
   --rule:     #C81E24;
   --rule-tint:#FCEDED;
 
-  /* Chrome (screen only) */
-  --desk:      #121826;
-  --desk-panel:#1C2434;
-  --desk-edge: #2C3549;
-  --desk-ink:  #EAEEF7;
-  --desk-mute: #93A0BB;
-
-  /* Type */
   --display: 'Archivo', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
   --serif:   'Source Serif 4', Georgia, 'Times New Roman', serif;
   --mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
@@ -43,163 +88,14 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-
 html { -webkit-text-size-adjust: 100%; }
-
 body {
   margin: 0;
-  background: var(--desk);
+  background: #fff;
   font-family: var(--serif);
   color: var(--ink);
-  padding: 40px 24px 72px;
 }
 
-/* ───────────────────────────────────────────────────────────
-   Chrome — the generator controls. Screen only.
-   ─────────────────────────────────────────────────────────── */
-.chrome {
-  max-width: 210mm;
-  margin: 0 auto 32px;
-  background: var(--desk-panel);
-  border: 1px solid var(--desk-edge);
-  border-radius: 14px;
-  padding: 26px 28px 28px;
-  color: var(--desk-ink);
-}
-
-.chrome-eyebrow {
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .18em;
-  text-transform: uppercase;
-  color: var(--rule);
-  margin: 0 0 10px;
-}
-
-.chrome h1 {
-  font-family: var(--display);
-  font-variation-settings: 'wdth' 112;
-  font-weight: 800;
-  font-size: 25px;
-  line-height: 1.05;
-  letter-spacing: -.015em;
-  margin: 0 0 8px;
-}
-
-.chrome p.chrome-lede {
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--desk-mute);
-  margin: 0 0 22px;
-  max-width: 62ch;
-}
-
-.field-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-}
-
-.field label {
-  display: block;
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: var(--desk-mute);
-  margin-bottom: 7px;
-}
-
-.input-shell { display: flex; }
-
-.field input {
-  font-family: var(--display);
-  font-weight: 500;
-  font-size: 15px;
-  width: 100%;
-  min-width: 0;
-  color: var(--desk-ink);
-  background: #0E1420;
-  border: 1px solid var(--desk-edge);
-  border-radius: 8px;
-  padding: 11px 13px;
-  transition: border-color .15s ease, box-shadow .15s ease;
-}
-.field input::placeholder { color: #5B6884; }
-.field input:focus {
-  outline: none;
-  border-color: var(--rule);
-  box-shadow: 0 0 0 3px rgba(212, 42, 46, .25);
-}
-
-.input-shell input { border-radius: 8px 0 0 8px; }
-
-.suffix {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 14px;
-  font-family: var(--mono);
-  font-size: 13px;
-  color: var(--desk-mute);
-  background: #161D2C;
-  border: 1px solid var(--desk-edge);
-  border-left: 0;
-  border-radius: 0 8px 8px 0;
-  white-space: nowrap;
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  margin-top: 24px;
-}
-
-.btn {
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: .01em;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 11px 18px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: transform .12s ease, background-color .15s ease, border-color .15s ease;
-}
-.btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-.btn:active { transform: translateY(1px); }
-.btn svg { width: 16px; height: 16px; fill: currentColor; }
-
-.btn-primary { background: var(--rule); color: #fff; }
-.btn-primary:hover { background: #B92126; }
-
-.btn-ghost {
-  background: transparent;
-  color: var(--desk-ink);
-  border-color: var(--desk-edge);
-}
-.btn-ghost:hover { border-color: #4A5670; background: #222B3C; }
-
-.print-tip {
-  font-family: var(--mono);
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--desk-mute);
-  margin: 18px 0 0;
-  padding-top: 16px;
-  border-top: 1px solid var(--desk-edge);
-}
-.print-tip b { color: var(--desk-ink); font-weight: 600; }
-
-/* ───────────────────────────────────────────────────────────
-   The sheet — true A4. Identical on screen and on paper.
-   ─────────────────────────────────────────────────────────── */
 .sheet {
   width: 210mm;
   min-height: 297mm;
@@ -209,14 +105,30 @@ body {
   color: var(--ink);
   font-size: 10pt;
   line-height: 1.45;
-  font-weight: 500;              /* Source Serif 4 at 500 prints crisper than 400 */
+  font-weight: 500;
   font-variation-settings: 'opsz' 11;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
   display: flex;
   flex-direction: column;
 }
 
-/* Masthead ------------------------------------------------- */
+header.masthead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6mm;
+}
+.masthead-text { min-width: 0; flex: 1; }
+.school-logo {
+  flex: none;
+  width: 18mm;
+  height: 18mm;
+  object-fit: contain;
+  border: .9pt solid var(--hair);
+  border-radius: 1.5mm;
+  padding: 1.5mm;
+  background: #fff;
+}
+
 .eyebrow {
   font-family: var(--mono);
   font-size: 7.5pt;
@@ -231,14 +143,10 @@ h1.title {
   font-family: var(--display);
   font-variation-settings: 'wdth' 116;
   font-weight: 800;
-  /* Set by fitToPage() — long school names shrink the title
-     rather than pushing the sheet onto a second page. */
   font-size: var(--title-size, 28pt);
   line-height: 1.02;
   letter-spacing: -.022em;
   margin: 0 0 2.5mm;
-  /* Absolute, not ch-based: a ch measure scales with the font, so
-     shrinking would buy no extra characters per line. */
   max-width: 158mm;
   overflow-wrap: break-word;
 }
@@ -259,7 +167,6 @@ h1.title .school { color: var(--rule); }
   margin-bottom: 4.5mm;
 }
 
-/* Section heads -------------------------------------------- */
 .section-head {
   display: flex;
   align-items: baseline;
@@ -284,7 +191,6 @@ h1.title .school { color: var(--rule); }
   color: var(--muted);
 }
 
-/* Start-here panel ----------------------------------------- */
 .start {
   border: .9pt solid var(--hair);
   border-left: 2.4pt solid var(--rule);
@@ -294,12 +200,9 @@ h1.title .school { color: var(--rule); }
   grid-template-columns: 1.22fr .9pt 1fr;
   margin-bottom: 5mm;
 }
-
 .start-col { padding: 4.5mm 5mm; }
 .divider { background: var(--hair); }
 
-/* Option A puts the code beside its instruction, not above it —
-   stacking made this panel twice as tall as it needed to be. */
 .opt-a { display: flex; gap: 4.5mm; align-items: flex-start; }
 .opt-a > div { min-width: 0; }
 
@@ -320,7 +223,7 @@ h1.title .school { color: var(--rule); }
   border: .9pt solid var(--hair);
   border-radius: 1.5mm;
 }
-#qrcode img, #qrcode canvas { display: block; }
+.qr-frame img { display: block; width: 32mm; height: 32mm; }
 
 .opt-title {
   font-family: var(--display);
@@ -360,11 +263,10 @@ h1.title .school { color: var(--rule); }
   overflow-wrap: anywhere;
 }
 
-/* Platform tracks ------------------------------------------ */
 .tracks {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  align-items: start;   /* let each margin rule end at its own last step */
+  align-items: start;
   gap: 9mm;
   margin-bottom: 6mm;
 }
@@ -396,7 +298,6 @@ h1.title .school { color: var(--rule); }
   margin: .8mm 0 0;
 }
 
-/* The margin rule — the signature. Numbers straddle it. */
 .track {
   list-style: none;
   margin: 0 0 0 4mm;
@@ -406,7 +307,6 @@ h1.title .school { color: var(--rule); }
 
 .step { position: relative; padding-bottom: 4mm; }
 .step:last-child { padding-bottom: 0; }
-
 .step .num {
   position: absolute;
   left: calc(-9mm - (var(--num) / 2) - .75pt);
@@ -422,7 +322,6 @@ h1.title .school { color: var(--rule); }
   line-height: var(--num);
   text-align: center;
 }
-
 .step h4 {
   font-family: var(--display);
   font-variation-settings: 'wdth' 106;
@@ -439,7 +338,6 @@ h1.title .school { color: var(--rule); }
 }
 .step strong { font-weight: 700; color: var(--ink); }
 
-/* Chips that mimic the control the reader is hunting for */
 .chip {
   display: inline-flex;
   align-items: center;
@@ -456,7 +354,6 @@ h1.title .school { color: var(--rule); }
 }
 .chip svg { width: 4.2mm; height: 4.2mm; fill: var(--ink); flex: none; }
 
-/* Footer ---------------------------------------------------- */
 .sheet-foot {
   margin-top: auto;
   padding-top: 4mm;
@@ -481,27 +378,10 @@ h1.title .school { color: var(--rule); }
   margin-top: 1.5mm;
 }
 
-/* ───────────────────────────────────────────────────────────
-   Screen-only fitting. The sheet stays true A4; small
-   viewports scale the whole page down rather than reflow it,
-   so the preview never lies about the print result.
-   ─────────────────────────────────────────────────────────── */
-@media screen and (max-width: 900px) {
-  body { padding: 24px 12px 48px; }
-  .chrome, .sheet { zoom: .72; }
-  .field-grid { grid-template-columns: 1fr; }
-}
-@media screen and (max-width: 620px) {
-  .chrome, .sheet { zoom: .5; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
 
-/* ───────────────────────────────────────────────────────────
-   Print — the sheet is already A4, so nothing is scaled.
-   ─────────────────────────────────────────────────────────── */
 @page { size: A4 portrait; margin: 0; }
 
 @media print {
@@ -512,12 +392,10 @@ h1.title .school { color: var(--rule); }
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .no-print { display: none !important; }
   .sheet {
     width: 210mm;
     min-height: 297mm;
     margin: 0;
-    box-shadow: none;
     break-inside: avoid;
     page-break-inside: avoid;
   }
@@ -527,59 +405,20 @@ h1.title .school { color: var(--rule); }
 </head>
 <body>
 
-<!-- ══ Generator controls — screen only ══════════════════════ -->
-<section class="chrome no-print">
-  <p class="chrome-eyebrow">Colegios · Handout Generator</p>
-  <h1>Build a school-branded install guide</h1>
-  <p class="chrome-lede">
-    Enter the school name and subdomain. The sheet below is a true A4 page — what you see is
-    exactly what prints.
-  </p>
-
-  <div class="field-grid">
-    <div class="field">
-      <label for="schoolName">School name</label>
-      <input type="text" id="schoolName" value="Edusphere" placeholder="Edusphere" autocomplete="off" spellcheck="false">
-    </div>
-    <div class="field">
-      <label for="schoolSubdomain">Portal subdomain</label>
-      <div class="input-shell">
-        <input type="text" id="schoolSubdomain" value="edusphere" placeholder="edusphere" autocomplete="off" spellcheck="false">
-        <span class="suffix">.colegios.in</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="actions">
-    <button type="button" class="btn btn-primary" onclick="window.print()">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 8H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3zm-3 11H8v-5h8v5zm3-7a1 1 0 1 1 0-2 1 1 0 0 1 0 2zM18 3H6v4h12V3z"/></svg>
-      Save as PDF
-    </button>
-    <button type="button" class="btn btn-ghost" onclick="generateGuide()">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
-      Refresh preview
-    </button>
-  </div>
-
-  <p class="print-tip">
-    In the print dialog, set <b>Margins: None</b> and switch off <b>Headers and footers</b> —
-    the sheet carries its own margins.
-  </p>
-</section>
-
-<!-- ══ The handout ═══════════════════════════════════════════ -->
 <article class="sheet" id="guideArea">
 
-  <header>
-    <p class="eyebrow">School app · Setup guide</p>
-    <h1 class="title">Install the <span class="school" id="displaySchoolName">Edusphere</span> app on your phone</h1>
-    <p class="lede">
-      No app store, no download — the portal installs straight from your browser in about a minute.
-    </p>
-    <div class="double-rule"></div>
+  <header class="masthead">
+    <div class="masthead-text">
+      <p class="eyebrow">School app &middot; Setup guide</p>
+      <h1 class="title">Install the <span class="school">${name}</span> app on your phone</h1>
+      <p class="lede">
+        No app store, no download — the portal installs straight from your browser in about a minute.
+      </p>
+    </div>
+    ${logoBlock}
   </header>
+  <div class="double-rule"></div>
 
-  <!-- Shared entry point -->
   <div class="section-head">
     <h2>Start here — open the portal</h2>
     <span class="aside">Either way works</span>
@@ -589,7 +428,7 @@ h1.title .school { color: var(--rule); }
     <div class="start-col">
       <p class="opt-label">Option A</p>
       <div class="opt-a">
-        <div class="qr-frame"><div id="qrcode"></div></div>
+        <div class="qr-frame"><img src="${qrDataUrl}" alt="QR code for ${url}" /></div>
         <div>
           <h3 class="opt-title">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.4 4 8 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-4l-1.4-2H9.4zM12 17.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9zm0-2a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></svg>
@@ -613,11 +452,10 @@ h1.title .school { color: var(--rule); }
       <p class="opt-body">
         Open Chrome or Safari on your phone and enter this address exactly as written:
       </p>
-      <a class="url-stamp" id="displayAppUrl" href="https://edusphere.colegios.in">https://edusphere.colegios.in</a>
+      <a class="url-stamp" href="${url}">${url}</a>
     </div>
   </section>
 
-  <!-- Two parallel tracks. Follow the one for your phone. -->
   <div class="section-head">
     <h2>Then add it to your home screen</h2>
     <span class="aside">Follow your phone's column</span>
@@ -625,13 +463,12 @@ h1.title .school { color: var(--rule); }
 
   <div class="tracks">
 
-    <!-- Android -->
     <section>
       <div class="platform-head">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18c0 .55.45 1 1 1h1v3.5a1.5 1.5 0 0 0 3 0V19h2v3.5a1.5 1.5 0 0 0 3 0V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8A1.5 1.5 0 0 0 2 9.5v7a1.5 1.5 0 0 0 3 0v-7A1.5 1.5 0 0 0 3.5 8zm17 0a1.5 1.5 0 0 0-1.5 1.5v7a1.5 1.5 0 0 0 3 0v-7A1.5 1.5 0 0 0 20.5 8zm-4.97-5.84 1.3-1.3a.25.25 0 0 0-.35-.36l-1.48 1.48A5.9 5.9 0 0 0 12 1.5c-.99 0-1.92.23-2.75.64L7.77.66a.25.25 0 1 0-.35.36l1.3 1.3A5.99 5.99 0 0 0 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg>
         <div>
           <h3>Android</h3>
-          <p class="sub">Samsung · Xiaomi · OnePlus · Pixel</p>
+          <p class="sub">Samsung &middot; Xiaomi &middot; OnePlus &middot; Pixel</p>
         </div>
       </div>
 
@@ -653,7 +490,7 @@ h1.title .school { color: var(--rule); }
         <li class="step">
           <span class="num">3</span>
           <h4>No banner? Use the menu</h4>
-          <p>Tap the three dots <strong>⋮</strong> in the top-right corner and choose <strong>Add to Home screen</strong>.</p>
+          <p>Tap the three dots <strong>&#8942;</strong> in the top-right corner and choose <strong>Add to Home screen</strong>.</p>
         </li>
         <li class="step">
           <span class="num">4</span>
@@ -663,13 +500,12 @@ h1.title .school { color: var(--rule); }
       </ol>
     </section>
 
-    <!-- iOS -->
     <section>
       <div class="platform-head">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.05 12.04c-.03-2.6 2.12-3.85 2.22-3.91-1.21-1.77-3.09-2.01-3.76-2.04-1.6-.16-3.12.94-3.93.94-.81 0-2.06-.92-3.39-.9-1.74.03-3.35 1.01-4.25 2.57-1.81 3.14-.46 7.79 1.3 10.34.86 1.25 1.89 2.65 3.24 2.6 1.3-.05 1.79-.84 3.36-.84 1.57 0 2.01.84 3.38.81 1.4-.02 2.28-1.27 3.13-2.53.99-1.45 1.4-2.86 1.42-2.93-.03-.01-2.72-1.04-2.75-4.11zM14.6 4.6c.71-.86 1.19-2.06 1.06-3.25-1.02.04-2.26.68-3 1.54-.66.76-1.24 1.98-1.08 3.14 1.14.09 2.3-.58 3.02-1.43z"/></svg>
         <div>
           <h3>iPhone &amp; iPad</h3>
-          <p class="sub">Use Safari · Chrome also works</p>
+          <p class="sub">Use Safari &middot; Chrome also works</p>
         </div>
       </div>
 
@@ -711,14 +547,13 @@ h1.title .school { color: var(--rule); }
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 14.41-4.2-4.2 1.4-1.42 2.8 2.8 5.8-5.8 1.4 1.42-7.2 7.2z"/></svg>
     <div>
       <p>Once installed, the app opens full-screen, keeps you signed in, and can send you notices from the school.</p>
-      <p class="help">Trouble installing? Contact the school office.</p>
+      <p class="help">Trouble installing? ${helpLine}</p>
     </div>
   </footer>
 
 </article>
 
 <script>
-  const DOMAIN = '.colegios.in';
   const PX_PER_MM = 96 / 25.4;
   const A4_HEIGHT_MM = 297;
   const TITLE_MAX_PT = 28;
@@ -738,51 +573,17 @@ h1.title .school { color: var(--rule); }
     }
   }
 
-  function generateGuide() {
-    const nameInput = document.getElementById('schoolName');
-    const subInput  = document.getElementById('schoolSubdomain');
-
-    const schoolName = nameInput.value.trim() || nameInput.placeholder;
-    const subdomain  = subInput.value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '') || subInput.placeholder;
-    const appUrl     = `https://${subdomain}${DOMAIN}`;
-
-    document.getElementById('displaySchoolName').textContent = schoolName;
-
-    const urlEl = document.getElementById('displayAppUrl');
-    urlEl.textContent = appUrl;
-    urlEl.href = appUrl;
-
-    const qrContainer = document.getElementById('qrcode');
-    qrContainer.innerHTML = '';
-    new QRCode(qrContainer, {
-      text: appUrl,
-      width: 128,
-      height: 128,
-      colorDark: '#0C1320',
-      colorLight: '#ffffff',
-      correctLevel: QRCode.CorrectLevel.H,
-    });
-
-    fitToPage();
-  }
-
-  // Live preview: the sheet is the output, so it should never be stale.
-  let debounce;
-  document.querySelectorAll('#schoolName, #schoolSubdomain').forEach((el) => {
-    el.addEventListener('input', () => {
-      clearTimeout(debounce);
-      debounce = setTimeout(generateGuide, 200);
-    });
-  });
-
-  generateGuide();
+  fitToPage();
 
   // Fallback metrics differ from Archivo's, so re-fit once the real faces land.
   if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(fitToPage);
   }
   window.addEventListener('beforeprint', fitToPage);
+  window.addEventListener('resize', fitToPage);
 </script>
 
 </body>
 </html>
+`;
+}

@@ -1,34 +1,166 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { hrApi, StaffAttendanceRecord, AttendanceBypassWindow, StaffBiometric, WebauthnRegistrationPermit, DailyAttendanceSummary, HrPendingCheckoutItem } from "@/lib/hr-api";
+import { useState, useEffect, useCallback } from "react";
+import { hrApi, StaffAttendanceRecord, AttendanceBypassWindow, StaffBiometric, WebauthnRegistrationPermit, DailyAttendanceSummary, HrPendingCheckoutItem, AttendanceMethod } from "@/lib/hr-api";
 import { useRbac } from "@/lib/rbac";
-import { todayLocalDate, formatTime } from "@/lib/utils";
+import { todayLocalDate } from "@/lib/utils";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
 import StaffPicker from "@/components/StaffPicker";
 import StaffLookupForm from "@/components/StaffLookupForm";
 import StaffAttendanceModal from "@/components/StaffAttendanceModal";
-import { API_BASE_URL } from "@/lib/api";
-import { authFetch } from "@/lib/auth";
 import { InfoBanner } from "@/components/ui/InfoBanner";
 import { AppTimePicker, AppDatePicker } from "@/components/ui/AppDatePicker";
+import { MapPin, Fingerprint, ShieldAlert, PenLine, UserCog, TriangleAlert, Settings2, Clock3 } from "lucide-react";
+import {
+  attendanceSettingsApi,
+  validateAttendanceSettings,
+  DEFAULT_ATTENDANCE_SETTINGS,
+  type AttendanceSettings,
+} from "@/lib/attendance-settings-api";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 dayjs.extend(duration);
 
+/**
+ * `StaffAttendanceRecord` (in `hr-api.ts`) predates the `isLate` column —
+ * extending it locally here avoids touching that shared file. Every record
+ * the daily/monthly endpoints return now carries `isLate` alongside `status`.
+ */
+type AttendanceRow = StaffAttendanceRecord & { isLate?: boolean };
+
 const PAGE_SIZE = 20;
 
-function calcDuration(checkIn?: string, checkOut?: string): string | null {
-  if (!checkIn || !checkOut) return null;
-  const inMs = dayjs(checkIn).valueOf();
-  const outMs = dayjs(checkOut).valueOf();
+/** `7.53` hours → `07:31:48`. */
+function formatHoursAsHms(hours: number): string {
+  const totalSeconds = Math.round(hours * 3600);
+  const hh = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+  const mm = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+  const ss = String(totalSeconds % 60).padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
+}
+
+/**
+ * Worked duration for a record. The daily endpoint now computes `workedHours`
+ * server-side (same helper the CSV/PDF report uses), so the table, the export
+ * and the API can never disagree — subtracting the timestamps here is only the
+ * fallback for payloads that predate that field.
+ */
+function calcDuration(record: Pick<StaffAttendanceRecord, "checkInTime" | "checkOutTime" | "workedHours">): string | null {
+  const { checkInTime, checkOutTime, workedHours } = record;
+  if (typeof workedHours === "number" && workedHours > 0) return formatHoursAsHms(workedHours);
+  if (!checkInTime || !checkOutTime) return null;
+  const inMs = dayjs(checkInTime).valueOf();
+  const outMs = dayjs(checkOutTime).valueOf();
   if (outMs <= inMs) return null;
   const dur = dayjs.duration(outMs - inMs);
   const hh = String(Math.floor(dur.asHours())).padStart(2, "0");
   const mm = String(dur.minutes()).padStart(2, "0");
   const ss = String(dur.seconds()).padStart(2, "0");
   return `${hh}:${mm}:${ss}`;
+}
+
+/**
+ * Duration for one row, plus the reason it can't be shown. A row with both
+ * timestamps always renders something: the elapsed time, or a flag when the
+ * stored checkout precedes the check-in (rows written before the backend
+ * started rejecting that ordering). Silence was the original bug.
+ */
+function durationOf(r: StaffAttendanceRecord): { text: string | null; invalid: boolean } {
+  const text = calcDuration(r);
+  if (text) return { text, invalid: false };
+  const bothPresent = Boolean(r.checkInTime && r.checkOutTime);
+  return { text: null, invalid: bothPresent };
+}
+
+/** `HH:mm:ss` — the clock format the rest of this page already uses. */
+function clock(iso?: string | null): string | null {
+  if (!iso) return null;
+  const d = dayjs(iso);
+  return d.isValid() ? d.format("HH:mm:ss") : null;
+}
+
+/** How a check-in / check-out was proven: the word, the glyph, the ink. */
+const METHOD_META: Record<AttendanceMethod, { label: string; Icon: typeof MapPin; tint: string }> = {
+  GEOFENCE: { label: "Self (geo)", Icon: MapPin, tint: "text-emerald-600" },
+  WEBAUTHN: { label: "Biometric", Icon: Fingerprint, tint: "text-indigo-600" },
+  BYPASS: { label: "Bypass", Icon: ShieldAlert, tint: "text-amber-600" },
+  MANUAL: { label: "Manual", Icon: PenLine, tint: "text-slate-500" },
+};
+
+/**
+ * Mirrors the backend's `defaultResolvedCheckOut`:
+ * `max(17:00 on the pending day, checkIn + 1h)`. The plain 17:00 default used
+ * to store a checkout *before* an evening check-in, which is what blanked the
+ * Duration column. `checkIn + 1h` can roll past midnight, so the date is
+ * returned alongside the time.
+ */
+function defaultResolvedCheckOut(pendingDate: string, checkInTime: string): { checkOutDate: string; checkOutTime: string } {
+  const endOfDay = dayjs(`${pendingDate}T17:00`);
+  const minimum = dayjs(checkInTime).add(1, "hour");
+  const chosen = endOfDay.isValid() && endOfDay.isAfter(minimum) ? endOfDay : minimum;
+  return { checkOutDate: chosen.format("YYYY-MM-DD"), checkOutTime: chosen.format("HH:mm") };
+}
+
+const staffNameOf = (r: StaffAttendanceRecord) =>
+  r.staff?.user ? `${r.staff.user.firstName} ${r.staff.user.lastName}` : `Staff #${r.staffId}`;
+
+interface Provenance {
+  label: string;
+  Icon: typeof MapPin;
+  tint: string;
+  /** The person who recorded it — only set when that isn't the staff member. */
+  actorName: string | null;
+}
+
+/**
+ * "How, and by whom" for ONE side of a record. `method`/`markedBy` describe the
+ * check-in, `checkOutMethod`/`checkOutBy` the check-out: a record can be
+ * self-checked-in and admin-checked-out, and keeping the two sides apart is
+ * what stops an HR-closed row from claiming "Self check-in (geo)".
+ *
+ * The actor is named only when it isn't the staff member themselves — every
+ * self check-in stamps `markedById` with the staff member's own user, so
+ * printing it unconditionally would put a name on every row and make the one
+ * row an admin touched invisible. Ids are compared when the joined user id is
+ * in the payload, names otherwise.
+ */
+function describeSource(
+  method: AttendanceMethod | null | undefined,
+  actor: { id: number; firstName: string; lastName: string } | undefined,
+  staffUserId: number | undefined,
+  staffName: string,
+): Provenance {
+  const meta = method ? METHOD_META[method] : undefined;
+  const base = meta ?? { label: method ?? "Unknown", Icon: PenLine, tint: "text-gray-400" };
+  if (!actor) return { ...base, actorName: null };
+  const actorName = `${actor.firstName} ${actor.lastName}`.trim();
+  const isSelf = staffUserId != null ? actor.id === staffUserId : actorName === staffName;
+  return { ...base, actorName: isSelf || !actorName ? null : actorName };
+}
+
+const checkInSource = (r: StaffAttendanceRecord): Provenance =>
+  describeSource(r.method, r.markedBy, r.staff?.user?.id, staffNameOf(r));
+
+/** Null while the record is still open — there is no check-out to describe. */
+const checkOutSource = (r: StaffAttendanceRecord): Provenance | null =>
+  r.checkOutTime ? describeSource(r.checkOutMethod, r.checkOutBy, r.staff?.user?.id, staffNameOf(r)) : null;
+
+/** `475` minutes → `7h 55m`. Used for the "that's how long they worked" preview. */
+function formatSpan(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h <= 0) return `${m}m`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+/** Same wording as the backend's 400, so client and server feedback match. */
+function checkOutOrderingMessage(checkIn: dayjs.Dayjs, checkOut: dayjs.Dayjs, date: string): string {
+  return (
+    `Check-out time (${checkOut.format("hh:mm A")}) cannot be earlier than ` +
+    `check-in time (${checkIn.format("hh:mm A")}) on ${date}. ` +
+    `Please choose a time after check-in.`
+  );
 }
 
 const DURATION_TEXT: Record<string, string> = {
@@ -48,12 +180,88 @@ const STATUS_STYLES: Record<string, string> = {
   HOLIDAY: "bg-gray-100 text-gray-600",
 };
 
+/**
+ * The provenance line under a timestamp: glyph, method, and — only when
+ * somebody other than the staff member recorded it — their name in amber, so a
+ * row an admin touched is the one that catches the eye while a page of
+ * ordinary self check-ins stays quiet.
+ *
+ * Purely presentational and prop-driven: no refs, no effects, safe to render
+ * twice (the shared DataTable does exactly that to every cell).
+ */
+function SourceStamp({ source }: { source: Provenance }) {
+  const { Icon } = source;
+  return (
+    <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] leading-tight">
+      <span className="inline-flex items-center gap-1 text-gray-500">
+        <Icon aria-hidden className={`h-3 w-3 shrink-0 ${source.tint}`} />
+        {source.label}
+      </span>
+      {source.actorName && (
+        <span className="inline-flex items-center gap-1 font-medium text-amber-700">
+          <UserCog aria-hidden className="h-3 w-3 shrink-0" />
+          by {source.actorName}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * One side of the register entry — the time it happened stacked over how it
+ * was proven. Merging the two into a single column is what lets the table
+ * carry the new audit trail without growing wider than a tablet.
+ */
+function EventCell({
+  time,
+  source,
+  nextDay,
+  late,
+  emptyLabel,
+}: {
+  time: string | null;
+  source: Provenance | null;
+  /** Set when a check-out landed on a later calendar day than the record. */
+  nextDay?: boolean;
+  /**
+   * `record.isLate` — a check-in-time fact, independent of `status`. Only
+   * meaningful on the check-in side; callers rendering a check-out cell
+   * simply omit this prop.
+   */
+  late?: boolean;
+  emptyLabel: string;
+}) {
+  if (!time) {
+    return <span className="text-xs text-gray-400">{emptyLabel}</span>;
+  }
+  return (
+    <span className="flex flex-col gap-1">
+      <span className="flex items-center gap-1.5">
+        <span className="tabular-nums text-gray-900">{time}</span>
+        {nextDay && (
+          <span className="rounded bg-amber-100 px-1 py-px text-[10px] font-semibold text-amber-700">+1d</span>
+        )}
+        {late && (
+          <span
+            title="Checked in after the school's late cutoff time"
+            className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-px text-[10px] font-semibold text-amber-700"
+          >
+            <Clock3 aria-hidden className="h-2.5 w-2.5" />
+            Late
+          </span>
+        )}
+      </span>
+      {source && <SourceStamp source={source} />}
+    </span>
+  );
+}
+
 export default function StaffAttendancePage() {
   const rbac = useRbac();
   const today = todayLocalDate();
 
   const [date, setDate] = useState(today);
-  const [records, setRecords] = useState<StaffAttendanceRecord[]>([]);
+  const [records, setRecords] = useState<AttendanceRow[]>([]);
   const [bypass, setBypass] = useState<AttendanceBypassWindow | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -62,6 +270,9 @@ export default function StaffAttendancePage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [summary, setSummary] = useState<DailyAttendanceSummary>({ PRESENT: 0, LATE: 0, ABSENT: 0, HALF_DAY: 0, ON_LEAVE: 0, HOLIDAY: 0 });
+  // Real "checked in after the cutoff today" count — see the field doc on
+  // PaginatedDailyAttendance.lateArrivals for why this isn't summary.LATE.
+  const [lateArrivals, setLateArrivals] = useState(0);
   const [draftSearch, setDraftSearch] = useState({ name: "", mobile: "", employeeCode: "", staffId: "" });
   const [activeSearch, setActiveSearch] = useState({ name: "", mobile: "", employeeCode: "", staffId: "" });
 
@@ -104,6 +315,12 @@ export default function StaffAttendancePage() {
   const [resolveForm, setResolveForm] = useState({ checkOutDate: "", checkOutTime: "17:00", reason: "FORGOT", hrNote: "", status: "PRESENT" });
   const [resolving, setResolving] = useState(false);
 
+  // Attendance settings (thresholds + late cutoff) — HR_ADMIN+ only
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsForm, setSettingsForm] = useState<AttendanceSettings>(DEFAULT_ATTENDANCE_SETTINGS);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+
   const loadRecords = useCallback(async () => {
     setLoading(true);
     try {
@@ -123,6 +340,7 @@ export default function StaffAttendancePage() {
         setTotalPages(recs.value.totalPages);
         setTotalRecords(recs.value.total);
         setSummary(recs.value.summary);
+        setLateArrivals(recs.value.lateArrivals ?? 0);
       }
       if (bp.status === "fulfilled") setBypass(bp.value);
     } catch { toast.error("Failed to load attendance"); }
@@ -133,9 +351,26 @@ export default function StaffAttendancePage() {
   // Reset to page 1 when date changes
   useEffect(() => { setCurrentPage(1); }, [date]);
 
+  /**
+   * The manual form can set both sides at once, so it needs the same ordering
+   * check the resolve dialog and the backend apply — caught here purely for
+   * immediate feedback; the server still has the last word.
+   */
+  const markCheckIn = markForm.checkInTime ? dayjs(`${markDate}T${markForm.checkInTime}`) : null;
+  const markCheckOut = markForm.checkOutTime ? dayjs(`${markDate}T${markForm.checkOutTime}`) : null;
+  const markError =
+    markCheckIn?.isValid() && markCheckOut?.isValid() && !markCheckOut.isAfter(markCheckIn)
+      ? checkOutOrderingMessage(markCheckIn, markCheckOut, markDate)
+      : null;
+  const markPreview =
+    !markError && markCheckIn?.isValid() && markCheckOut?.isValid()
+      ? formatSpan(markCheckOut.diff(markCheckIn, "minute"))
+      : null;
+
   const handleMark = async () => {
     if (!markStaffId) { toast.error("Please select a staff member"); return; }
     if (!markDate) { toast.error("Please select a date"); return; }
+    if (markError) { toast.error(markError); return; }
     try {
       const checkInIso = markForm.checkInTime ? dayjs(`${markDate}T${markForm.checkInTime}`).toISOString() : undefined;
       const checkOutIso = markForm.checkOutTime ? dayjs(`${markDate}T${markForm.checkOutTime}`).toISOString() : undefined;
@@ -227,8 +462,35 @@ export default function StaffAttendancePage() {
 
   useEffect(() => { loadPendingCheckouts(); }, [loadPendingCheckouts]);
 
+  /**
+   * Opens the resolve dialog with the same default the backend would apply —
+   * `max(17:00, checkIn + 1h)` — instead of a flat 17:00 that silently lands
+   * before an evening check-in.
+   */
+  const openResolve = (item: HrPendingCheckoutItem) => {
+    const { checkOutDate, checkOutTime } = defaultResolvedCheckOut(item.date, item.checkInTime);
+    setResolveTarget(item);
+    setResolveForm({ checkOutDate, checkOutTime, reason: "FORGOT", hrNote: "", status: "PRESENT" });
+  };
+
+  const resolveCheckIn = resolveTarget ? dayjs(resolveTarget.checkInTime) : null;
+  const resolveCheckOut =
+    resolveForm.checkOutDate && resolveForm.checkOutTime
+      ? dayjs(`${resolveForm.checkOutDate}T${resolveForm.checkOutTime}`)
+      : null;
+  /** Client-side echo of the backend's ordering rule, so the error lands before the request does. */
+  const resolveError =
+    resolveTarget && resolveCheckIn && resolveCheckOut?.isValid() && !resolveCheckOut.isAfter(resolveCheckIn)
+      ? checkOutOrderingMessage(resolveCheckIn, resolveCheckOut, resolveTarget.date)
+      : null;
+  const resolvePreview =
+    !resolveError && resolveCheckIn && resolveCheckOut?.isValid()
+      ? formatSpan(resolveCheckOut.diff(resolveCheckIn, "minute"))
+      : null;
+
   const handleHrResolve = async () => {
     if (!resolveTarget) return;
+    if (resolveError) { toast.error(resolveError); return; }
     setResolving(true);
     try {
       const checkOutTime = resolveForm.checkOutTime && resolveForm.checkOutDate
@@ -249,6 +511,35 @@ export default function StaffAttendancePage() {
     } catch (e: any) {
       toast.error(e?.info?.message ?? "Failed to resolve checkout");
     } finally { setResolving(false); }
+  };
+
+  const openSettings = () => {
+    setShowSettings(true);
+    setSettingsLoading(true);
+    attendanceSettingsApi
+      .get()
+      .then((s) => setSettingsForm(s))
+      .catch(() => toast.error("Failed to load attendance settings"))
+      .finally(() => setSettingsLoading(false));
+  };
+
+  /** Mirrors the server's rule (half-day threshold < full-day threshold) so the error lands before the request does. */
+  const settingsError = validateAttendanceSettings(settingsForm);
+
+  const handleSaveSettings = async () => {
+    if (settingsError) { toast.error(settingsError); return; }
+    setSettingsSaving(true);
+    try {
+      const updated = await attendanceSettingsApi.update(settingsForm);
+      setSettingsForm(updated);
+      toast.success("Attendance settings updated");
+      setShowSettings(false);
+    } catch (e) {
+      const info = (e as { info?: { message?: string } } | undefined)?.info;
+      toast.error(info?.message ?? "Failed to update attendance settings");
+    } finally {
+      setSettingsSaving(false);
+    }
   };
 
   const REPORT_MAX_DAYS = 92;
@@ -327,23 +618,6 @@ export default function StaffAttendancePage() {
     setCurrentPage(1);
   };
 
-  const staffNameOf = (r: StaffAttendanceRecord) =>
-    r.staff?.user ? `${r.staff.user.firstName} ${r.staff.user.lastName}` : `Staff #${r.staffId}`;
-
-  const auditLabel = (r: StaffAttendanceRecord) => {
-    switch (r.method) {
-      case "WEBAUTHN":
-        return r.markedBy ? `Biometric kiosk — by ${r.markedBy.firstName} ${r.markedBy.lastName}` : "Biometric kiosk";
-      case "GEOFENCE":
-        return "Self check-in (geo)";
-      case "BYPASS":
-        return r.markedBy ? `Bypass — by ${r.markedBy.firstName} ${r.markedBy.lastName}` : "Bypass (self)";
-      case "MANUAL":
-      default:
-        return r.markedBy ? `Manual — by ${r.markedBy.firstName} ${r.markedBy.lastName}` : "Manual";
-    }
-  };
-
   return (
     <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
@@ -361,6 +635,13 @@ export default function StaffAttendancePage() {
           </Link>
           {rbac.canManageHR && (
             <>
+              <button
+                onClick={openSettings}
+                className="inline-flex items-center justify-center gap-1.5 bg-slate-800 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-900"
+              >
+                <Settings2 aria-hidden className="h-4 w-4" />
+                Settings
+              </button>
               <button
                 onClick={() => { setShowBiometrics((v) => !v); if (!showBiometrics) loadBiometrics(); }}
                 className="bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
@@ -407,6 +688,11 @@ export default function StaffAttendancePage() {
         Use <strong>Mark Manually</strong> to record or override attendance (e.g., for a field visit).
         Open a <strong>Bypass Window</strong> to temporarily allow PIN-based marking when biometric devices are offline.
         Configure the allowed campus geo-zones via <strong>Geo-Zones</strong>.
+        The <strong>Check-in</strong> and <strong>Check-out</strong> columns each show how that half was recorded, and name the
+        admin when someone other than the staff member recorded it. A small <strong>Late</strong> badge on a check-in means
+        that staff member arrived after the late cutoff — it is tracked separately from Status, which is now decided purely
+        by hours worked (PRESENT / HALF_DAY / ABSENT). Use <strong>Settings</strong> to change the full/half-day hour
+        thresholds and the late cutoff time.
       </InfoBanner>
 
       {/* Bypass info */}
@@ -539,7 +825,7 @@ export default function StaffAttendancePage() {
                           </td>
                           <td className="px-4 py-3">
                             <button
-                              onClick={() => { setResolveTarget(item); setResolveForm({ checkOutDate: item.date, checkOutTime: "17:00", reason: "FORGOT", hrNote: "", status: "PRESENT" }); }}
+                              onClick={() => openResolve(item)}
                               className="text-xs bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded-lg font-medium"
                             >
                               Close Checkout
@@ -563,7 +849,7 @@ export default function StaffAttendancePage() {
                       </div>
                       <p className="text-xs text-gray-600">{item.date} · checked in {dayjs(item.checkInTime).format('HH:mm:ss')}</p>
                       <button
-                        onClick={() => { setResolveTarget(item); setResolveForm({ checkOutDate: item.date, checkOutTime: "17:00", reason: "FORGOT", hrNote: "", status: "PRESENT" }); }}
+                        onClick={() => openResolve(item)}
                         className="text-xs bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded-lg font-medium"
                       >
                         Close Checkout
@@ -580,7 +866,7 @@ export default function StaffAttendancePage() {
       <div className="flex flex-wrap items-center gap-3">
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="border rounded-lg px-3 py-2 text-sm" />
         <span className="text-sm text-gray-600">Present: <strong className="text-green-700">{present}</strong></span>
-        <span className="text-sm text-gray-600">Late: <strong className="text-amber-700">{summary.LATE}</strong></span>
+        <span className="text-sm text-gray-600">Late: <strong className="text-amber-700">{lateArrivals}</strong></span>
         <span className="text-sm text-gray-600">Absent: <strong className="text-red-700">{absent}</strong></span>
         <span className="text-sm text-gray-600" title="Active staff with no attendance record for this date">
           Not Marked: <strong className="text-orange-600">{summary.NOT_MARKED ?? 0}</strong>
@@ -666,9 +952,12 @@ export default function StaffAttendancePage() {
           {/* Mobile cards */}
           <div className="sm:hidden space-y-3">
             {records.map((r) => {
-              const dur = calcDuration(r.checkInTime, r.checkOutTime);
+              const dur = durationOf(r);
+              const inTime = clock(r.checkInTime);
+              const outTime = clock(r.checkOutTime);
+              const outSource = checkOutSource(r);
               return (
-                <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
+                <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="font-medium text-gray-900 text-sm truncate">{staffNameOf(r)}</p>
@@ -679,42 +968,69 @@ export default function StaffAttendancePage() {
                     </div>
                     <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-600">
-                    <div><span className="text-gray-400">In: </span>{formatTime(r.checkInTime)}</div>
-                    <div><span className="text-gray-400">Out: </span>{formatTime(r.checkOutTime)}</div>
-                    {dur && <div className={`col-span-2 ${DURATION_TEXT[r.status] ?? "text-gray-600"}`}>⏱ {dur}</div>}
-                    <div className="col-span-2"><span className="text-gray-400">Marked: </span>{auditLabel(r)}</div>
+                  {/* Check-in and check-out side by side: the whole point of the
+                      audit split is comparing the two, so they stay adjacent
+                      even on the narrowest phone. */}
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Check-in</p>
+                      <EventCell time={inTime} source={inTime ? checkInSource(r) : null} late={r.isLate} emptyLabel="Not checked in" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Check-out</p>
+                      <EventCell
+                        time={outTime}
+                        source={outSource}
+                        nextDay={Boolean(r.checkOutTime) && dayjs(r.checkOutTime).format("YYYY-MM-DD") !== r.date}
+                        emptyLabel="Still open"
+                      />
+                    </div>
                   </div>
-                  <button
-                    onClick={() => setViewStaff({ id: r.staffId, label: staffNameOf(r) })}
-                    className="text-blue-600 hover:underline text-xs font-medium"
-                  >
-                    View month →
-                  </button>
+                  <div className="flex items-center justify-between gap-2 border-t border-gray-100 pt-2">
+                    {dur.text ? (
+                      <span className={`text-xs tabular-nums ${DURATION_TEXT[r.status] ?? "text-gray-600"}`}>⏱ {dur.text}</span>
+                    ) : dur.invalid ? (
+                      <span className="inline-flex items-center gap-1 text-xs text-red-600">
+                        <TriangleAlert aria-hidden className="h-3.5 w-3.5" /> Check-out is before check-in
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">No duration yet</span>
+                    )}
+                    <button
+                      onClick={() => setViewStaff({ id: r.staffId, label: staffNameOf(r) })}
+                      className="text-blue-600 hover:underline text-xs font-medium"
+                    >
+                      View month →
+                    </button>
+                  </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Tablet+ table */}
+          {/* Tablet+ table. The check-in and check-out columns each carry the
+              time AND its provenance, so the audit trail arrives without a
+              seventh and eighth column — the table is narrower than before and
+              still scrolls inside its own box rather than the page. */}
           <div className="hidden sm:block overflow-x-auto rounded-xl border border-gray-200">
-            <table className="min-w-full text-sm">
+            <table className="min-w-180 w-full text-sm">
               <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
                 <tr>
                   <th className="px-4 py-3 text-left">Staff</th>
                   <th className="px-4 py-3 text-left">Status</th>
-                  <th className="px-4 py-3 text-left">Check-In</th>
-                  <th className="px-4 py-3 text-left">Check-Out</th>
+                  <th className="px-4 py-3 text-left">Check-in</th>
+                  <th className="px-4 py-3 text-left">Check-out</th>
                   <th className="px-4 py-3 text-left">Duration</th>
-                  <th className="px-4 py-3 text-left">Marked By</th>
                   <th className="px-4 py-3 text-left">View</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {records.map((r) => {
-                  const dur = calcDuration(r.checkInTime, r.checkOutTime);
+                  const dur = durationOf(r);
+                  const inTime = clock(r.checkInTime);
+                  const outTime = clock(r.checkOutTime);
                   return (
-                    <tr key={r.id} className="hover:bg-gray-50">
+                    <tr key={r.id} className="hover:bg-gray-50 align-top">
                       <td className="px-4 py-3">
                         <div className="font-medium text-gray-900">{staffNameOf(r)}</div>
                         <div className="text-[11px] text-gray-500">
@@ -723,12 +1039,33 @@ export default function StaffAttendancePage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
                       </td>
-                      <td className="px-4 py-3 tabular-nums">{formatTime(r.checkInTime)}</td>
-                      <td className="px-4 py-3 tabular-nums">{formatTime(r.checkOutTime)}</td>
-                      <td className={`px-4 py-3 tabular-nums ${dur ? (DURATION_TEXT[r.status] ?? "text-gray-600") : "text-gray-400"}`}>{dur ?? "—"}</td>
-                      <td className="px-4 py-3 text-xs text-gray-600">{auditLabel(r)}</td>
+                      <td className="px-4 py-3">
+                        <EventCell time={inTime} source={inTime ? checkInSource(r) : null} late={r.isLate} emptyLabel="Not checked in" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <EventCell
+                          time={outTime}
+                          source={checkOutSource(r)}
+                          nextDay={Boolean(r.checkOutTime) && dayjs(r.checkOutTime).format("YYYY-MM-DD") !== r.date}
+                          emptyLabel="Still open"
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        {dur.text ? (
+                          <span className={`tabular-nums ${DURATION_TEXT[r.status] ?? "text-gray-600"}`}>{dur.text}</span>
+                        ) : dur.invalid ? (
+                          <span
+                            className="inline-flex items-center gap-1 text-xs text-red-600"
+                            title="The stored check-out is not after the check-in, so no duration can be computed. Re-mark this record to correct it."
+                          >
+                            <TriangleAlert aria-hidden className="h-3.5 w-3.5 shrink-0" /> Times out of order
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <button
                           onClick={() => setViewStaff({ id: r.staffId, label: staffNameOf(r) })}
@@ -819,9 +1156,31 @@ export default function StaffAttendancePage() {
             <div className="bg-orange-50 border border-orange-100 rounded-lg p-3">
               <p className="text-sm font-medium text-orange-900">{resolveTarget.name}</p>
               <p className="text-xs text-orange-700 mt-0.5">
-                Checked in on {resolveTarget.date} at {dayjs(resolveTarget.checkInTime).format('HH:mm:ss')}
+                Open since {resolveTarget.date}
                 {resolveTarget.daysAgo > 0 ? ` (${resolveTarget.daysAgo} day${resolveTarget.daysAgo !== 1 ? "s" : ""} ago)` : ""} — never checked out.
               </p>
+              {/* The check-in stays on screen while the checkout is chosen: the
+                  time being typed is only correct relative to this one. */}
+              <div className="mt-2.5 flex items-center gap-3 border-t border-orange-100 pt-2.5">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-orange-500">Checked in</p>
+                  <p className="text-sm font-semibold tabular-nums text-orange-900">
+                    {dayjs(resolveTarget.checkInTime).format("HH:mm:ss")}
+                  </p>
+                </div>
+                <span aria-hidden className="text-orange-300">→</span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-orange-500">Checking out</p>
+                  <p className={`text-sm font-semibold tabular-nums ${resolveError ? "text-red-600" : "text-orange-900"}`}>
+                    {resolveCheckOut?.isValid() ? resolveCheckOut.format("HH:mm") : "—"}
+                    {resolveCheckOut?.isValid() && resolveForm.checkOutDate !== resolveTarget.date && (
+                      <span className="ml-1.5 rounded bg-orange-200 px-1 py-px text-[10px] font-semibold text-orange-800">
+                        {resolveForm.checkOutDate}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -837,7 +1196,17 @@ export default function StaffAttendancePage() {
                 </div>
               </div>
             </div>
-            <p className="text-[11px] text-gray-500">Defaults to 17:00 on the check-in date. Adjust if you know the actual departure time.</p>
+            {resolveError ? (
+              <p role="alert" className="flex items-start gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-[11px] text-red-700">
+                <TriangleAlert aria-hidden className="mt-px h-3.5 w-3.5 shrink-0" />
+                {resolveError}
+              </p>
+            ) : (
+              <p className="text-[11px] text-gray-500">
+                Defaults to 5:00 PM, or an hour after check-in when that is later.
+                {resolvePreview ? ` Records ${resolvePreview} of work.` : " Adjust if you know the actual departure time."}
+              </p>
+            )}
             <div>
               <label className="text-sm font-medium">Reason</label>
               <select
@@ -877,7 +1246,7 @@ export default function StaffAttendancePage() {
               <button onClick={() => setResolveTarget(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
               <button
                 onClick={handleHrResolve}
-                disabled={resolving}
+                disabled={resolving || Boolean(resolveError)}
                 className="px-4 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-60"
               >
                 {resolving ? "Closing…" : "Close Checkout"}
@@ -963,13 +1332,27 @@ export default function StaffAttendancePage() {
                 </div>
               </div>
             </div>
+            {markError ? (
+              <p role="alert" className="flex items-start gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-[11px] text-red-700">
+                <TriangleAlert aria-hidden className="mt-px h-3.5 w-3.5 shrink-0" />
+                {markError}
+              </p>
+            ) : markPreview ? (
+              <p className="text-[11px] text-gray-500">Records {markPreview} of work on {markDate}.</p>
+            ) : null}
             <div>
               <label className="text-sm font-medium">Override Reason (optional)</label>
               <input value={markForm.overrideReason} onChange={(e) => setMarkForm((f) => ({ ...f, overrideReason: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
             </div>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setShowMark(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleMark} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Mark</button>
+              <button
+                onClick={handleMark}
+                disabled={Boolean(markError)}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
+              >
+                Mark
+              </button>
             </div>
           </div>
         </div>
@@ -1061,6 +1444,85 @@ export default function StaffAttendancePage() {
               <button onClick={() => setShowBypass(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={handleBypass} className="px-4 py-2 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700">Activate</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Attendance settings modal — thresholds that decide PRESENT/HALF_DAY/ABSENT + isLate */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-walnut-950/55 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-sm space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center gap-2">
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-700">
+                <Settings2 aria-hidden className="h-4 w-4" />
+              </span>
+              <h2 className="font-semibold text-lg">Attendance Settings</h2>
+            </div>
+            <p className="text-xs text-gray-500">
+              These thresholds decide the day&apos;s status on every checkout: <strong>PRESENT</strong> at or above the
+              full-day hours, <strong>HALF_DAY</strong> at or above the half-day hours, otherwise <strong>ABSENT</strong>{" "}
+              (staff marked ON_LEAVE or HOLIDAY are never touched). The late cutoff only sets the <strong>Late</strong>{" "}
+              badge on check-in — it never changes the day&apos;s status. Changes apply to future check-ins/checkouts only;
+              existing records are not recomputed.
+            </p>
+            {settingsLoading ? (
+              <p className="text-sm text-gray-500 py-4 text-center">Loading…</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium">Min hours — Full Day</label>
+                    <input
+                      type="number"
+                      step={0.5}
+                      min={0.5}
+                      max={24}
+                      value={settingsForm.minFullDayHours}
+                      onChange={(e) => setSettingsForm((f) => ({ ...f, minFullDayHours: Number(e.target.value) }))}
+                      className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Min hours — Half Day</label>
+                    <input
+                      type="number"
+                      step={0.5}
+                      min={0.5}
+                      max={24}
+                      value={settingsForm.minHalfDayHours}
+                      onChange={(e) => setSettingsForm((f) => ({ ...f, minHalfDayHours: Number(e.target.value) }))}
+                      className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Late cutoff time</label>
+                  <div className="mt-1">
+                    <AppTimePicker
+                      value={settingsForm.lateCutoffTime}
+                      onChange={(v) => setSettingsForm((f) => ({ ...f, lateCutoffTime: v }))}
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-1">Check-ins after this time are flagged Late.</p>
+                </div>
+                {settingsError && (
+                  <p role="alert" className="flex items-start gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-[11px] text-red-700">
+                    <TriangleAlert aria-hidden className="mt-px h-3.5 w-3.5 shrink-0" />
+                    {settingsError}
+                  </p>
+                )}
+                <div className="flex gap-2 justify-end pt-1">
+                  <button onClick={() => setShowSettings(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
+                  <button
+                    onClick={handleSaveSettings}
+                    disabled={settingsSaving || Boolean(settingsError)}
+                    className="px-4 py-2 text-sm bg-slate-800 text-white rounded-lg hover:bg-slate-900 disabled:opacity-60"
+                  >
+                    {settingsSaving ? "Saving…" : "Save Settings"}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

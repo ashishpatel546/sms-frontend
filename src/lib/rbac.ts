@@ -1,10 +1,16 @@
 'use client';
 
-import { getUser } from './auth';
+import { getEffectiveRoles, getUser } from './auth';
 
 /**
  * Numeric level for each role — mirrors the backend ROLE_HIERARCHY.
  * Update both places if roles change.
+ *
+ * SYSTEM_ADMIN is deliberately absent. It is a PLATFORM role, and the tenant
+ * backend's MinRoleGuard refuses it outright (hub-minted tokens carry no
+ * schoolId); platform staff reach a school through the ticketed login, which
+ * mints an ordinary tenant-bound SUPER_ADMIN token. Scoring it here would only
+ * light up buttons that every route then 403s.
  */
 const ROLE_LEVEL: Record<string, number> = {
   SUPER_ADMIN: 100,
@@ -18,10 +24,28 @@ const ROLE_LEVEL: Record<string, number> = {
   STUDENT: 10,
 };
 
-export interface RbacPermissions {
-  role: string | undefined;
+/**
+ * HR Portal is an EXACT allow-list, not a hierarchy check — it mirrors
+ * `HR_PORTAL_ROLES` in the backend's `hr-min-role.guard.ts`. ADMIN outranks
+ * HR_ADMIN and still does not belong here: the portal is scoped to the people
+ * who actually run HR.
+ *
+ * Multi-role is what makes this workable. An ADMIN who has additionally been
+ * granted HR_ADMIN holds ['ADMIN', 'HR_ADMIN'], intersects this list, and gets
+ * in — while a plain ADMIN still does not.
+ */
+const HR_PORTAL_ROLES = ['HR_ADMIN', 'SUPER_ADMIN', 'SYSTEM_ADMIN'] as const;
 
-  /** Hierarchy checks — true if user meets or exceeds the named role */
+/** Roles that may manage the library, by name rather than by rank. */
+const LIBRARY_ROLES = ['LIBRARIAN', 'ADMIN', 'SUPER_ADMIN', 'SYSTEM_ADMIN'] as const;
+
+export interface RbacPermissions {
+  /** The PRIMARY role — the one word to show when only one fits. */
+  role: string | undefined;
+  /** Every role held: primary ∪ additional. Falls back to [role] on old tokens. */
+  roles: string[];
+
+  /** Hierarchy checks — true if ANY held role meets or exceeds the named role */
   isSuperAdmin: boolean; // SUPER_ADMIN only
   isAdmin: boolean; // ADMIN+
   isSubAdmin: boolean; // SUB_ADMIN+
@@ -76,16 +100,16 @@ export interface RbacPermissions {
   canManageHR: boolean;
   /** HR Portal: generate/finalize payroll (HR_ADMIN drafts, ADMIN+ finalizes) */
   canManagePayroll: boolean;
-  /** HR Portal: is the user an HR_ADMIN specifically */
+  /** HR Portal: does the user hold HR_ADMIN (primary or additional) */
   isHrAdmin: boolean;
-  /** Library: is the user a LIBRARIAN specifically */
+  /** Library: does the user hold LIBRARIAN (primary or additional) */
   isLibrarian: boolean;
   /** Library: can manage books, issuances, settings (LIBRARIAN, ADMIN, SUPER_ADMIN) */
   canManageLibrary: boolean;
   /** AI Tools: student-facing AI (STUDENT, PARENT) */
   isStudent: boolean;
 
-  /** Visitor management: is the user a GUARD specifically (restricted dashboard) */
+  /** Visitor management: the user is a gate guard and nothing more (restricted dashboard) */
   isGuard: boolean;
   /** Visitor management: scan/allow/exit/list (GUARD+) */
   canManageVisitors: boolean;
@@ -93,22 +117,46 @@ export interface RbacPermissions {
   canExportVisitors: boolean;
   /** Visitor management settings (SUPER_ADMIN only) */
   canManageVisitorSettings: boolean;
+
+  /** ID Cards: print student/staff cards, batch export (SUB_ADMIN+) */
+  canManageIdCards: boolean;
+
+  // ── Multi-role helpers ──────────────────────────────────────────────────
+  /** Does the user hold this exact role, primary or additional? */
+  hasRole: (role: string) => boolean;
+  /** Does the user hold ANY of these exact roles? */
+  hasAnyRole: (roles: readonly string[]) => boolean;
+  /** Does ANY held role sit at or above this one in the hierarchy? */
+  hasMinRole: (role: string) => boolean;
 }
 
 /**
- * Returns a static snapshot of the current user's permissions.
- * Call this once at the top of a component or layout.
+ * Returns a static snapshot of the current user's permissions, resolved across
+ * EVERY role they hold rather than the single `role` claim.
+ *
+ * Two kinds of check, and the difference matters:
+ *  · hierarchical ("SUB_ADMIN and above") uses the MAXIMUM level across the
+ *    held roles, so a permission is granted when any one role clears the bar;
+ *  · exact ("is a librarian", "HR Portal") is membership in the role set, so
+ *    adding a role can only ever add access.
  *
  * @example
- * const { canManageFees, isAdmin } = useRbac();
- * if (!canManageFees) router.replace('/dashboard');
+ * const { canConfigureFees, isAdmin } = useRbac();
+ * if (!canConfigureFees) router.replace('/dashboard');
  */
 export function useRbac(): RbacPermissions {
   const user = getUser();
-  const level = ROLE_LEVEL[user?.role ?? ''] ?? 0;
+  const roles = getEffectiveRoles(user);
+
+  /** Highest rank held. Never use this to test for a specific role. */
+  const level = roles.reduce((max, r) => Math.max(max, ROLE_LEVEL[r] ?? 0), 0);
+  const has = (role: string) => roles.includes(role);
+  const hasAny = (wanted: readonly string[]) => wanted.some((r) => roles.includes(r));
+  const hasMin = (role: string) => roles.length > 0 && level >= (ROLE_LEVEL[role] ?? 0);
 
   return {
     role: user?.role,
+    roles,
 
     isSuperAdmin: level >= 100,
     isAdmin: level >= 80,
@@ -142,24 +190,32 @@ export function useRbac(): RbacPermissions {
 
     // GUARD is staff too — needs self check-in / my-attendance
     canAccessHRSelfService: level >= 30,
-    // HR Portal is restricted to HR_ADMIN and SUPER_ADMIN specifically — not the full ADMIN+ hierarchy
-    canAccessHR: level === 70 || level >= 100,
-    canManageHR: level === 70 || level >= 100,
-    // Payroll finalize is an intentional ADMIN+ checks-and-balance escalation (HR_ADMIN drafts, ADMIN/SUPER_ADMIN finalizes) — keep ADMIN's access here
+    // Exact allow-list, mirroring HrMinRoleGuard: HR_ADMIN or SUPER_ADMIN, and
+    // ADMIN alone is NOT enough. ADMIN + HR_ADMIN together is.
+    canAccessHR: hasAny(HR_PORTAL_ROLES),
+    canManageHR: hasAny(HR_PORTAL_ROLES),
+    // Payroll finalize is an intentional ADMIN+ checks-and-balance escalation
+    // (HR_ADMIN drafts, ADMIN/SUPER_ADMIN finalizes) — this one stays
+    // hierarchical, so ADMIN keeps its access.
     canManagePayroll: level >= 70,
-    isHrAdmin: level === 70,
-    isLibrarian: user?.role === 'LIBRARIAN',
-    canManageLibrary: [
-      'LIBRARIAN',
-      'ADMIN',
-      'SUPER_ADMIN',
-      'SYSTEM_ADMIN',
-    ].includes(user?.role ?? ''),
-    isStudent: user?.role === 'STUDENT' || user?.role === 'PARENT',
+    isHrAdmin: has('HR_ADMIN'),
+    isLibrarian: has('LIBRARIAN'),
+    canManageLibrary: hasAny(LIBRARY_ROLES),
+    isStudent: hasAny(['STUDENT', 'PARENT']),
 
-    isGuard: user?.role === 'GUARD',
+    // The sidebar hides everything but `guardAllowed` items when this is true,
+    // so it has to mean "gate duty is all this person does". A guard who has
+    // additionally been granted TEACHER outranks the gate and keeps the full
+    // menu; a plain GUARD still gets the locked-down one.
+    isGuard: has('GUARD') && level <= 30,
     canManageVisitors: level >= 30,
     canExportVisitors: level >= 60,
     canManageVisitorSettings: level >= 100,
+
+    canManageIdCards: level >= 60,
+
+    hasRole: has,
+    hasAnyRole: hasAny,
+    hasMinRole: hasMin,
   };
 }
