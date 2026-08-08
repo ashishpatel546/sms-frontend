@@ -1,14 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getUser } from "@/lib/auth";
 import { getEnv } from "@/lib/env";
 import QRCode from "react-qr-code";
-import { Mail, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
+import QRCodeGen from "qrcode";
+import { Mail, MessageCircle, ChevronDown, ChevronUp, Printer } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { useSchoolInfo, getSchoolLogoDataUrl } from "@/lib/useSchoolInfo";
+import { buildInstallGuideHtml } from "@/lib/install-guide-html";
+
+// Preview shrink factor for the A4 sheet. The `<iframe>` itself always stays
+// true 210mm x 297mm — this only scales how it's displayed, so print output
+// is never affected.
+const INSTALL_GUIDE_PREVIEW_SCALE = 0.55;
 
 export default function DashboardSupportPage() {
-  const [activeTab, setActiveTab] = useState<"contact" | "faqs">("faqs");
+  const [activeTab, setActiveTab] = useState<"contact" | "faqs" | "install">("faqs");
   const [user, setUser] = useState<any>(null);
   
   // Form State
@@ -18,6 +26,19 @@ export default function DashboardSupportPage() {
   // FAQ State
   const [faqs, setFaqs] = useState<{question: string, answer: string}[]>([]);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+
+  // Install guide state — a school-branded, printable "install this app"
+  // handout, generated from the same data already trusted for receipts
+  // (useSchoolInfo). Unlike the equivalent tool in the hub console, the
+  // portal URL never needs deriving or overriding: this page IS the portal
+  // the QR code should point at, on whatever host it's actually served
+  // from (prod, stage, or a local tunnel), so `window.location.origin` is
+  // always correct.
+  const schoolInfo = useSchoolInfo();
+  const [includeLogo, setIncludeLogo] = useState(true);
+  const [includeContact, setIncludeContact] = useState(true);
+  const [guideSrcDoc, setGuideSrcDoc] = useState("");
+  const guideFrameRef = useRef<HTMLIFrameElement>(null);
 
   const supportNumber = "7838160389";
   const supportEmail = "support@colegios.in";
@@ -40,6 +61,55 @@ export default function DashboardSupportPage() {
       .then(data => setFaqs(data))
       .catch(err => console.error("Error loading FAQs:", err));
   }, []);
+
+  // Regenerate the handout when its tab is opened or an input it depends on
+  // changes. Deferred until the tab is actually visited (not on page load)
+  // since it costs a network round trip for the base64 logo.
+  useEffect(() => {
+    if (activeTab !== "install" || !schoolInfo) return;
+    let cancelled = false;
+
+    (async () => {
+      const logoDataUrl = includeLogo ? await getSchoolLogoDataUrl() : null;
+      if (cancelled) return;
+
+      const portalUrl = window.location.origin;
+      const qrDataUrl = await QRCodeGen.toDataURL(portalUrl, {
+        errorCorrectionLevel: "H",
+        width: 256,
+        margin: 0,
+        color: { dark: "#0C1320", light: "#ffffff" },
+      });
+      if (cancelled) return;
+
+      setGuideSrcDoc(
+        buildInstallGuideHtml({
+          schoolName: schoolInfo.name,
+          portalUrl,
+          qrDataUrl,
+          logoUrl: logoDataUrl,
+          contactPhone: includeContact ? schoolInfo.phone : null,
+          contactEmail: includeContact ? schoolInfo.email : null,
+        })
+      );
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, schoolInfo, includeLogo, includeContact]);
+
+  const printInstallGuide = async () => {
+    const frameWindow = guideFrameRef.current?.contentWindow;
+    const frameDocument = guideFrameRef.current?.contentDocument;
+    if (!frameWindow || !frameDocument) return;
+    // Archivo's metrics differ from the fallback stack fitToPage() first
+    // measures against — printing before the real face lands can misjudge
+    // the one-page fit for long school names.
+    await frameDocument.fonts?.ready;
+    frameWindow.focus();
+    frameWindow.print();
+  };
 
   const handleWhatsAppSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +162,16 @@ export default function DashboardSupportPage() {
           }`}
         >
           Contact Support
+        </button>
+        <button
+          onClick={() => setActiveTab("install")}
+          className={`pb-4 px-6 text-sm font-semibold transition-colors border-b-2 ${
+            activeTab === "install"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+          }`}
+        >
+          Install Guide
         </button>
       </div>
 
@@ -241,6 +321,103 @@ export default function DashboardSupportPage() {
 
               </form>
             </div>
+          </div>
+        )}
+
+        {/* Install Guide Section */}
+        {activeTab === "install" && (
+          <div className="p-6 md:p-8">
+            <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-800 mb-1">Get the app on your phone</h2>
+                <p className="text-slate-500 text-sm max-w-xl">
+                  A one-page, printable handout with a QR code and home-screen install steps —
+                  hand it to a parent at the office, or attach it to a WhatsApp or email.
+                </p>
+              </div>
+              <button
+                onClick={() => void printInstallGuide()}
+                disabled={!guideSrcDoc}
+                className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg shadow-xs transition-colors"
+              >
+                <Printer size={16} />
+                Print / Save as PDF
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-x-6 gap-y-2 mb-5">
+              <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includeLogo}
+                  onChange={(e) => setIncludeLogo(e.target.checked)}
+                  disabled={!schoolInfo?.logoUrl}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-40"
+                />
+                Include logo
+                {!schoolInfo?.logoUrl && (
+                  <span className="text-xs text-slate-400">(none uploaded)</span>
+                )}
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includeContact}
+                  onChange={(e) => setIncludeContact(e.target.checked)}
+                  disabled={!schoolInfo?.phone && !schoolInfo?.email}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-40"
+                />
+                Include office contact
+                {!schoolInfo?.phone && !schoolInfo?.email && (
+                  <span className="text-xs text-slate-400">(none on file)</span>
+                )}
+              </label>
+            </div>
+
+            <div className="overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
+              {/* Outer box is sized to the post-scale footprint so the scroll
+                  container never inherits the pre-scale 210mm x 297mm — the
+                  sheet stays true A4 (what prints), the preview just shrinks. */}
+              <div
+                className="mx-auto"
+                style={{
+                  width: `calc(210mm * ${INSTALL_GUIDE_PREVIEW_SCALE})`,
+                  height: `calc(297mm * ${INSTALL_GUIDE_PREVIEW_SCALE})`,
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    width: "210mm",
+                    height: "297mm",
+                    transform: `scale(${INSTALL_GUIDE_PREVIEW_SCALE})`,
+                    transformOrigin: "top left",
+                  }}
+                >
+                  {guideSrcDoc ? (
+                    <iframe
+                      ref={guideFrameRef}
+                      srcDoc={guideSrcDoc}
+                      title="Install guide preview"
+                      style={{ width: "210mm", height: "297mm", border: "none", background: "#fff", display: "block" }}
+                    />
+                  ) : (
+                    <div
+                      style={{ width: "210mm", height: "297mm" }}
+                      className="flex items-center justify-center bg-white text-slate-400 text-sm"
+                    >
+                      Preparing preview…
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-500 mt-3">
+              In the print dialog, set <span className="text-slate-700 font-medium">Margins: None</span> and
+              switch off <span className="text-slate-700 font-medium">Headers and footers</span> — the sheet
+              carries its own margins.
+            </p>
           </div>
         )}
       </div>
