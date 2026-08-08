@@ -176,7 +176,7 @@ export default function DashboardSupportPage() {
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden min-h-[500px]">
+      <div className="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden min-h-125">
         
         {/* FAQs Section */}
         {activeTab === "faqs" && (

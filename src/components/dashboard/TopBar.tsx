@@ -124,7 +124,7 @@ export function TopBar({ user, sidebarCollapsed, onToggleSidebar, onOpenMobileNa
                             <span className="block max-w-36 truncate text-[12.5px] leading-tight font-semibold text-ink">
                                 {user?.firstName} {user?.lastName}
                             </span>
-                            <span className="block max-w-36 truncate font-mono text-[9px] leading-tight tracking-[0.1em] text-ink-faint uppercase">
+                            <span className="block max-w-36 truncate font-mono text-[9px] leading-tight tracking-widest text-ink-faint uppercase">
                                 {user?.role?.replace(/_/g, " ")}
                             </span>
                         </span>

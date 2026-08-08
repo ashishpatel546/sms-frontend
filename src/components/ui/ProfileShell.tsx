@@ -138,7 +138,7 @@ export function ReadField({
       <dt className="eyebrow text-[10px]">{label}</dt>
       <dd
         className={cn(
-          'mt-0.5 text-[14px] break-words',
+          'mt-0.5 text-[14px] wrap-break-word',
           empty ? 'text-ink-faint' : 'font-medium text-ink',
         )}
       >

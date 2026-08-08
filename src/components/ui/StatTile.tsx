@@ -61,7 +61,7 @@ export const StatTile = React.forwardRef<HTMLDivElement, StatTileProps>(
         )}
         {...props}
       >
-        <span aria-hidden className={cn('absolute top-0 bottom-0 left-0 w-[3px]', p.rail)} />
+        <span aria-hidden className={cn('absolute top-0 bottom-0 left-0 w-0.75', p.rail)} />
 
         <div className="flex items-start justify-between gap-2">
           <p className="eyebrow">{label ?? title}</p>
@@ -78,7 +78,7 @@ export const StatTile = React.forwardRef<HTMLDivElement, StatTileProps>(
           )}
         </div>
 
-        <div className="tabular mt-1.5 font-display text-[24px] leading-none font-semibold tracking-[-0.025em] text-ink sm:text-[28px]">
+        <div className="tabular mt-1.5 font-display text-[24px] leading-none font-semibold tracking-tight text-ink sm:text-[28px]">
           {value}
         </div>
 
