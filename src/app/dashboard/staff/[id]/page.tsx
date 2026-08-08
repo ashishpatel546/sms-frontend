@@ -1,17 +1,31 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
+import { Pencil, UserMinus } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
+import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 import toast from "react-hot-toast";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Panel, PanelBody, PanelHeader } from "@/components/ui/Panel";
+import { PageShell } from "@/components/ui/PageHeader";
+import { DataTable, type Column } from "@/components/ui/DataTable";
+import {
+    ProfileShell,
+    ProfileSection,
+    ReadField,
+    formatDate,
+} from "@/components/ui/ProfileShell";
 
 export default function ViewStaffPage() {
     const params = useParams();
     const id = params?.id as string;
     const rbac = useRbac();
+    const readOnly = useReadOnlySession();
     const [staff, setStaff] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -70,278 +84,169 @@ export default function ViewStaffPage() {
     if (loading) {
         return (
             <div className="flex min-h-[60vh] items-center justify-center">
-                <div className="text-slate-500 font-medium">Loading staff details...</div>
+                <div className="font-medium text-ink-muted">Loading staff details…</div>
             </div>
         );
     }
 
     if (error || !staff) {
         return (
-            <div className="p-4 sm:p-5">
-                <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg border border-red-200 text-red-600">
-                    {error || "Staff not found"}
-                    <div className="mt-4">
-                        <Link href="/dashboard/staff" className="text-blue-600 hover:underline">
-                            &larr; Back to Staff
-                        </Link>
-                    </div>
-                </div>
-            </div>
+            <PageShell>
+                <Panel>
+                    <EmptyState
+                        title="Staff member not found"
+                        description={error || "This staff record could not be loaded."}
+                        action={
+                            <Button variant="outline" render={<Link href="/dashboard/staff" />}>
+                                Back to staff
+                            </Button>
+                        }
+                    />
+                </Panel>
+            </PageShell>
         );
     }
 
     const activeAssignments = staff.subjectAssignments?.filter((a: any) => a.isActive) || [];
+    const address = staff.address ?? {};
+
+    const assignmentColumns: Column<any>[] = [
+        { key: 'subject', header: 'Subject', card: 'title', render: (row) => row.subject?.name ?? '—' },
+        { key: 'class', header: 'Class', card: 'meta', render: (row) => row.class?.name ?? '—' },
+        { key: 'section', header: 'Section', card: 'meta', render: (row) => row.section?.name ?? '—' },
+    ];
 
     return (
-        <main className="p-4 sm:p-5 space-y-6">
-            <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-slate-200">
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-6 mb-6 gap-4">
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <h2 className="text-2xl font-bold text-slate-800">
-                                {staff.firstName} {staff.lastName}
-                            </h2>
-                            <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
-                                staff.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                            }`}>
-                                {staff.isActive ? "Active" : "Inactive"}
-                            </span>
-                        </div>
-                        <p className="text-sm text-slate-500 mt-1">Staff ID: {staff.id} | Role: {staff.role || "-"}</p>
-                    </div>
-                    <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                        <Link href="/dashboard/staff" className="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 font-medium rounded-lg text-sm px-4 py-2">
-                            Back
-                        </Link>
-                        {rbac.canManageTeachers && staff.isActive && (
-                            <button
-                                type="button"
+        <>
+            <ProfileShell
+                section="Academics · Staff"
+                title={[staff.firstName, staff.lastName].filter(Boolean).join(" ") || "Staff member"}
+                subtitle={`Staff ID: ${staff.id}${staff.role ? ` · ${String(staff.role).replace(/_/g, " ")}` : ""}`}
+                status={staff.isActive ? "ACTIVE" : "INACTIVE"}
+                backHref="/dashboard/staff"
+                backLabel="Back to staff"
+                actions={rbac.canManageTeachers && (
+                    <>
+                        {staff.isActive && (
+                            <Button
+                                variant="outline"
+                                disabled={readOnly}
+                                title={readOnly ? READ_ONLY_TITLE : undefined}
                                 onClick={() => {
                                     setExitDate(new Date().toISOString().split('T')[0]);
                                     setShowExitModal(true);
                                 }}
-                                className="text-white bg-red-600 hover:bg-red-700 font-medium rounded-lg text-sm px-4 py-2"
                             >
-                                Mark Exit
-                            </button>
+                                <UserMinus />
+                                Mark exit
+                            </Button>
                         )}
-                        {rbac.canManageTeachers && (
-                            <Link href={`/dashboard/staff/${staff.id}/edit`} className="text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-sm px-4 py-2">
-                                Edit Staff
-                            </Link>
-                        )}
-                    </div>
-                </div>
+                        <Button
+                            disabled={readOnly}
+                            title={readOnly ? READ_ONLY_TITLE : undefined}
+                            render={<Link href={`/dashboard/staff/${staff.id}/edit`} />}
+                        >
+                            <Pencil />
+                            Edit staff
+                        </Button>
+                    </>
+                )}
+            >
+                <ProfileSection title="Basic information" cols={3}>
+                    <ReadField label="First name" value={staff.firstName} />
+                    <ReadField label="Last name" value={staff.lastName} />
+                    <ReadField label="Gender" value={staff.gender} />
+                    <ReadField label="Date of birth" value={formatDate(staff.dateOfBirth)} />
+                    <ReadField label="Blood group" value={staff.bloodGroup} />
+                    <ReadField label="Aadhaar number" value={staff.aadhaarNumber} />
+                </ProfileSection>
 
-                <div className="space-y-8">
-                    {/* Basic Info */}
-                    <div>
-                        <h3 className="text-md font-bold mb-4 text-slate-700 uppercase tracking-wider border-b pb-1">Basic Information</h3>
-                        <div className="grid gap-6 grid-cols-2 md:grid-cols-3">
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">First Name</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.firstName || "-"}</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Last Name</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.lastName || "-"}</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Gender</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.gender || "-"}</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Date of Birth</span>
-                                <span className="text-sm font-medium text-slate-800">
-                                    {staff.dateOfBirth ? new Date(staff.dateOfBirth).toLocaleDateString() : "-"}
-                                </span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Blood Group</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.bloodGroup || "-"}</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Aadhaar Number</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.aadhaarNumber || "-"}</span>
-                            </div>
-                        </div>
-                    </div>
+                <ProfileSection title="Contact information" cols={3}>
+                    <ReadField label="Email" value={staff.email} />
+                    <ReadField label="Mobile number" value={staff.mobile} />
+                    <ReadField label="Alternate mobile" value={staff.alternateMobile} />
+                </ProfileSection>
 
-                    {/* Contact Info */}
-                    <div>
-                        <h3 className="text-md font-bold mb-4 text-slate-700 uppercase tracking-wider border-b pb-1">Contact Information</h3>
-                        <div className="grid gap-6 grid-cols-2 md:grid-cols-3">
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Email</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.email || "-"}</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Mobile Number</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.mobile || "-"}</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Alternate Mobile</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.alternateMobile || "-"}</span>
-                            </div>
-                        </div>
-                    </div>
+                <ProfileSection title="Address details" cols={3}>
+                    <ReadField label="Address line 1" value={address.addressLine1} span="full" />
+                    <ReadField label="Address line 2" value={address.addressLine2} span="full" />
+                    <ReadField label="Landmark" value={address.landmark} />
+                    <ReadField label="City" value={address.city} />
+                    <ReadField label="State" value={address.state} />
+                    <ReadField label="Postal code" value={address.postalCode} />
+                    <ReadField label="Country" value={address.country} />
+                </ProfileSection>
 
-                    {/* Address */}
-                    <div>
-                        <h3 className="text-md font-bold mb-4 text-slate-700 uppercase tracking-wider border-b pb-1">Address Details</h3>
-                        <div className="grid gap-6 grid-cols-2">
-                            <div className="col-span-2">
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Address Line 1</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.address?.addressLine1 || "-"}</span>
-                            </div>
-                            <div className="col-span-2">
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Address Line 2</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.address?.addressLine2 || "-"}</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Landmark</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.address?.landmark || "-"}</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">City</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.address?.city || "-"}</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">State</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.address?.state || "-"}</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Postal Code</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.address?.postalCode || "-"}</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Country</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.address?.country || "-"}</span>
-                            </div>
-                        </div>
-                    </div>
+                <ProfileSection title="Demographics & family" cols={4}>
+                    <ReadField label="Father's name" value={staff.fathersName} />
+                    <ReadField label="Mother's name" value={staff.mothersName} />
+                    <ReadField label="Category" value={staff.category} />
+                    <ReadField label="Religion" value={staff.religion} />
+                </ProfileSection>
 
-                    {/* Family Details & Demographics */}
-                    <div>
-                        <h3 className="text-md font-bold mb-4 text-slate-700 uppercase tracking-wider border-b pb-1">Demographics &amp; Family</h3>
-                        <div className="grid gap-6 grid-cols-2 md:grid-cols-4">
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Father's Name</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.fathersName || "-"}</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Mother's Name</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.mothersName || "-"}</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Category</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.category || "-"}</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Religion</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.religion || "-"}</span>
-                            </div>
-                        </div>
-                    </div>
+                <ProfileSection title="Employment information" cols={3}>
+                    <ReadField label="Staff category" value={staff.staffCategory} />
+                    <ReadField label="Designation" value={staff.designation?.title} />
+                    <ReadField label="Joining date" value={formatDate(staff.joiningDate)} />
+                    <ReadField label="Exit date" value={formatDate(staff.exitDate)} />
+                </ProfileSection>
 
-                    {/* Employment Info */}
-                    <div>
-                        <h3 className="text-md font-bold mb-4 text-slate-700 uppercase tracking-wider border-b pb-1">Employment Information</h3>
-                        <div className="grid gap-6 grid-cols-2 md:grid-cols-3">
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Staff Category</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.staffCategory || "-"}</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Designation</span>
-                                <span className="text-sm font-medium text-slate-800">{staff.designation?.title || "-"}</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Joining Date</span>
-                                <span className="text-sm font-medium text-slate-800">
-                                    {staff.joiningDate ? new Date(staff.joiningDate).toLocaleDateString() : "-"}
-                                </span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-semibold text-slate-500 uppercase">Exit Date</span>
-                                <span className="text-sm font-medium text-slate-800">
-                                    {staff.exitDate ? new Date(staff.exitDate).toLocaleDateString() : "-"}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                {staff.staffCategory === 'Teaching Staff' && (
+                    <Panel>
+                        <PanelHeader title="Subject assignments" />
+                        <DataTable
+                            columns={assignmentColumns}
+                            data={activeAssignments}
+                            rowKey={(row) => row.id}
+                            emptyMessage="No active subject assignments."
+                        />
+                    </Panel>
+                )}
+            </ProfileShell>
 
-            {/* Subject Assignments (Read-Only) */}
-            {staff.staffCategory === 'Teaching Staff' && (
-                <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-slate-200">
-                    <h3 className="text-md font-bold mb-4 text-slate-700 uppercase tracking-wider border-b pb-1">Subject Assignments</h3>
-                    {activeAssignments.length === 0 ? (
-                        <p className="text-gray-500 italic text-sm">No active subject assignments.</p>
-                    ) : (
-                        <div className="relative overflow-x-auto">
-                            <table className="w-full text-sm text-left text-gray-500">
-                                <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                                    <tr>
-                                        <th scope="col" className="px-6 py-3">Subject</th>
-                                        <th scope="col" className="px-6 py-3">Class</th>
-                                        <th scope="col" className="px-6 py-3">Section</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {activeAssignments.map((assignment: any) => (
-                                        <tr key={assignment.id} className="bg-white border-b">
-                                            <td className="px-6 py-4 font-medium text-gray-900">{assignment.subject?.name}</td>
-                                            <td className="px-6 py-4">{assignment.class?.name}</td>
-                                            <td className="px-6 py-4">{assignment.section?.name}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-            )}
             {showExitModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-                        <h3 className="text-lg font-bold text-gray-900 mb-4">Mark Staff Exit</h3>
-                        <p className="text-sm text-gray-600 mb-4">
-                            You are marking exit for staff member: <span className="font-semibold text-gray-800">{staff.firstName} {staff.lastName}</span> (ID: {staff.id}). This will also deactivate their user account.
-                        </p>
-                        <form onSubmit={handleConfirmExit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Exit Date <span className="text-red-500">*</span></label>
-                                <input
-                                    type="date"
-                                    required
-                                    value={exitDate}
-                                    onChange={e => setExitDate(e.target.value)}
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
-                                />
-                            </div>
-                            <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
-                                <button
-                                    type="button"
-                                    onClick={() => { setShowExitModal(false); }}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-line-strong"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isExiting}
-                                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-300 disabled:opacity-50"
-                                >
-                                    {isExiting ? "Marking Exit..." : "Confirm Exit"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 p-4 backdrop-blur-sm">
+                    <Panel className="w-full max-w-md">
+                        <PanelHeader title="Mark staff exit" />
+                        <PanelBody>
+                            <p className="text-[13.5px] text-ink-muted">
+                                You are marking exit for{" "}
+                                <span className="font-semibold text-ink">
+                                    {staff.firstName} {staff.lastName}
+                                </span>{" "}
+                                (ID: {staff.id}). This will also deactivate their user account.
+                            </p>
+                            <form onSubmit={handleConfirmExit} className="mt-4 space-y-4">
+                                <div>
+                                    <label htmlFor="exit-date" className="eyebrow text-[10px]">
+                                        Exit date *
+                                    </label>
+                                    <input
+                                        id="exit-date"
+                                        type="date"
+                                        required
+                                        value={exitDate}
+                                        onChange={e => setExitDate(e.target.value)}
+                                        className="mt-1 block w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-[14px] text-ink focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none"
+                                    />
+                                </div>
+                                <div className="flex justify-end gap-2 border-t border-line pt-4">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setShowExitModal(false)}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button type="submit" variant="destructive" disabled={isExiting}>
+                                        {isExiting ? "Marking exit…" : "Confirm exit"}
+                                    </Button>
+                                </div>
+                            </form>
+                        </PanelBody>
+                    </Panel>
                 </div>
             )}
-        </main>
+        </>
     );
 }

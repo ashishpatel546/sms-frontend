@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import { API_BASE_URL } from "@/lib/api";
 import { toast } from "react-hot-toast";
@@ -9,8 +10,9 @@ import { useRbac } from "@/lib/rbac";
 import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 import { authFetch } from "@/lib/auth";
 import { sortByName } from "@/lib/utils";
-import { Search, Upload, UserPlus } from "lucide-react";
+import { Eye, Pencil, Search, TrendingUp, Upload, UserPlus } from "lucide-react";
 import { PageBody, PageHeader, PageShell } from "@/components/ui/PageHeader";
+import { RowActionsMenu } from "@/components/ui/RowActionsMenu";
 import { DataTable, TableCount, TableTitle, type Column } from "@/components/ui/DataTable";
 import { Pagination } from "@/components/ui/FilterBar";
 import { Field, FieldGrid, Input, Select } from "@/components/ui/Field";
@@ -30,6 +32,7 @@ export default function StudentsPage() {
     const [sessions, setSessions] = useState<any[]>([]);
     const rbac = useRbac();
     const readOnly = useReadOnlySession();
+    const router = useRouter();
 
     // Search Params
     const [searchSessionId, setSearchSessionId] = useState("");
@@ -349,14 +352,33 @@ export default function StudentsPage() {
             key: 'actions',
             header: '',
             align: 'right',
-            card: 'hidden',
+            // 'trailing' — NOT 'hidden'. On the mobile card the actions column is
+            // the only route into a student's record, so dropping it left phones
+            // with a searchable list they could not open.
+            card: 'trailing',
             render: (row) => (
-                <Link
-                    href={`/dashboard/students/${row.id}`}
-                    className="font-semibold text-brand hover:underline"
-                >
-                    View
-                </Link>
+                <RowActionsMenu
+                    label="Student actions"
+                    actions={[
+                        {
+                            label: 'View',
+                            icon: <Eye className="size-4 text-ink-faint" />,
+                            href: `/dashboard/students/${row.id}`,
+                        },
+                        rbac.canManageStudents && {
+                            label: 'Edit',
+                            icon: <Pencil className="size-4 text-ink-faint" />,
+                            href: `/dashboard/students/${row.id}/edit`,
+                            disabled: readOnly,
+                        },
+                        rbac.canManageStudents && {
+                            label: 'Promote',
+                            icon: <TrendingUp className="size-4 text-ink-faint" />,
+                            href: `/dashboard/students/${row.id}/promote`,
+                            disabled: readOnly,
+                        },
+                    ]}
+                />
             ),
         },
     ];
@@ -503,6 +525,9 @@ export default function StudentsPage() {
                         rowKey={(row) => row.id}
                         defaultSort={{ key: 'id', direction: 'asc' }}
                         emptyMessage="No students match those filters"
+                        // The whole row opens the record — on a phone the card IS
+                        // the target, and tapping a name is what people try first.
+                        onRowClick={(row) => router.push(`/dashboard/students/${row.id}`)}
                         toolbar={
                             <>
                                 <TableTitle>Students</TableTitle>
