@@ -154,14 +154,28 @@ export interface StaffAttendanceRecord {
   lng?: number;
   matchedZoneId?: number;
   overrideReason?: string;
+  /**
+   * How the **check-out** was recorded. Null/absent while the record is still
+   * open, or for legacy rows closed before the check-out audit columns existed.
+   * `method` above describes the CHECK-IN side only.
+   */
+  checkOutMethod?: AttendanceMethod | null;
+  /**
+   * Hours between check-in and check-out, computed server-side by the daily
+   * endpoint. Null when either timestamp is missing or the span is not
+   * positive — prefer this over subtracting the timestamps in the client.
+   */
+  workedHours?: number | null;
   /** Populated by the daily endpoint (HR view) */
   staff?: {
     id: number;
     employeeCode: number;
-    user?: { firstName: string; lastName: string; mobile?: string };
+    user?: { id?: number; firstName: string; lastName: string; mobile?: string };
   };
-  /** Populated by the daily endpoint when method = MANUAL or WEBAUTHN kiosk-by-admin */
+  /** Who recorded the CHECK-IN (self for geofence, HR user for manual/kiosk). */
   markedBy?: { id: number; firstName: string; lastName: string; role: string };
+  /** Who recorded the CHECK-OUT — self for geo checkout, HR user when resolved. */
+  checkOutBy?: { id: number; firstName: string; lastName: string; role: string };
 }
 
 export interface TodayAttendanceStatus {
@@ -204,6 +218,13 @@ export interface PaginatedDailyAttendance {
   /** Staff expected to mark attendance on the requested date. */
   totalStaff?: number;
   summary: DailyAttendanceSummary;
+  /**
+   * The real, ongoing "late today" count — everyone whose isLate=true for the
+   * date. Prefer this over `summary.LATE`, which counts the legacy `status
+   * === 'LATE'` value and trends toward 0 now that auto-compute never
+   * assigns it (see the `isLate` column on StaffAttendanceRecord).
+   */
+  lateArrivals?: number;
 }
 
 export interface AttendanceReportSummaryRow {
@@ -233,6 +254,16 @@ export interface AttendanceReportDetailRow {
   checkInTime: string | null;
   checkOutTime: string | null;
   workedHours: number | null;
+  /** Arrived after the late cutoff. Independent of `status` — see isLate on records. */
+  isLate: boolean;
+  /** How the check-in happened. */
+  checkInMethod: AttendanceMethod | null;
+  /** How the check-out happened; null while open or for pre-audit rows. */
+  checkOutMethod: AttendanceMethod | null;
+  /** Who recorded the check-in. */
+  markedByName: string | null;
+  /** Who recorded the check-out. */
+  checkOutByName: string | null;
 }
 
 export interface AttendanceReport {

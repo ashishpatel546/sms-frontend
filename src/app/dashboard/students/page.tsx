@@ -10,7 +10,7 @@ import { useRbac } from "@/lib/rbac";
 import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 import { authFetch } from "@/lib/auth";
 import { sortByName } from "@/lib/utils";
-import { Eye, Pencil, Search, TrendingUp, Upload, UserPlus } from "lucide-react";
+import { Eye, FileSearch, Pencil, Search, TrendingUp, Upload, UserPlus } from "lucide-react";
 import { PageBody, PageHeader, PageShell } from "@/components/ui/PageHeader";
 import { RowActionsMenu } from "@/components/ui/RowActionsMenu";
 import { DataTable, TableCount, TableTitle, type Column } from "@/components/ui/DataTable";
@@ -408,6 +408,10 @@ export default function StudentsPage() {
                 description="Search the register, then open a student for their full record."
                 actions={
                     <>
+                        <Button variant="outline" render={<Link href="/dashboard/documents" />}>
+                            <FileSearch />
+                            Document trace
+                        </Button>
                         {rbac.canManageStudents && (
                             <Button
                                 variant="outline"

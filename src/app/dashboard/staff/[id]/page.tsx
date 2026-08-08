@@ -20,6 +20,9 @@ import {
     ReadField,
     formatDate,
 } from "@/components/ui/ProfileShell";
+import { PersonPhotosSection } from "@/components/person/PersonPhotosSection";
+import { PersonDocumentsSection } from "@/components/person/PersonDocumentsSection";
+import { personUserId } from "@/lib/person-documents-api";
 
 export default function ViewStaffPage() {
     const params = useParams();
@@ -109,6 +112,7 @@ export default function ViewStaffPage() {
 
     const activeAssignments = staff.subjectAssignments?.filter((a: any) => a.isActive) || [];
     const address = staff.address ?? {};
+    const userId = personUserId(staff);
 
     const assignmentColumns: Column<any>[] = [
         { key: 'subject', header: 'Subject', card: 'title', render: (row) => row.subject?.name ?? '—' },
@@ -152,6 +156,15 @@ export default function ViewStaffPage() {
                     </>
                 )}
             >
+                <PersonPhotosSection
+                    readOnly
+                    kinds={["self"]}
+                    selfLabel="Staff photo"
+                    userId={userId}
+                    record={staff}
+                    title="Photo on file"
+                />
+
                 <ProfileSection title="Basic information" cols={3}>
                     <ReadField label="First name" value={staff.firstName} />
                     <ReadField label="Last name" value={staff.lastName} />
@@ -201,6 +214,21 @@ export default function ViewStaffPage() {
                             emptyMessage="No active subject assignments."
                         />
                     </Panel>
+                )}
+
+                {userId !== null && (
+                    <PersonDocumentsSection
+                        userId={userId}
+                        owners={["SELF"]}
+                        selfLabel="Own"
+                        showTraceLink
+                        disabled={!rbac.canManageTeachers || readOnly}
+                        disabledReason={
+                            readOnly
+                                ? READ_ONLY_TITLE
+                                : "Only sub admins and above can change what the school holds."
+                        }
+                    />
                 )}
             </ProfileShell>
 

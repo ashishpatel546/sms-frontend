@@ -6,10 +6,12 @@ import { authFetch } from "@/lib/auth";
 import toast from "react-hot-toast";
 import { GraduationCap, ClipboardCheck, Hash } from "lucide-react";
 import VisitorScanPanel from "./VisitorScanPanel";
+import IdCardScanPanel from "./IdCardScanPanel";
 
 // idle → requesting (camera perm) → scanning → verifying → confirming (step 1 & 2) → success | error
 // "visitor": a V1:-prefixed visitor QR was decoded — VisitorScanPanel takes over
-type ScanState = "idle" | "requesting" | "scanning" | "verifying" | "confirming" | "success" | "error" | "visitor";
+// "idcard":  an IDC1:-prefixed printed ID card — IdCardScanPanel takes over
+type ScanState = "idle" | "requesting" | "scanning" | "verifying" | "confirming" | "success" | "error" | "visitor" | "idcard";
 
 interface VerifyResult {
   id: string;
@@ -34,6 +36,7 @@ export default function PickupScanner() {
   const [confirmStep, setConfirmStep] = useState<1 | 2>(1);
   const [scannedToken, setScannedToken] = useState<string | null>(null);
   const [visitorToken, setVisitorToken] = useState<string | null>(null);
+  const [idCardToken, setIdCardToken] = useState<string | null>(null);
   const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
   const [enteredName, setEnteredName] = useState("");
   const [enteredPin, setEnteredPin] = useState("");
@@ -101,10 +104,21 @@ export default function PickupScanner() {
         async (decodedText: string) => {
           await scanner.stop().catch(() => {});
           html5QrScannerRef.current = null;
-          // Unified scanner: visitor QRs carry a V1: prefix, pickup QRs are raw tokens
+          // Unified scanner. Each QR family declares itself with a prefix;
+          // pickup QRs predate the convention and are raw tokens, so they are
+          // the fallthrough rather than a case.
+          //   V1:    visitor pass          → VisitorScanPanel
+          //   IDC1:  printed ID card       → IdCardScanPanel
           if (decodedText.startsWith("V1:")) {
             setVisitorToken(decodedText.slice(3));
             setScanState("visitor");
+            return;
+          }
+          if (decodedText.startsWith("IDC1:")) {
+            // The prefix stays on: /id-cards/verify signs and parses the whole
+            // string, prefix included.
+            setIdCardToken(decodedText);
+            setScanState("idcard");
             return;
           }
           setScanState("verifying");
@@ -196,6 +210,7 @@ export default function PickupScanner() {
   const handleReset = () => {
     setScannedToken(null);
     setVisitorToken(null);
+    setIdCardToken(null);
     setVerifyResult(null);
     setEnteredName("");
     setEnteredPin("");
@@ -210,6 +225,7 @@ export default function PickupScanner() {
   const restartScanner = () => {
     setScannedToken(null);
     setVisitorToken(null);
+    setIdCardToken(null);
     setVerifyResult(null);
     setEnteredName("");
     setEnteredPin("");
@@ -233,6 +249,16 @@ export default function PickupScanner() {
     );
   }
 
+  if (scanState === "idcard" && idCardToken) {
+    return (
+      <IdCardScanPanel
+        token={idCardToken}
+        onDone={restartScanner}
+        onCancel={handleReset}
+      />
+    );
+  }
+
   if (scanState === "idle") {
     return (
       <div className="flex flex-col items-center gap-6 py-8">
@@ -245,7 +271,7 @@ export default function PickupScanner() {
         </div>
         <div className="text-center space-y-1">
           <h2 className="text-white font-bold text-xl">QR Scanner</h2>
-          <p className="text-slate-400 text-sm">Scan a pickup QR or a visitor entry QR — the type is detected automatically</p>
+          <p className="text-slate-400 text-sm">Scan a pickup QR, a visitor entry QR or a printed ID card — the type is detected automatically</p>
         </div>
         <div className="px-4 py-3 bg-slate-800/60 border border-slate-700 rounded-xl text-slate-400 text-xs text-center max-w-xs">
           📷 Camera access is required. Your browser will ask for permission when you tap Start Camera. Once allowed, it stays remembered for this site.
@@ -287,7 +313,7 @@ export default function PickupScanner() {
             ✕ Cancel
           </button>
         </div>
-        <p className="text-slate-400 text-sm">Point the back camera at the parent&apos;s QR code</p>
+        <p className="text-slate-400 text-sm">Point the back camera at the QR — pickup, visitor pass or ID card</p>
         <div id="pickup-qr-reader" ref={scannerRef} className="overflow-hidden rounded-2xl border border-slate-700" />
       </div>
     );

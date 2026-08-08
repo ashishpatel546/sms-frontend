@@ -10,6 +10,9 @@ import toast from "react-hot-toast";
 import { useRbac } from "@/lib/rbac";
 import { sortByName } from "@/lib/utils";
 import { formatMobileInput, isValidMobile, MOBILE_ERROR } from "@/lib/mobile";
+import { PersonPhotosSection } from "@/components/person/PersonPhotosSection";
+import { PersonDocumentsSection } from "@/components/person/PersonDocumentsSection";
+import { personUserId } from "@/lib/person-documents-api";
 
 export default function EditStaffPage() {
     const router = useRouter();
@@ -56,6 +59,9 @@ export default function EditStaffPage() {
         },
     });
     const [assignments, setAssignments] = useState<any[]>([]);
+    // Photos and documents hang off the USER id, not the staff id.
+    const [staffRecord, setStaffRecord] = useState<any>(null);
+    const [userId, setUserId] = useState<number | null>(null);
 
     // Assignment Form State
     const [classes, setClasses] = useState<any[]>([]);
@@ -109,6 +115,8 @@ export default function EditStaffPage() {
             const teacher = await teacherRes.json();
 
             if (teacher) {
+                setStaffRecord(teacher);
+                setUserId(personUserId(teacher));
                 // Map names to ISO codes for dropdowns
                 const countryCode = teacher.address?.country 
                     ? Country.getAllCountries().find(c => 
@@ -583,6 +591,24 @@ export default function EditStaffPage() {
                             className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-brand/40" />
                         <label htmlFor="isActive" className="ml-2 text-sm font-medium text-gray-900">Account Active</label>
                     </div>
+
+                    {/* Photos & documents — each saves on its own, not on submit. */}
+                    {userId !== null && (
+                        <div className="space-y-4">
+                            <PersonPhotosSection
+                                kinds={["self"]}
+                                selfLabel="Staff photo"
+                                userId={userId}
+                                record={staffRecord}
+                            />
+                            <PersonDocumentsSection
+                                userId={userId}
+                                owners={["SELF"]}
+                                selfLabel="Own"
+                                showTraceLink
+                            />
+                        </div>
+                    )}
 
                     <div className="flex items-center space-x-4 border-t pt-6">
                         <button type="submit" disabled={saving} className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50">

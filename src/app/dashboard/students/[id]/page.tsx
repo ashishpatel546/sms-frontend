@@ -20,6 +20,9 @@ import {
     formatDate,
     formatMoney,
 } from "@/components/ui/ProfileShell";
+import { PersonPhotosSection } from "@/components/person/PersonPhotosSection";
+import { PersonDocumentsSection } from "@/components/person/PersonDocumentsSection";
+import { personUserId } from "@/lib/person-documents-api";
 
 export default function ViewStudentPage() {
     const params = useParams();
@@ -88,6 +91,8 @@ export default function ViewStudentPage() {
 
     const activeDiscounts = student.studentDiscounts?.filter((sd: any) => sd.isActive) || [];
     const address = student.address ?? {};
+    const userId = personUserId(student);
+    const hasGuardian = Boolean(student.guardianName || student.guardianRelation || student.guardianPhone);
 
     return (
         <ProfileShell
@@ -119,6 +124,15 @@ export default function ViewStudentPage() {
                 </>
             )}
         >
+            <PersonPhotosSection
+                readOnly
+                kinds={["self", "father", "mother", "guardian"]}
+                selfLabel="Student photo"
+                userId={userId}
+                record={student}
+                title="Photos on file"
+            />
+
             <ProfileSection title="Basic information" cols={3}>
                 <ReadField label="First name" value={student.firstName} />
                 <ReadField label="Last name" value={student.lastName} />
@@ -162,6 +176,14 @@ export default function ViewStudentPage() {
                 <ReadField label="Occupation" value={student.motherOccupation} />
                 <ReadField label="Annual income" value={formatMoney(student.motherIncome)} />
             </ProfileSection>
+
+            {hasGuardian && (
+                <ProfileSection title="Guardian" cols={3}>
+                    <ReadField label="Name" value={student.guardianName} />
+                    <ReadField label="Relation" value={student.guardianRelation} />
+                    <ReadField label="Phone" value={student.guardianPhone} />
+                </ProfileSection>
+            )}
 
             {sibling && (
                 <ProfileSection title="Linked sibling" cols={3}>
@@ -219,6 +241,21 @@ export default function ViewStudentPage() {
                         </ul>
                     </PanelBody>
                 </Panel>
+            )}
+
+            {userId !== null && (
+                <PersonDocumentsSection
+                    userId={userId}
+                    owners={["SELF", "FATHER", "MOTHER", "GUARDIAN"]}
+                    selfLabel="Student"
+                    showTraceLink
+                    disabled={!rbac.canManageStudents || readOnly}
+                    disabledReason={
+                        readOnly
+                            ? READ_ONLY_TITLE
+                            : "Only sub admins and above can change what the school holds."
+                    }
+                />
             )}
         </ProfileShell>
     );
