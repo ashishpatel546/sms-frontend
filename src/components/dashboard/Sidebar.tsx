@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { ChevronDown, ChevronRight, Lock, LogOut, User, X } from "lucide-react";
-import { NAV_CONFIG } from "@/lib/navConfig";
+import { NAV_CONFIG, isNavItemUnlocked } from "@/lib/navConfig";
 import { useRbac } from "@/lib/rbac";
 import { useSchoolFeatures } from "@/lib/useSchoolFeatures";
 import { useSchoolInfo } from "@/lib/useSchoolInfo";
@@ -205,7 +205,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                         const isLocked = (item: typeof visibleItems[number]) =>
                             Boolean(item.featureFlag)
                             && featureStatus === 'ready'
-                            && features[item.featureFlag!] !== true;
+                            && !isNavItemUnlocked(item.featureFlag, features);
 
                         // Shared item renderer to avoid duplication
                         const renderItems = (items: typeof visibleItems) => (

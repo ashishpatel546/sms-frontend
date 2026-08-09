@@ -86,5 +86,17 @@
   {
     "question": "Can one person hold more than one role, such as Admin and HR Admin?",
     "answer": "Yes. In **Admin Panel** → Users, click the role chips on any row (or use the three-dot menu → **Manage Roles**). The primary role stays as it is, and you tick any additional roles the person should also hold — HR Admin, Sub Admin, Librarian or Teacher. Changes take effect the next time that person signs in, so ask them to sign out and back in."
+  },
+  {
+    "question": "Who can print ID cards, and who can only see their own?",
+    "answer": "Printing the register — a whole class or the staff list — is **Sub Admin and above**. Everyone else sees just their own card: teachers, librarians, guards and students all get a **My card** tab on the ID Cards page, and the same card under **My Profile → My ID Card**. You can download your own card from either place. Nobody below Sub Admin can open anyone else's card, and that is enforced by the server rather than by hiding a button."
+  },
+  {
+    "question": "Where do I find my own ID card?",
+    "answer": "Two places, the same card: **My Profile → My ID Card**, or the **My card** tab on the ID Cards page. Use **Download my card** to save it as a PDF that prints at the standard 85.6 × 54 mm. If it says no card is issued, ask the office to check your staff or student record — cards are issued from those, not from your login."
+  },
+  {
+    "question": "Who can scan an ID card at the gate?",
+    "answer": "Every staff role, including **Guard**. Open **Scan QR** (in the Gate menu, or the Scan tab at the bottom of the screen on a phone) and point the camera at the QR on the back of the card. The same scanner reads pickup QRs, visitor passes and ID cards — it recognises which is which automatically, so there is nothing to switch between. A scan shows only what is already printed on the card, plus whether the person is still active."
   }
 ]
