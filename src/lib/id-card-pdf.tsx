@@ -1076,15 +1076,45 @@ export async function prepareIdCards(
   });
 }
 
+/**
+ * Hands a generated PDF to the browser.
+ *
+ * Two things here are deliberate, and both are about phones:
+ *
+ * 1. THE REVOKE IS DELAYED. `a.click()` only *starts* the download; the
+ *    browser reads the blob afterwards. Revoking the object URL on the next
+ *    line is a race — desktop Chrome usually finishes first, a phone often
+ *    does not, and the download dies silently with no error to catch. That is
+ *    the whole bug: "works on my laptop, does nothing on my phone".
+ *
+ * 2. THERE IS A FALLBACK for browsers that ignore `download` on a blob URL
+ *    (iOS Safari, and any installed PWA running standalone, where there is no
+ *    tab strip to reveal that something opened). Opening the blob at least
+ *    puts the PDF on screen, where the OS share sheet can save it.
+ */
 function saveBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
+  // Checked on the prototype, not the instance: `'download' in a` narrows the
+  // element to `never` in the else branch, since the DOM types insist every
+  // anchor has it. The runtime is what we actually care about here.
+  const canDownload = 'download' in HTMLAnchorElement.prototype;
   a.href = url;
   a.download = fileName;
+  a.rel = 'noopener';
+  if (!canDownload) a.target = '_blank';
   document.body.appendChild(a);
   a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  a.remove();
+
+  if (!canDownload) {
+    // Last resort: some standalone PWAs swallow the synthetic click entirely.
+    window.open(url, '_blank', 'noopener');
+  }
+
+  // Long enough for even a slow device to have read the blob; the URL is
+  // released when the tab goes away regardless.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 function slugify(value: string): string {

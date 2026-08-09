@@ -179,6 +179,27 @@ const fmtDate = (d: string) => { const [y, m, day] = d.split("-"); return `${day
 
 type ActiveSection = "home" | "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework" | "pickup" | "id-card" | "leaves" | "library" | "ai-tutor";
 
+/**
+ * Sections whose data THIS page fetches, and which therefore need the loading
+ * skeleton while it happens. Every other tab loads itself and must not raise
+ * `sectionLoading` — nothing would ever lower it, and the panel would sit
+ * behind a skeleton forever.
+ *
+ * Listed positively on purpose. This was a negative list ("every section
+ * except these six"), and the ID card tab was added without being added to it,
+ * so it hung on a permanent skeleton. A new self-contained tab now stays
+ * correct by default; only a tab that genuinely needs a page-level fetch has
+ * to be named here, and whoever adds that fetch is looking right at this list.
+ */
+const PAGE_FETCHED_SECTIONS: readonly ActiveSection[] = [
+    "fees",
+    "attendance",
+    "results",
+    "holidays",
+    "homework",
+    "leaves",
+];
+
 declare global {
     interface Window {
         Razorpay: new (opts: Record<string, unknown>) => {
@@ -668,7 +689,7 @@ export default function StudentDashboardPage() {
             else if (section === "holidays") { setSectionLoading(true); fetchHolidays(); }
         } else {
             setActiveSection(section);
-            if (section !== 'info' && section !== 'exam-schedule' && section !== 'pickup' && section !== 'home' && section !== 'library' && section !== 'ai-tutor') setSectionLoading(true);
+            if (PAGE_FETCHED_SECTIONS.includes(section)) setSectionLoading(true);
         }
     };
 

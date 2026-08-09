@@ -63,7 +63,17 @@ export function IdCardSection({ studentId }: { studentId: string | number }) {
     if (!card || !school) return;
     setSaving(true);
     try {
-      await downloadSingleIdCardPdf(card, school);
+      const { droppedImages } = await downloadSingleIdCardPdf(card, school);
+      // Say so out loud. On a phone the file lands in Downloads with no
+      // visible sign, and a silent success is indistinguishable from a dead
+      // button — which is exactly how this was reported.
+      toast.success('Saved — check your downloads for the PDF.');
+      if (droppedImages) {
+        toast('The photo could not be included — the card saves with initials.', {
+          icon: '⚠️',
+          duration: 6000,
+        });
+      }
     } catch {
       toast.error('Could not build the PDF. Please try again.');
     } finally {
