@@ -210,7 +210,7 @@ export default function ProfilePage() {
             {activeTab === "general" && (
                 <div className="bg-white shadow rounded-xl p-6 border border-slate-100">
                     <div className="flex items-center gap-6 mb-8">
-                        <div className="h-24 w-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+                        <div className="h-24 w-24 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg">
                             {user.firstName[0]}{user.lastName[0]}
                         </div>
                         <div>
@@ -222,13 +222,13 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-sm font-medium text-slate-500 mb-1">First Name</label>
-                            <div className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 min-h-[44px]">
+                            <div className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 min-h-11">
                                 {user.firstName || '\u00A0'}
                             </div>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-500 mb-1">Last Name</label>
-                            <div className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 min-h-[44px]">
+                            <div className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 min-h-11">
                                 {user.lastName || '\u00A0'}
                             </div>
                         </div>

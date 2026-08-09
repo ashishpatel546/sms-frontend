@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import toast from 'react-hot-toast';
-import { Download, IdCard, Loader2, TriangleAlert } from 'lucide-react';
+import { Ban, Download, IdCard, Loader2, TriangleAlert } from 'lucide-react';
 
 import {
   Dialog,
@@ -15,6 +15,7 @@ import {
   IdCardApiError,
   fetchStaffIdCards,
   fetchStudentIdCards,
+  isIdCardRevoked,
   type IdCardBranding,
   type IdCardRow,
 } from '@/lib/id-card-api';
@@ -170,11 +171,32 @@ export function IdCardDialog({
         {state === 'ready' && row && school ? (
           <>
             <IdCardPreview row={row} school={school} />
+            {/* Reached from the staff and student registers, which is exactly
+                where someone would idly print a card for a person who has
+                left — the gate would refuse it. */}
+            {isIdCardRevoked(row) && (
+              <div className="border-accent-danger-edge bg-accent-danger-tint flex gap-2.5 rounded-xl border p-3">
+                <Ban
+                  className="text-accent-danger-deep mt-0.5 size-4 shrink-0"
+                  aria-hidden
+                />
+                <div className="text-[12.5px] leading-relaxed">
+                  <p className="text-accent-danger-deep font-semibold">
+                    This card is revoked
+                  </p>
+                  <p className="text-ink-muted mt-1">
+                    {row.revokedReason ? `“${row.revokedReason}” — it` : 'It'} is
+                    refused at the gate and cannot be printed. Issue a new card
+                    from the ID Cards page.
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={download}
-                disabled={saving}
+                disabled={saving || isIdCardRevoked(row)}
                 className="bg-brand text-brand-contrast shadow-soft hover:bg-brand-deep hover:shadow-brand inline-flex h-10 cursor-pointer items-center gap-2 rounded-md px-4 text-[13.5px] font-semibold transition-all disabled:opacity-50"
               >
                 {saving ? (

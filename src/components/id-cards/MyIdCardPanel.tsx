@@ -3,11 +3,16 @@
 import * as React from 'react';
 import useSWR from 'swr';
 import toast from 'react-hot-toast';
-import { Download, IdCard as IdCardIcon } from 'lucide-react';
+import { Ban, Download, IdCard as IdCardIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { IdCardPreview } from '@/components/id-cards/IdCardPreview';
-import { fetchMyIdCard, type IdCardBranding, type IdCardRow } from '@/lib/id-card-api';
+import {
+  fetchMyIdCard,
+  isIdCardRevoked,
+  type IdCardBranding,
+  type IdCardRow,
+} from '@/lib/id-card-api';
 import { downloadSingleIdCardPdf } from '@/lib/id-card-pdf';
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -79,6 +84,36 @@ export function MyIdCardPanel({ className }: { className?: string }) {
             Cards are issued to students and staff. If you think this is wrong,
             ask the school office to check your profile.
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  /* A revoked card is shown rather than hidden, and the download is taken
+     away. Hiding it would leave someone wondering where their card went;
+     letting them print it would hand them plastic the gate refuses, which
+     they would only discover at the gate. */
+  if (isIdCardRevoked(data.card)) {
+    return (
+      <div className={className}>
+        <IdCardPreview row={data.card} school={data.school} />
+        <div className="border-accent-danger-edge bg-accent-danger-tint mt-3 flex gap-2.5 rounded-xl border p-3">
+          <Ban
+            className="text-accent-danger-deep mt-0.5 size-4 shrink-0"
+            aria-hidden
+          />
+          <div className="text-[12.5px] leading-relaxed">
+            <p className="text-accent-danger-deep font-semibold">
+              This card has been cancelled
+            </p>
+            <p className="text-ink-muted mt-1">
+              {data.card.revokedReason
+                ? `Recorded reason: ${data.card.revokedReason}. `
+                : ''}
+              It will not be accepted at the gate and cannot be downloaded. Ask
+              the school office to issue a new one.
+            </p>
+          </div>
         </div>
       </div>
     );

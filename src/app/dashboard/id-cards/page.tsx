@@ -6,6 +6,7 @@ import Link from 'next/link';
 import useSWR from 'swr';
 import toast, { Toaster } from 'react-hot-toast';
 import {
+  Ban,
   Download,
   GraduationCap,
   IdCard as IdCardIcon,
@@ -28,6 +29,7 @@ import {
   formatIdCardDate,
   idCardKey,
   idCardRoleLine,
+  isIdCardRevoked,
   type IdCardBatch,
   type IdCardRow,
 } from '@/lib/id-card-api';
@@ -152,8 +154,19 @@ export default function IdCardsPage() {
 
   const previewRef = React.useRef<HTMLDivElement | null>(null);
 
-  /** The holder whose card is being replaced, if the dialog is open. */
-  const [reissueRow, setReissueRow] = React.useState<IdCardRow | null>(null);
+  /**
+   * The holder whose card the lifecycle dialog is open for, and which action
+   * the operator reached for. The mode is carried here rather than left to the
+   * dialog's own default so Revoke lands on the revoke tab with its warning
+   * already on screen — an extra click to find the dangerous action is an
+   * extra chance to press the wrong one first.
+   */
+  const [cardDialog, setCardDialog] = React.useState<{
+    row: IdCardRow;
+    mode: 'reissue' | 'revoke';
+  } | null>(null);
+  const openCardDialog = (row: IdCardRow, mode: 'reissue' | 'revoke') =>
+    setCardDialog({ row, mode });
 
   /* ── Access ──────────────────────────────────────────────────────────────
      The page itself is open to anyone who holds a card, because "My Card" is
@@ -256,7 +269,16 @@ export default function IdCardsPage() {
   );
   const selectedCount = selectedList.length;
 
-  const printList = selectedCount > 0 ? selectedList : rows;
+  /* "Print the whole page" must mean the whole PRINTABLE page. A revoked card
+     silently riding along in a class batch is the one way a dead card gets
+     handed to a child, because nobody inspects 40 cards after a print run. */
+  const printableRows = React.useMemo(
+    () => rows.filter((r) => !isIdCardRevoked(r)),
+    [rows],
+  );
+  const revokedOnPage = rows.length - printableRows.length;
+
+  const printList = selectedCount > 0 ? selectedList : printableRows;
   const sheetCount = Math.ceil(printList.length / cardsPerSheet(layout));
   const withoutPhoto = printList.filter((r) => !r.photoUrl).length;
 
@@ -276,10 +298,16 @@ export default function IdCardsPage() {
     null;
 
   const pageAllSelected =
-    rows.length > 0 && rows.every((r) => selected[idCardKey(r)] !== undefined);
+    printableRows.length > 0 &&
+    printableRows.every((r) => selected[idCardKey(r)] !== undefined);
 
   /* ── Selection ───────────────────────────────────────────────────────── */
+  /* A revoked card cannot enter a print run. Printing one produces plastic the
+     gate refuses on sight, which is worse than handing over nothing — the
+     holder believes they have a card. The block lives here rather than only on
+     the button so "select all" cannot smuggle one into a batch of 200. */
   const toggleRow = React.useCallback((row: IdCardRow) => {
+    if (isIdCardRevoked(row)) return;
     const key = idCardKey(row);
     setSelected((current) => {
       const next = { ...current };
@@ -292,15 +320,17 @@ export default function IdCardsPage() {
   const toggleAllOnPage = React.useCallback(() => {
     setSelected((current) => {
       const next = { ...current };
-      const everySelected = rows.every((r) => next[idCardKey(r)] !== undefined);
-      for (const row of rows) {
+      const everySelected = printableRows.every(
+        (r) => next[idCardKey(r)] !== undefined,
+      );
+      for (const row of printableRows) {
         const key = idCardKey(row);
         if (everySelected) delete next[key];
         else next[key] = { row, at: Date.now() };
       }
       return next;
     });
-  }, [rows]);
+  }, [printableRows]);
 
   /* ── Print ───────────────────────────────────────────────────────────── */
   const buildPdf = async (cards: IdCardRow[]) => {
@@ -387,8 +417,17 @@ export default function IdCardsPage() {
         checked={selected[idCardKey(row)] !== undefined}
         onChange={() => toggleRow(row)}
         onClick={(e) => e.stopPropagation()}
-        aria-label={`Include ${row.name} in the print list`}
-        className="size-4 cursor-pointer align-middle"
+        disabled={isIdCardRevoked(row)}
+        aria-label={
+          isIdCardRevoked(row)
+            ? `${row.name}'s card is revoked and cannot be printed`
+            : `Include ${row.name} in the print list`
+        }
+        className={
+          isIdCardRevoked(row)
+            ? 'size-4 cursor-not-allowed align-middle opacity-40'
+            : 'size-4 cursor-pointer align-middle'
+        }
       />
     ),
   };
@@ -403,6 +442,10 @@ export default function IdCardsPage() {
       <div className="flex min-w-0 items-center gap-2.5">
         <PhotoDot row={row} />
         <span className="truncate font-semibold text-ink">{row.name}</span>
+        {/* A revoked holder is still on the roll, so they still appear here.
+            Without this chip the register would look no different from anyone
+            else's — and their card is dead. */}
+        {isIdCardRevoked(row) && <StatusChip status="Revoked" pigment="danger" />}
       </div>
     ),
   };
@@ -741,7 +784,7 @@ export default function IdCardsPage() {
                       type="checkbox"
                       checked={pageAllSelected}
                       onChange={toggleAllOnPage}
-                      disabled={rows.length === 0}
+                      disabled={printableRows.length === 0}
                       className="size-4 cursor-pointer"
                     />
                     Select this page
@@ -751,6 +794,14 @@ export default function IdCardsPage() {
                     <span className="inline-flex items-center gap-1.5 text-[12px] text-accent-warn-deep">
                       <ImageOff className="size-3.5" aria-hidden />
                       {withoutPhoto} without a photo — these print with initials
+                    </span>
+                  )}
+                  {/* Said out loud, because "Select this page" quietly leaving
+                      someone out otherwise reads as a bug. */}
+                  {revokedOnPage > 0 && (
+                    <span className="inline-flex items-center gap-1.5 text-[12px] text-accent-danger-deep">
+                      <Ban className="size-3.5" aria-hidden />
+                      {revokedOnPage} revoked — left out of any print run
                     </span>
                   )}
                 </>
@@ -786,12 +837,27 @@ export default function IdCardsPage() {
                       row={previewRow}
                       school={school}
                     />
+                    {isIdCardRevoked(previewRow) && (
+                      <Note title="This card is revoked" pigment="danger">
+                        {previewRow.revokedReason
+                          ? `“${previewRow.revokedReason}” — it`
+                          : 'It'}{' '}
+                        is refused at the gate and cannot be printed. Issue a
+                        new card to give {previewRow.name.split(' ')[0]} a
+                        working one.
+                      </Note>
+                    )}
                     <div className="flex flex-wrap gap-2 border-t border-line pt-3">
                       {/* "Add to run" meant nothing to an office. The button
                           says what it does: it ticks this person's checkbox in
                           the register, and Download PDF prints whoever is
                           ticked. */}
-                      <Button variant="outline" size="sm" onClick={() => toggleRow(previewRow)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleRow(previewRow)}
+                        disabled={isIdCardRevoked(previewRow)}
+                      >
                         {selected[idCardKey(previewRow)]
                           ? 'Remove from print list'
                           : 'Add to print list'}
@@ -800,7 +866,7 @@ export default function IdCardsPage() {
                         variant="secondary"
                         size="sm"
                         onClick={() => void buildOne(previewRow)}
-                        disabled={progress !== null}
+                        disabled={progress !== null || isIdCardRevoked(previewRow)}
                       >
                         <Printer className="size-3.5" aria-hidden />
                         Just this one
@@ -810,11 +876,26 @@ export default function IdCardsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setReissueRow(previewRow)}
+                        onClick={() => openCardDialog(previewRow, 'reissue')}
                       >
                         <RotateCcw className="size-3.5" aria-hidden />
-                        Replace card
+                        {isIdCardRevoked(previewRow)
+                          ? 'Issue new card'
+                          : 'Replace card'}
                       </Button>
+                      {/* Sits beside Replace because the desk reaches for them
+                          in the same breath — but it is the opposite action:
+                          this one leaves the holder with NO card. */}
+                      {!isIdCardRevoked(previewRow) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openCardDialog(previewRow, 'revoke')}
+                        >
+                          <Ban className="size-3.5" aria-hidden />
+                          Revoke
+                        </Button>
+                      )}
                     </div>
                     <p className="text-ink-faint mt-2 text-[11.5px]">
                       Issue {previewRow.issueVersion}
@@ -923,10 +1004,11 @@ export default function IdCardsPage() {
         )}
 
         <ReissueCardDialog
-          row={reissueRow}
-          open={reissueRow !== null}
+          row={cardDialog?.row ?? null}
+          initialMode={cardDialog?.mode ?? 'reissue'}
+          open={cardDialog !== null}
           onOpenChange={(next) => {
-            if (!next) setReissueRow(null);
+            if (!next) setCardDialog(null);
           }}
           // The QR itself changes, so the register has to come back from the
           // server — a cached row would print the card that was just killed.
