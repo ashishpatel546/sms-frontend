@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Table from "../../../components/Table";
 import { API_BASE_URL } from "@/lib/api";
@@ -11,8 +11,11 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
 import { authFetch } from "@/lib/auth";
 import Papa from "papaparse";
-import { MoreVertical, Eye, Pencil, UserMinus } from "lucide-react";
+import { Eye, IdCard, Pencil, UserMinus } from "lucide-react";
 import toast from "react-hot-toast";
+import { RowActionsMenu } from "@/components/ui/RowActionsMenu";
+import { IdCardDialog } from "@/components/id-cards/IdCardDialog";
+import { useFeatureFlag } from "@/lib/useSchoolFeatures";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -22,8 +25,10 @@ export default function TeachersPage() {
     const rbac = useRbac();
     const readOnly = useReadOnlySession();
 
-    const [openActionRowId, setOpenActionRowId] = useState<number | null>(null);
-    const actionMenuRef = useRef<HTMLDivElement>(null);
+    // The staff member whose ID card is open. The dialog fetches the card —
+    // a card is derived from the roster, not carried on the staff row.
+    const [idCardStaff, setIdCardStaff] = useState<{ id: number; name: string } | null>(null);
+    const idCardsEnabled = useFeatureFlag('id_cards').enabled === true;
 
     // Exit Modal States
     const [showExitModal, setShowExitModal] = useState(false);
@@ -101,17 +106,6 @@ export default function TeachersPage() {
             .catch(() => setDesignations([]));
     }, []);
 
-    // Close action menu on outside click
-    useEffect(() => {
-        const handleOutsideClick = (e: MouseEvent) => {
-            if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
-                setOpenActionRowId(null);
-            }
-        };
-        document.addEventListener('mousedown', handleOutsideClick);
-        return () => document.removeEventListener('mousedown', handleOutsideClick);
-    }, []);
-
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         setPage(1);
@@ -153,7 +147,7 @@ export default function TeachersPage() {
                 const err = await res.json();
                 toast.error(err.message || "Failed to mark exit");
             }
-        } catch (error) {
+        } catch {
             toast.error("An error occurred while marking exit");
         } finally {
             setIsExiting(false);
@@ -285,51 +279,49 @@ export default function TeachersPage() {
         },
         {
             header: "Actions",
+            // RowActionsMenu, not a hand-rolled dropdown. The previous version
+            // closed itself on `mousedown` from a document-level outside-click
+            // handler, which fired BEFORE the menu item's `click` — so View,
+            // Edit and Mark Exit all looked dead: the menu vanished and nothing
+            // happened. Base UI's menu portals the popup and owns its own open
+            // state, so that race is not expressible.
             render: (row: any) => (
-                <div className="relative" ref={openActionRowId === row.id ? actionMenuRef : undefined}>
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setOpenActionRowId(openActionRowId === row.id ? null : row.id); }}
-                        className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
-                        title="Actions"
-                    >
-                        <MoreVertical className="w-4 h-4 text-gray-500" />
-                    </button>
-                    {openActionRowId === row.id && (
-                        <div className="absolute right-0 z-20 mt-1 w-32 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
-                            <Link
-                                href={`/dashboard/staff/${row.id}`}
-                                className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                            >
-                                <Eye className="w-4 h-4 text-gray-400" />
-                                View
-                            </Link>
-                            {rbac.canManageTeachers && (
-                                <Link
-                                    href={`/dashboard/staff/${row.id}/edit`}
-                                    className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                >
-                                    <Pencil className="w-4 h-4 text-gray-400" />
-                                    Edit
-                                </Link>
-                            )}
-                            {rbac.canManageTeachers && row.isActive && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setSelectedStaffForExit(row);
-                                        setExitDate(new Date().toISOString().split('T')[0]);
-                                        setShowExitModal(true);
-                                        setOpenActionRowId(null);
-                                    }}
-                                    className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 border-t border-gray-100"
-                                >
-                                    <UserMinus className="w-4 h-4 text-red-400" />
-                                    Mark Exit
-                                </button>
-                            )}
-                        </div>
-                    )}
-                </div>
+                <RowActionsMenu
+                    label={`Actions for ${row.firstName ?? ''} ${row.lastName ?? ''}`.trim()}
+                    actions={[
+                        {
+                            label: 'View',
+                            icon: <Eye className="size-4 text-ink-faint" />,
+                            href: `/dashboard/staff/${row.id}`,
+                        },
+                        rbac.canManageTeachers && {
+                            label: 'Edit',
+                            icon: <Pencil className="size-4 text-ink-faint" />,
+                            href: `/dashboard/staff/${row.id}/edit`,
+                            disabled: readOnly,
+                        },
+                        idCardsEnabled && {
+                            label: 'View ID card',
+                            icon: <IdCard className="size-4 text-ink-faint" />,
+                            onSelect: () =>
+                                setIdCardStaff({
+                                    id: row.id,
+                                    name: `${row.firstName ?? ''} ${row.lastName ?? ''}`.trim(),
+                                }),
+                        },
+                        rbac.canManageTeachers && row.isActive && {
+                            label: 'Mark exit',
+                            icon: <UserMinus className="size-4 text-accent-danger" />,
+                            danger: true,
+                            disabled: readOnly,
+                            onSelect: () => {
+                                setSelectedStaffForExit(row);
+                                setExitDate(new Date().toISOString().split('T')[0]);
+                                setShowExitModal(true);
+                            },
+                        },
+                    ]}
+                />
             )
         }
     ];
@@ -626,6 +618,12 @@ export default function TeachersPage() {
                     </div>
                 </div>
             )}
+
+            <IdCardDialog
+                subject={idCardStaff ? { type: 'staff', ...idCardStaff } : null}
+                open={idCardStaff !== null}
+                onOpenChange={(open) => { if (!open) setIdCardStaff(null); }}
+            />
         </main>
     );
 }

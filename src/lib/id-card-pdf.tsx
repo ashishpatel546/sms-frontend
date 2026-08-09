@@ -7,11 +7,19 @@ import {
   Text,
   View,
   pdf,
+  type DocumentProps,
 } from '@react-pdf/renderer';
 import {
-  formatIdCardDate,
+  idCardAddress,
+  idCardBloodGroup,
+  idCardContact,
+  idCardFields,
   idCardInitials,
   idCardRoleLine,
+  loadIdCardPhoto,
+  toPdfSafeDataUrl,
+  getSchoolSignature,
+  toPdfSafeLogo,
   type IdCardBranding,
   type IdCardRow,
 } from './id-card-api';
@@ -128,7 +136,7 @@ const styles = StyleSheet.create({
 
   /* ── Front: masthead ─────────────────────────────────────────────────── */
   masthead: {
-    height: 36,
+    height: 34,
     backgroundColor: WALNUT,
     flexDirection: 'row',
     alignItems: 'center',
@@ -179,10 +187,13 @@ const styles = StyleSheet.create({
   brassRule: { height: 2, backgroundColor: BRASS },
 
   /* ── Front: the person ───────────────────────────────────────────────── */
-  front: { flex: 1, flexDirection: 'row', paddingHorizontal: 8, paddingTop: 7 },
+  front: { flex: 1, flexDirection: 'row', paddingHorizontal: 8, paddingTop: 5 },
   photoFrame: {
-    width: 55,
-    height: 72.3,
+    // 21 × 27 mm, close to a passport photo's 35 × 45 proportion. A face is
+    // what a card is FOR — the old 55 × 72 frame made the portrait an
+    // illustration beside the text rather than the subject of the card.
+    width: 60,
+    height: 76,
     backgroundColor: INSET,
     borderWidth: 0.6,
     borderColor: LINE_STRONG,
@@ -197,36 +208,49 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 20,
+    fontSize: 22,
     color: PAPER,
   },
   details: { flex: 1, paddingLeft: 8 },
-  holderName: { fontFamily: 'Helvetica-Bold', color: INK },
+  holderName: { fontFamily: 'Helvetica-Bold', color: INK, lineHeight: 1.1 },
   roleLine: {
-    fontFamily: 'Helvetica',
-    fontSize: 7.2,
-    color: INK_MUTED,
-    marginTop: 2,
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7,
+    color: BRASS,
+    marginTop: 2.5,
   },
-  hair: { height: 0.6, backgroundColor: LINE, marginTop: 6, marginBottom: 6 },
-  fieldRow: { flexDirection: 'row', marginBottom: 5 },
-  field: { flex: 1, paddingRight: 4 },
+  hair: { height: 0.6, backgroundColor: LINE, marginTop: 5.5, marginBottom: 5 },
+  /* One field per LINE, label left and value right, rather than a 2 × 2 grid.
+     Two columns at this size meant 4.4 pt labels and values that collided with
+     a long name; a single column gives each value the whole card width and
+     cannot run out of vertical room as fields are added. */
+  fieldRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 3.6,
+  },
   fieldLabel: {
+    width: 40,
     fontFamily: 'Courier-Bold',
-    fontSize: 4.4,
-    letterSpacing: 0.55,
+    fontSize: 4.6,
+    letterSpacing: 0.5,
     color: INK_FAINT,
   },
   fieldValue: {
+    flex: 1,
     fontFamily: 'Helvetica-Bold',
     fontSize: 7.2,
     color: INK,
-    marginTop: 1.5,
   },
 
-  /* ── Front: the strip that gets read in a hurry ──────────────────────── */
+  /* ── Front: the band that gets read in a hurry ─────────────────────────
+     Blood group, where the holder lives, and the number to ring — the three
+     things an adult needs when a child is hurt, lost, or being collected by
+     a stranger. One band, same place on every card in the school, so nobody
+     hunts. Everything about WHO the holder is stays in the grid above; this
+     band is only about reaching them. */
   emergency: {
-    height: 21,
+    height: 24,
     backgroundColor: PAPER_TINT,
     borderTopWidth: 0.6,
     borderTopColor: LINE,
@@ -234,18 +258,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8,
   },
+  /* The address is the one value on the card that genuinely cannot be capped:
+     `address` is line 1 + line 2 + city + state + postcode joined together, so
+     a real one runs past any single line this band can offer. It gets its own
+     smaller size and TWO lines, which fits every address in the seed data and
+     degrades to an ellipsis rather than a lie for the few that don't. */
+  addressValue: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 6.2,
+    lineHeight: 1.2,
+    color: INK,
+    marginTop: 1,
+  },
+  /* The pill is ALWAYS drawn, even with no blood group on file — it goes
+     muted and reads "—" instead of vanishing. A stack of cards where the
+     accent appears on some and not others looks misprinted, and the fixed
+     slot is also what keeps the address starting at the same x on every
+     card. Width is fixed for the same reason: "AB+" must not shove the
+     address further right than "O-". */
   bloodPill: {
-    backgroundColor: VERMILION,
-    paddingHorizontal: 4.5,
-    paddingVertical: 2,
+    width: 26,
+    paddingVertical: 2.2,
     borderRadius: 2,
-    marginRight: 6,
+    marginRight: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bloodPillFilled: { backgroundColor: VERMILION },
+  bloodPillEmpty: {
+    backgroundColor: PAPER,
+    borderWidth: 0.6,
+    borderColor: LINE_STRONG,
   },
   bloodPillText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7.5,
+    fontSize: 7.6,
     color: PAPER,
   },
+  bloodPillTextEmpty: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7.6,
+    color: INK_FAINT,
+  },
+  stripCell: { marginRight: 9 },
   stripLabel: {
     fontFamily: 'Courier-Bold',
     fontSize: 4.2,
@@ -254,7 +309,7 @@ const styles = StyleSheet.create({
   },
   stripValue: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7.4,
+    fontSize: 7,
     color: INK,
     marginTop: 1,
   },
@@ -279,10 +334,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     color: MARIGOLD,
   },
-  backBody: { flex: 1, flexDirection: 'row', paddingHorizontal: 8, paddingTop: 7 },
+  backBody: { flex: 1, flexDirection: 'row', paddingHorizontal: 8, paddingTop: 6 },
   qrFrame: {
-    width: 74,
-    height: 74,
+    // 27 mm square. A phone camera at arm's length in a queue wants every
+    // module it can get; this is the largest square the back can spare.
+    width: 78,
+    height: 78,
     backgroundColor: PAPER,
     borderWidth: 0.6,
     borderColor: LINE_STRONG,
@@ -296,11 +353,26 @@ const styles = StyleSheet.create({
     fontSize: 4.2,
     letterSpacing: 0.5,
     color: INK_FAINT,
-    marginTop: 3,
+    marginTop: 2.5,
     textAlign: 'center',
-    width: 74,
+    width: 78,
   },
   backText: { flex: 1, paddingLeft: 9 },
+  /* The holder, named on the back too. A card face-down on a desk, or a stack
+     waiting to be handed out, is otherwise anonymous. */
+  backHolder: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 8,
+    color: INK,
+    lineHeight: 1.1,
+  },
+  backHolderMeta: {
+    fontFamily: 'Helvetica',
+    fontSize: 5.8,
+    color: INK_MUTED,
+    marginTop: 1.5,
+    marginBottom: 5,
+  },
   eyebrow: {
     fontFamily: 'Courier-Bold',
     fontSize: 4.4,
@@ -346,6 +418,11 @@ const styles = StyleSheet.create({
   },
   signBlock: { width: 74, alignItems: 'center' },
   signRule: { width: 74, height: 0.6, backgroundColor: LINE_STRONG },
+  /* The signature sits ON the rule, not above a gap — that is how a signed
+     document looks. Fixed height so a tall scan cannot push the footer into
+     the QR, `objectFit: contain` so it is never stretched. */
+  signImage: { width: 64, height: 15, objectFit: 'contain', marginBottom: 1 },
+  signSpacer: { height: 16 },
   signLabel: {
     fontFamily: 'Courier-Bold',
     fontSize: 3.9,
@@ -388,11 +465,9 @@ const styles = StyleSheet.create({
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.field}>
+    <View style={styles.fieldRow}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <Text style={[styles.fieldValue, styles.clip1]}>
-        {value}
-      </Text>
+      <Text style={[styles.fieldValue, styles.clip1]}>{value}</Text>
     </View>
   );
 }
@@ -414,18 +489,34 @@ export interface PreparedIdCard {
   photoDataUrl: string | null;
 }
 
+/**
+ * The two school-level images a card draws, resolved to data URLs before any
+ * rendering starts. They travel together because they share a lifecycle: both
+ * are fetched once per document, both are dropped together when a render has
+ * to fall back, and neither may be a remote URL (react-pdf would fetch it, and
+ * one failed fetch rejects the whole document).
+ */
+export interface IdCardAssets {
+  logoDataUrl: string | null;
+  /** Null when the school has not uploaded one — the card prints a blank rule. */
+  signatureDataUrl: string | null;
+}
+
 interface FaceProps {
   card: PreparedIdCard;
   school: IdCardBranding;
-  logoDataUrl: string | null;
+  assets: IdCardAssets;
 }
 
 /* ── Front ───────────────────────────────────────────────────────────────── */
 
-export function IdCardFront({ card, school, logoDataUrl }: FaceProps) {
+export function IdCardFront({ card, school, assets }: FaceProps) {
   const { row } = card;
   const isStudent = row.type === 'STUDENT';
-  const guardian = row.fathersName ?? row.guardianName;
+  // One per line. Class, section, roll and designation are NOT here — the
+  // line under the name already says them.
+  const fields = idCardFields(row);
+  const bloodGroup = idCardBloodGroup(row);
 
   return (
     <View style={styles.card}>
@@ -433,8 +524,8 @@ export function IdCardFront({ card, school, logoDataUrl }: FaceProps) {
       <View style={styles.body}>
         <View style={styles.masthead}>
           <View style={styles.logoTile}>
-            {logoDataUrl ? (
-              <Image src={logoDataUrl} style={styles.logoImg} />
+            {assets.logoDataUrl ? (
+              <Image src={assets.logoDataUrl} style={styles.logoImg} />
             ) : (
               <Text style={styles.logoFallback}>
                 {idCardInitials(school.name)}
@@ -487,57 +578,39 @@ export function IdCardFront({ card, school, logoDataUrl }: FaceProps) {
             </Text>
             <View style={styles.hair} />
 
-            {isStudent ? (
-              <>
-                <View style={styles.fieldRow}>
-                  <Field label="CLASS" value={classLabel(row)} />
-                  <Field
-                    label="ROLL NO"
-                    value={row.rollNo != null ? String(row.rollNo) : '—'}
-                  />
-                </View>
-                <View style={styles.fieldRow}>
-                  <Field label="DATE OF BIRTH" value={formatIdCardDate(row.dob)} />
-                  <Field label="GUARDIAN" value={guardian ?? '—'} />
-                </View>
-              </>
-            ) : (
-              <>
-                <View style={styles.fieldRow}>
-                  <Field
-                    label="EMPLOYEE CODE"
-                    value={row.employeeCode != null ? String(row.employeeCode) : '—'}
-                  />
-                  <Field label="DEPARTMENT" value={row.department ?? '—'} />
-                </View>
-                <View style={styles.fieldRow}>
-                  <Field label="DESIGNATION" value={row.designation ?? '—'} />
-                  <Field label="DATE OF BIRTH" value={formatIdCardDate(row.dob)} />
-                </View>
-              </>
-            )}
+            {fields.map((field) => (
+              <Field key={field.label} label={field.label} value={field.value} />
+            ))}
           </View>
         </View>
 
-        {/* The one strip somebody reads in an emergency. */}
+        {/* The band somebody reads under pressure — always in the same place
+            on every card in the school, so nobody has to hunt for it. */}
         <View style={styles.emergency}>
-          {row.bloodGroup ? (
-            <View style={styles.bloodPill}>
-              <Text style={styles.bloodPillText}>{row.bloodGroup}</Text>
-            </View>
-          ) : null}
-          <View style={{ width: 46 }}>
-            <Text style={styles.stripLabel}>BLOOD GROUP</Text>
-            {!row.bloodGroup ? (
-              <Text style={styles.stripValue}>Not recorded</Text>
-            ) : null}
+          <View
+            style={[
+              styles.bloodPill,
+              bloodGroup ? styles.bloodPillFilled : styles.bloodPillEmpty,
+            ]}
+          >
+            <Text
+              style={bloodGroup ? styles.bloodPillText : styles.bloodPillTextEmpty}
+            >
+              {bloodGroup ?? '—'}
+            </Text>
           </View>
-          <View style={{ flex: 1, alignItems: 'flex-end' }}>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={styles.stripLabel}>ADDRESS</Text>
+            <Text style={[styles.addressValue, styles.clip2]}>
+              {idCardAddress(row)}
+            </Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
             <Text style={styles.stripLabel}>
               {isStudent ? 'PARENT CONTACT' : 'CONTACT'}
             </Text>
             <Text style={[styles.stripValue, styles.clip1]}>
-              {row.mobile ?? school.phone ?? '—'}
+              {idCardContact(row, school)}
             </Text>
           </View>
         </View>
@@ -546,14 +619,9 @@ export function IdCardFront({ card, school, logoDataUrl }: FaceProps) {
   );
 }
 
-function classLabel(row: IdCardRow): string {
-  if (!row.className) return '—';
-  return row.section ? `${row.className} — ${row.section}` : row.className;
-}
-
 /* ── Back ────────────────────────────────────────────────────────────────── */
 
-export function IdCardBack({ card, school }: FaceProps) {
+export function IdCardBack({ card, school, assets }: FaceProps) {
   const { row } = card;
 
   return (
@@ -578,16 +646,17 @@ export function IdCardBack({ card, school }: FaceProps) {
           </View>
 
           <View style={styles.backText}>
+            <Text style={[styles.backHolder, styles.clip1]}>{row.name}</Text>
+            <Text style={[styles.backHolderMeta, styles.clip1]}>
+              {idCardRoleLine(row)}
+            </Text>
+
             <Text style={styles.eyebrow}>IF FOUND</Text>
             <Text style={styles.returnCopy}>
-              Please return this card to the school office, or hand it in at the
-              address below.
-            </Text>
-            <Text style={[styles.returnSchool, styles.clip2]}>
-              {school.name}
+              Please return this card to the school office.
             </Text>
             {school.address ? (
-              <Text style={[styles.returnDetail, styles.clip3]}>
+              <Text style={[styles.returnDetail, styles.clip2]}>
                 {school.address}
               </Text>
             ) : null}
@@ -606,6 +675,13 @@ export function IdCardBack({ card, school }: FaceProps) {
             transferable and must be surrendered on leaving.
           </Text>
           <View style={styles.signBlock}>
+            {assets.signatureDataUrl ? (
+              <Image src={assets.signatureDataUrl} style={styles.signImage} />
+            ) : (
+              // No signature on file: leave the space so the office can sign
+              // by hand, exactly as before the upload feature existed.
+              <View style={styles.signSpacer} />
+            )}
             <View style={styles.signRule} />
             <Text style={styles.signLabel}>AUTHORISED SIGNATORY</Text>
           </View>
@@ -706,11 +782,11 @@ function Sheet({
 export function IdCardBatchDocument({
   cards,
   school,
-  logoDataUrl,
+  assets,
 }: {
   cards: PreparedIdCard[];
   school: IdCardBranding;
-  logoDataUrl: string | null;
+  assets: IdCardAssets;
 }) {
   const sheets = chunk(cards, CARDS_PER_SHEET);
   const guidance =
@@ -729,7 +805,7 @@ export function IdCardBatchDocument({
         >
           {sheet.map((card, i) => (
             <View key={`f-${i}`} style={styles.slot}>
-              <IdCardFront card={card} school={school} logoDataUrl={logoDataUrl} />
+              <IdCardFront card={card} school={school} assets={assets} />
             </View>
           ))}
         </Sheet>,
@@ -740,7 +816,7 @@ export function IdCardBatchDocument({
           {backSlots(sheet).map((card, i) => (
             <View key={`b-${i}`} style={styles.slot}>
               {card ? (
-                <IdCardBack card={card} school={school} logoDataUrl={logoDataUrl} />
+                <IdCardBack card={card} school={school} assets={assets} />
               ) : null}
             </View>
           ))}
@@ -750,12 +826,39 @@ export function IdCardBatchDocument({
   );
 }
 
-/* ── One card, for a parent or a reprint ─────────────────────────────────────
-   Stacked rather than side by side: a parent prints this at home and cuts it
-   out, and two faces one above the other survive an off-centre A4 feed. */
+/* ── Side by side: both faces of one card, on one row ────────────────────────
+   The layout a school with an ordinary printer actually uses. Front and back
+   land next to each other on ONE sheet, so you cut two rectangles and glue
+   them back to back — no duplex printer, no second pass, and no chance of the
+   back of card 3 ending up behind the front of card 4.
 
-const single = StyleSheet.create({
-  page: { backgroundColor: PAPER, paddingTop: 56, alignItems: 'center' },
+   The two faces are placed as a single row and never wrap: 2 × 242.65 pt plus
+   an 18 pt gutter is 503.3 pt, comfortably inside A4's 595.28 pt. */
+
+const PAIR_GAP = 18;
+const PAIR_W = CARD_W * 2 + PAIR_GAP;
+/** Four cards down an A4 sheet: 4 × 153.07 + gutters, plus the caption. */
+export const PAIRS_PER_SHEET = 4;
+const PAIR_ROW_GAP = 14;
+
+const pair = StyleSheet.create({
+  page: {
+    backgroundColor: PAPER,
+    paddingTop: 40,
+    paddingBottom: 34,
+    paddingHorizontal: (A4_W - PAIR_W) / 2,
+  },
+  row: { flexDirection: 'row', width: PAIR_W },
+  gutter: { width: PAIR_GAP },
+  rowGap: { height: PAIR_ROW_GAP },
+  faceLabels: { flexDirection: 'row', width: PAIR_W, marginBottom: 4 },
+  faceLabel: {
+    width: CARD_W,
+    fontFamily: 'Courier-Bold',
+    fontSize: 5,
+    letterSpacing: 0.8,
+    color: INK_FAINT,
+  },
   title: { fontFamily: 'Helvetica-Bold', fontSize: 13, color: INK },
   subtitle: {
     fontFamily: 'Courier-Bold',
@@ -763,57 +866,126 @@ const single = StyleSheet.create({
     letterSpacing: 0.8,
     color: INK_FAINT,
     marginTop: 5,
-    marginBottom: 26,
+    marginBottom: 22,
   },
-  faceLabel: {
+  caption: {
     fontFamily: 'Courier-Bold',
     fontSize: 5.5,
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
     color: INK_FAINT,
-    width: CARD_W,
-    marginBottom: 4,
+    marginBottom: 16,
   },
-  gapAfterFront: { height: 26 },
   note: {
     fontFamily: 'Helvetica',
     fontSize: 7.5,
     color: INK_MUTED,
-    width: CARD_W,
-    marginTop: 26,
+    marginTop: 22,
     lineHeight: 1.45,
   },
 });
 
+/** Both faces of one card, on one row, with FRONT / BACK called out above. */
+function FacePair({
+  card,
+  school,
+  assets,
+  labelled,
+}: FaceProps & { labelled?: boolean }) {
+  return (
+    <View wrap={false}>
+      {labelled ? (
+        <View style={pair.faceLabels}>
+          <Text style={pair.faceLabel}>FRONT</Text>
+          <View style={pair.gutter} />
+          <Text style={pair.faceLabel}>BACK</Text>
+        </View>
+      ) : null}
+      <View style={pair.row}>
+        <IdCardFront card={card} school={school} assets={assets} />
+        <View style={pair.gutter} />
+        <IdCardBack card={card} school={school} assets={assets} />
+      </View>
+    </View>
+  );
+}
+
+const PRINT_NOTE =
+  'Print at 100% — do not select "fit to page", or the card will not match a ' +
+  'standard CR80 holder. Cut along the hairline around each face, then glue ' +
+  'the two back to back.';
+
+/** One card, for a parent or a reprint — front and back on the same row. */
 export function IdCardSingleDocument({
   card,
   school,
-  logoDataUrl,
+  assets,
 }: {
   card: PreparedIdCard;
   school: IdCardBranding;
-  logoDataUrl: string | null;
+  assets: IdCardAssets;
 }) {
   return (
     <Document title={`ID card — ${card.row.name}`} author={school.name}>
-      <Page size="A4" style={single.page}>
-        <Text style={single.title}>{card.row.name}</Text>
-        <Text style={single.subtitle}>
+      <Page size="A4" style={pair.page}>
+        <Text style={pair.title}>{card.row.name}</Text>
+        <Text style={pair.subtitle}>
           {school.name.toUpperCase()}
           {school.session ? ` · ${school.session}` : ''}
         </Text>
 
-        <Text style={single.faceLabel}>FRONT</Text>
-        <IdCardFront card={card} school={school} logoDataUrl={logoDataUrl} />
-        <View style={single.gapAfterFront} />
-        <Text style={single.faceLabel}>BACK</Text>
-        <IdCardBack card={card} school={school} logoDataUrl={logoDataUrl} />
+        <FacePair
+          card={card}
+          school={school}
+          assets={assets}
+          labelled
+        />
 
-        <Text style={single.note}>
-          Print at 100% — do not select &quot;fit to page&quot;, or the card
-          will not match a standard card holder. Cut along the hairline, then
-          glue the two faces back to back.
-        </Text>
+        <Text style={pair.note}>{PRINT_NOTE}</Text>
       </Page>
+    </Document>
+  );
+}
+
+/**
+ * A print run laid out the same way: four cards a sheet, each one's front and
+ * back side by side. Slower to finish by hand than duplex, but it works on
+ * every printer in every school office — which is the point.
+ */
+export function IdCardPairBatchDocument({
+  cards,
+  school,
+  assets,
+}: {
+  cards: PreparedIdCard[];
+  school: IdCardBranding;
+  assets: IdCardAssets;
+}) {
+  const sheets = chunk(cards, PAIRS_PER_SHEET);
+
+  return (
+    <Document
+      title={`ID cards — ${school.name}`}
+      author={school.name}
+      subject="Printable identity cards"
+    >
+      {sheets.map((sheet, index) => (
+        <Page key={`pair-${index}`} size="A4" style={pair.page}>
+          <Text style={pair.caption}>
+            {`Sheet ${index + 1} of ${sheets.length} · FRONT AND BACK SIDE BY SIDE · ${PRINT_NOTE}`}
+          </Text>
+          {sheet.map((card, i) => (
+            <React.Fragment key={`p-${i}`}>
+              {i > 0 ? <View style={pair.rowGap} /> : null}
+              <FacePair
+                card={card}
+                school={school}
+                assets={assets}
+                labelled={i === 0}
+              />
+            </React.Fragment>
+          ))}
+        </Page>
+      ))}
     </Document>
   );
 }
@@ -829,16 +1001,22 @@ async function toDataUrl(url: string): Promise<string | null> {
   try {
     const res = await fetch(url);
     if (!res.ok) return null;
-    const blob = await res.blob();
-    return await new Promise<string | null>((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
+    return await toPdfSafeDataUrl(await res.blob());
   } catch {
     return null;
   }
+}
+
+/**
+ * The school logo, made safe AND small.
+ *
+ * Two separate hazards: a format react-pdf cannot decode takes the whole
+ * document down (a card with no logo is merely plainer), and a full-resolution
+ * upload embedded at 20 pt is pure weight — one school's 1500 px logo was
+ * 2 MB, more than every card on the sheet combined.
+ */
+async function safeLogoDataUrl(): Promise<string | null> {
+  return toPdfSafeLogo(await getSchoolLogoDataUrl());
 }
 
 /** Resolve N promises a few at a time — 100 parallel S3 GETs help nobody. */
@@ -875,7 +1053,7 @@ export async function prepareIdCards(
 
   let done = 0;
   return mapPooled(rows, 6, async (row) => {
-    const [qrDataUrl, photoDataUrl] = await Promise.all([
+    const [qrDataUrl, proxied] = await Promise.all([
       QRCode.toDataURL(row.qrToken, {
         errorCorrectionLevel: 'M',
         margin: 0,
@@ -885,8 +1063,13 @@ export async function prepareIdCards(
         width: 480,
         color: { dark: '#1c150dff', light: '#ffffffff' },
       }),
-      row.photoUrl ? toDataUrl(row.photoUrl) : Promise.resolve(null),
+      loadIdCardPhoto(row),
     ]);
+    // The proxy is the route that works; the presigned S3 URL is only tried
+    // if the proxy is unavailable (an older API), and it usually fails on
+    // CORS — hence the fallback rather than the other way round.
+    const photoDataUrl =
+      proxied ?? (row.photoUrl ? await toDataUrl(row.photoUrl) : null);
     done += 1;
     onProgress?.(done, rows.length);
     return { row, qrDataUrl, photoDataUrl };
@@ -913,51 +1096,141 @@ function slugify(value: string): string {
   );
 }
 
+/**
+ * How a batch is arranged on paper.
+ *
+ * · `sideBySide` — each card's front and back next to each other on one row,
+ *   four cards a sheet. Works on any printer; you cut and glue.
+ * · `duplex` — whole sheets of fronts and whole sheets of backs, with the
+ *   backs' columns mirrored for long-edge flipping. Fewer manual steps, but
+ *   only for a school with a duplex printer.
+ *
+ * `sideBySide` is the default because it is the one that cannot go wrong.
+ */
+export type IdCardPrintLayout = 'sideBySide' | 'duplex';
+
 export interface IdCardPdfOptions {
   fileName?: string;
+  layout?: IdCardPrintLayout;
   onProgress?: (done: number, total: number) => void;
 }
 
-/** Batch print sheets. Returns the number of sheets produced. */
+/** Cards that fit on one sheet under the given layout. */
+export function cardsPerSheet(layout: IdCardPrintLayout): number {
+  return layout === 'duplex' ? CARDS_PER_SHEET : PAIRS_PER_SHEET;
+}
+
+/**
+ * Renders a document, and if the render throws, renders it AGAIN without any
+ * photos or logo.
+ *
+ * react-pdf treats an image it cannot decode as fatal to the whole document,
+ * not to that one image — so a single unreadable portrait used to turn into
+ * "Could not build the PDF" for an entire class. A card with an initials tile
+ * is a card; no PDF at all is a school that cannot print today. The caller is
+ * told which happened so it can say so.
+ */
+async function renderWithImageFallback(
+  cards: PreparedIdCard[],
+  assets: IdCardAssets,
+  build: (
+    cards: PreparedIdCard[],
+    assets: IdCardAssets,
+  ) => React.ReactElement<DocumentProps>,
+): Promise<{ blob: Blob; droppedImages: boolean }> {
+  try {
+    return {
+      blob: await pdf(build(cards, assets)).toBlob(),
+      droppedImages: false,
+    };
+  } catch {
+    // Second attempt with NO images at all — portraits, logo and signature.
+    // Any one of them can be the undecodable file, and a plain card beats no
+    // card at all.
+    const stripped = cards.map((card) => ({ ...card, photoDataUrl: null }));
+    const noAssets: IdCardAssets = {
+      logoDataUrl: null,
+      signatureDataUrl: null,
+    };
+    return {
+      blob: await pdf(build(stripped, noAssets)).toBlob(),
+      droppedImages: true,
+    };
+  }
+}
+
+/** Resolves the school-level images a document needs, once. */
+async function loadAssets(school: IdCardBranding): Promise<IdCardAssets> {
+  const [logoDataUrl, signatureDataUrl] = await Promise.all([
+    safeLogoDataUrl(),
+    getSchoolSignature(school),
+  ]);
+  return { logoDataUrl, signatureDataUrl };
+}
+
+/** What a download did, so the UI can be honest about a degraded print. */
+export interface IdCardPdfResult {
+  /** Sheets of PAPER produced. */
+  sheets: number;
+  /** True when photos had to be dropped for the document to render at all. */
+  droppedImages: boolean;
+}
+
+/** Batch print sheets. */
 export async function downloadIdCardBatchPdf(
   rows: IdCardRow[],
   school: IdCardBranding,
   options: IdCardPdfOptions = {},
-): Promise<number> {
-  const [cards, logoDataUrl] = await Promise.all([
+): Promise<IdCardPdfResult> {
+  const layout = options.layout ?? 'sideBySide';
+  const [cards, assets] = await Promise.all([
     prepareIdCards(rows, options.onProgress),
-    getSchoolLogoDataUrl(),
+    loadAssets(school),
   ]);
 
-  const blob = await pdf(
-    <IdCardBatchDocument cards={cards} school={school} logoDataUrl={logoDataUrl} />,
-  ).toBlob();
+  const { blob, droppedImages } = await renderWithImageFallback(
+    cards,
+    assets,
+    (c, a) =>
+      layout === 'duplex' ? (
+        <IdCardBatchDocument cards={c} school={school} assets={a} />
+      ) : (
+        <IdCardPairBatchDocument cards={c} school={school} assets={a} />
+      ),
+  );
 
   saveBlob(
     blob,
     options.fileName ?? `id-cards-${slugify(school.name)}-${rows.length}.pdf`,
   );
-  return Math.ceil(rows.length / CARDS_PER_SHEET);
+
+  const sheets = Math.ceil(rows.length / cardsPerSheet(layout));
+  return {
+    // Duplex prints each sheet twice over — fronts, then backs.
+    sheets: layout === 'duplex' ? sheets * 2 : sheets,
+    droppedImages,
+  };
 }
 
-/** One card, front and back, on a single A4 page. */
+/** One card, front and back side by side on a single A4 page. */
 export async function downloadSingleIdCardPdf(
   row: IdCardRow,
   school: IdCardBranding,
   options: IdCardPdfOptions = {},
-): Promise<void> {
-  const [cards, logoDataUrl] = await Promise.all([
+): Promise<IdCardPdfResult> {
+  const [cards, assets] = await Promise.all([
     prepareIdCards([row], options.onProgress),
-    getSchoolLogoDataUrl(),
+    loadAssets(school),
   ]);
 
-  const blob = await pdf(
-    <IdCardSingleDocument
-      card={cards[0]}
-      school={school}
-      logoDataUrl={logoDataUrl}
-    />,
-  ).toBlob();
+  const { blob, droppedImages } = await renderWithImageFallback(
+    cards,
+    assets,
+    (c, a) => (
+      <IdCardSingleDocument card={c[0]} school={school} assets={a} />
+    ),
+  );
 
   saveBlob(blob, options.fileName ?? `id-card-${slugify(row.name)}.pdf`);
+  return { sheets: 1, droppedImages };
 }

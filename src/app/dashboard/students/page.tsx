@@ -10,16 +10,18 @@ import { useRbac } from "@/lib/rbac";
 import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 import { authFetch } from "@/lib/auth";
 import { sortByName } from "@/lib/utils";
-import { Eye, FileSearch, Pencil, Search, TrendingUp, Upload, UserPlus } from "lucide-react";
+import { Eye, FileSearch, IdCard, Pencil, Search, TrendingUp, Upload, UserPlus } from "lucide-react";
 import { PageBody, PageHeader, PageShell } from "@/components/ui/PageHeader";
 import { RowActionsMenu } from "@/components/ui/RowActionsMenu";
+import { IdCardDialog } from "@/components/id-cards/IdCardDialog";
+import { useFeatureFlag } from "@/lib/useSchoolFeatures";
 import { DataTable, TableCount, TableTitle, type Column } from "@/components/ui/DataTable";
 import { Pagination } from "@/components/ui/FilterBar";
 import { Field, FieldGrid, Input, Select } from "@/components/ui/Field";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/button";
-import { Note, Panel } from "@/components/ui/Panel";
+import { Panel } from "@/components/ui/Panel";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -33,6 +35,10 @@ export default function StudentsPage() {
     const rbac = useRbac();
     const readOnly = useReadOnlySession();
     const router = useRouter();
+    // The student whose ID card is open. The dialog fetches the card itself —
+    // a card is derived from the roster, not carried on the student row.
+    const [idCardStudent, setIdCardStudent] = useState<{ id: number; name: string } | null>(null);
+    const idCardsEnabled = useFeatureFlag('id_cards').enabled === true;
 
     // Search Params
     const [searchSessionId, setSearchSessionId] = useState("");
@@ -151,7 +157,7 @@ export default function StudentsPage() {
                 setCommittedSessionId(searchSessionId);
                 setCommittedStatus(searchStatus);
             }
-        } catch (err) {
+        } catch {
             toast.error("Failed to fetch students");
         } finally {
             setLoading(false);
@@ -266,7 +272,7 @@ export default function StudentsPage() {
                     fetchStudents(1); // Refresh list
                 }
             }
-        } catch (error) {
+        } catch {
             toast.error("An error occurred during bulk import");
         } finally {
             setBulkUploading(false);
@@ -365,6 +371,18 @@ export default function StudentsPage() {
                             icon: <Eye className="size-4 text-ink-faint" />,
                             href: `/dashboard/students/${row.id}`,
                         },
+                        // Hidden outright when the school is not on the ID
+                        // cards plan — an action that can only ever open an
+                        // upsell is worse than no action.
+                        idCardsEnabled && {
+                            label: 'View ID card',
+                            icon: <IdCard className="size-4 text-ink-faint" />,
+                            onSelect: () =>
+                                setIdCardStudent({
+                                    id: row.id,
+                                    name: `${row.firstName ?? ''} ${row.lastName ?? ''}`.trim(),
+                                }),
+                        },
                         rbac.canManageStudents && {
                             label: 'Edit',
                             icon: <Pencil className="size-4 text-ink-faint" />,
@@ -384,21 +402,8 @@ export default function StudentsPage() {
     ];
 
 
-    const getPageNumbers = () => {
-        const pages: (number | '...')[] = [];
-        if (totalPages <= 7) {
-            for (let i = 1; i <= totalPages; i++) pages.push(i);
-        } else {
-            pages.push(1);
-            if (page > 3) pages.push('...');
-            const start = Math.max(2, page - 1);
-            const end = Math.min(totalPages - 1, page + 1);
-            for (let i = start; i <= end; i++) pages.push(i);
-            if (page < totalPages - 2) pages.push('...');
-            pages.push(totalPages);
-        }
-        return pages;
-    };
+    // (The page-number window used to be built here; <Pagination/> owns that
+    //  now, so the local copy was dead code.)
 
     return (
         <PageShell>
@@ -688,6 +693,12 @@ export default function StudentsPage() {
                         </div>
                     </div>
                 )}
+
+            <IdCardDialog
+                subject={idCardStudent ? { type: 'student', ...idCardStudent } : null}
+                open={idCardStudent !== null}
+                onOpenChange={(open) => { if (!open) setIdCardStudent(null); }}
+            />
         </PageShell>
     );
 }

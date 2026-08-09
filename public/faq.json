@@ -54,5 +54,37 @@
   {
     "question": "How to change password for user?",
     "answer": "On both parent and staff portal we have **Profile** Section -> **Security & Login**. Here you can change password."
+  },
+  {
+    "question": "How do I print student or staff ID cards?",
+    "answer": "Go to **ID Cards** in the sidebar (under Academics). Pick a class and section — or switch to the **Staff** tab and filter by department — then tick the people you want and click **Download PDF**. Tapping any row shows the card at actual size before you commit to a print run, and **Just this one** prints a single card for a reprint. ID cards are a plan feature; if the menu item is missing, ask your super admin to enable it from Billing."
+  },
+  {
+    "question": "My printer cannot print on both sides. Can I still print ID cards?",
+    "answer": "Yes. In the **How it prints** panel choose **Side by side** (this is the default): each card's front and back land next to each other on the same row, four cards to an A4 sheet. Cut around both faces and glue them back to back. Choose **Double-sided** only if you have a duplex printer — it puts ten cards on a sheet with fronts and backs on separate pages, and you must set your printer to flip on the **long edge**. Either way, set scaling to **100%**; \"fit to page\" shrinks the card out of standard CR80 size."
+  },
+  {
+    "question": "How do I add a student's or staff member's photo to their ID card?",
+    "answer": "Edit the person (**Students** or **Staff** → three-dot menu → **Edit**) and use the **Photos** section. You can upload from a file or take a picture with a phone camera, then crop it — the system compresses the image for you, so there is no need to resize it first. Anyone without a photo still gets a printable card; it simply shows their initials instead of a portrait."
+  },
+  {
+    "question": "Can I put our school's signature on the ID cards?",
+    "answer": "Yes. On the **ID Cards** page, the **Authorised signatory** panel lets you upload a signature image (PNG with a transparent background works best, up to 1 MB). It then prints on the back of every card. Use **Remove** to go back to a blank rule you sign by hand, and **Refresh** if another administrator has just changed it and you are still seeing the old one. Only an Admin or above can change it."
+  },
+  {
+    "question": "Can a parent see their child's ID card?",
+    "answer": "Yes. Parents see the card on their child's page in the parent portal and can save it as a PDF — the same card the office prints, front and back on one sheet. The printed card still comes from the school office; the parent copy is for their records."
+  },
+  {
+    "question": "What happens when someone scans the QR code on an ID card?",
+    "answer": "Open **Scan QR** under Gate and point the camera at the code on the back of the card. The screen shows whether the card is valid, the holder's photo and name, and the details printed on the card — class and roll number, blood group, parents' names and the contact number — so a guard can check the card against the person holding it and ring the right parent. The QR itself carries no personal details: it is a signed reference the school looks up when scanned, so a card from another school will not verify, and a card belonging to someone who has left is reported as no longer valid."
+  },
+  {
+    "question": "Where do I record Aadhaar, PAN and other documents?",
+    "answer": "Edit the student or staff member and use the **Documents** section. You can tick a document as collected without attaching anything, or attach a scan. To see who is still missing paperwork across the whole school, use the **Document trace** link on the Students page."
+  },
+  {
+    "question": "Can one person hold more than one role, such as Admin and HR Admin?",
+    "answer": "Yes. In **Admin Panel** → Users, click the role chips on any row (or use the three-dot menu → **Manage Roles**). The primary role stays as it is, and you tick any additional roles the person should also hold — HR Admin, Sub Admin, Librarian or Teacher. Changes take effect the next time that person signs in, so ask them to sign out and back in."
   }
 ]

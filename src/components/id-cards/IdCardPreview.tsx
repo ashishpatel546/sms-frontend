@@ -5,8 +5,14 @@ import QRCode from 'react-qr-code';
 import { RotateCw } from 'lucide-react';
 import {
   formatIdCardDate,
+  getSchoolSignature,
+  idCardAddress,
+  idCardBloodGroup,
+  idCardContact,
+  idCardFields,
   idCardInitials,
   idCardRoleLine,
+  loadIdCardPhoto,
   type IdCardBranding,
   type IdCardRow,
 } from '@/lib/id-card-api';
@@ -78,15 +84,28 @@ const clip: React.CSSProperties = {
 const mono = 'ui-monospace, "IBM Plex Mono", "Cascadia Mono", monospace';
 const sans = 'Helvetica, Arial, sans-serif';
 
+/**
+ * react-pdf lays text out at its own leading; a browser uses whatever
+ * `line-height` it inherits from the page. Left to inherit, the dashboard's
+ * body leading (1.5–1.6) made every line taller than the print, the details
+ * column grew past its share of a fixed-height card, and the bottom band was
+ * pushed off the bottom edge — the card looked cropped below the last field.
+ *
+ * So the card pins its own leading. Every text element here either uses this
+ * value or states its own, and none inherits from the page.
+ */
+const LEADING = 1.2;
+
 function Label({ children }: { children: React.ReactNode }) {
   return (
     <span
       style={{
         fontFamily: mono,
-        fontSize: p(4.4),
+        fontSize: p(4.2),
         letterSpacing: p(0.55),
         color: C.inkFaint,
         fontWeight: 700,
+        lineHeight: LEADING,
       }}
     >
       {children}
@@ -94,9 +113,52 @@ function Label({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** One field per line: label left at a fixed width, value filling the rest. */
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ flex: 1, paddingRight: p(4), minWidth: 0 }}>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'baseline',
+        marginBottom: p(3.6),
+        minWidth: 0,
+      }}
+    >
+      <span
+        style={{
+          width: p(40),
+          flex: 'none',
+          fontFamily: mono,
+          fontWeight: 700,
+          fontSize: p(4.6),
+          letterSpacing: p(0.5),
+          color: C.inkFaint,
+          lineHeight: LEADING,
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          ...clip,
+          flex: 1,
+          minWidth: 0,
+          fontFamily: sans,
+          fontWeight: 700,
+          fontSize: p(7.2),
+          color: C.ink,
+          lineHeight: LEADING,
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function StripCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ marginRight: p(9), minWidth: 0 }}>
       <div>
         <Label>{label}</Label>
       </div>
@@ -105,9 +167,10 @@ function Field({ label, value }: { label: string; value: string }) {
           ...clip,
           fontFamily: sans,
           fontWeight: 700,
-          fontSize: p(7.2),
+          fontSize: p(7),
           color: C.ink,
-          marginTop: p(1.5),
+          marginTop: p(1),
+          lineHeight: LEADING,
         }}
       >
         {value}
@@ -125,27 +188,56 @@ function Spine() {
   );
 }
 
+/**
+ * The portrait, with one fallback step before it gives up.
+ *
+ * `photoUrl` is a presigned S3 link — normally fine in an `<img>`. When it is
+ * not (an expired link on a page left open, or a bucket that refuses the
+ * request), we ask our own API for the bytes instead, which is the same route
+ * the PDF uses. Only if that also fails do we fall back to the initials tile,
+ * so the preview and the print agree about whether a photo exists.
+ */
 function Photo({ row }: { row: IdCardRow }) {
   const [failed, setFailed] = React.useState(false);
-  const showPhoto = Boolean(row.photoUrl) && !failed;
+  const [proxied, setProxied] = React.useState<string | null>(null);
+
+  // Reset during render rather than in an effect, so moving to another holder
+  // never paints the previous face for a frame.
+  const [shownToken, setShownToken] = React.useState(row.qrToken);
+  if (shownToken !== row.qrToken) {
+    setShownToken(row.qrToken);
+    setFailed(false);
+    setProxied(null);
+  }
+
+  const onImageError = React.useCallback(() => {
+    void loadIdCardPhoto(row).then((dataUrl) => {
+      if (dataUrl) setProxied(dataUrl);
+      else setFailed(true);
+    });
+  }, [row]);
+
+  const src = proxied ?? row.photoUrl;
+  const showPhoto = Boolean(src) && !failed;
 
   return (
     <div
       style={{
-        width: p(55),
-        height: p(72.3),
+        width: p(60),
+        height: p(76),
         background: C.inset,
         border: `${p(0.6)}px solid ${C.lineStrong}`,
         padding: p(1.5),
         flex: 'none',
+        boxSizing: 'border-box',
       }}
     >
       {showPhoto ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={row.photoUrl ?? ''}
+          src={src ?? ''}
           alt=""
-          onError={() => setFailed(true)}
+          onError={onImageError}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
       ) : (
@@ -159,7 +251,7 @@ function Photo({ row }: { row: IdCardRow }) {
             color: C.paper,
             fontFamily: sans,
             fontWeight: 700,
-            fontSize: p(20),
+            fontSize: p(22),
           }}
         >
           {idCardInitials(row.name)}
@@ -169,16 +261,14 @@ function Photo({ row }: { row: IdCardRow }) {
   );
 }
 
-function classLabel(row: IdCardRow): string {
-  if (!row.className) return '—';
-  return row.section ? `${row.className} — ${row.section}` : row.className;
-}
-
 /* ── Front ───────────────────────────────────────────────────────────────── */
 
 function Front({ row, school }: { row: IdCardRow; school: IdCardBranding }) {
   const isStudent = row.type === 'STUDENT';
-  const guardian = row.fathersName ?? row.guardianName;
+  // Exactly the field set the PDF prints — one helper feeds both, so the
+  // preview cannot drift from the thing that comes out of the printer.
+  const fields = idCardFields(row);
+  const bloodGroup = idCardBloodGroup(row);
 
   return (
     <div
@@ -189,6 +279,7 @@ function Front({ row, school }: { row: IdCardRow; school: IdCardBranding }) {
         display: 'flex',
         border: `${p(0.5)}px solid ${C.lineStrong}`,
         boxSizing: 'border-box',
+        lineHeight: LEADING,
       }}
     >
       <Spine />
@@ -196,7 +287,7 @@ function Front({ row, school }: { row: IdCardRow; school: IdCardBranding }) {
         {/* Masthead */}
         <div
           style={{
-            height: p(36),
+            height: p(34),
             background: C.walnut,
             display: 'flex',
             alignItems: 'center',
@@ -292,7 +383,7 @@ function Front({ row, school }: { row: IdCardRow; school: IdCardBranding }) {
         <div style={{ height: p(2), background: C.brass, flex: 'none' }} />
 
         {/* The person */}
-        <div style={{ flex: 1, display: 'flex', padding: `${p(7)}px ${p(8)}px 0`, minHeight: 0 }}>
+        <div style={{ flex: 1, display: 'flex', padding: `${p(5)}px ${p(8)}px 0`, minHeight: 0 }}>
           <Photo row={row} />
           <div style={{ flex: 1, paddingLeft: p(8), minWidth: 0 }}>
             <div
@@ -302,7 +393,7 @@ function Front({ row, school }: { row: IdCardRow; school: IdCardBranding }) {
                 fontWeight: 700,
                 fontSize: p(nameSize(row.name)),
                 color: C.ink,
-                lineHeight: 1.15,
+                lineHeight: 1.1,
               }}
             >
               {row.name}
@@ -311,9 +402,11 @@ function Front({ row, school }: { row: IdCardRow; school: IdCardBranding }) {
               style={{
                 ...clip,
                 fontFamily: sans,
-                fontSize: p(7.2),
-                color: C.inkMuted,
-                marginTop: p(2),
+                fontWeight: 700,
+                fontSize: p(7),
+                color: C.brass,
+                marginTop: p(2.5),
+                lineHeight: LEADING,
               }}
             >
               {idCardRoleLine(row)}
@@ -322,95 +415,90 @@ function Front({ row, school }: { row: IdCardRow; school: IdCardBranding }) {
               style={{
                 height: p(0.6),
                 background: C.line,
-                margin: `${p(6)}px 0`,
+                marginTop: p(5.5),
+                marginBottom: p(5),
               }}
             />
-            {isStudent ? (
-              <>
-                <div style={{ display: 'flex', marginBottom: p(5) }}>
-                  <Field label="CLASS" value={classLabel(row)} />
-                  <Field label="ROLL NO" value={row.rollNo != null ? String(row.rollNo) : '—'} />
-                </div>
-                <div style={{ display: 'flex' }}>
-                  <Field label="DATE OF BIRTH" value={formatIdCardDate(row.dob)} />
-                  <Field label="GUARDIAN" value={guardian ?? '—'} />
-                </div>
-              </>
-            ) : (
-              <>
-                <div style={{ display: 'flex', marginBottom: p(5) }}>
-                  <Field
-                    label="EMPLOYEE CODE"
-                    value={row.employeeCode != null ? String(row.employeeCode) : '—'}
-                  />
-                  <Field label="DEPARTMENT" value={row.department ?? '—'} />
-                </div>
-                <div style={{ display: 'flex' }}>
-                  <Field label="DESIGNATION" value={row.designation ?? '—'} />
-                  <Field label="DATE OF BIRTH" value={formatIdCardDate(row.dob)} />
-                </div>
-              </>
-            )}
+            {fields.map((field) => (
+              <Field key={field.label} label={field.label} value={field.value} />
+            ))}
           </div>
         </div>
 
-        {/* The strip read in an emergency */}
+        {/* The band read under pressure: blood group, where they live, who to
+            ring. The pill is always drawn — muted with an em dash when no
+            blood group is on file — so a stack of cards keeps one rhythm and
+            the address always starts at the same x. */}
         <div
           style={{
-            height: p(21),
+            height: p(24),
             background: C.paperTint,
             borderTop: `${p(0.6)}px solid ${C.line}`,
             display: 'flex',
             alignItems: 'center',
             padding: `0 ${p(8)}px`,
             flex: 'none',
+            boxSizing: 'border-box',
           }}
         >
-          {row.bloodGroup ? (
-            <span
+          <span
+            style={{
+              width: p(26),
+              flex: 'none',
+              display: 'grid',
+              placeItems: 'center',
+              background: bloodGroup ? C.vermilion : C.paper,
+              border: bloodGroup
+                ? 'none'
+                : `${p(0.6)}px solid ${C.lineStrong}`,
+              color: bloodGroup ? C.paper : C.inkFaint,
+              fontFamily: sans,
+              fontWeight: 700,
+              fontSize: p(7.6),
+              padding: `${p(2.2)}px 0`,
+              borderRadius: p(2),
+              marginRight: p(7),
+              boxSizing: 'border-box',
+              lineHeight: LEADING,
+            }}
+          >
+            {bloodGroup ?? '—'}
+          </span>
+          <div style={{ flex: 1, minWidth: 0, marginRight: p(8) }}>
+            <Label>ADDRESS</Label>
+            {/* Two lines, matching the PDF: `address` is line 1 + line 2 +
+                city + state + postcode, so one line truncates real addresses. */}
+            <div
               style={{
-                background: C.vermilion,
-                color: C.paper,
+                display: '-webkit-box',
+                WebkitBoxOrient: 'vertical',
+                WebkitLineClamp: 2,
+                overflow: 'hidden',
                 fontFamily: sans,
                 fontWeight: 700,
-                fontSize: p(7.5),
-                padding: `${p(2)}px ${p(4.5)}px`,
-                borderRadius: p(2),
-                marginRight: p(6),
+                fontSize: p(6.2),
+                color: C.ink,
+                marginTop: p(1),
+                lineHeight: 1.2,
               }}
             >
-              {row.bloodGroup}
-            </span>
-          ) : null}
-          <div style={{ width: p(46) }}>
-            <Label>BLOOD GROUP</Label>
-            {!row.bloodGroup ? (
-              <div
-                style={{
-                  fontFamily: sans,
-                  fontWeight: 700,
-                  fontSize: p(7.4),
-                  color: C.ink,
-                  marginTop: p(1),
-                }}
-              >
-                Not recorded
-              </div>
-            ) : null}
+              {idCardAddress(row)}
+            </div>
           </div>
-          <div style={{ flex: 1, textAlign: 'right', minWidth: 0 }}>
+          <div style={{ textAlign: 'right', minWidth: 0, flex: 'none' }}>
             <Label>{isStudent ? 'PARENT CONTACT' : 'CONTACT'}</Label>
             <div
               style={{
                 ...clip,
                 fontFamily: sans,
                 fontWeight: 700,
-                fontSize: p(7.4),
+                fontSize: p(7),
                 color: C.ink,
                 marginTop: p(1),
+                lineHeight: LEADING,
               }}
             >
-              {row.mobile ?? school.phone ?? '—'}
+              {idCardContact(row, school)}
             </div>
           </div>
         </div>
@@ -421,7 +509,41 @@ function Front({ row, school }: { row: IdCardRow; school: IdCardBranding }) {
 
 /* ── Back ────────────────────────────────────────────────────────────────── */
 
+/**
+ * The signature, from the module-level cache keyed on `signatureUpdatedAt`.
+ * A hundred previews in a session share one fetch; a re-upload changes the
+ * key and the next read refetches by itself.
+ */
+function useSchoolSignature(school: IdCardBranding): string | null {
+  const key = school.signatureUpdatedAt;
+  const [loaded, setLoaded] = React.useState<{
+    key: string | null;
+    url: string | null;
+  }>({ key: null, url: null });
+
+  React.useEffect(() => {
+    if (!key) return;
+    let cancelled = false;
+    void getSchoolSignature(school).then((dataUrl) => {
+      if (!cancelled) setLoaded({ key, url: dataUrl });
+    });
+    return () => {
+      cancelled = true;
+    };
+    // Keyed on the upload timestamp, not the object identity: `school` is a
+    // fresh object on every SWR revalidation and would refetch endlessly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  // Derived rather than stored, so a school with no signature — and the gap
+  // while a replacement is in flight — falls back to the blank rule without an
+  // effect writing state on the way past.
+  return loaded.key === key ? loaded.url : null;
+}
+
 function Back({ row, school }: { row: IdCardRow; school: IdCardBranding }) {
+  const signature = useSchoolSignature(school);
+
   return (
     <div
       style={{
@@ -470,12 +592,12 @@ function Back({ row, school }: { row: IdCardRow; school: IdCardBranding }) {
           </span>
         </div>
 
-        <div style={{ flex: 1, display: 'flex', padding: `${p(7)}px ${p(8)}px 0`, minHeight: 0 }}>
+        <div style={{ flex: 1, display: 'flex', padding: `${p(6)}px ${p(8)}px 0`, minHeight: 0 }}>
           <div style={{ flex: 'none' }}>
             <div
               style={{
-                width: p(74),
-                height: p(74),
+                width: p(78),
+                height: p(78),
                 background: C.paper,
                 border: `${p(0.6)}px solid ${C.lineStrong}`,
                 padding: p(2.5),
@@ -492,14 +614,15 @@ function Back({ row, school }: { row: IdCardRow; school: IdCardBranding }) {
             </div>
             <div
               style={{
-                width: p(74),
+                width: p(78),
                 textAlign: 'center',
                 fontFamily: mono,
                 fontWeight: 700,
                 fontSize: p(4.2),
                 letterSpacing: p(0.5),
                 color: C.inkFaint,
-                marginTop: p(3),
+                marginTop: p(2.5),
+                lineHeight: LEADING,
               }}
             >
               SCAN AT THE GATE
@@ -509,11 +632,37 @@ function Back({ row, school }: { row: IdCardRow; school: IdCardBranding }) {
           <div style={{ flex: 1, paddingLeft: p(9), minWidth: 0 }}>
             <div
               style={{
+                ...clip,
+                fontFamily: sans,
+                fontWeight: 700,
+                fontSize: p(8),
+                color: C.ink,
+                lineHeight: 1.1,
+              }}
+            >
+              {row.name}
+            </div>
+            <div
+              style={{
+                ...clip,
+                fontFamily: sans,
+                fontSize: p(5.8),
+                color: C.inkMuted,
+                marginTop: p(1.5),
+                marginBottom: p(5),
+                lineHeight: LEADING,
+              }}
+            >
+              {idCardRoleLine(row)}
+            </div>
+            <div
+              style={{
                 fontFamily: mono,
                 fontWeight: 700,
                 fontSize: p(4.4),
                 letterSpacing: p(0.7),
                 color: C.brass,
+                lineHeight: LEADING,
               }}
             >
               IF FOUND
@@ -527,19 +676,7 @@ function Back({ row, school }: { row: IdCardRow; school: IdCardBranding }) {
                 marginTop: p(3),
               }}
             >
-              Please return this card to the school office, or hand it in at the
-              address below.
-            </div>
-            <div
-              style={{
-                fontFamily: sans,
-                fontWeight: 700,
-                fontSize: p(6.6),
-                color: C.ink,
-                marginTop: p(4),
-              }}
-            >
-              {school.name}
+              Please return this card to the school office.
             </div>
             {school.address ? (
               <div
@@ -594,6 +731,31 @@ function Back({ row, school }: { row: IdCardRow; school: IdCardBranding }) {
             and must be surrendered on leaving.
           </div>
           <div style={{ width: p(74), textAlign: 'center', flex: 'none' }}>
+            {/* The signature sits ON the rule, as on a signed document. The
+                slot is reserved either way so the footer does not jump when a
+                school uploads one. */}
+            <div
+              style={{
+                height: p(16),
+                display: 'flex',
+                alignItems: 'flex-end',
+                justifyContent: 'center',
+              }}
+            >
+              {signature ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={signature}
+                  alt=""
+                  style={{
+                    maxWidth: p(64),
+                    maxHeight: p(15),
+                    objectFit: 'contain',
+                    marginBottom: p(1),
+                  }}
+                />
+              ) : null}
+            </div>
             <div style={{ height: p(0.6), background: C.lineStrong }} />
             <div
               style={{
@@ -689,10 +851,14 @@ export function IdCardPreview({
   const [face, setFace] = React.useState<'front' | 'back'>('front');
 
   // A new holder always opens on the front — nobody wants to land on the back
-  // of the next card because they turned the last one over.
-  React.useEffect(() => {
+  // of the next card because they turned the last one over. Adjusted during
+  // render (React's documented pattern) rather than in an effect, so the card
+  // never paints the wrong face for a frame first.
+  const [shownFor, setShownFor] = React.useState(row.qrToken);
+  if (shownFor !== row.qrToken) {
+    setShownFor(row.qrToken);
     setFace('front');
-  }, [row.qrToken]);
+  }
 
   return (
     <div className={cn('w-full', className)}>
@@ -700,7 +866,7 @@ export function IdCardPreview({
         className="rounded-xl bg-surface-inset p-3 shadow-soft sm:p-4"
         style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.4)' }}
       >
-        <div className="mx-auto w-full max-w-[420px]">
+        <div className="mx-auto w-full max-w-105">
           <IdCardFace row={row} school={school} face={face} />
         </div>
       </div>
