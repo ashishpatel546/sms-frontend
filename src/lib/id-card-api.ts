@@ -82,6 +82,19 @@ export interface IdCardRow {
   issueVersion: number;
   /** Last day the gate honours it (ISO date), or null if no session is set. */
   validUntil: string | null;
+  /**
+   * Set when this card has been CANCELLED with nothing issued in its place —
+   * reported stolen, or handed back when the holder left. The holder is still
+   * on the roll, so they appear in the register; the card simply does not work.
+   * Printing it would produce plastic the gate refuses, so the UI blocks that.
+   */
+  revokedAt: string | null;
+  revokedReason: string | null;
+}
+
+/** True when this card has been cancelled and not replaced. */
+export function isIdCardRevoked(row: IdCardRow): boolean {
+  return row.revokedAt != null;
 }
 
 export type IdCardSubject = 'STUDENT' | 'STAFF';
@@ -127,8 +140,17 @@ export interface IdCardBatch {
  * EXPIRED is the office's problem and the holder is still who they say they
  * are; REPLACED means someone is at the gate with a card that was reported
  * lost. A guard acts differently on each.
+ *
+ * REVOKED is the fourth failure and the one with no remedy at the gate: the
+ * card was cancelled and nothing was printed to replace it, so there is no
+ * "ask for the current card" to offer.
  */
-export type IdCardStatus = 'VALID' | 'EXPIRED' | 'REPLACED' | 'INACTIVE';
+export type IdCardStatus =
+  | 'VALID'
+  | 'EXPIRED'
+  | 'REPLACED'
+  | 'REVOKED'
+  | 'INACTIVE';
 
 export interface IdCardVerifyResult {
   status: IdCardStatus;
@@ -282,6 +304,29 @@ export function reissueIdCard(
   reason: string,
 ): Promise<IdCardIssueHistory> {
   return getJson<IdCardIssueHistory>('/id-cards/reissue', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subject, subjectId, reason }),
+  });
+}
+
+/**
+ * Cancels someone's card with NOTHING issued in its place.
+ *
+ * The difference from `reissueIdCard` is what the holder walks away with: a
+ * reissue hands them a working card, a revocation leaves them with none. That
+ * is the right action for a card reported stolen, or for someone who has left
+ * — printing a replacement for a leaver is the opposite of the intent.
+ *
+ * Reversible: reissuing afterwards mints the next issue and they are carrying
+ * a live card again.
+ */
+export function revokeIdCard(
+  subject: IdCardSubject,
+  subjectId: number,
+  reason: string,
+): Promise<IdCardIssueHistory> {
+  return getJson<IdCardIssueHistory>('/id-cards/revoke', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ subject, subjectId, reason }),

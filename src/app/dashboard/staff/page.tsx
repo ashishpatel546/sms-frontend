@@ -11,7 +11,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
 import { authFetch } from "@/lib/auth";
 import Papa from "papaparse";
-import { Eye, IdCard, Pencil, UserMinus } from "lucide-react";
+import { AlertTriangle, Eye, IdCard, Pencil, UserMinus } from "lucide-react";
 import toast from "react-hot-toast";
 import { RowActionsMenu } from "@/components/ui/RowActionsMenu";
 import { IdCardDialog } from "@/components/id-cards/IdCardDialog";
@@ -35,6 +35,13 @@ export default function TeachersPage() {
     const [selectedStaffForExit, setSelectedStaffForExit] = useState<any>(null);
     const [exitDate, setExitDate] = useState(new Date().toISOString().split('T')[0]);
     const [isExiting, setIsExiting] = useState(false);
+    /* Revoking the ID card defaults to ON, and that default is the whole point.
+       Deactivating the account already makes the gate refuse the card — but
+       only while the account stays deactivated. Reinstate someone next year and
+       the card they never handed back starts working again. Leaving this to be
+       remembered is leaving it undone. */
+    const [revokeIdCard, setRevokeIdCard] = useState(true);
+    const [idCardRevokeReason, setIdCardRevokeReason] = useState("");
 
     // Search Params
     const [searchId, setSearchId] = useState("");
@@ -135,11 +142,21 @@ export default function TeachersPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     exitDate: exitDate,
-                    isActive: false
+                    isActive: false,
+                    // Handled in the SAME request as the exit, server-side, so
+                    // the two can never end up disagreeing — an exit recorded
+                    // while the card quietly stayed live is the exact state
+                    // this is here to prevent.
+                    revokeIdCard: idCardsEnabled && revokeIdCard,
+                    idCardRevokeReason: idCardRevokeReason.trim() || undefined,
                 })
             });
             if (res.ok) {
-                toast.success("Staff exit marked successfully");
+                toast.success(
+                    idCardsEnabled && revokeIdCard
+                        ? "Exit marked and ID card revoked"
+                        : "Staff exit marked successfully"
+                );
                 setShowExitModal(false);
                 setSelectedStaffForExit(null);
                 fetchTeachers(page, pageSize);
@@ -317,6 +334,11 @@ export default function TeachersPage() {
                             onSelect: () => {
                                 setSelectedStaffForExit(row);
                                 setExitDate(new Date().toISOString().split('T')[0]);
+                                // Back to the safe default for each person —
+                                // an unticked box left over from the last exit
+                                // would silently leave a live card behind.
+                                setRevokeIdCard(true);
+                                setIdCardRevokeReason("");
                                 setShowExitModal(true);
                             },
                         },
@@ -597,6 +619,52 @@ export default function TeachersPage() {
                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                 />
                             </div>
+
+                            {/* ── The ID card goes with them ─────────────────
+                                Marking an exit without retiring the card is the
+                                gap this closes: deactivating the account makes
+                                the gate refuse the card only for as long as the
+                                account stays deactivated, so a reinstatement a
+                                year later quietly brings the old card back to
+                                life. Ticked by default; unticking is a decision
+                                the operator has to look at. */}
+                            {idCardsEnabled && (
+                                <div className="rounded-lg border border-gray-200 p-3">
+                                    <label className="flex items-start gap-2.5 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={revokeIdCard}
+                                            onChange={e => setRevokeIdCard(e.target.checked)}
+                                            className="mt-0.5 size-4 cursor-pointer"
+                                        />
+                                        <span className="text-sm">
+                                            <span className="font-medium text-gray-900">Revoke their ID card</span>
+                                            <span className="block text-xs text-gray-500 mt-0.5">
+                                                The card stops working at the gate immediately, and stays dead even if the account is reactivated later.
+                                            </span>
+                                        </span>
+                                    </label>
+
+                                    {revokeIdCard ? (
+                                        <input
+                                            value={idCardRevokeReason}
+                                            onChange={e => setIdCardRevokeReason(e.target.value)}
+                                            maxLength={500}
+                                            placeholder={`Staff exit on ${exitDate}`}
+                                            className="mt-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
+                                            aria-label="Reason recorded against the revoked card"
+                                        />
+                                    ) : (
+                                        <p className="mt-2.5 flex gap-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-800">
+                                            <AlertTriangle className="size-4 shrink-0 mt-px" aria-hidden />
+                                            <span>
+                                                Their card will keep working if this account is ever reactivated. Revoke it later from <span className="font-medium">ID Cards</span> — but they will not appear in that register once they are inactive.
+                                            </span>
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
                             <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
                                 <button
                                     type="button"

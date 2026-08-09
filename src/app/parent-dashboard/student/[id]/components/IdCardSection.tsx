@@ -2,13 +2,14 @@
 
 import * as React from 'react';
 import toast from 'react-hot-toast';
-import { Download, IdCard, ShieldCheck } from 'lucide-react';
+import { Ban, Download, IdCard, ShieldCheck } from 'lucide-react';
 
 import FeatureNotAvailableNotice from '@/components/parent/FeatureNotAvailableNotice';
 import IdCardPreview from '@/components/id-cards/IdCardPreview';
 import {
   IdCardApiError,
   fetchParentStudentIdCard,
+  isIdCardRevoked,
   type IdCardBranding,
   type IdCardRow,
 } from '@/lib/id-card-api';
@@ -119,11 +120,38 @@ export function IdCardSection({ studentId }: { studentId: string | number }) {
 
       <IdCardPreview row={card} school={school} />
 
+      {/* The parent is the person most likely to be caught out by a revoked
+          card — they are not in the office when it happens, and the first they
+          would otherwise know is their child being turned away at the gate. */}
+      {isIdCardRevoked(card) && (
+        <div className="rounded-xl border border-accent-danger-edge bg-accent-danger-tint p-4">
+          <div className="flex gap-2.5">
+            <Ban
+              className="mt-0.5 size-4 shrink-0 text-accent-danger-deep"
+              aria-hidden
+            />
+            <div className="text-[12.5px] leading-relaxed text-ink-muted">
+              <p className="text-[13.5px] font-semibold text-accent-danger-deep">
+                This card has been cancelled by the school
+              </p>
+              <p className="mt-1">
+                {card.revokedReason
+                  ? `Recorded reason: ${card.revokedReason}. `
+                  : ''}
+                It will not be accepted at the gate, so it cannot be saved. The
+                office will issue a new card — this page updates on its own once
+                they do.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={download}
-          disabled={saving}
+          disabled={saving || isIdCardRevoked(card)}
           className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-md bg-brand px-4 text-[14px] font-semibold text-brand-contrast shadow-soft transition-all hover:bg-brand-deep hover:shadow-brand disabled:opacity-50"
         >
           {saving ? (

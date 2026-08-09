@@ -129,11 +129,13 @@ export default function IdCardScanPanel({ token, onDone, onCancel }: IdCardScanP
         ]
   ).filter((d): d is { label: string; value: string } => Boolean(d.value) && d.value !== '—');
 
-  /* A guard gets one line to act on, and the four failures are NOT the same
+  /* A guard gets one line to act on, and the failures are NOT the same
      instruction. "Expired" is the school's paperwork and the person in front
      of you is genuinely theirs; "replaced" means they are holding a card that
-     was reported lost, which is the one worth a second look. Collapsing them
-     into "invalid" would throw away exactly the distinction that matters. */
+     was reported lost, which is the one worth a second look; "revoked" means
+     the office killed this card on purpose and there is no newer one to ask
+     for. Collapsing them into "invalid" would throw away exactly the
+     distinction that matters. */
   const verdict = (() => {
     switch (result.status) {
       case 'VALID':
@@ -162,6 +164,16 @@ export default function IdCardScanPanel({ token, onDone, onCancel }: IdCardScanP
           detail:
             result.reason ??
             'This card belongs to a previous session. The office must issue a fresh one.',
+        };
+      case 'REVOKED':
+        return {
+          tone: 'bg-red-500/10 border-red-500/25 text-red-300',
+          ring: 'ring-red-500/40',
+          icon: <Ban className="h-5 w-5 shrink-0 text-red-400" aria-hidden />,
+          headline: 'Card revoked',
+          detail:
+            result.reason ??
+            'The office cancelled this card and issued no replacement. Do not admit on it — send them to the office.',
         };
       case 'REPLACED':
         return {
