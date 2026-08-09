@@ -12,6 +12,7 @@ import {
   ImageOff,
   Lock,
   Printer,
+  RotateCcw,
   ScanLine,
   Users,
   X,
@@ -24,6 +25,7 @@ import {
   IdCardApiError,
   fetchStaffIdCards,
   fetchStudentIdCards,
+  formatIdCardDate,
   idCardKey,
   idCardRoleLine,
   type IdCardBatch,
@@ -38,6 +40,7 @@ import {
 import IdCardPreview from '@/components/id-cards/IdCardPreview';
 import SignaturePanel from '@/components/id-cards/SignaturePanel';
 import MyIdCardPanel from '@/components/id-cards/MyIdCardPanel';
+import ReissueCardDialog from '@/components/id-cards/ReissueCardDialog';
 
 import { PageBody, PageHeader, PageShell } from '@/components/ui/PageHeader';
 import { Note, Panel, PanelBody, PanelHeader } from '@/components/ui/Panel';
@@ -148,6 +151,9 @@ export default function IdCardsPage() {
   const [layout, setLayout] = React.useState<IdCardPrintLayout>('sideBySide');
 
   const previewRef = React.useRef<HTMLDivElement | null>(null);
+
+  /** The holder whose card is being replaced, if the dialog is open. */
+  const [reissueRow, setReissueRow] = React.useState<IdCardRow | null>(null);
 
   /* ── Access ──────────────────────────────────────────────────────────────
      The page itself is open to anyone who holds a card, because "My Card" is
@@ -799,7 +805,23 @@ export default function IdCardsPage() {
                         <Printer className="size-3.5" aria-hidden />
                         Just this one
                       </Button>
+                      {/* Lost or damaged. Kills the old card and mints the
+                          next issue — the dialog spells that out first. */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setReissueRow(previewRow)}
+                      >
+                        <RotateCcw className="size-3.5" aria-hidden />
+                        Replace card
+                      </Button>
                     </div>
+                    <p className="text-ink-faint mt-2 text-[11.5px]">
+                      Issue {previewRow.issueVersion}
+                      {previewRow.validUntil
+                        ? ` · valid until ${formatIdCardDate(previewRow.validUntil)}`
+                        : ''}
+                    </p>
                   </>
                 ) : (
                   <div className="py-8">
@@ -899,6 +921,17 @@ export default function IdCardsPage() {
         </div>
         </>
         )}
+
+        <ReissueCardDialog
+          row={reissueRow}
+          open={reissueRow !== null}
+          onOpenChange={(next) => {
+            if (!next) setReissueRow(null);
+          }}
+          // The QR itself changes, so the register has to come back from the
+          // server — a cached row would print the card that was just killed.
+          onChanged={() => void refetchBatch()}
+        />
       </PageBody>
     </PageShell>
   );

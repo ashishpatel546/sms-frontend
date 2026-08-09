@@ -78,6 +78,31 @@ export interface IdCardRow {
   photoPath: string | null;
   /** Raw QR content, already carrying the `IDC1:` prefix. */
   qrToken: string;
+  /** 1 for an original card, 2 after the first reissue. Printed on the back. */
+  issueVersion: number;
+  /** Last day the gate honours it (ISO date), or null if no session is set. */
+  validUntil: string | null;
+}
+
+export type IdCardSubject = 'STUDENT' | 'STAFF';
+
+export interface IdCardIssueHistoryRow {
+  version: number;
+  validUntil: string | null;
+  revokedAt: string | null;
+  revokedReason: string | null;
+  revokedByName: string | null;
+  issuedReason: string | null;
+  issuedByName: string | null;
+  issuedAt: string | null;
+}
+
+export interface IdCardIssueHistory {
+  subject: IdCardSubject;
+  subjectId: number;
+  currentVersion: number;
+  validUntil: string | null;
+  issues: IdCardIssueHistoryRow[];
 }
 
 export interface IdCardBatch {
@@ -97,7 +122,22 @@ export interface IdCardBatch {
  * fees, attendance) stays out: a scan proves identity, it is not a directory
  * lookup.
  */
+/**
+ * Why a scan passed or failed. The gate needs the difference, not a boolean:
+ * EXPIRED is the office's problem and the holder is still who they say they
+ * are; REPLACED means someone is at the gate with a card that was reported
+ * lost. A guard acts differently on each.
+ */
+export type IdCardStatus = 'VALID' | 'EXPIRED' | 'REPLACED' | 'INACTIVE';
+
 export interface IdCardVerifyResult {
+  status: IdCardStatus;
+  /** The issue number on the scanned card, and the one now in force. */
+  issueVersion: number;
+  currentVersion: number;
+  validUntil: string | null;
+  /** Plain-language explanation, null when VALID. */
+  reason: string | null;
   type: IdCardHolderType;
   name: string;
   photoUrl: string | null;
@@ -227,6 +267,65 @@ export function verifyIdCard(token: string): Promise<IdCardVerifyResult> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token }),
   });
+}
+
+/* ── Card lifecycle ───────────────────────────────────────────────────────── */
+
+/**
+ * Replaces someone's card. The card they are holding stops working the moment
+ * this returns — the QR carries an issue number and the gate only honours the
+ * current one. The reason is required; it becomes the card's history.
+ */
+export function reissueIdCard(
+  subject: IdCardSubject,
+  subjectId: number,
+  reason: string,
+): Promise<IdCardIssueHistory> {
+  return getJson<IdCardIssueHistory>('/id-cards/reissue', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subject, subjectId, reason }),
+  });
+}
+
+/**
+ * Pushes back the expiry of the card already in someone's pocket — no reprint.
+ * Possible because the date is stored, not printed into the QR.
+ */
+export function extendIdCardValidity(
+  subject: IdCardSubject,
+  subjectId: number,
+  validUntil: string,
+  reason?: string,
+): Promise<IdCardIssueHistory> {
+  return getJson<IdCardIssueHistory>('/id-cards/extend', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subject, subjectId, validUntil, reason }),
+  });
+}
+
+export function fetchIdCardHistory(
+  subject: IdCardSubject,
+  subjectId: number,
+): Promise<IdCardIssueHistory> {
+  return getJson<IdCardIssueHistory>(
+    `/id-cards/history${buildQuery({ subject, subjectId })}`,
+  );
+}
+
+/** The subject key the lifecycle endpoints expect, from a card row. */
+export function idCardSubjectOf(row: IdCardRow): {
+  subject: IdCardSubject;
+  subjectId: number;
+} | null {
+  if (row.type === 'STUDENT' && row.studentId != null) {
+    return { subject: 'STUDENT', subjectId: row.studentId };
+  }
+  if (row.type === 'STAFF' && row.staffId != null) {
+    return { subject: 'STAFF', subjectId: row.staffId };
+  }
+  return null;
 }
 
 /**

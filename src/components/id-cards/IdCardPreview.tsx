@@ -726,7 +726,14 @@ function Back({ row, school }: { row: IdCardRow; school: IdCardBranding }) {
               paddingRight: p(8),
             }}
           >
-            {school.session ? `Valid for the ${school.session} academic session. ` : ''}
+            {/* Mirrors the PDF exactly — see IdCardBack. */}
+            {row.validUntil
+              ? `Valid to ${formatIdCardDate(row.validUntil)}`
+              : school.session
+                ? `Valid for the ${school.session} session`
+                : ''}
+            {row.issueVersion > 1 ? ` · Issue ${row.issueVersion}` : ''}
+            {row.validUntil || school.session ? '. ' : ''}
             This card remains the property of the school. It is not transferable
             and must be surrendered on leaving.
           </div>
