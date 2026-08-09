@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import {
   BadgeCheck,
   Ban,
+  CalendarX,
   GraduationCap,
   IdCard,
   ScanLine,
@@ -128,25 +129,62 @@ export default function IdCardScanPanel({ token, onDone, onCancel }: IdCardScanP
         ]
   ).filter((d): d is { label: string; value: string } => Boolean(d.value) && d.value !== '—');
 
-  const verdict = result.active
-    ? {
-        tone: 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300',
-        ring: 'ring-emerald-500/40',
-        icon: <BadgeCheck className="h-5 w-5 shrink-0 text-emerald-400" aria-hidden />,
-        headline: 'Valid card',
-        detail: isStudent
-          ? 'This student is on the current roll.'
-          : 'This member of staff is currently employed.',
-      }
-    : {
-        tone: 'bg-amber-500/10 border-amber-500/25 text-amber-300',
-        ring: 'ring-amber-500/40',
-        icon: <Ban className="h-5 w-5 shrink-0 text-amber-400" aria-hidden />,
-        headline: 'Card no longer valid',
-        detail: isStudent
-          ? 'This student has been deactivated. Do not admit on this card — send them to the office.'
-          : 'This person is no longer active on the staff roll. Send them to the office.',
-      };
+  /* A guard gets one line to act on, and the four failures are NOT the same
+     instruction. "Expired" is the school's paperwork and the person in front
+     of you is genuinely theirs; "replaced" means they are holding a card that
+     was reported lost, which is the one worth a second look. Collapsing them
+     into "invalid" would throw away exactly the distinction that matters. */
+  const verdict = (() => {
+    switch (result.status) {
+      case 'VALID':
+        return {
+          tone: 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300',
+          ring: 'ring-emerald-500/40',
+          icon: (
+            <BadgeCheck
+              className="h-5 w-5 shrink-0 text-emerald-400"
+              aria-hidden
+            />
+          ),
+          headline: 'Valid card',
+          detail: isStudent
+            ? 'This student is on the current roll.'
+            : 'This member of staff is currently employed.',
+        };
+      case 'EXPIRED':
+        return {
+          tone: 'bg-amber-500/10 border-amber-500/25 text-amber-300',
+          ring: 'ring-amber-500/40',
+          icon: (
+            <CalendarX className="h-5 w-5 shrink-0 text-amber-400" aria-hidden />
+          ),
+          headline: 'Expired card',
+          detail:
+            result.reason ??
+            'This card belongs to a previous session. The office must issue a fresh one.',
+        };
+      case 'REPLACED':
+        return {
+          tone: 'bg-red-500/10 border-red-500/25 text-red-300',
+          ring: 'ring-red-500/40',
+          icon: <Ban className="h-5 w-5 shrink-0 text-red-400" aria-hidden />,
+          headline: `Replaced — issue ${result.issueVersion} of ${result.currentVersion}`,
+          detail:
+            result.reason ??
+            'A newer card was issued. Do not admit on this one — send them to the office.',
+        };
+      default:
+        return {
+          tone: 'bg-amber-500/10 border-amber-500/25 text-amber-300',
+          ring: 'ring-amber-500/40',
+          icon: <Ban className="h-5 w-5 shrink-0 text-amber-400" aria-hidden />,
+          headline: 'Card no longer valid',
+          detail: isStudent
+            ? 'This student has been deactivated. Do not admit on this card — send them to the office.'
+            : 'This person is no longer active on the staff roll. Send them to the office.',
+        };
+    }
+  })();
 
   return (
     <div className="space-y-4">

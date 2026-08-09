@@ -10,6 +10,7 @@ import {
   type DocumentProps,
 } from '@react-pdf/renderer';
 import {
+  formatIdCardDate,
   idCardAddress,
   idCardBloodGroup,
   idCardContact,
@@ -667,10 +668,17 @@ export function IdCardBack({ card, school, assets }: FaceProps) {
         </View>
 
         <View style={styles.backFoot}>
+          {/* The date and the issue number are printed so both facts can be
+              settled without a scanner: whether a card is out of date, and
+              which of two cards in a drawer is the live one. */}
           <Text style={styles.validity}>
-            {school.session
-              ? `Valid for the ${school.session} academic session. `
-              : ''}
+            {card.row.validUntil
+              ? `Valid to ${formatIdCardDate(card.row.validUntil)}`
+              : school.session
+                ? `Valid for the ${school.session} session`
+                : ''}
+            {card.row.issueVersion > 1 ? ` · Issue ${card.row.issueVersion}` : ''}
+            {card.row.validUntil || school.session ? '. ' : ''}
             This card remains the property of the school. It is not
             transferable and must be surrendered on leaving.
           </Text>
