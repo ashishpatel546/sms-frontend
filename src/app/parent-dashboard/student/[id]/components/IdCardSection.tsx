@@ -83,7 +83,7 @@ export function IdCardSection({ studentId }: { studentId: string | number }) {
   if (state === 'loading') {
     return (
       <div className="rounded-xl border border-line bg-surface p-4">
-        <div className="skeleton mx-auto aspect-[85.6/54] w-full max-w-[420px] rounded-lg" />
+        <div className="skeleton mx-auto aspect-[85.6/54] w-full max-w-105 rounded-lg" />
       </div>
     );
   }
@@ -124,7 +124,8 @@ export function IdCardSection({ studentId }: { studentId: string | number }) {
           Save as PDF
         </button>
         <span className="text-[12px] text-ink-muted">
-          Front and back on one A4 page.
+          Front and back side by side on one A4 page — cut both out and glue
+          them back to back.
         </span>
       </div>
 

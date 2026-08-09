@@ -416,16 +416,20 @@ export default function AdminPanel() {
                                 <p className="text-sm mt-1">Try adjusting your search filters</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
+                            // On a phone the six columns cannot honestly fit, so the table
+                            // keeps its real width and scrolls sideways rather than being
+                            // crushed until pills and names wrap mid-word. `min-w` is what
+                            // turns `w-full` from "squeeze to fit" into "scroll to see".
+                            <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                                <table className="w-full min-w-208 text-sm text-left">
                                     <thead className="bg-slate-50 text-xs text-slate-500 uppercase tracking-wide">
                                         <tr>
-                                            <th className="px-4 py-3">Name</th>
-                                            <th className="px-4 py-3">Email / Mobile</th>
-                                            <th className="px-4 py-3">Role</th>
-                                            <th className="px-4 py-3">Designation</th>
-                                            <th className="px-4 py-3">Status</th>
-                                            <th className="px-4 py-3 text-right">Actions</th>
+                                            <th className="px-4 py-3 whitespace-nowrap">Name</th>
+                                            <th className="px-4 py-3 whitespace-nowrap">Email / Mobile</th>
+                                            <th className="px-4 py-3 whitespace-nowrap">Role</th>
+                                            <th className="px-4 py-3 whitespace-nowrap">Designation</th>
+                                            <th className="px-4 py-3 whitespace-nowrap">Status</th>
+                                            <th className="px-4 py-3 text-right whitespace-nowrap">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -439,7 +443,7 @@ export default function AdminPanel() {
                                                         <div>
                                                             <span className="font-medium text-slate-800">{user.firstName} {user.lastName}</span>
                                                             {user.mustChangePassword && (
-                                                                <span className="ml-2 px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 rounded">pw pending</span>
+                                                                <span className="ml-2 inline-flex whitespace-nowrap px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 rounded">pw pending</span>
                                                             )}
                                                         </div>
                                                     </div>
@@ -468,7 +472,13 @@ export default function AdminPanel() {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     {user.designation ? (
-                                                        <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-violet-500/10 text-violet-700 border border-violet-500/20">
+                                                        // inline-flex + whitespace-nowrap, NOT a bare inline span:
+                                                        // an inline element wraps BETWEEN its words, which splits the
+                                                        // pill's background and border in half — "Vice" in one box on
+                                                        // one line, "Principal" in another below it. A pill has to
+                                                        // stay one unbroken box, so it never wraps; the table scrolls
+                                                        // sideways instead (see min-w on the table).
+                                                        <span className="inline-flex whitespace-nowrap px-2.5 py-1 text-xs font-medium rounded-full bg-violet-500/10 text-violet-700 border border-violet-500/20">
                                                             {user.designation.title}
                                                         </span>
                                                     ) : (
@@ -476,7 +486,7 @@ export default function AdminPanel() {
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${user.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                                                    <span className={`inline-flex whitespace-nowrap px-2 py-0.5 text-xs rounded-full font-medium ${user.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
                                                         {user.isActive ? "Active" : "Inactive"}
                                                     </span>
                                                 </td>

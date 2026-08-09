@@ -10,7 +10,12 @@ import {
   UserRound,
   XCircle,
 } from 'lucide-react';
-import { verifyIdCard, idCardInitials, type IdCardVerifyResult } from '@/lib/id-card-api';
+import {
+  formatIdCardDate,
+  idCardInitials,
+  verifyIdCard,
+  type IdCardVerifyResult,
+} from '@/lib/id-card-api';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ID CARD AT THE GATE
@@ -91,6 +96,38 @@ export default function IdCardScanPanel({ token, onDone, onCancel }: IdCardScanP
         .join(' · ')
     : (result.designation ?? 'Staff');
 
+  // The card's own fields, in the order a guard needs them. Blank values are
+  // dropped rather than shown as dashes — a wall of "—" reads as broken.
+  const details = (
+    isStudent
+      ? [
+          { label: 'Roll no', value: result.rollNo != null ? String(result.rollNo) : null },
+          { label: 'Blood group', value: result.bloodGroup },
+          { label: "Father's name", value: result.fathersName },
+          { label: "Mother's name", value: result.mothersName },
+          {
+            label: 'Guardian',
+            value: result.guardianName
+              ? result.guardianRelation
+                ? `${result.guardianName} (${result.guardianRelation})`
+                : result.guardianName
+              : null,
+          },
+          { label: 'Parent contact', value: result.mobile },
+          { label: 'Date of birth', value: formatIdCardDate(result.dob) },
+        ]
+      : [
+          {
+            label: 'Employee code',
+            value: result.employeeCode != null ? String(result.employeeCode) : null,
+          },
+          { label: 'Department', value: result.department },
+          { label: 'Blood group', value: result.bloodGroup },
+          { label: 'Contact', value: result.mobile },
+          { label: 'Date of birth', value: formatIdCardDate(result.dob) },
+        ]
+  ).filter((d): d is { label: string; value: string } => Boolean(d.value) && d.value !== '—');
+
   const verdict = result.active
     ? {
         tone: 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300',
@@ -155,6 +192,24 @@ export default function IdCardScanPanel({ token, onDone, onCancel }: IdCardScanP
             <p className="mt-0.5 text-sm text-slate-400">{standing || '—'}</p>
           </div>
         </div>
+
+        {/* Everything below is legible on the card in the guard's hand, so the
+            scan adds no exposure — it just saves squinting at a lanyard, and
+            gives a number to ring when a child is collected by a stranger. */}
+        {details.length > 0 && (
+          <dl className="mt-3.5 grid grid-cols-2 gap-x-3 gap-y-2.5 border-t border-slate-800 pt-3">
+            {details.map((d) => (
+              <div key={d.label} className="min-w-0">
+                <dt className="text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+                  {d.label}
+                </dt>
+                <dd className="mt-0.5 truncate text-[13px] font-medium text-slate-200">
+                  {d.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
 
         <p className="mt-3.5 flex items-start gap-1.5 border-t border-slate-800 pt-3 text-xs text-slate-500">
           <IdCard className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />

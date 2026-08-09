@@ -29,8 +29,14 @@ import {
   type IdCardBatch,
   type IdCardRow,
 } from '@/lib/id-card-api';
-import { CARDS_PER_SHEET, downloadIdCardBatchPdf } from '@/lib/id-card-pdf';
+import {
+  cardsPerSheet,
+  downloadIdCardBatchPdf,
+  downloadSingleIdCardPdf,
+  type IdCardPrintLayout,
+} from '@/lib/id-card-pdf';
 import IdCardPreview from '@/components/id-cards/IdCardPreview';
+import SignaturePanel from '@/components/id-cards/SignaturePanel';
 
 import { PageBody, PageHeader, PageShell } from '@/components/ui/PageHeader';
 import { Note, Panel, PanelBody, PanelHeader } from '@/components/ui/Panel';
@@ -46,6 +52,7 @@ import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/Field';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { cn } from '@/lib/utils';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ID CARDS
@@ -74,6 +81,29 @@ interface SelectedCard {
   at: number;
 }
 
+/**
+ * The two ways a school can get a two-sided card out of a one-sided world.
+ * Side by side leads because it cannot be printed wrong.
+ */
+const PRINT_LAYOUTS: {
+  value: IdCardPrintLayout;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: 'sideBySide',
+    label: 'Side by side',
+    description:
+      'Front and back on the same row. Any printer — cut and glue back to back.',
+  },
+  {
+    value: 'duplex',
+    label: 'Double-sided',
+    description:
+      'Ten a sheet, fronts and backs on separate pages. Needs a duplex printer.',
+  },
+];
+
 export default function IdCardsPage() {
   const router = useRouter();
   const rbac = useRbac();
@@ -85,7 +115,12 @@ export default function IdCardsPage() {
   const [sectionId, setSectionId] = React.useState<number | null>(null);
   const [departmentInput, setDepartmentInput] = React.useState('');
   const [department, setDepartment] = React.useState('');
+  /* `nameFilter` is what the operator is typing; `search` is what has been sent
+     to the server. They are separate because the search runs on the WHOLE
+     roster, not on the rows already fetched — filtering the current page made a
+     student look absent on page 1 and appear on page 2. */
   const [nameFilter, setNameFilter] = React.useState('');
+  const [search, setSearch] = React.useState('');
 
   // Paging
   const [page, setPage] = React.useState(1);
@@ -97,6 +132,11 @@ export default function IdCardsPage() {
   const [progress, setProgress] = React.useState<{ done: number; total: number } | null>(
     null,
   );
+  /* Side by side is the default: front and back land on one row, so a school
+     with an ordinary printer cuts and glues. Duplex is faster to finish but
+     needs a two-sided printer, and gets the backs wrong if the flip edge is
+     set incorrectly — which is exactly the failure a school cannot debug. */
+  const [layout, setLayout] = React.useState<IdCardPrintLayout>('sideBySide');
 
   const previewRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -122,17 +162,29 @@ export default function IdCardsPage() {
     return () => clearTimeout(id);
   }, [departmentInput]);
 
+  /* Same for the name search. Page goes back to 1 on every new term, because
+     staying on page 4 of the old result set shows an empty register for a
+     search that actually matched. */
+  React.useEffect(() => {
+    const id = setTimeout(() => {
+      setSearch(nameFilter.trim());
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(id);
+  }, [nameFilter]);
+
   /* ── The batch ───────────────────────────────────────────────────────── */
   const {
     data: batch,
     error: batchError,
     isLoading,
+    mutate: refetchBatch,
   } = useSWR<IdCardBatch>(
-    ['id-cards', tab, classId, sectionId, department, page, limit] as const,
+    ['id-cards', tab, classId, sectionId, department, search, page, limit] as const,
     () =>
       tab === 'students'
-        ? fetchStudentIdCards({ classId, sectionId, page, limit })
-        : fetchStaffIdCards({ department, page, limit }),
+        ? fetchStudentIdCards({ classId, sectionId, search, page, limit })
+        : fetchStaffIdCards({ department, search, page, limit }),
     // Paging should not blank the register out from under the operator.
     { keepPreviousData: true },
   );
@@ -154,12 +206,11 @@ export default function IdCardsPage() {
   }, []);
 
   /* ── Derived ─────────────────────────────────────────────────────────── */
-  const rows = React.useMemo(() => {
-    const all = batch?.rows ?? [];
-    const q = nameFilter.trim().toLowerCase();
-    if (!q) return all;
-    return all.filter((r) => r.name.toLowerCase().includes(q));
-  }, [batch, nameFilter]);
+  /* Rows arrive already filtered — the search is a query parameter, not a pass
+     over `batch.rows`. Filtering here as well would only re-hide rows the
+     server matched on a rule the client does not share (either half of the
+     name, collapsed whitespace). */
+  const rows = React.useMemo(() => batch?.rows ?? [], [batch]);
 
   const school = batch?.school ?? null;
   const total = batch?.total ?? 0;
@@ -172,7 +223,7 @@ export default function IdCardsPage() {
   const selectedCount = selectedList.length;
 
   const printList = selectedCount > 0 ? selectedList : rows;
-  const sheetCount = Math.ceil(printList.length / CARDS_PER_SHEET);
+  const sheetCount = Math.ceil(printList.length / cardsPerSheet(layout));
   const withoutPhoto = printList.filter((r) => !r.photoUrl).length;
 
   const oldestSelection = React.useMemo(() => {
@@ -222,16 +273,53 @@ export default function IdCardsPage() {
     if (!school || cards.length === 0) return;
     setProgress({ done: 0, total: cards.length });
     try {
-      const sheets = await downloadIdCardBatchPdf(cards, school, {
-        onProgress: (done, totalRows) => setProgress({ done, total: totalRows }),
-      });
+      const { sheets, droppedImages } = await downloadIdCardBatchPdf(
+        cards,
+        school,
+        {
+          layout,
+          onProgress: (done, totalRows) =>
+            setProgress({ done, total: totalRows }),
+        },
+      );
       toast.success(
         `${cards.length} card${cards.length === 1 ? '' : 's'} on ${sheets} sheet${
           sheets === 1 ? '' : 's'
-        } — fronts and backs`,
+        } — ${
+          layout === 'duplex'
+            ? 'fronts and backs, print two-sided'
+            : 'front and back side by side'
+        }`,
       );
+      if (droppedImages) {
+        toast(
+          'Photos could not be embedded, so the cards print with initials. The PDF is otherwise complete.',
+          { icon: '⚠️', duration: 6000 },
+        );
+      }
     } catch {
       toast.error('Could not build the PDF. Try a smaller batch.');
+    } finally {
+      setProgress(null);
+    }
+  };
+
+  /* A reprint for one person: the single-card sheet, headed with their name,
+     front and back on one row. Same document a parent saves from the portal. */
+  const buildOne = async (row: IdCardRow) => {
+    if (!school) return;
+    setProgress({ done: 0, total: 1 });
+    try {
+      const { droppedImages } = await downloadSingleIdCardPdf(row, school);
+      toast.success(`${row.name} — front and back on one sheet`);
+      if (droppedImages) {
+        toast('The photo could not be embedded — this card prints with initials.', {
+          icon: '⚠️',
+          duration: 6000,
+        });
+      }
+    } catch {
+      toast.error('Could not build the PDF. Please try again.');
     } finally {
       setProgress(null);
     }
@@ -249,6 +337,7 @@ export default function IdCardsPage() {
     setTab(next);
     setPage(1);
     setNameFilter('');
+    setSearch('');
     setPreviewKey(null);
   };
 
@@ -264,7 +353,7 @@ export default function IdCardsPage() {
         checked={selected[idCardKey(row)] !== undefined}
         onChange={() => toggleRow(row)}
         onClick={(e) => e.stopPropagation()}
-        aria-label={`Include ${row.name} in the print run`}
+        aria-label={`Include ${row.name} in the print list`}
         className="size-4 cursor-pointer align-middle"
       />
     ),
@@ -428,11 +517,13 @@ export default function IdCardsPage() {
         meta={
           <>
             <span className="eyebrow">
-              {selectedCount > 0 ? `${selectedCount} selected` : `${rows.length} on this page`}
+              {selectedCount > 0 ? `${selectedCount} on the print list` : `${rows.length} on this page`}
             </span>
             {printList.length > 0 && (
               <span className="tabular rounded-full border border-line bg-surface px-2 py-0.5 text-[11.5px] text-ink-muted">
-                {sheetCount} A4 sheet{sheetCount === 1 ? '' : 's'} · {sheetCount * 2} sides
+                {layout === 'duplex'
+                  ? `${sheetCount} A4 sheet${sheetCount === 1 ? '' : 's'} · ${sheetCount * 2} sides`
+                  : `${sheetCount} A4 sheet${sheetCount === 1 ? '' : 's'} · one side`}
               </span>
             )}
             {selectedCount > 0 && (
@@ -541,7 +632,7 @@ export default function IdCardsPage() {
             </Select>
           </FilterField>
 
-          <FilterField label="Find on this page" width="lg">
+          <FilterField label="Search by name" width="lg">
             <SearchInput
               value={nameFilter}
               onValueChange={setNameFilter}
@@ -581,7 +672,7 @@ export default function IdCardsPage() {
               emptyMessage={
                 tab === 'students'
                   ? 'No students match these filters'
-                  : 'No staff match this department'
+                  : 'No staff match these filters'
               }
               toolbar={
                 <>
@@ -636,13 +727,19 @@ export default function IdCardsPage() {
                       school={school}
                     />
                     <div className="flex flex-wrap gap-2 border-t border-line pt-3">
+                      {/* "Add to run" meant nothing to an office. The button
+                          says what it does: it ticks this person's checkbox in
+                          the register, and Download PDF prints whoever is
+                          ticked. */}
                       <Button variant="outline" size="sm" onClick={() => toggleRow(previewRow)}>
-                        {selected[idCardKey(previewRow)] ? 'Remove from run' : 'Add to run'}
+                        {selected[idCardKey(previewRow)]
+                          ? 'Remove from print list'
+                          : 'Add to print list'}
                       </Button>
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => void buildPdf([previewRow])}
+                        onClick={() => void buildOne(previewRow)}
                         disabled={progress !== null}
                       >
                         <Printer className="size-3.5" aria-hidden />
@@ -662,20 +759,80 @@ export default function IdCardsPage() {
               </PanelBody>
             </Panel>
 
+            {school && (
+              <SignaturePanel
+                school={school}
+                onChanged={() => void refetchBatch()}
+              />
+            )}
+
             <Panel className="mt-4">
-              <PanelHeader title="Before you print" />
-              <PanelBody>
+              <PanelHeader
+                title="How it prints"
+                description="Pick what your printer can actually do."
+              />
+              <PanelBody className="space-y-3">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {PRINT_LAYOUTS.map((option) => {
+                    const active = layout === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setLayout(option.value)}
+                        aria-pressed={active}
+                        className={cn(
+                          'cursor-pointer rounded-lg border p-3 text-left transition-colors',
+                          active
+                            ? 'border-brand bg-brand-tint/50'
+                            : 'border-line bg-surface hover:border-line-strong',
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'block text-[13px] font-semibold',
+                            active ? 'text-brand-deep' : 'text-ink',
+                          )}
+                        >
+                          {option.label}
+                        </span>
+                        <span className="mt-1 block text-[11.5px] leading-relaxed text-ink-muted">
+                          {option.description}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <ul className="space-y-2 text-[12.5px] text-ink-muted">
-                  <li className="flex gap-2">
-                    <span className="mt-1.5 size-1 shrink-0 rounded-full bg-brand" />
-                    Ten cards to an A4 sheet, butted edge to edge — one cut serves
-                    the two cards either side of it.
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="mt-1.5 size-1 shrink-0 rounded-full bg-brand" />
-                    Fronts and backs alternate as whole pages. Print double sided,
-                    flipping on the <strong className="text-ink">long edge</strong>.
-                  </li>
+                  {layout === 'duplex' ? (
+                    <>
+                      <li className="flex gap-2">
+                        <span className="mt-1.5 size-1 shrink-0 rounded-full bg-brand" />
+                        Ten cards to an A4 sheet, butted edge to edge — one cut
+                        serves the two cards either side of it.
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="mt-1.5 size-1 shrink-0 rounded-full bg-brand" />
+                        Fronts and backs alternate as whole pages. Print double
+                        sided, flipping on the{' '}
+                        <strong className="text-ink">long edge</strong>.
+                      </li>
+                    </>
+                  ) : (
+                    <>
+                      <li className="flex gap-2">
+                        <span className="mt-1.5 size-1 shrink-0 rounded-full bg-brand" />
+                        Four cards to an A4 sheet, each one&apos;s front and back
+                        on the same row.
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="mt-1.5 size-1 shrink-0 rounded-full bg-brand" />
+                        Cut around both faces, then glue them back to back. No
+                        two-sided printing anywhere.
+                      </li>
+                    </>
+                  )}
                   <li className="flex gap-2">
                     <span className="mt-1.5 size-1 shrink-0 rounded-full bg-brand" />
                     Set scaling to 100%. &quot;Fit to page&quot; shrinks the cards
