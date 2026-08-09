@@ -120,6 +120,15 @@ export interface RbacPermissions {
 
   /** ID Cards: print student/staff cards, batch export (SUB_ADMIN+) */
   canManageIdCards: boolean;
+  /**
+   * ID Cards: see and download YOUR OWN card. Everyone who has a card may —
+   * a guard, a teacher, a student. It is deliberately not a hierarchy step:
+   * this is not a lesser version of `canManageIdCards`, it is a different
+   * thing (your own identity document vs. the register of everyone else's).
+   * The API backs it with a route that takes no id, so it cannot be aimed
+   * at another person.
+   */
+  canViewOwnIdCard: boolean;
 
   // ── Multi-role helpers ──────────────────────────────────────────────────
   /** Does the user hold this exact role, primary or additional? */
@@ -213,6 +222,8 @@ export function useRbac(): RbacPermissions {
     canManageVisitorSettings: level >= 100,
 
     canManageIdCards: level >= 60,
+    // Any signed-in member of the school: STUDENT is level 10, the floor.
+    canViewOwnIdCard: level >= 10,
 
     hasRole: has,
     hasAnyRole: hasAny,

@@ -200,6 +200,14 @@ export function fetchStudentIdCards(query: StudentIdCardQuery): Promise<IdCardBa
   );
 }
 
+/** The signed-in person's own card. Takes no id — that is the access control. */
+export function fetchMyIdCard(): Promise<{
+  school: IdCardBranding;
+  card: IdCardRow;
+}> {
+  return getJson<{ school: IdCardBranding; card: IdCardRow }>('/id-cards/me');
+}
+
 export function fetchStaffIdCards(query: StaffIdCardQuery): Promise<IdCardBatch> {
   return getJson<IdCardBatch>(
     `/id-cards/staff${buildQuery({

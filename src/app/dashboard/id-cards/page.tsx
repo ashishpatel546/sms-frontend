@@ -37,6 +37,7 @@ import {
 } from '@/lib/id-card-pdf';
 import IdCardPreview from '@/components/id-cards/IdCardPreview';
 import SignaturePanel from '@/components/id-cards/SignaturePanel';
+import MyIdCardPanel from '@/components/id-cards/MyIdCardPanel';
 
 import { PageBody, PageHeader, PageShell } from '@/components/ui/PageHeader';
 import { Note, Panel, PanelBody, PanelHeader } from '@/components/ui/Panel';
@@ -65,7 +66,9 @@ import { cn } from '@/lib/utils';
    size, both faces — before anything is committed.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-type Tab = 'students' | 'staff';
+/* 'me' is everyone's tab — a teacher or a guard sees only this one. The other
+   two are the register of OTHER people's cards and stay at SUB_ADMIN+. */
+type Tab = 'me' | 'students' | 'staff';
 
 interface NamedRecord {
   id: number;
@@ -108,7 +111,13 @@ export default function IdCardsPage() {
   const router = useRouter();
   const rbac = useRbac();
 
-  const [tab, setTab] = React.useState<Tab>('students');
+  /* Everyone starts where they have something to see. For an office user that
+     is the student register; for a teacher or guard, "My Card" is the only tab
+     they have. Pinned during render rather than in an effect, so the register
+     never paints for a split second and fires a request they may not make. */
+  const [selectedTab, setSelectedTab] = React.useState<Tab>('students');
+  const canManage = rbac.canManageIdCards;
+  const tab: Tab = canManage ? selectedTab : 'me';
 
   // Filters
   const [classId, setClassId] = React.useState<number | null>(null);
@@ -140,10 +149,15 @@ export default function IdCardsPage() {
 
   const previewRef = React.useRef<HTMLDivElement | null>(null);
 
-  /* ── Access ──────────────────────────────────────────────────────────── */
+  /* ── Access ──────────────────────────────────────────────────────────────
+     The page itself is open to anyone who holds a card, because "My Card" is
+     on it. What is restricted is the REGISTER of everyone else's cards, and
+     that is enforced on the server: /id-cards/students and /staff are
+     SUB_ADMIN+, while /id-cards/me takes no id at all. The tab strip below
+     just reflects that. */
   React.useEffect(() => {
-    if (rbac.role && !rbac.isSubAdmin) router.replace('/dashboard');
-  }, [rbac.role, rbac.isSubAdmin, router]);
+    if (rbac.role && !rbac.canViewOwnIdCard) router.replace('/dashboard');
+  }, [rbac.role, rbac.canViewOwnIdCard, router]);
 
   /* ── Filter options ──────────────────────────────────────────────────── */
   const { data: classes } = useSWR<NamedRecord[]>('/classes/names-only', fetcher);
@@ -180,7 +194,21 @@ export default function IdCardsPage() {
     isLoading,
     mutate: refetchBatch,
   } = useSWR<IdCardBatch>(
-    ['id-cards', tab, classId, sectionId, department, search, page, limit] as const,
+    // A null key stops SWR entirely. On "My Card" there is no batch to fetch —
+    // and for a teacher there is no batch they are ALLOWED to fetch, so firing
+    // it would just paint a 403 across their own card.
+    tab === 'me'
+      ? null
+      : ([
+          'id-cards',
+          tab,
+          classId,
+          sectionId,
+          department,
+          search,
+          page,
+          limit,
+        ] as const),
     () =>
       tab === 'students'
         ? fetchStudentIdCards({ classId, sectionId, search, page, limit })
@@ -334,7 +362,7 @@ export default function IdCardsPage() {
   }, []);
 
   const changeTab = (next: Tab) => {
-    setTab(next);
+    setSelectedTab(next);
     setPage(1);
     setNameFilter('');
     setSearch('');
@@ -487,9 +515,15 @@ export default function IdCardsPage() {
       <PageHeader
         section="Identity"
         title="ID cards"
-        description="Pick who needs a card, check the artwork, print the sheet."
+        description={
+          tab === 'me'
+            ? 'Your own card, as it prints.'
+            : 'Pick who needs a card, check the artwork, print the sheet.'
+        }
         actions={
           <>
+            {/* Scanning is open to every staff role, guards included — it is
+                how a card gets checked at the gate. */}
             <Button variant="outline" size="md" render={<Link href="/dashboard/pickup/scan" />}>
               <ScanLine className="size-4" aria-hidden />
               Verify a card
@@ -499,6 +533,7 @@ export default function IdCardsPage() {
               size="md"
               onClick={() => void buildPdf(printList)}
               disabled={!school || printList.length === 0 || progress !== null}
+              className={tab === 'me' ? 'hidden' : undefined}
             >
               {progress ? (
                 <>
@@ -515,6 +550,7 @@ export default function IdCardsPage() {
           </>
         }
         meta={
+          tab === 'me' ? null : (
           <>
             <span className="eyebrow">
               {selectedCount > 0 ? `${selectedCount} on the print list` : `${rows.length} on this page`}
@@ -537,20 +573,38 @@ export default function IdCardsPage() {
               </button>
             )}
           </>
+          )
         }
         tabs={
           <PageTabs<Tab>
             value={tab}
             onValueChange={changeTab}
             options={[
-              { value: 'students', label: 'Students', icon: <GraduationCap /> },
-              { value: 'staff', label: 'Staff', icon: <Users /> },
+              { value: 'me', label: 'My card', icon: <IdCardIcon /> },
+              ...(canManage
+                ? ([
+                    {
+                      value: 'students' as const,
+                      label: 'Students',
+                      icon: <GraduationCap />,
+                    },
+                    { value: 'staff' as const, label: 'Staff', icon: <Users /> },
+                  ])
+                : []),
             ]}
           />
         }
       />
 
       <PageBody>
+        {tab === 'me' ? (
+          <Panel>
+            <PanelBody>
+              <MyIdCardPanel className="mx-auto w-full max-w-105" />
+            </PanelBody>
+          </Panel>
+        ) : (
+        <>
         <FilterBar>
           {tab === 'students' ? (
             <>
@@ -843,6 +897,8 @@ export default function IdCardsPage() {
             </Panel>
           </aside>
         </div>
+        </>
+        )}
       </PageBody>
     </PageShell>
   );
