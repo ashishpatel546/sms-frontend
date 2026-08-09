@@ -9,6 +9,7 @@ import {
 } from "react";
 import { mutate } from "swr";
 import { cn } from "@/lib/utils";
+import { isAppOutOfDate } from "@/lib/app-version";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    PULL TO REFRESH — the ledger rule
@@ -28,7 +29,11 @@ import { cn } from "@/lib/utils";
        Registrar reloads with fresh code), and the runtime caches are
        dropped so a stale page or asset can never be replayed. This is the
        "had to clear site data by hand" fix, on the gesture people already
-       reach for when the app looks out of date.
+       reach for when the app looks out of date;
+     - and if a newer BUILD is deployed, the page reloads onto it. Data was
+       never the whole problem — an installed PWA runs the JavaScript it
+       downloaded the day it was opened, so a new button cannot appear
+       however much data is refetched. See `lib/app-version.ts`.
 
    The gesture only engages when the window is scrolled to the very top, the
    pull is clearly vertical, and no scrollable ancestor (a modal body, a
@@ -92,10 +97,24 @@ function ancestorCanScrollUp(start: EventTarget | null, stop: HTMLElement): bool
  *      them lazily, so the only cost is a network round-trip on the next
  *      navigation — and the payoff is that a stale page or icon can never be
  *      replayed after a person has explicitly asked for fresh.
+ *   3. If a NEWER BUILD is deployed, the page reloads.
  *
- * Both are best-effort: offline or unsupported, the data refresh still runs.
+ * Step 3 is the one that was missing, and without it the other two cannot
+ * deliver what the gesture promises. Steps 1–2 only ever produce fresh DATA;
+ * a button that did not exist in the loaded bundle is CODE, and code only
+ * changes on a document load. Step 1 was supposed to cause that reload via the
+ * service worker, but it fires only when sw.js's own BYTES change — and that
+ * file is hand-edited, so it sat unchanged across eighteen deployments while
+ * every installed phone kept running the build from the last time somebody
+ * remembered to bump it. Asking the server what is deployed removes the
+ * remembering.
+ *
+ * Returns true when a reload was started, so the caller can stop animating —
+ * the page is on its way out.
+ *
+ * All of it is best-effort: offline or unsupported, the data refresh still runs.
  */
-async function refreshPwaCaches(): Promise<void> {
+async function refreshPwaCaches(): Promise<boolean> {
     if ("serviceWorker" in navigator) {
         try {
             const reg = await navigator.serviceWorker.getRegistration();
@@ -111,6 +130,16 @@ async function refreshPwaCaches(): Promise<void> {
             await Promise.all(names.map((name) => caches.delete(name)));
         } catch { /* Caches API unavailable — nothing to clear */ }
     }
+
+    /* Safe to reload without asking, and only here: the person just performed a
+       deliberate "give me the latest" gesture at the top of a page, which is
+       not a moment anyone is halfway through typing a form. The same check is
+       deliberately NOT wired to app-focus for exactly that reason. */
+    if (await isAppOutOfDate()) {
+        window.location.reload();
+        return true;
+    }
+    return false;
 }
 
 const CAPTIONS: Record<Exclude<Phase, "idle">, string> = {
@@ -146,11 +175,14 @@ export default function PullToRefresh({ children }: { children: ReactNode }) {
         setPhase("refreshing");
         render(THRESHOLD, true);
         const hold = new Promise((r) => setTimeout(r, MIN_HOLD_MS));
-        await Promise.allSettled([
-            ...[...handlers].map((h) => Promise.resolve().then(h)),
+        const [, , pwa] = await Promise.allSettled([
+            Promise.allSettled([...handlers].map((h) => Promise.resolve().then(h))),
             mutate(() => true),
             refreshPwaCaches(),
         ]);
+        // A reload is under way; animating "Up to date" over a page that is
+        // being torn down would only flicker.
+        if (pwa.status === "fulfilled" && pwa.value) return;
         await hold;
         setPhase("settling");
         // Let the solid ink read before the rule retracts.

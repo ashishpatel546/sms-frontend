@@ -3,12 +3,21 @@
 // UPDATING THIS FILE: bump CACHE_NAME. The browser reinstalls the worker when
 // the bytes of this file change, and the activate handler deletes every cache
 // whose name doesn't match, so a bump is what actually evicts stale entries.
-// v7 — the redesign changed nearly every token in globals.css. Without a bump,
-// an installed PWA keeps serving the stylesheet it cached under v6, which is
-// what makes a device show old colours, an untilted stamp, or an avatar whose
-// gradient classes do not exist yet. The activate handler below deletes every
-// cache that is not this name.
-const CACHE_NAME = 'school-ms-v7';
+//
+// v8 — THE BOOTSTRAP BUMP, and the last one that should ever be needed.
+//
+// Relying on a human to bump this line was the bug. Between v7 (31 Jul 2026)
+// and now, eighteen deployments shipped byte-identical sw.js, so no installed
+// PWA was ever told a new worker existed — and an installed PWA is one
+// long-lived page that never re-fetches a document on its own. Phones sat on
+// the 31 Jul bundle for over a week while laptops updated within minutes.
+//
+// Detection has moved to `/version` + `lib/app-version.ts`, which changes on
+// every deployment with nobody remembering anything. This bump exists solely
+// to reach the devices that are stale RIGHT NOW: changing these bytes is the
+// only signal their already-installed worker still listens to, and it is what
+// carries the new detection code onto them.
+const CACHE_NAME = 'school-ms-v8';
 
 // App shell files to cache immediately
 const APP_SHELL = [

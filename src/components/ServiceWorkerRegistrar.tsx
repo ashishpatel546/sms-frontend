@@ -4,6 +4,7 @@
 'use no memo';
 
 import { useEffect } from 'react';
+import { captureRunningBuild } from '@/lib/app-version';
 
 /**
  * Registers the service worker and — the harder half — makes sure an installed
@@ -24,6 +25,16 @@ import { useEffect } from 'react';
  *      that is what SKIP_WAITING and the reload below are for.
  */
 export default function ServiceWorkerRegistrar() {
+    /* Pin which build this page is running, as early as anything mounts.
+       Pull-to-refresh compares against it to decide whether the app itself is
+       stale — see lib/app-version.ts for why the baseline has to be taken at
+       startup rather than at the moment of the check. Runs outside the service
+       worker branch on purpose: a browser with no worker support goes stale in
+       exactly the same way. */
+    useEffect(() => {
+        void captureRunningBuild();
+    }, []);
+
     useEffect(() => {
         if (!('serviceWorker' in navigator)) return;
 
