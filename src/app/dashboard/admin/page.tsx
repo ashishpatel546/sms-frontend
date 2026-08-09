@@ -7,32 +7,32 @@ import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
 import AddStaffForm from "@/components/AddStaffForm";
+import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
+import { useRbac } from "@/lib/rbac";
+import {
+    RoleChip,
+    RoleManagerDialog,
+    roleLabel,
+    type RoleManagerUser,
+} from "./RoleManagerDialog";
 
 type Tab = "users" | "add-staff" | "school-setup";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
-const ROLE_LABELS: Record<string, { label: string; color: string }> = {
-    SUPER_ADMIN: { label: "Super Admin", color: "bg-purple-500/20 text-purple-300 border-purple-500/30" },
-    ADMIN: { label: "Admin", color: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
-    SUB_ADMIN: { label: "Sub Admin", color: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30" },
-    HR_ADMIN: { label: "HR Admin", color: "bg-orange-500/20 text-orange-300 border-orange-500/30" },
-    TEACHER: { label: "Teacher", color: "bg-green-500/20 text-green-300 border-green-500/30" },
-    STUDENT: { label: "Student", color: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
-    PARENT: { label: "Parent", color: "bg-pink-500/20 text-pink-300 border-pink-500/30" },
-};
+const ALL_ROLES = ["SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "HR_ADMIN", "LIBRARIAN", "TEACHER", "GUARD", "PARENT", "STUDENT"];
 
-const ALL_ROLES = ["", "SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "HR_ADMIN", "TEACHER", "PARENT", "STUDENT"];
-
-// Roles a super admin may assign from the panel. SUPER_ADMIN is deliberately
-// excluded — it can only be provisioned out-of-band, so a mis-click can never
-// create an unremovable super admin. Demoting an existing SUPER_ADMIN is
-// allowed (backend enforces: not yourself, at least one must remain).
-const ASSIGNABLE_ROLES = ["ADMIN", "SUB_ADMIN", "HR_ADMIN", "TEACHER"];
+/**
+ * Primary roles that can never carry an additional role, so there is nothing
+ * to look up for them. Keeps the roles fan-out below to staff rows.
+ */
+const NO_EXTRA_ROLES = ["PARENT", "STUDENT"];
 
 export default function AdminPanel() {
     const router = useRouter();
     const currentUser = getUser();
+    const { canAccessAdminPanel } = useRbac();
+    const readOnly = useReadOnlySession();
     const [activeTab, setActiveTab] = useState<Tab>("users");
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -54,6 +54,12 @@ export default function AdminPanel() {
     // 3-dots dropdown state
     const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Additional roles per user id, filled in behind the table. `undefined`
+    // means "not looked up yet" — the row shows the primary chip alone until
+    // the answer lands, never a wrong one.
+    const [extraRoles, setExtraRoles] = useState<Record<number, string[]>>({});
+    const [roleEditorUser, setRoleEditorUser] = useState<RoleManagerUser | null>(null);
 
     // View-profile modal state
     const [viewModalUser, setViewModalUser] = useState<any | null>(null);
@@ -115,11 +121,13 @@ export default function AdminPanel() {
 
     const authHeaders = { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" };
 
+    // Resolved across every role held, not just the primary one — the panel is
+    // ADMIN+, and that bar is cleared by any role the person holds.
     useEffect(() => {
-        if (!currentUser || !["SUPER_ADMIN", "ADMIN"].includes(currentUser.role)) {
+        if (!currentUser || !canAccessAdminPanel) {
             router.replace("/dashboard");
         }
-    }, [currentUser, router]);
+    }, [currentUser, canAccessAdminPanel, router]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -198,16 +206,42 @@ export default function AdminPanel() {
 
     useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-    const handleRoleChange = async (userId: number, newRole: string) => {
-        try {
-            const res = await authFetch(`${API_BASE_URL}/users/${userId}/role`, {
-                method: "PATCH", headers: authHeaders,
-                body: JSON.stringify({ role: newRole }),
-            });
-            if (res.ok) { toast.success("Role updated!"); fetchUsers(page); }
-            else { const d = await res.json(); toast.error(d.message || "Failed to update role"); }
-        } catch { toast.error("Failed to update role"); }
-    };
+    // Additional roles are not part of the user list payload — there is one
+    // endpoint per user — so the visible page is filled in afterwards, four
+    // requests at a time. The table is readable the whole time; chips just
+    // arrive a beat later. Parent/student rows are skipped: the API refuses to
+    // grant them anything, so the answer is always empty.
+    useEffect(() => {
+        const ids = (users as { id: number; role: string }[])
+            .filter(u => !NO_EXTRA_ROLES.includes(u.role))
+            .map(u => u.id);
+        if (ids.length === 0) return;
+
+        let cancelled = false;
+        const queue = [...ids];
+        const found: Record<number, string[]> = {};
+
+        const worker = async () => {
+            while (queue.length && !cancelled) {
+                const id = queue.shift()!;
+                try {
+                    const res = await authFetch(`${API_BASE_URL}/users/${id}/roles`, {
+                        headers: { Authorization: `Bearer ${getToken()}` },
+                    });
+                    if (res.ok) {
+                        const d = await res.json();
+                        found[id] = (d.secondary ?? []).map((s: { role: string }) => s.role);
+                    }
+                } catch { /* a row that can't be read just shows its primary role */ }
+            }
+        };
+
+        void Promise.all([worker(), worker(), worker(), worker()]).then(() => {
+            if (!cancelled) setExtraRoles(prev => ({ ...prev, ...found }));
+        });
+
+        return () => { cancelled = true; };
+    }, [users]);
 
     const handleResetPassword = async (userId: number, name: string) => {
         if (!confirm(`Reset password for ${name} to default?\n\nThey will be logged out everywhere and must change the password at next login.`)) return;
@@ -332,8 +366,8 @@ export default function AdminPanel() {
                                 className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/40"
                             >
                                 <option value="">All Roles</option>
-                                {ALL_ROLES.filter(r => r).map(r => (
-                                    <option key={r} value={r}>{ROLE_LABELS[r]?.label || r}</option>
+                                {ALL_ROLES.map(r => (
+                                    <option key={r} value={r}>{roleLabel(r)}</option>
                                 ))}
                             </select>
                             <select
@@ -382,16 +416,20 @@ export default function AdminPanel() {
                                 <p className="text-sm mt-1">Try adjusting your search filters</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
+                            // On a phone the six columns cannot honestly fit, so the table
+                            // keeps its real width and scrolls sideways rather than being
+                            // crushed until pills and names wrap mid-word. `min-w` is what
+                            // turns `w-full` from "squeeze to fit" into "scroll to see".
+                            <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                                <table className="w-full min-w-208 text-sm text-left">
                                     <thead className="bg-slate-50 text-xs text-slate-500 uppercase tracking-wide">
                                         <tr>
-                                            <th className="px-4 py-3">Name</th>
-                                            <th className="px-4 py-3">Email / Mobile</th>
-                                            <th className="px-4 py-3">Role</th>
-                                            <th className="px-4 py-3">Designation</th>
-                                            <th className="px-4 py-3">Status</th>
-                                            <th className="px-4 py-3 text-right">Actions</th>
+                                            <th className="px-4 py-3 whitespace-nowrap">Name</th>
+                                            <th className="px-4 py-3 whitespace-nowrap">Email / Mobile</th>
+                                            <th className="px-4 py-3 whitespace-nowrap">Role</th>
+                                            <th className="px-4 py-3 whitespace-nowrap">Designation</th>
+                                            <th className="px-4 py-3 whitespace-nowrap">Status</th>
+                                            <th className="px-4 py-3 text-right whitespace-nowrap">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -405,7 +443,7 @@ export default function AdminPanel() {
                                                         <div>
                                                             <span className="font-medium text-slate-800">{user.firstName} {user.lastName}</span>
                                                             {user.mustChangePassword && (
-                                                                <span className="ml-2 px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 rounded">pw pending</span>
+                                                                <span className="ml-2 inline-flex whitespace-nowrap px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 rounded">pw pending</span>
                                                             )}
                                                         </div>
                                                     </div>
@@ -415,29 +453,32 @@ export default function AdminPanel() {
                                                     {user.mobile && <div className="text-xs text-slate-400">{user.mobile}</div>}
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    {(!isSuperAdmin || user.id === currentUser?.sub) ? (
-                                                        <span className={`px-2.5 py-1 text-xs font-medium rounded-full border ${ROLE_LABELS[user.role]?.color || "bg-slate-100 text-slate-500"}`}>
-                                                            {ROLE_LABELS[user.role]?.label || user.role}
+                                                    {/* Every role the person holds, primary first. The cell is the way
+                                                        in to the role editor — a select here could only ever show one. */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setRoleEditorUser(user)}
+                                                        title={`Manage roles for ${user.firstName} ${user.lastName}`}
+                                                        className="group -mx-1 -my-0.5 flex max-w-56 cursor-pointer flex-wrap items-center gap-1 rounded-lg px-1 py-0.5 text-left transition-colors hover:bg-brand-tint/60 focus-visible:ring-3 focus-visible:ring-brand/30 focus-visible:outline-none"
+                                                    >
+                                                        <RoleChip role={user.role} primary />
+                                                        {(extraRoles[user.id] ?? []).map((r: string) => (
+                                                            <RoleChip key={r} role={r} />
+                                                        ))}
+                                                        <span className="text-ink-faint group-hover:text-brand text-[11px] font-semibold opacity-0 transition-opacity group-hover:opacity-100">
+                                                            Edit
                                                         </span>
-                                                    ) : (
-                                                        <select
-                                                            defaultValue={user.role}
-                                                            onChange={e => handleRoleChange(user.id, e.target.value)}
-                                                            className="text-xs bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand/40 cursor-pointer"
-                                                        >
-                                                            {/* Current role stays visible even when it is not assignable (e.g. SUPER_ADMIN, PARENT) */}
-                                                            {!ASSIGNABLE_ROLES.includes(user.role) && (
-                                                                <option value={user.role} disabled>{ROLE_LABELS[user.role]?.label || user.role}</option>
-                                                            )}
-                                                            {ASSIGNABLE_ROLES.map(r => (
-                                                                <option key={r} value={r}>{ROLE_LABELS[r]?.label || r}</option>
-                                                            ))}
-                                                        </select>
-                                                    )}
+                                                    </button>
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     {user.designation ? (
-                                                        <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-violet-500/10 text-violet-700 border border-violet-500/20">
+                                                        // inline-flex + whitespace-nowrap, NOT a bare inline span:
+                                                        // an inline element wraps BETWEEN its words, which splits the
+                                                        // pill's background and border in half — "Vice" in one box on
+                                                        // one line, "Principal" in another below it. A pill has to
+                                                        // stay one unbroken box, so it never wraps; the table scrolls
+                                                        // sideways instead (see min-w on the table).
+                                                        <span className="inline-flex whitespace-nowrap px-2.5 py-1 text-xs font-medium rounded-full bg-violet-500/10 text-violet-700 border border-violet-500/20">
                                                             {user.designation.title}
                                                         </span>
                                                     ) : (
@@ -445,7 +486,7 @@ export default function AdminPanel() {
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${user.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                                                    <span className={`inline-flex whitespace-nowrap px-2 py-0.5 text-xs rounded-full font-medium ${user.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
                                                         {user.isActive ? "Active" : "Inactive"}
                                                     </span>
                                                 </td>
@@ -466,13 +507,22 @@ export default function AdminPanel() {
                                                                         👁 View Profile
                                                                     </button>
                                                                     <button
+                                                                        onClick={() => { setOpenDropdownId(null); setRoleEditorUser(user); }}
+                                                                        className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                                                                        🎫 Manage Roles
+                                                                    </button>
+                                                                    <button
                                                                         onClick={() => { setOpenDropdownId(null); handleResetPassword(user.id, `${user.firstName} ${user.lastName}`); }}
-                                                                        className="w-full text-left px-4 py-2 text-sm text-amber-700 hover:bg-amber-50">
+                                                                        disabled={readOnly}
+                                                                        title={readOnly ? READ_ONLY_TITLE : undefined}
+                                                                        className="w-full text-left px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed">
                                                                         🔑 Reset Password
                                                                     </button>
                                                                     <button
                                                                         onClick={() => { setOpenDropdownId(null); handleToggleStatus(user.id, user.isActive, `${user.firstName} ${user.lastName}`); }}
-                                                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 ${user.isActive ? "text-orange-700" : "text-green-700"}`}>
+                                                                        disabled={readOnly}
+                                                                        title={readOnly ? READ_ONLY_TITLE : undefined}
+                                                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed ${user.isActive ? "text-orange-700" : "text-green-700"}`}>
                                                                         {user.isActive ? "🔒 Deactivate" : "Activate"}
                                                                     </button>
                                                                     {isSuperAdmin && (
@@ -480,7 +530,9 @@ export default function AdminPanel() {
                                                                             <hr className="my-1 border-slate-100" />
                                                                             <button
                                                                                 onClick={() => { setOpenDropdownId(null); handleDeleteUser(user.id, `${user.firstName} ${user.lastName}`); }}
-                                                                                className="w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 font-medium">
+                                                                                disabled={readOnly}
+                                                                                title={readOnly ? READ_ONLY_TITLE : undefined}
+                                                                                className="w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 font-medium disabled:opacity-50 disabled:cursor-not-allowed">
                                                                                 🗑 Delete Account
                                                                             </button>
                                                                         </>
@@ -602,7 +654,7 @@ export default function AdminPanel() {
                             </button>
                         ) : isConfirmingSetup ? (
                             <div className="flex flex-wrap items-center gap-3">
-                                <button onClick={executeSchoolSetup} disabled={!setupFile || setupLoading} className="w-full sm:w-auto px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all shadow-sm disabled:opacity-50 flex justify-center items-center gap-2">
+                                <button onClick={executeSchoolSetup} disabled={!setupFile || setupLoading || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="w-full sm:w-auto px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all shadow-sm disabled:opacity-50 flex justify-center items-center gap-2">
                                     {setupLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Confirm Execution"}
                                 </button>
                                 <button onClick={() => { setIsConfirmingSetup(false); setSetupTimer(0); }} className="w-full sm:w-auto px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all disabled:opacity-50">
@@ -610,7 +662,7 @@ export default function AdminPanel() {
                                 </button>
                             </div>
                         ) : (
-                            <button onClick={() => { setIsConfirmingSetup(true); setSetupTimer(5); }} disabled={!setupFile} className="w-full sm:w-auto px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all shadow-sm disabled:opacity-50 focus:ring-4 focus:ring-rose-100">
+                            <button onClick={() => { setIsConfirmingSetup(true); setSetupTimer(5); }} disabled={!setupFile || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="w-full sm:w-auto px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all shadow-sm disabled:opacity-50 focus:ring-4 focus:ring-rose-100">
                                 Execute Setup
                             </button>
                         )}
@@ -642,7 +694,12 @@ export default function AdminPanel() {
                                         </div>
                                         <div>
                                             <p className="text-xl font-bold text-slate-800">{viewModalUser.firstName} {viewModalUser.lastName}</p>
-                                            <p className="text-sm text-slate-500">{ROLE_LABELS[viewModalUser.role]?.label || viewModalUser.role}</p>
+                                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                                <RoleChip role={viewModalUser.role} primary />
+                                                {(extraRoles[viewModalUser.id] ?? []).map((r: string) => (
+                                                    <RoleChip key={r} role={r} />
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-3 text-sm">
@@ -697,6 +754,24 @@ export default function AdminPanel() {
                     </div>
                 </div>
             )}
+
+            {/* ─── ROLE EDITOR ─── */}
+            <RoleManagerDialog
+                // Keyed on the person: opening the sheet for someone else
+                // starts it clean rather than showing the last person's roles
+                // until the fetch lands.
+                key={roleEditorUser?.id ?? "none"}
+                user={roleEditorUser}
+                open={roleEditorUser !== null}
+                onOpenChange={(next) => { if (!next) setRoleEditorUser(null); }}
+                canEditPrimary={isSuperAdmin}
+                isSelf={roleEditorUser?.id === currentUser?.sub}
+                readOnly={readOnly}
+                onRolesChanged={(userId, secondary) =>
+                    setExtraRoles(prev => ({ ...prev, [userId]: secondary }))
+                }
+                onPrimaryChanged={() => fetchUsers(page)}
+            />
 
         </main>
     );

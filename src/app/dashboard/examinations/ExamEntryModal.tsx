@@ -5,6 +5,7 @@ import useSWR from "swr";
 import { API_BASE_URL, fetcher } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { toast } from "react-hot-toast";
+import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 
 interface ExamEntryModalProps {
     scheduleId: number;
@@ -25,6 +26,7 @@ export default function ExamEntryModal({
     onClose, onSaved
 }: ExamEntryModalProps) {
     const { data: subjects } = useSWR(`${API_BASE_URL}/subjects`, fetcher);
+    const readOnly = useReadOnlySession();
 
     const isRestrictedDay = isHoliday || isSunday;
 
@@ -47,6 +49,7 @@ export default function ExamEntryModal({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
 
         setLoading(true);
         try {
@@ -207,7 +210,7 @@ export default function ExamEntryModal({
 
                         <div className="flex justify-between items-center pt-4 border-t border-gray-200">
                             {existingEntry ? (
-                                <button type="button" onClick={handleDelete} disabled={deleteLoading} className="px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md border border-red-200 transition-colors disabled:opacity-50">
+                                <button type="button" onClick={handleDelete} disabled={deleteLoading || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md border border-red-200 transition-colors disabled:opacity-50">
                                     {deleteLoading ? "Deleting..." : "Delete Entry"}
                                 </button>
                             ) : (
@@ -215,7 +218,7 @@ export default function ExamEntryModal({
                                     Cancel
                                 </button>
                             )}
-                            <button type="submit" disabled={loading || isRestrictedDay} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+                            <button type="submit" disabled={loading || isRestrictedDay || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
                                 {loading ? "Saving..." : (existingEntry ? "Update Entry" : "Add Entry")}
                             </button>
                         </div>

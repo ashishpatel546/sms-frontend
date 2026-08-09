@@ -141,9 +141,9 @@ export default function BillingPage() {
   }, []);
 
   useEffect(() => {
-    if (rbac.isSuperAdmin) void load();
+    if (rbac.isAdmin) void load();
     else setLoading(false);
-  }, [rbac.isSuperAdmin, load]);
+  }, [rbac.isAdmin, load]);
 
   /** Checks a code and shows the saving, without spending it. */
   const applyCoupon = async (invoice: InvoiceRow) => {
@@ -283,11 +283,11 @@ export default function BillingPage() {
     }
   };
 
-  if (!rbac.isSuperAdmin) {
+  if (!rbac.isAdmin) {
     return (
       <div className="p-8 text-center">
         <p className="text-sm text-gray-500">
-          Billing is visible to the school’s super admin only.
+          Billing is visible to the school’s admin and super admin only.
         </p>
       </div>
     );

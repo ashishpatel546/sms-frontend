@@ -27,6 +27,7 @@ import {
   HelpCircle,
   Sparkles,
   Receipt,
+  IdCard,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -36,7 +37,11 @@ export interface NavItem {
   href: string;
   icon: LucideIcon;
   /** Key on the RbacPermissions object that must be truthy for the item to appear.
-   *  If omitted, the item is always visible (regardless of role). */
+   *  If omitted, the item is always visible (regardless of role).
+   *
+   *  Those permissions are resolved across EVERY role the user holds, so the
+   *  menu is the union of what each role opens: an admin who also holds
+   *  HR_ADMIN sees the Administration group AND the HR Portal group. */
   rbacKey?: string;
   /** Tailwind text-color class for the icon, e.g. "text-blue-500" */
   iconColor: string;
@@ -49,10 +54,28 @@ export interface NavItem {
    * Feature key from the school's plan that must be enabled for the item to
    * appear. Omit for modules that are part of every plan.
    *
+   * Pass an ARRAY for a page that serves several modules — the item unlocks if
+   * ANY one of them is in the plan. The scanner is the reason this exists: it
+   * reads pickup, visitor and ID-card QRs, so gating it on `pickup_management`
+   * alone hid a working scanner from schools that had only bought ID cards.
+   *
    * The sidebar hides the item only once features are known to be loaded, so a
    * slow request shows the full menu rather than flashing a truncated one.
    */
-  featureFlag?: string;
+  featureFlag?: string | string[];
+}
+
+/**
+ * Is a nav item's module in the plan? An array of flags means "any of these" —
+ * see the `featureFlag` docs above.
+ */
+export function isNavItemUnlocked(
+  featureFlag: string | string[] | undefined,
+  features: Record<string, boolean>,
+): boolean {
+  if (!featureFlag) return true;
+  const flags = Array.isArray(featureFlag) ? featureFlag : [featureFlag];
+  return flags.some((flag) => features[flag] === true);
 }
 
 export interface NavGroup {
@@ -100,6 +123,26 @@ export const NAV_CONFIG: NavGroup[] = [
         href: '/dashboard/staff',
         icon: Users,
         iconColor: 'text-indigo-500',
+      },
+      {
+        // Cards are printed for students and staff, so it sits with the two
+        // registers it draws from. Gated on the `id_cards` plan feature, which
+        // is OFF by default — the same flag the backend controller requires,
+        // so the menu entry and the API agree about who has the module.
+        id: 'id-cards',
+        label: 'ID Cards',
+        href: '/dashboard/id-cards',
+        icon: IdCard,
+        iconColor: 'text-cyan-500',
+        featureFlag: 'id_cards',
+        // Everyone who holds a card, not just the office: the page leads with
+        // a "My card" tab and only shows the student/staff registers to
+        // SUB_ADMIN+. Gating the menu on `canManageIdCards` would have left a
+        // teacher's own card reachable only by typing the URL.
+        rbacKey: 'canViewOwnIdCard',
+        // GUARD is deny-by-default in the sidebar, so it needs saying out loud:
+        // a guard carries a card like everyone else and may see their own.
+        guardAllowed: true,
       },
       {
         id: 'subjects',
@@ -175,7 +218,10 @@ export const NAV_CONFIG: NavGroup[] = [
         href: '/dashboard/pickup/scan',
         icon: QrCode,
         iconColor: 'text-cyan-500',
-        featureFlag: 'pickup_management',
+        // One scanner, three QR families — it branches on the code's prefix
+        // (V1: visitor, IDC1: ID card, bare token: pickup). So it belongs to
+        // whichever of the three modules the school actually has.
+        featureFlag: ['pickup_management', 'visitor_management', 'id_cards'],
         guardAllowed: true,
       },
       {
@@ -343,8 +389,8 @@ export const NAV_CONFIG: NavGroup[] = [
         href: '/dashboard/billing',
         icon: Receipt,
         iconColor: 'text-emerald-600',
-        // Commercial terms are the school owner's business, nobody else's.
-        rbacKey: 'isSuperAdmin',
+        // Commercial terms are admin/owner business, nobody else's.
+        rbacKey: 'isAdmin',
       },
     ],
   },

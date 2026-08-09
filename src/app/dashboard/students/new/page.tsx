@@ -7,14 +7,27 @@ import toast from "react-hot-toast";
 import { API_BASE_URL } from "@/lib/api";
 import { Country, State, City } from "country-state-city";
 import { useRbac } from "@/lib/rbac";
+import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 import { authFetch } from "@/lib/auth";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
 import { sortByName } from "@/lib/utils";
 import { formatMobileInput, isValidMobile, MOBILE_ERROR } from "@/lib/mobile";
+import { PersonPhotosSection, type StagedPhotos } from "@/components/person/PersonPhotosSection";
+import {
+    PersonDocumentsSection,
+    persistStagedDocuments,
+    type StagedDocument,
+} from "@/components/person/PersonDocumentsSection";
+import {
+    personUserId,
+    uploadPersonPhoto,
+    type PhotoKind,
+} from "@/lib/person-documents-api";
 
 export default function AddStudentPage() {
     const router = useRouter();
     const rbac = useRbac();
+    const readOnly = useReadOnlySession();
 
     // Route guard — only SUB_ADMIN and above can add students
     useEffect(() => {
@@ -41,6 +54,9 @@ export default function AddStudentPage() {
         motherPan: "",
         motherOccupation: "",
         motherIncome: "",
+        guardianName: "",
+        guardianRelation: "",
+        guardianPhone: "",
         aadhaarNumber: "",
         mobile: "",
         alternateMobile: "",
@@ -56,6 +72,11 @@ export default function AddStudentPage() {
     const [error, setError] = useState("");
     const [availableDiscounts, setAvailableDiscounts] = useState<any[]>([]);
     const [selectedDiscounts, setSelectedDiscounts] = useState<number[]>([]);
+
+    // Photos and documents can only be written once the student has a user id,
+    // so they are cropped/ticked here and sent the moment the record exists.
+    const [stagedPhotos, setStagedPhotos] = useState<StagedPhotos>({});
+    const [stagedDocuments, setStagedDocuments] = useState<StagedDocument[]>([]);
 
     // Enrollment State
     const [enrollStudent, setEnrollStudent] = useState(false);
@@ -167,7 +188,7 @@ export default function AddStudentPage() {
         const { name, value } = e.target;
 
         // Mobile is a login identifier — strip formatting as it is typed/pasted
-        if (name === 'mobile' || name === 'alternateMobile') {
+        if (name === 'mobile' || name === 'alternateMobile' || name === 'guardianPhone') {
             setFormData({ ...formData, [name]: formatMobileInput(value) });
             return;
         }
@@ -269,6 +290,7 @@ export default function AddStudentPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         setError("");
 
         if (!isValidMobile(formData.mobile)) {
@@ -277,6 +299,10 @@ export default function AddStudentPage() {
         }
         if (formData.alternateMobile && !isValidMobile(formData.alternateMobile)) {
             setError(`Alternate Mobile: ${MOBILE_ERROR}`);
+            return;
+        }
+        if (formData.guardianPhone && !isValidMobile(formData.guardianPhone)) {
+            setError(`Guardian Phone: ${MOBILE_ERROR}`);
             return;
         }
 
@@ -301,7 +327,7 @@ export default function AddStudentPage() {
             }
 
             // Remove optional empty string fields to prevent validation errors
-            const optionalFields = ['email', 'aadhaarNumber', 'pen', 'aparId', 'abhaId', 'alternateMobile', 'bloodGroup', 'fatherAadhaarNumber', 'fatherPan', 'fatherOccupation', 'motherAadhaarNumber', 'motherPan', 'motherOccupation'];
+            const optionalFields = ['email', 'aadhaarNumber', 'pen', 'aparId', 'abhaId', 'alternateMobile', 'bloodGroup', 'fatherAadhaarNumber', 'fatherPan', 'fatherOccupation', 'motherAadhaarNumber', 'motherPan', 'motherOccupation', 'guardianName', 'guardianRelation', 'guardianPhone'];
             optionalFields.forEach(field => {
                 const key = field as keyof typeof payload;
                 if (!payload[key]) {
@@ -327,6 +353,32 @@ export default function AddStudentPage() {
             }
             
             const newStudent = await res.json();
+
+            // Photos and the checklist are keyed on the USER id, which only
+            // exists now. A failure here must not read as "the student wasn't
+            // created" — it wasn't; only the extras missed.
+            const newUserId = personUserId(newStudent);
+            if (newUserId) {
+                const kinds = Object.keys(stagedPhotos) as PhotoKind[];
+                for (const kind of kinds) {
+                    const photo = stagedPhotos[kind];
+                    if (!photo) continue;
+                    try {
+                        await uploadPersonPhoto(newUserId, kind, photo.full, photo.thumb);
+                    } catch {
+                        toast.error(`Student saved, but the ${kind} photo did not upload. Add it from Edit.`);
+                    }
+                }
+                if (stagedDocuments.length > 0) {
+                    try {
+                        await persistStagedDocuments(newUserId, stagedDocuments);
+                    } catch {
+                        toast.error("Student saved, but the document checklist did not. Set it from Edit.");
+                    }
+                }
+            } else if (Object.keys(stagedPhotos).length > 0 || stagedDocuments.length > 0) {
+                toast.error("Student saved, but photos and documents could not be attached. Add them from Edit.");
+            }
 
             // Handle Enrollment if requested
             if (enrollStudent) {
@@ -587,6 +639,30 @@ export default function AddStudentPage() {
                             </div>
                         </div>
 
+                        {/* Guardian — filled in when someone other than a parent is the
+                            day-to-day contact. Optional throughout. */}
+                        <div className="mt-6">
+                            <h4 className="mb-1 text-base font-semibold text-slate-700">Guardian</h4>
+                            <p className="mb-4 text-xs text-gray-500">Only if someone other than the parents is the day-to-day contact.</p>
+                            <div className="grid gap-6 md:grid-cols-3">
+                                <div>
+                                    <label htmlFor="guardianName" className="block mb-2 text-sm font-medium text-gray-900">Guardian&apos;s Name <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                    <input type="text" id="guardianName" name="guardianName" value={formData.guardianName} onChange={handleChange} maxLength={150} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="e.g. Rekha Sharma" />
+                                </div>
+                                <div>
+                                    <label htmlFor="guardianRelation" className="block mb-2 text-sm font-medium text-gray-900">Relation to the student <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                    <input type="text" id="guardianRelation" name="guardianRelation" value={formData.guardianRelation} onChange={handleChange} maxLength={50} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="e.g. Grandmother" />
+                                </div>
+                                <div>
+                                    <label htmlFor="guardianPhone" className="block mb-2 text-sm font-medium text-gray-900">Guardian&apos;s Phone <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                    <input type="tel" id="guardianPhone" name="guardianPhone" value={formData.guardianPhone} onChange={handleChange} maxLength={10} inputMode="numeric" placeholder="10-digit number" className={`bg-gray-50 border ${formData.guardianPhone.length > 0 && !isValidMobile(formData.guardianPhone) ? 'border-red-500' : 'border-gray-300'} text-sm rounded-lg block w-full p-2.5`} />
+                                    {formData.guardianPhone.length > 0 && !isValidMobile(formData.guardianPhone) && (
+                                        <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
                         {selectedSiblingObj && (
                             <p className="mt-2 text-xs text-blue-600 italic">Parent names are locked and synced with the linked sibling.</p>
                         )}
@@ -668,6 +744,29 @@ export default function AddStudentPage() {
                             </div>
                         </div>
                     )}
+
+                    {/* Photos & documents — optional, and captured now because the
+                        family is standing at the counter. Both upload after save. */}
+                    <div className="space-y-4">
+                        <PersonPhotosSection
+                            kinds={["self", "father", "mother", "guardian"]}
+                            selfLabel="Student photo"
+                            staged={stagedPhotos}
+                            onStagedChange={(kind, photo) =>
+                                setStagedPhotos(prev => ({ ...prev, [kind]: photo }))
+                            }
+                            disabled={readOnly}
+                            disabledReason={readOnly ? READ_ONLY_TITLE : undefined}
+                        />
+                        <PersonDocumentsSection
+                            owners={["SELF", "FATHER", "MOTHER", "GUARDIAN"]}
+                            selfLabel="Student"
+                            staged={stagedDocuments}
+                            onStagedChange={setStagedDocuments}
+                            disabled={readOnly}
+                            disabledReason={readOnly ? READ_ONLY_TITLE : undefined}
+                        />
+                    </div>
 
                     {/* Enrollment Section */}
                     <div className="pt-4 border-t mt-8">
@@ -767,7 +866,7 @@ export default function AddStudentPage() {
                     </div>
 
                     <div className="flex items-center space-x-4 pt-4 border-t">
-                        <button type="submit" disabled={loading} className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-bold rounded-lg text-lg w-full sm:w-auto px-8 py-3 text-center disabled:opacity-50">
+                        <button type="submit" disabled={loading || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-bold rounded-lg text-lg w-full sm:w-auto px-8 py-3 text-center disabled:opacity-50">
                             {loading ? 'Registering...' : 'Register Student'}
                         </button>
                         <Link href="/dashboard/students" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-line-strong font-medium rounded-lg text-sm px-5 py-3">

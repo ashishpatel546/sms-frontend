@@ -36,15 +36,15 @@ function formatDate(value: string | null): string {
  * Warns the school owner about unpaid subscription invoices on the dashboard
  * home, so a suspension is never the first they hear of it.
  *
- * Shown only to SUPER_ADMIN: they are the only role that can see billing or
- * act on it, and commercial terms are not staff business.
+ * Shown only to ADMIN+ (ADMIN, SUPER_ADMIN): they are the only roles that can
+ * see billing or act on it, and commercial terms are not staff business.
  */
 export default function BillingDueBanner() {
   const rbac = useRbac();
   const [summary, setSummary] = useState<Summary | null>(null);
 
   useEffect(() => {
-    if (!rbac.isSuperAdmin) return;
+    if (!rbac.isAdmin) return;
     let cancelled = false;
 
     authFetch(`${API_BASE_URL}/billing/summary`)
@@ -58,9 +58,9 @@ export default function BillingDueBanner() {
     return () => {
       cancelled = true;
     };
-  }, [rbac.isSuperAdmin]);
+  }, [rbac.isAdmin]);
 
-  if (!rbac.isSuperAdmin) return null;
+  if (!rbac.isAdmin) return null;
   if (!summary || summary.outstandingCount === 0) return null;
 
   const overdue = summary.overdueCount > 0;

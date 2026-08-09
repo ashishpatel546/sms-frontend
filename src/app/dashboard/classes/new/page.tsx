@@ -7,6 +7,7 @@ import { Loader } from "@/components/ui/Loader";
 import toast from "react-hot-toast";
 import { useRbac } from "@/lib/rbac";
 import { authFetch } from "@/lib/auth";
+import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 
 type SectionEntry = {
     /** "existing" = picked from dropdown; "new" = user is typing a new name */
@@ -17,6 +18,7 @@ type SectionEntry = {
 };
 
 export default function AddClassPage() {
+    const readOnly = useReadOnlySession();
     const router = useRouter();
     const rbac = useRbac();
 
@@ -277,7 +279,8 @@ export default function AddClassPage() {
                     <div className="flex items-center space-x-4">
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={loading || readOnly}
+                            title={readOnly ? READ_ONLY_TITLE : undefined}
                             className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50"
                         >
                             {loading ? 'Creating...' : 'Create Class'}

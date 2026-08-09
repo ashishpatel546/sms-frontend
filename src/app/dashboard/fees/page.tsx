@@ -7,6 +7,7 @@ import { API_BASE_URL } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useRbac } from "@/lib/rbac";
 import { authFetch, getUser } from "@/lib/auth";
+import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 import ReceiptModal from "@/components/ReceiptModal";
 import { Settings, Layers, Wallet, BadgePercent } from "lucide-react";
 import { sortByName } from "@/lib/utils";
@@ -15,6 +16,7 @@ import NumberInput from "@/components/ui/NumberInput";
 export default function FeesDashboardPage() {
     const router = useRouter();
     const rbac = useRbac();
+    const readOnly = useReadOnlySession();
     const [activeTab, setActiveTab] = useState<'SETUP' | 'STRUCTURES' | 'COLLECTION' | 'APPLY_DISCOUNTS' | 'APPLY_OTHER_FEE' | 'FEE_DETAILS'>('COLLECTION');
     const [mounted, setMounted] = useState(false);
 
@@ -286,6 +288,7 @@ export default function FeesDashboardPage() {
 
     const handleSaveSettings = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         setSavingSettings(true);
         try {
             const res = await authFetch(`${API_BASE_URL}/fees/settings`, {
@@ -309,6 +312,7 @@ export default function FeesDashboardPage() {
 
     const handleCreateDiscount = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/fees/discounts`, {
                 method: "POST",
@@ -336,6 +340,7 @@ export default function FeesDashboardPage() {
 
     const handleUpdateDiscount = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         if (!editingDiscount) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/fees/discounts/${editingDiscount.id}`, {
@@ -398,6 +403,7 @@ export default function FeesDashboardPage() {
 
     const handleCreateCategory = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/fees/categories`, {
                 method: "POST",
@@ -418,6 +424,7 @@ export default function FeesDashboardPage() {
 
     const handleUpdateCategory = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         if (!editingCategory) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/fees/categories/${editingCategory.id}`, {
@@ -471,6 +478,7 @@ export default function FeesDashboardPage() {
 
     const handleCreateStructure = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/fees/structures`, {
                 method: "POST",
@@ -503,6 +511,7 @@ export default function FeesDashboardPage() {
 
     const handleUpdateStructure = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         if (!editingStructure) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/fees/structures/${editingStructure.id}`, {
@@ -649,6 +658,7 @@ export default function FeesDashboardPage() {
 
     const handleApplyOtherFeeSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         if (!applyOtherFeeStudentId || !applyOtherFeeCategoryId || !applyOtherFeeAmount) return;
 
         setApplyingOtherFee(true);
@@ -732,6 +742,7 @@ export default function FeesDashboardPage() {
 
     const handleCollectPayment = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         if (selectedMonths.length === 0) return;
 
         try {
@@ -851,6 +862,7 @@ export default function FeesDashboardPage() {
 
     const handleIssueAdjustment = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         if (!selectedStudentId || !adjFeeMonth) return;
         if (adjType === 'WAIVE_OFF' && !adjPermittedByUserId) {
             toast.error('Please select who permitted this waive-off.');
@@ -1307,7 +1319,7 @@ export default function FeesDashboardPage() {
                                 </div>
                             )}
                             <div className="flex gap-3 pt-2">
-                                <button type="submit" disabled={submittingAdj} className={`flex-1 text-white py-2.5 rounded-lg font-bold transition-colors disabled:opacity-50 ${adjType === 'REFUND' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-purple-600 hover:bg-purple-700'}`}>
+                                <button type="submit" disabled={submittingAdj || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className={`flex-1 text-white py-2.5 rounded-lg font-bold transition-colors disabled:opacity-50 ${adjType === 'REFUND' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-purple-600 hover:bg-purple-700'}`}>
                                     {submittingAdj ? 'Processing...' : adjType === 'REFUND' ? 'Confirm Refund' : 'Confirm Waive Off'}
                                 </button>
                                 <button type="button" onClick={() => setAdjModalOpen(false)} className="px-5 py-2.5 bg-gray-100 text-gray-700 border border-gray-200 rounded-lg font-medium hover:bg-gray-200 transition-colors">
@@ -1433,7 +1445,7 @@ export default function FeesDashboardPage() {
                                 <p className="text-xs text-gray-500 mt-1">Applied daily if overdue</p>
                             </div>
                             <div>
-                                <button type="submit" disabled={savingSettings} className="text-white bg-green-600 hover:bg-green-700 transition-colors py-2.5 px-6 rounded text-sm w-full font-medium disabled:opacity-50">
+                                <button type="submit" disabled={savingSettings || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-white bg-green-600 hover:bg-green-700 transition-colors py-2.5 px-6 rounded text-sm w-full font-medium disabled:opacity-50">
                                     {savingSettings ? 'Saving...' : 'Save Configuration'}
                                 </button>
                             </div>
@@ -1460,7 +1472,7 @@ export default function FeesDashboardPage() {
                                         <option value="ADD_ON">Add-On (individual student fee)</option>
                                     </select>
                                 </div>
-                                <button type="submit" className="text-white bg-indigo-600 hover:bg-indigo-700 transition-colors py-2 px-4 rounded text-sm w-full font-medium">Create Category</button>
+                                <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-white bg-indigo-600 hover:bg-indigo-700 transition-colors py-2 px-4 rounded text-sm w-full font-medium disabled:opacity-50 disabled:cursor-not-allowed">Create Category</button>
                             </form>
 
                             {/* Category Edit Modal */}
@@ -1510,7 +1522,9 @@ export default function FeesDashboardPage() {
                                                 </button>
                                                 <button
                                                     type="submit"
-                                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                                    disabled={readOnly}
+                                                    title={readOnly ? READ_ONLY_TITLE : undefined}
+                                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     Save Changes
                                                 </button>
@@ -1521,7 +1535,7 @@ export default function FeesDashboardPage() {
                             )}
 
                             <h3 className="text-sm font-bold mt-6 mb-2 text-slate-800">Existing Categories:</h3>
-                            <div className="relative border border-gray-200 rounded-lg max-h-[400px]">
+                            <div className="relative border border-gray-200 rounded-lg max-h-100">
                                 <table className="w-full text-sm text-left text-gray-500">
                                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10">
                                         <tr>
@@ -1667,7 +1681,7 @@ export default function FeesDashboardPage() {
                                     </label>
                                 </div>
 
-                                <button type="submit" className="text-white bg-indigo-600 hover:bg-indigo-700 transition-colors py-2 px-4 rounded text-sm w-full font-medium">Define Structure</button>
+                                <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-white bg-indigo-600 hover:bg-indigo-700 transition-colors py-2 px-4 rounded text-sm w-full font-medium disabled:opacity-50 disabled:cursor-not-allowed">Define Structure</button>
                             </form>
                         </div>
                     </div>
@@ -1710,7 +1724,7 @@ export default function FeesDashboardPage() {
                                 </div>
                             )}
                             <div className="col-span-6 md:col-span-1">
-                                <button type="submit" className="text-white bg-indigo-600 hover:bg-indigo-700 transition-colors py-2.5 px-6 rounded text-sm w-full font-medium">Create</button>
+                                <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-white bg-indigo-600 hover:bg-indigo-700 transition-colors py-2.5 px-6 rounded text-sm w-full font-medium disabled:opacity-50 disabled:cursor-not-allowed">Create</button>
                             </div>
                         </form>
 
@@ -1757,7 +1771,7 @@ export default function FeesDashboardPage() {
                                         </div>
                                         <div className="flex gap-3 justify-end mt-6">
                                             <button type="button" onClick={() => setEditingDiscount(null)} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Cancel</button>
-                                            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Changes</button>
+                                            <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">Save Changes</button>
                                         </div>
                                     </form>
                                 </div>
@@ -2012,7 +2026,9 @@ export default function FeesDashboardPage() {
                                         </button>
                                         <button
                                             type="submit"
-                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                            disabled={readOnly}
+                                            title={readOnly ? READ_ONLY_TITLE : undefined}
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             Save Changes
                                         </button>
@@ -2684,7 +2700,7 @@ export default function FeesDashboardPage() {
                                             <input type="text" value={payRemarks} onChange={(e) => setPayRemarks(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" placeholder="Optional transaction ID..." />
                                         </div>
                                         <div className="flex gap-3">
-                                            <button type="submit" disabled={loadingCollection} className="flex-1 text-white bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-bold disabled:opacity-50 transition-colors shadow-sm">
+                                            <button type="submit" disabled={loadingCollection || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="flex-1 text-white bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-bold disabled:opacity-50 transition-colors shadow-sm">
                                                 Confirm Payment
                                             </button>
                                             <button type="button" onClick={() => setSelectedMonths([])} className="px-5 py-3 bg-gray-100 text-gray-700 border border-gray-200 rounded-lg font-medium hover:bg-gray-200 transition-colors">
@@ -2864,6 +2880,7 @@ export default function FeesDashboardPage() {
 
                             <form onSubmit={async (e) => {
                                 e.preventDefault();
+                                if (readOnly) return;
                                 setApplyingDiscounts(true);
                                 try {
                                     const res = await authFetch(`${API_BASE_URL}/students/${applyDiscountStudentId}`, {
@@ -2934,7 +2951,8 @@ export default function FeesDashboardPage() {
                                 <div className="flex justify-end pt-4 border-t">
                                     <button
                                         type="submit"
-                                        disabled={applyingDiscounts}
+                                        disabled={applyingDiscounts || readOnly}
+                                        title={readOnly ? READ_ONLY_TITLE : undefined}
                                         className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-brand/40 font-medium rounded-lg text-sm px-6 py-2.5 transition-colors disabled:opacity-50"
                                     >
                                         {applyingDiscounts ? 'Saving...' : 'Save Discount Assignments'}
@@ -3008,7 +3026,8 @@ export default function FeesDashboardPage() {
                                 <div className="flex justify-end pt-4 border-t">
                                     <button
                                         type="submit"
-                                        disabled={applyingOtherFee}
+                                        disabled={applyingOtherFee || readOnly}
+                                        title={readOnly ? READ_ONLY_TITLE : undefined}
                                         className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-brand/40 font-medium rounded-lg text-sm px-6 py-2.5 transition-colors disabled:opacity-50"
                                     >
                                         {applyingOtherFee ? 'Applying...' : 'Apply Special Fee'}

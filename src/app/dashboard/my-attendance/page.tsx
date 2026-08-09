@@ -5,17 +5,30 @@
 
 import { useState, useEffect } from "react";
 import { hrApi, StaffAttendanceRecord, StaffBiometric, WebauthnPermitStatus, CheckOutReason, TodayAttendanceStatus } from "@/lib/hr-api";
+import {
+  attendanceSettingsApi,
+  previewCheckoutStatus,
+  type AttendanceSettings,
+  type CheckoutPreviewStatus,
+} from "@/lib/attendance-settings-api";
 import toast, { Toaster } from "react-hot-toast";
 import { startRegistration, startAuthentication } from "@simplewebauthn/browser";
 import { getOrCreateDeviceKeyPair, signChallenge, getDevicePublicKey, clearDeviceKeyPair } from "@/lib/device-crypto";
 import { todayLocalDate, formatTime } from "@/lib/utils";
 import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Clock3, TriangleAlert } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 dayjs.extend(duration);
+
+/**
+ * `StaffAttendanceRecord` (in `hr-api.ts`) predates the `isLate` column —
+ * extending it locally avoids touching that shared file. Every record the
+ * today-status/monthly endpoints return now carries `isLate` alongside `status`.
+ */
+type AttendanceRow = StaffAttendanceRecord & { isLate?: boolean };
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const STATUS_STYLES: Record<string, string> = {
@@ -73,7 +86,7 @@ const todayStr = todayLocalDate();
 type CheckInState = "idle" | "locating" | "authenticating" | "submitting" | "done" | "error";
 
 export default function MyAttendancePage() {
-  const [records, setRecords] = useState<StaffAttendanceRecord[]>([]);
+  const [records, setRecords] = useState<AttendanceRow[]>([]);
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [loading, setLoading] = useState(false);
@@ -82,15 +95,31 @@ export default function MyAttendancePage() {
   // Today's check-in state
   const [checkInState, setCheckInState] = useState<CheckInState>("idle");
   const [checkInMsg, setCheckInMsg] = useState("");
-  const [todayRecord, setTodayRecord] = useState<StaffAttendanceRecord | null>(null);
+  const [todayRecord, setTodayRecord] = useState<AttendanceRow | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<"PRESENT" | "LATE" | "HALF_DAY">("PRESENT");
 
   // Checkout state
   const [checkOutState, setCheckOutState] = useState<CheckInState>("idle");
   const [checkOutMsg, setCheckOutMsg] = useState("");
   const [checkOutReason, setCheckOutReason] = useState<CheckOutReason>("REGULAR");
-  const [checkOutStatusOverride, setCheckOutStatusOverride] = useState<"PRESENT" | "LATE" | "HALF_DAY">("PRESENT");
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Attendance settings — fetched once so a checkout can be previewed client-side
+  // before it fires. TEACHER+ (all staff) can read this endpoint.
+  const [attendanceSettings, setAttendanceSettings] = useState<AttendanceSettings | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    attendanceSettingsApi
+      .get()
+      .then((s) => { if (!cancelled) setAttendanceSettings(s); })
+      .catch(() => { /* preview just won't be shown — checkout itself is unaffected */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Checkout confirmation — shown only when the preview says this checkout
+  // would land as HALF_DAY or ABSENT. A PRESENT preview proceeds with no friction.
+  const [checkoutPreview, setCheckoutPreview] = useState<{ status: CheckoutPreviewStatus; hours: number } | null>(null);
+  const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
 
   // Pending prior-day checkout
   const [pendingCheckOut, setPendingCheckOut] = useState<TodayAttendanceStatus["pendingCheckOut"]>(null);
@@ -142,13 +171,6 @@ export default function MyAttendancePage() {
       setPermitStatus(permit);
     } catch { /* silently ignore — biometrics section is optional */ }
   }
-
-  // Sync checkOutStatusOverride whenever todayRecord changes
-  useEffect(() => {
-    if (todayRecord?.status && ["PRESENT", "LATE", "HALF_DAY"].includes(todayRecord.status)) {
-      setCheckOutStatusOverride(todayRecord.status as "PRESENT" | "LATE" | "HALF_DAY");
-    }
-  }, [todayRecord]);
 
   // Load today's status (todayRecord + pending checkout) on mount
   useEffect(() => {
@@ -397,13 +419,16 @@ export default function MyAttendancePage() {
     try {
       const localTime = new Date().toTimeString().slice(0, 8);
       const isoTime = new Date().toISOString();
+      // `statusOverride` is deliberately not sent: the backend now always
+      // recomputes PRESENT/HALF_DAY/ABSENT from worked hours on checkout, so
+      // a client-supplied status would be silently ignored. The preview
+      // shown before this call (see `initiateCheckOut`) is the honest signal.
       const record = await hrApi.attendance.selfCheckOut({
         lat: position.coords.latitude,
         lng: position.coords.longitude,
         clientTimestamp: isoTime,
         checkOutTime: isoTime,
         reason: checkOutReason,
-        statusOverride: checkOutStatusOverride,
         webauthnAssertion: assertion,
       });
       setTodayRecord(record as any);
@@ -417,6 +442,37 @@ export default function MyAttendancePage() {
     }
   };
 
+  /**
+   * Entry point for the "Check Out Now" button. Computes what status the
+   * checkout WOULD land as (client-side preview, mirroring the backend's
+   * `statusFromWorkedHours`) and interrupts with a confirmation only when
+   * that would be HALF_DAY or ABSENT — a PRESENT preview proceeds straight
+   * to `handleCheckOut` with no extra friction.
+   *
+   * This is only ever a preview: if settings haven't loaded yet, or there's
+   * no check-in time to compute from, it falls through to the normal
+   * checkout — the backend is authoritative and recomputes for real on
+   * submit, so a missed preview is a lost convenience, not a lost safeguard.
+   */
+  const initiateCheckOut = () => {
+    if (!attendanceSettings || !todayRecord?.checkInTime) {
+      handleCheckOut();
+      return;
+    }
+    const preview = previewCheckoutStatus(todayRecord.checkInTime, new Date(), attendanceSettings);
+    if (preview.status === "PRESENT") {
+      handleCheckOut();
+      return;
+    }
+    setCheckoutPreview(preview);
+    setShowCheckoutConfirm(true);
+  };
+
+  const confirmCheckOut = () => {
+    setShowCheckoutConfirm(false);
+    handleCheckOut();
+  };
+
   // ── Compute month-level stats including auto-derived holidays (Sundays + school-wide holidays) ──
   const daysInMonth = new Date(year, month, 0).getDate();
   const recordByDate = new Map(records.map((r) => [r.date, r]));
@@ -428,21 +484,27 @@ export default function MyAttendancePage() {
     if (isSunday || findHolidayFor(dateStr, holidays)) holidayCount++;
   }
 
+  // Five disjoint status buckets — every record falls into exactly one, which
+  // is what makes them safe to sum for a percentage or draw as pie slices.
   const counts = {
     PRESENT: records.filter((r) => r.status === "PRESENT").length,
-    LATE: records.filter((r) => r.status === "LATE").length,
     HALF_DAY: records.filter((r) => r.status === "HALF_DAY").length,
     ON_LEAVE: records.filter((r) => r.status === "ON_LEAVE").length,
     ABSENT: records.filter((r) => r.status === "ABSENT").length,
     HOLIDAY: records.filter((r) => r.status === "HOLIDAY").length + holidayCount,
   };
-  const presentish = counts.PRESENT + counts.LATE + counts.HALF_DAY;
-  const workingMarked = counts.PRESENT + counts.LATE + counts.HALF_DAY + counts.ON_LEAVE + counts.ABSENT;
+  // isLate is an INDEPENDENT overlay, not a 6th status bucket — a record can
+  // be isLate=true and still status=PRESENT (arrived late, worked a full
+  // day). Counting it alongside PRESENT/HALF_DAY here would double-count
+  // those days, and it can't be a pie slice for the same reason.
+  const lateArrivalsCount = records.filter((r) => r.isLate).length;
+
+  const presentish = counts.PRESENT + counts.HALF_DAY;
+  const workingMarked = counts.PRESENT + counts.HALF_DAY + counts.ON_LEAVE + counts.ABSENT;
   const presentPct = workingMarked > 0 ? Math.round((presentish / workingMarked) * 100) : 0;
 
   const pieData = [
     { name: "Present", value: counts.PRESENT, fill: "#22c55e" },
-    { name: "Late", value: counts.LATE, fill: "#facc15" },
     { name: "Half Day", value: counts.HALF_DAY, fill: "#a855f7" },
     { name: "Leave", value: counts.ON_LEAVE, fill: "#3b82f6" },
     { name: "Absent", value: counts.ABSENT, fill: "#ef4444" },
@@ -485,13 +547,28 @@ export default function MyAttendancePage() {
           <div className="flex-1">
             <p className="text-sm font-semibold text-gray-800 mb-0.5">Today — {new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</p>
             {todayRecord ? (
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex flex-wrap items-center gap-2 mt-1">
                 <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_STYLES[todayRecord.status] ?? "bg-gray-100"}`}>{todayRecord.status}</span>
+                {todayRecord.isLate && (
+                  <span
+                    title="You checked in after the school's late cutoff time"
+                    className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700"
+                  >
+                    <Clock3 aria-hidden className="h-3 w-3" />
+                    Marked late
+                  </span>
+                )}
                 <span className="text-xs text-gray-500">via {todayRecord.method}</span>
                 {todayRecord.checkInTime && <span className="text-xs text-gray-500">· in {formatTime(todayRecord.checkInTime)}</span>}
                 {todayRecord.checkOutTime && <span className="text-xs text-gray-500">out {formatTime(todayRecord.checkOutTime)}</span>}
               </div>
-            ) : (
+            ) : null}
+            {todayRecord?.isLate && (
+              <p className="text-xs text-amber-700 mt-1">
+                You were marked late today — this is tracked separately from your PRESENT/HALF_DAY/ABSENT status above.
+              </p>
+            )}
+            {!todayRecord && (
               <p className="text-xs text-gray-500 mt-1">
                 {checkInState === "idle" ? "You have not checked in yet." : checkInMsg}
               </p>
@@ -555,22 +632,6 @@ export default function MyAttendancePage() {
         {!biometricsLoading && biometrics.length > 0 && todayRecord && !["ON_LEAVE", "HOLIDAY"].includes(todayRecord.status) && !todayRecord.checkOutTime && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-2">
-              <label className="text-xs font-medium text-gray-600">Status:</label>
-              <select
-                value={checkOutStatusOverride}
-                onChange={(e) => {
-                  const val = e.target.value as "PRESENT" | "LATE" | "HALF_DAY";
-                  setCheckOutStatusOverride(val);
-                  if (val === "HALF_DAY") setCheckOutReason("HALF_DAY");
-                }}
-                className="text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
-              >
-                <option value="PRESENT">Present</option>
-                <option value="LATE">Late</option>
-                <option value="HALF_DAY">Half Day</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
               <label className="text-xs font-medium text-gray-600">Reason:</label>
               <select
                 value={checkOutReason}
@@ -584,13 +645,16 @@ export default function MyAttendancePage() {
               </select>
             </div>
             <button
-              onClick={handleCheckOut}
+              onClick={initiateCheckOut}
               disabled={isOwnDevice === false || checkOutState === "locating" || checkOutState === "authenticating" || checkOutState === "submitting"}
               className="shrink-0 flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow transition-colors"
             >
               {(checkOutState === "locating" || checkOutState === "authenticating" || checkOutState === "submitting") ? <span className="animate-spin">⏳</span> : <span>📍</span>}
               {checkOutState === "locating" ? "Getting Location…" : checkOutState === "authenticating" ? "Scanning…" : checkOutState === "submitting" ? "Recording…" : checkOutState === "error" ? "Retry Check-Out" : "Check Out Now"}
             </button>
+            <p className="text-[11px] text-gray-500 w-full sm:w-auto">
+              Status is decided automatically from hours worked — Present, Half Day or Absent — when you check out.
+            </p>
           </div>
         )}
 
@@ -796,7 +860,9 @@ export default function MyAttendancePage() {
           <div className="grid grid-cols-3 gap-3">
             {[
               { label: "Present", value: counts.PRESENT, color: "text-green-600", bg: "bg-green-50 border-green-100" },
-              { label: "Late", value: counts.LATE, color: "text-yellow-600", bg: "bg-yellow-50 border-yellow-100" },
+              // Overlay count (isLate), not one of the five status buckets above —
+              // can overlap with Present/Half Day, so it won't sum to the month total.
+              { label: "Late arrivals", value: lateArrivalsCount, color: "text-yellow-600", bg: "bg-yellow-50 border-yellow-100" },
               { label: "Half Day", value: counts.HALF_DAY, color: "text-purple-600", bg: "bg-purple-50 border-purple-100" },
               { label: "Leave", value: counts.ON_LEAVE, color: "text-blue-600", bg: "bg-blue-50 border-blue-100" },
               { label: "Absent", value: counts.ABSENT, color: "text-red-600", bg: "bg-red-50 border-red-100" },
@@ -833,11 +899,16 @@ export default function MyAttendancePage() {
                     <span className="font-medium text-gray-900 text-sm">{r.date}</span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
                   </div>
-                  <div className="text-xs text-gray-600 flex gap-4 flex-wrap">
+                  <div className="text-xs text-gray-600 flex gap-4 flex-wrap items-center">
                     <span><span className="text-gray-400">In: </span>{formatTime(r.checkInTime)}</span>
                     <span><span className="text-gray-400">Out: </span>{formatTime(r.checkOutTime)}</span>
                     {dur && <span className={DURATION_STYLES[r.status] ?? "text-gray-600"}>⏱ {dur}</span>}
                     <span className="text-gray-400">{r.method}</span>
+                    {r.isLate && (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-px text-[10px] font-semibold text-amber-700">
+                        <Clock3 aria-hidden className="h-2.5 w-2.5" /> Late
+                      </span>
+                    )}
                   </div>
                 </div>
               );
@@ -867,7 +938,16 @@ export default function MyAttendancePage() {
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
                       </td>
                       <td className="px-4 py-3 text-gray-500">{r.method}</td>
-                      <td className="px-4 py-3">{formatTime(r.checkInTime)}</td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1.5">
+                          {formatTime(r.checkInTime)}
+                          {r.isLate && (
+                            <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-px text-[10px] font-semibold text-amber-700">
+                              <Clock3 aria-hidden className="h-2.5 w-2.5" /> Late
+                            </span>
+                          )}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">{formatTime(r.checkOutTime)}</td>
                       <td className={`px-4 py-3 tabular-nums ${dur ? (DURATION_STYLES[r.status] ?? "text-gray-600") : "text-gray-400"}`}>
                         {dur ?? "—"}
@@ -879,6 +959,45 @@ export default function MyAttendancePage() {
             </table>
           </div>
         </>
+      )}
+
+      {/* Checkout preview confirmation — only shown when the client-side
+          preview says this checkout would land as HALF_DAY or ABSENT. */}
+      {showCheckoutConfirm && checkoutPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 p-4">
+          <div className="w-full max-w-sm space-y-4 rounded-xl bg-white p-6">
+            <div className="flex items-start gap-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-600">
+                <TriangleAlert aria-hidden className="h-4.5 w-4.5" />
+              </span>
+              <div>
+                <h2 className="font-semibold text-gray-900">
+                  {checkoutPreview.status === "HALF_DAY" ? "This will mark you Half Day" : "This will mark you Absent"}
+                </h2>
+                <p className="mt-1 text-sm text-gray-600">
+                  Only <strong className="tabular-nums">{checkoutPreview.hours.toFixed(1)}</strong> hour
+                  {checkoutPreview.hours === 1 ? "" : "s"} completed. Checking out now will mark today as{" "}
+                  <strong>{checkoutPreview.status === "HALF_DAY" ? "Half Day" : "Absent"}</strong>. Are you sure you
+                  want to check out?
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowCheckoutConfirm(false)}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmCheckOut}
+                className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+              >
+                Check Out Anyway
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

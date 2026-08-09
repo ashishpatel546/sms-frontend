@@ -5,10 +5,12 @@ import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
+import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 import { sortByName } from "@/lib/utils";
 
 export default function BulkPromotionsPage() {
     const router = useRouter();
+    const readOnly = useReadOnlySession();
     const [sessions, setSessions] = useState<any[]>([]);
     const [classes, setClasses] = useState<any[]>([]);
     const [fromSections, setFromSections] = useState<any[]>([]);
@@ -121,6 +123,7 @@ export default function BulkPromotionsPage() {
     };
 
     const handleAction = async () => {
+        if (readOnly) return;
         setActionErrors([]);
 
         if (selectedStudentIds.length === 0) {
@@ -340,7 +343,8 @@ export default function BulkPromotionsPage() {
                     )}
                     <button
                         onClick={handleAction}
-                        disabled={loading || selectedStudentIds.length === 0}
+                        disabled={loading || selectedStudentIds.length === 0 || readOnly}
+                        title={readOnly ? READ_ONLY_TITLE : undefined}
                         className={`mt-4 w-full text-white ${actionType === "PROMOTE" ? "bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300 focus:ring-amber-300" : "bg-red-600 hover:bg-red-700 disabled:bg-red-300 focus:ring-red-300"} disabled:cursor-not-allowed focus:ring-4 font-medium rounded-lg text-sm px-5 py-2.5 transition-colors`}
                     >
                         {loading ? 'Processing...' : `Execute ${actionType === "PROMOTE" ? "Promotion" : "Exit"} for ${selectedStudentIds.length} Students`}
@@ -368,7 +372,7 @@ export default function BulkPromotionsPage() {
                     <span className="text-sm text-slate-500 font-medium">{students.length} students loaded</span>
                 </div>
 
-                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                <div className="overflow-x-auto max-h-150 overflow-y-auto">
                     <table className="w-full text-sm text-left text-gray-500 relative">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 shadow-sm z-10">
                             <tr>

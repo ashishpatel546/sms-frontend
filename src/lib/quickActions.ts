@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useRbac } from '@/lib/rbac';
 import { useSchoolFeatures } from '@/lib/useSchoolFeatures';
+import { isNavItemUnlocked } from '@/lib/navConfig';
 import type { Pigment } from '@/components/ui/pigment';
 
 /**
@@ -26,13 +27,17 @@ import type { Pigment } from '@/components/ui/pigment';
  * Each tile carries a PIGMENT rather than a colour, so what a tile looks like
  * follows from what kind of action it is (see src/components/ui/pigment.ts).
  */
+/** The scanner serves three modules; having any one of them earns the tile. */
+const SCANNER_FLAGS = ['pickup_management', 'visitor_management', 'id_cards'];
+
 export interface QuickActionTile {
   label: string;
   href: string;
   icon: LucideIcon;
   pigment: Pigment;
-  /** Module in the school's plan this action belongs to, if any. */
-  featureFlag?: string;
+  /** Module in the school's plan this action belongs to, if any.
+   *  An array means "any of these" — see `isNavItemUnlocked`. */
+  featureFlag?: string | string[];
 }
 
 export function useQuickActionTiles(): {
@@ -51,7 +56,7 @@ export function useQuickActionTiles(): {
   // GUARD is deny-by-default: a gate-focused set, no student/fee/homework work.
   const tiles: QuickActionTile[] = rbac.isGuard
     ? [
-        { label: 'Scan QR', href: '/dashboard/pickup/scan', icon: QrCode, pigment: 'info', featureFlag: 'pickup_management' },
+        { label: 'Scan QR', href: '/dashboard/pickup/scan', icon: QrCode, pigment: 'info', featureFlag: SCANNER_FLAGS },
         { label: 'Visitors', href: '/dashboard/visitors', icon: Users, pigment: 'info', featureFlag: 'visitor_management' },
         { label: 'My attendance', href: '/dashboard/my-attendance', icon: Clock, pigment: 'success', featureFlag: 'hr_portal' },
         { label: 'Notifications', href: '/dashboard/notifications', icon: Bell, pigment: 'attn' },
@@ -71,7 +76,7 @@ export function useQuickActionTiles(): {
           ? [{ label: 'Add staff', href: '/dashboard/staff/new', icon: Users, pigment: 'info' as Pigment }]
           : []),
         ...(rbac.isTeacher
-          ? [{ label: 'Scan QR', href: '/dashboard/pickup/scan', icon: QrCode, pigment: 'info' as Pigment, featureFlag: 'pickup_management' }]
+          ? [{ label: 'Scan QR', href: '/dashboard/pickup/scan', icon: QrCode, pigment: 'info' as Pigment, featureFlag: SCANNER_FLAGS }]
           : []),
         ...(rbac.isTeacher
           ? [{ label: 'Visitors', href: '/dashboard/visitors', icon: Users, pigment: 'info' as Pigment, featureFlag: 'visitor_management' }]
@@ -85,7 +90,9 @@ export function useQuickActionTiles(): {
       ];
 
   const tilesInPlan = tiles.filter(tile =>
-    !tile.featureFlag || status !== 'ready' ? true : features[tile.featureFlag] === true,
+    !tile.featureFlag || status !== 'ready'
+      ? true
+      : isNavItemUnlocked(tile.featureFlag, features),
   );
 
   return { tiles, tilesInPlan };

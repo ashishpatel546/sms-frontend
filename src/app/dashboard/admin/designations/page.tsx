@@ -5,8 +5,10 @@ import { API_BASE_URL } from "@/lib/api";
 import { authFetch, getUser } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
+import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 
 export default function DesignationsAdminPage() {
+    const readOnly = useReadOnlySession();
     const router = useRouter();
     const currentUser = getUser();
     const [designations, setDesignations] = useState<any[]>([]);
@@ -155,7 +157,8 @@ export default function DesignationsAdminPage() {
                             <div className="flex gap-2 pt-2">
                                 <button
                                     type="submit"
-                                    disabled={saving}
+                                    disabled={saving || readOnly}
+                                    title={readOnly ? READ_ONLY_TITLE : undefined}
                                     className="flex-1 py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors flex justify-center disabled:opacity-50"
                                 >
                                     {saving ? "Saving..." : isEditing ? "Update" : "Create"}

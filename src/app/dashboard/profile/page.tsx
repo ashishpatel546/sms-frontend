@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { getUser, getToken, getRefreshToken, setTokens, removeToken, authFetch } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
+import { useSchoolFeatures } from "@/lib/useSchoolFeatures";
+import MyIdCardPanel from "@/components/id-cards/MyIdCardPanel";
 
 type Session = {
     id: string;
@@ -15,7 +17,13 @@ type Session = {
 
 export default function ProfilePage() {
     const [user, setUser] = useState<any>(null);
-    const [activeTab, setActiveTab] = useState<"general" | "security">("general");
+    const [activeTab, setActiveTab] = useState<"general" | "security" | "idcard">("general");
+
+    /* Your own ID card lives here because this is where people look for their
+       own things — the ID Cards page is the office's printing tool. Shown only
+       if the school actually has the module. */
+    const { features, status: featureStatus } = useSchoolFeatures();
+    const hasIdCards = featureStatus === "ready" && features["id_cards"] === true;
 
     // Session State
     const [sessions, setSessions] = useState<Session[]>([]);
@@ -174,13 +182,35 @@ export default function ProfilePage() {
                     </svg>
                     Security &amp; Login
                 </button>
+                {hasIdCards && (
+                    <button
+                        onClick={() => setActiveTab("idcard")}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === "idcard"
+                            ? "bg-white shadow text-indigo-600 border border-slate-200"
+                            : "text-slate-500 hover:text-slate-700"
+                        }`}
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 11a2 2 0 100-4 2 2 0 000 4zm-2.5 5a2.5 2.5 0 015 0M15 9h3M15 13h3" />
+                        </svg>
+                        My ID Card
+                    </button>
+                )}
             </div>
+
+            {/* ID Card Tab */}
+            {activeTab === "idcard" && (
+                <div className="bg-white shadow rounded-xl p-6 border border-slate-100">
+                    <MyIdCardPanel className="mx-auto w-full max-w-105" />
+                </div>
+            )}
 
             {/* General Tab */}
             {activeTab === "general" && (
                 <div className="bg-white shadow rounded-xl p-6 border border-slate-100">
                     <div className="flex items-center gap-6 mb-8">
-                        <div className="h-24 w-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+                        <div className="h-24 w-24 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg">
                             {user.firstName[0]}{user.lastName[0]}
                         </div>
                         <div>
@@ -192,13 +222,13 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-sm font-medium text-slate-500 mb-1">First Name</label>
-                            <div className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 min-h-[44px]">
+                            <div className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 min-h-11">
                                 {user.firstName || '\u00A0'}
                             </div>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-500 mb-1">Last Name</label>
-                            <div className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 min-h-[44px]">
+                            <div className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 min-h-11">
                                 {user.lastName || '\u00A0'}
                             </div>
                         </div>

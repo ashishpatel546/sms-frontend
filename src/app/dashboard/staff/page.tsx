@@ -1,17 +1,21 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Table from "../../../components/Table";
 import { API_BASE_URL } from "@/lib/api";
 import { useRbac } from "@/lib/rbac";
+import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 import { Upload, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
 import { authFetch } from "@/lib/auth";
 import Papa from "papaparse";
-import { MoreVertical, Eye, Pencil, UserMinus } from "lucide-react";
+import { AlertTriangle, Eye, IdCard, Pencil, UserMinus } from "lucide-react";
 import toast from "react-hot-toast";
+import { RowActionsMenu } from "@/components/ui/RowActionsMenu";
+import { IdCardDialog } from "@/components/id-cards/IdCardDialog";
+import { useFeatureFlag } from "@/lib/useSchoolFeatures";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -19,15 +23,25 @@ export default function TeachersPage() {
     const [teachers, setTeachers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const rbac = useRbac();
+    const readOnly = useReadOnlySession();
 
-    const [openActionRowId, setOpenActionRowId] = useState<number | null>(null);
-    const actionMenuRef = useRef<HTMLDivElement>(null);
+    // The staff member whose ID card is open. The dialog fetches the card —
+    // a card is derived from the roster, not carried on the staff row.
+    const [idCardStaff, setIdCardStaff] = useState<{ id: number; name: string } | null>(null);
+    const idCardsEnabled = useFeatureFlag('id_cards').enabled === true;
 
     // Exit Modal States
     const [showExitModal, setShowExitModal] = useState(false);
     const [selectedStaffForExit, setSelectedStaffForExit] = useState<any>(null);
     const [exitDate, setExitDate] = useState(new Date().toISOString().split('T')[0]);
     const [isExiting, setIsExiting] = useState(false);
+    /* Revoking the ID card defaults to ON, and that default is the whole point.
+       Deactivating the account already makes the gate refuse the card — but
+       only while the account stays deactivated. Reinstate someone next year and
+       the card they never handed back starts working again. Leaving this to be
+       remembered is leaving it undone. */
+    const [revokeIdCard, setRevokeIdCard] = useState(true);
+    const [idCardRevokeReason, setIdCardRevokeReason] = useState("");
 
     // Search Params
     const [searchId, setSearchId] = useState("");
@@ -99,17 +113,6 @@ export default function TeachersPage() {
             .catch(() => setDesignations([]));
     }, []);
 
-    // Close action menu on outside click
-    useEffect(() => {
-        const handleOutsideClick = (e: MouseEvent) => {
-            if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
-                setOpenActionRowId(null);
-            }
-        };
-        document.addEventListener('mousedown', handleOutsideClick);
-        return () => document.removeEventListener('mousedown', handleOutsideClick);
-    }, []);
-
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         setPage(1);
@@ -130,6 +133,7 @@ export default function TeachersPage() {
 
     const handleConfirmExit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         if (!selectedStaffForExit) return;
         setIsExiting(true);
         try {
@@ -138,11 +142,21 @@ export default function TeachersPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     exitDate: exitDate,
-                    isActive: false
+                    isActive: false,
+                    // Handled in the SAME request as the exit, server-side, so
+                    // the two can never end up disagreeing — an exit recorded
+                    // while the card quietly stayed live is the exact state
+                    // this is here to prevent.
+                    revokeIdCard: idCardsEnabled && revokeIdCard,
+                    idCardRevokeReason: idCardRevokeReason.trim() || undefined,
                 })
             });
             if (res.ok) {
-                toast.success("Staff exit marked successfully");
+                toast.success(
+                    idCardsEnabled && revokeIdCard
+                        ? "Exit marked and ID card revoked"
+                        : "Staff exit marked successfully"
+                );
                 setShowExitModal(false);
                 setSelectedStaffForExit(null);
                 fetchTeachers(page, pageSize);
@@ -150,7 +164,7 @@ export default function TeachersPage() {
                 const err = await res.json();
                 toast.error(err.message || "Failed to mark exit");
             }
-        } catch (error) {
+        } catch {
             toast.error("An error occurred while marking exit");
         } finally {
             setIsExiting(false);
@@ -189,6 +203,7 @@ export default function TeachersPage() {
 
     const handleImportSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         if (!importFile) return;
 
         setImportLoading(true);
@@ -281,51 +296,54 @@ export default function TeachersPage() {
         },
         {
             header: "Actions",
+            // RowActionsMenu, not a hand-rolled dropdown. The previous version
+            // closed itself on `mousedown` from a document-level outside-click
+            // handler, which fired BEFORE the menu item's `click` — so View,
+            // Edit and Mark Exit all looked dead: the menu vanished and nothing
+            // happened. Base UI's menu portals the popup and owns its own open
+            // state, so that race is not expressible.
             render: (row: any) => (
-                <div className="relative" ref={openActionRowId === row.id ? actionMenuRef : undefined}>
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setOpenActionRowId(openActionRowId === row.id ? null : row.id); }}
-                        className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
-                        title="Actions"
-                    >
-                        <MoreVertical className="w-4 h-4 text-gray-500" />
-                    </button>
-                    {openActionRowId === row.id && (
-                        <div className="absolute right-0 z-20 mt-1 w-32 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
-                            <Link
-                                href={`/dashboard/staff/${row.id}`}
-                                className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                            >
-                                <Eye className="w-4 h-4 text-gray-400" />
-                                View
-                            </Link>
-                            {rbac.canManageTeachers && (
-                                <Link
-                                    href={`/dashboard/staff/${row.id}/edit`}
-                                    className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                >
-                                    <Pencil className="w-4 h-4 text-gray-400" />
-                                    Edit
-                                </Link>
-                            )}
-                            {rbac.canManageTeachers && row.isActive && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setSelectedStaffForExit(row);
-                                        setExitDate(new Date().toISOString().split('T')[0]);
-                                        setShowExitModal(true);
-                                        setOpenActionRowId(null);
-                                    }}
-                                    className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 border-t border-gray-100"
-                                >
-                                    <UserMinus className="w-4 h-4 text-red-400" />
-                                    Mark Exit
-                                </button>
-                            )}
-                        </div>
-                    )}
-                </div>
+                <RowActionsMenu
+                    label={`Actions for ${row.firstName ?? ''} ${row.lastName ?? ''}`.trim()}
+                    actions={[
+                        {
+                            label: 'View',
+                            icon: <Eye className="size-4 text-ink-faint" />,
+                            href: `/dashboard/staff/${row.id}`,
+                        },
+                        rbac.canManageTeachers && {
+                            label: 'Edit',
+                            icon: <Pencil className="size-4 text-ink-faint" />,
+                            href: `/dashboard/staff/${row.id}/edit`,
+                            disabled: readOnly,
+                        },
+                        idCardsEnabled && {
+                            label: 'View ID card',
+                            icon: <IdCard className="size-4 text-ink-faint" />,
+                            onSelect: () =>
+                                setIdCardStaff({
+                                    id: row.id,
+                                    name: `${row.firstName ?? ''} ${row.lastName ?? ''}`.trim(),
+                                }),
+                        },
+                        rbac.canManageTeachers && row.isActive && {
+                            label: 'Mark exit',
+                            icon: <UserMinus className="size-4 text-accent-danger" />,
+                            danger: true,
+                            disabled: readOnly,
+                            onSelect: () => {
+                                setSelectedStaffForExit(row);
+                                setExitDate(new Date().toISOString().split('T')[0]);
+                                // Back to the safe default for each person —
+                                // an unticked box left over from the last exit
+                                // would silently leave a live card behind.
+                                setRevokeIdCard(true);
+                                setIdCardRevokeReason("");
+                                setShowExitModal(true);
+                            },
+                        },
+                    ]}
+                />
             )
         }
     ];
@@ -574,7 +592,7 @@ export default function TeachersPage() {
                                     <button type="button" onClick={() => setShowImportModal(false)} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-line-strong">
                                         Cancel
                                     </button>
-                                    <button type="submit" disabled={importLoading || !importFile} className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-brand/40 disabled:opacity-50 flex items-center">
+                                    <button type="submit" disabled={importLoading || !importFile || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-brand/40 disabled:opacity-50 flex items-center">
                                         {importLoading ? "Importing..." : "Start Import"}
                                     </button>
                                 </div>
@@ -601,6 +619,52 @@ export default function TeachersPage() {
                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                 />
                             </div>
+
+                            {/* ── The ID card goes with them ─────────────────
+                                Marking an exit without retiring the card is the
+                                gap this closes: deactivating the account makes
+                                the gate refuse the card only for as long as the
+                                account stays deactivated, so a reinstatement a
+                                year later quietly brings the old card back to
+                                life. Ticked by default; unticking is a decision
+                                the operator has to look at. */}
+                            {idCardsEnabled && (
+                                <div className="rounded-lg border border-gray-200 p-3">
+                                    <label className="flex items-start gap-2.5 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={revokeIdCard}
+                                            onChange={e => setRevokeIdCard(e.target.checked)}
+                                            className="mt-0.5 size-4 cursor-pointer"
+                                        />
+                                        <span className="text-sm">
+                                            <span className="font-medium text-gray-900">Revoke their ID card</span>
+                                            <span className="block text-xs text-gray-500 mt-0.5">
+                                                The card stops working at the gate immediately, and stays dead even if the account is reactivated later.
+                                            </span>
+                                        </span>
+                                    </label>
+
+                                    {revokeIdCard ? (
+                                        <input
+                                            value={idCardRevokeReason}
+                                            onChange={e => setIdCardRevokeReason(e.target.value)}
+                                            maxLength={500}
+                                            placeholder={`Staff exit on ${exitDate}`}
+                                            className="mt-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
+                                            aria-label="Reason recorded against the revoked card"
+                                        />
+                                    ) : (
+                                        <p className="mt-2.5 flex gap-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-800">
+                                            <AlertTriangle className="size-4 shrink-0 mt-px" aria-hidden />
+                                            <span>
+                                                Their card will keep working if this account is ever reactivated. Revoke it later from <span className="font-medium">ID Cards</span> — but they will not appear in that register once they are inactive.
+                                            </span>
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
                             <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
                                 <button
                                     type="button"
@@ -611,7 +675,8 @@ export default function TeachersPage() {
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={isExiting}
+                                    disabled={isExiting || readOnly}
+                                    title={readOnly ? READ_ONLY_TITLE : undefined}
                                     className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-300 disabled:opacity-50"
                                 >
                                     {isExiting ? "Marking Exit..." : "Confirm Exit"}
@@ -621,6 +686,12 @@ export default function TeachersPage() {
                     </div>
                 </div>
             )}
+
+            <IdCardDialog
+                subject={idCardStaff ? { type: 'staff', ...idCardStaff } : null}
+                open={idCardStaff !== null}
+                onOpenChange={(open) => { if (!open) setIdCardStaff(null); }}
+            />
         </main>
     );
 }

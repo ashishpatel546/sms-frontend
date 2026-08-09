@@ -8,9 +8,11 @@ import toast, { Toaster } from "react-hot-toast";
 import { authFetch } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
 import { sortByName } from "@/lib/utils";
+import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 
 export default function ExaminationsDataEntryPage() {
     const rbac = useRbac();
+    const readOnly = useReadOnlySession();
     const [classes, setClasses] = useState<any[]>([]);
     const [sections, setSections] = useState<any[]>([]);
     const [loadingSections, setLoadingSections] = useState(false);
@@ -177,6 +179,7 @@ export default function ExaminationsDataEntryPage() {
     };
 
     const handleSaveBulkMarks = async () => {
+        if (readOnly) return;
         if (studentsMarks.length === 0) return;
 
         const invalidStudent = studentsMarks.find(m => {
@@ -336,7 +339,7 @@ export default function ExaminationsDataEntryPage() {
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-lg font-semibold text-slate-700">Enter Student Marks</h2>
-                            <button onClick={handleSaveBulkMarks} className="px-5 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 shadow flex items-center gap-2 transition-transform transform active:scale-95">
+                            <button onClick={handleSaveBulkMarks} disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="px-5 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 shadow flex items-center gap-2 transition-transform transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                                 Save All Marks
                             </button>
@@ -358,7 +361,7 @@ export default function ExaminationsDataEntryPage() {
                                         >
                                             Roll No<SortIcon col="rollNo" />
                                         </th>
-                                        <th className="px-4 py-3 min-w-[120px]">
+                                        <th className="px-4 py-3 min-w-30">
                                             <div className="flex items-center justify-between">
                                                 <span
                                                     className="cursor-pointer hover:text-blue-600 select-none"
@@ -373,7 +376,7 @@ export default function ExaminationsDataEntryPage() {
                                             </div>
                                         </th>
                                         <th
-                                            className="px-4 py-3 min-w-[120px] cursor-pointer hover:bg-gray-100 select-none"
+                                            className="px-4 py-3 min-w-30 cursor-pointer hover:bg-gray-100 select-none"
                                             onClick={() => handleSortClick(isSplit ? 'theoryObtainedMarks' : 'obtainedMarks')}
                                         >
                                             {isSplit ? 'Th. Obtained' : 'Obtained'}
@@ -382,7 +385,7 @@ export default function ExaminationsDataEntryPage() {
                                         
                                         {isSplit && (
                                             <>
-                                                <th className="px-4 py-3 min-w-[120px] bg-purple-50">
+                                                <th className="px-4 py-3 min-w-30 bg-purple-50">
                                                     <div className="flex items-center justify-between text-purple-900">
                                                         <span
                                                             className="cursor-pointer hover:text-purple-700 select-none"
@@ -396,7 +399,7 @@ export default function ExaminationsDataEntryPage() {
                                                     </div>
                                                 </th>
                                                 <th
-                                                    className="px-4 py-3 min-w-[120px] bg-purple-50 text-purple-900 cursor-pointer hover:bg-purple-100 select-none"
+                                                    className="px-4 py-3 min-w-30 bg-purple-50 text-purple-900 cursor-pointer hover:bg-purple-100 select-none"
                                                     onClick={() => handleSortClick('practicalObtainedMarks')}
                                                 >
                                                     Pr. Obtained (Opt.)<SortIcon col="practicalObtainedMarks" />

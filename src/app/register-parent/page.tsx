@@ -214,12 +214,12 @@ export default function RegisterParentPage() {
             <div className="w-full max-w-md">
                 {/* Header */}
                 <div className="flex flex-col items-center mb-8">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-brass-900/40 mb-4">
+                    <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-brass-900/40 mb-4">
                         <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                         </svg>
                     </div>
-                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Register as Parent</h1>
+                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-white">Register as Parent</h1>
                     <p className="text-brass-100/70 text-sm mt-1">Access your child&apos;s school information</p>
                 </div>
 
@@ -274,13 +274,13 @@ export default function RegisterParentPage() {
                                 {/* Feedback */}
                                 {mobileCheck.status === "found" && (
                                     <div className="mt-2 flex items-center gap-2 text-green-400 text-sm">
-                                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                                         {mobileCheck.students.length} student{mobileCheck.students.length > 1 ? "s" : ""} found linked to this number
                                     </div>
                                 )}
                                 {mobileCheck.status === "not_found" && (
                                     <div className="mt-2 flex items-start gap-2 text-red-400 text-sm">
-                                        <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                         <span>This number is not linked to any student. Please ask the school to update your mobile number in the student record first.</span>
                                     </div>
                                 )}
@@ -288,7 +288,7 @@ export default function RegisterParentPage() {
 
                             {otpSendError && (
                                 <div className="flex items-start gap-2 text-red-400 text-sm p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-                                    <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                     <span>{otpSendError}</span>
                                 </div>
                             )}
@@ -298,7 +298,7 @@ export default function RegisterParentPage() {
                                 disabled={mobileCheck.status !== "found" || sendingOtp}
                                 className="w-full py-3 rounded-xl font-semibold text-white bg-brand hover:bg-brand-deep disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                             >
-                                {sendingOtp ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Sending...</> : "Send OTP via WhatsApp →"}
+                                {sendingOtp ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Sending...</> : "Send OTP →"}
                             </button>
                         </div>
                     )}
@@ -362,8 +362,8 @@ export default function RegisterParentPage() {
                             {linkedStudents.length > 0 ? (
                                 <div className="space-y-2">
                                     {linkedStudents.map((s, i) => (
-                                        <div key={s.id} className={`flex items-center gap-3 p-3 bg-gradient-to-r ${avatarColors[i % avatarColors.length]} rounded-xl bg-opacity-10`}>
-                                            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${avatarColors[i % avatarColors.length]} flex items-center justify-center text-white text-sm font-bold`}>
+                                        <div key={s.id} className={`flex items-center gap-3 p-3 bg-linear-to-r ${avatarColors[i % avatarColors.length]} rounded-xl bg-opacity-10`}>
+                                            <div className={`w-10 h-10 rounded-xl bg-linear-to-br ${avatarColors[i % avatarColors.length]} flex items-center justify-center text-white text-sm font-bold`}>
                                                 {s.firstName?.[0]}{s.lastName?.[0]}
                                             </div>
                                             <div>
@@ -459,7 +459,7 @@ export default function RegisterParentPage() {
 
                             {submitError && (
                                 <div className="flex items-center gap-2 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
-                                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                     {submitError}
                                 </div>
                             )}

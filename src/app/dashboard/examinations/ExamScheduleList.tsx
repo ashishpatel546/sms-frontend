@@ -8,9 +8,11 @@ import { authFetch } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
+import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 
 export default function ExamScheduleList({ onView }: { onView: (id: number) => void }) {
     const rbac = useRbac();
+    const readOnly = useReadOnlySession();
 
     const [schedules, setSchedules] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -112,7 +114,9 @@ export default function ExamScheduleList({ onView }: { onView: (id: number) => v
                 {rbac.isSubAdmin && (
                     <button
                         onClick={() => setIsCreateModalOpen(true)}
-                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                        disabled={readOnly}
+                        title={readOnly ? READ_ONLY_TITLE : undefined}
+                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -210,6 +214,7 @@ function CreateScheduleModal({
     onClose: () => void;
     onSuccess: () => void;
 }) {
+    const readOnly = useReadOnlySession();
     const [loading, setLoading] = useState(false);
     const [academicSessionId, setAcademicSessionId] = useState("");
     const [examCategoryId, setExamCategoryId] = useState("");
@@ -224,6 +229,7 @@ function CreateScheduleModal({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (readOnly) return;
         setLoading(true);
         try {
             const res = await authFetch(`${API_BASE_URL}/exam-schedules`, {
@@ -332,7 +338,8 @@ function CreateScheduleModal({
                             </button>
                             <button
                                 type="submit"
-                                disabled={loading}
+                                disabled={loading || readOnly}
+                                title={readOnly ? READ_ONLY_TITLE : undefined}
                                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand/40 disabled:opacity-50"
                             >
                                 {loading ? "Creating..." : "Create Schedule"}

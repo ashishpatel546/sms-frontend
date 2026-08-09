@@ -54,5 +54,77 @@
   {
     "question": "How to change password for user?",
     "answer": "On both parent and staff portal we have **Profile** Section -> **Security & Login**. Here you can change password."
+  },
+  {
+    "question": "How do I print student or staff ID cards?",
+    "answer": "Go to **ID Cards** in the sidebar (under Academics). Pick a class and section — or switch to the **Staff** tab and filter by department — then tick the people you want and click **Download PDF**. Tapping any row shows the card at actual size before you commit to a print run, and **Just this one** prints a single card for a reprint. ID cards are a plan feature; if the menu item is missing, ask your super admin to enable it from Billing."
+  },
+  {
+    "question": "My printer cannot print on both sides. Can I still print ID cards?",
+    "answer": "Yes. In the **How it prints** panel choose **Side by side** (this is the default): each card's front and back land next to each other on the same row, four cards to an A4 sheet. Cut around both faces and glue them back to back. Choose **Double-sided** only if you have a duplex printer — it puts ten cards on a sheet with fronts and backs on separate pages, and you must set your printer to flip on the **long edge**. Either way, set scaling to **100%**; \"fit to page\" shrinks the card out of standard CR80 size."
+  },
+  {
+    "question": "How do I add a student's or staff member's photo to their ID card?",
+    "answer": "Edit the person (**Students** or **Staff** → three-dot menu → **Edit**) and use the **Photos** section. You can upload from a file or take a picture with a phone camera, then crop it — the system compresses the image for you, so there is no need to resize it first. Anyone without a photo still gets a printable card; it simply shows their initials instead of a portrait."
+  },
+  {
+    "question": "Can I put our school's signature on the ID cards?",
+    "answer": "Yes. On the **ID Cards** page, the **Authorised signatory** panel lets you upload a signature image (PNG with a transparent background works best, up to 1 MB). It then prints on the back of every card. Use **Remove** to go back to a blank rule you sign by hand, and **Refresh** if another administrator has just changed it and you are still seeing the old one. Only an Admin or above can change it."
+  },
+  {
+    "question": "Can a parent see their child's ID card?",
+    "answer": "Yes. Parents see the card on their child's page in the parent portal and can save it as a PDF — the same card the office prints, front and back on one sheet. The printed card still comes from the school office; the parent copy is for their records."
+  },
+  {
+    "question": "What happens when someone scans the QR code on an ID card?",
+    "answer": "Open **Scan QR** under Gate and point the camera at the code on the back of the card. The screen shows whether the card is valid, the holder's photo and name, and the details printed on the card — class and roll number, blood group, parents' names and the contact number — so a guard can check the card against the person holding it and ring the right parent. The QR itself carries no personal details: it is a signed reference the school looks up when scanned, so a card from another school will not verify, and a card belonging to someone who has left is reported as no longer valid."
+  },
+  {
+    "question": "Where do I record Aadhaar, PAN and other documents?",
+    "answer": "Edit the student or staff member and use the **Documents** section. You can tick a document as collected without attaching anything, or attach a scan. To see who is still missing paperwork across the whole school, use the **Document trace** link on the Students page."
+  },
+  {
+    "question": "Can one person hold more than one role, such as Admin and HR Admin?",
+    "answer": "Yes. In **Admin Panel** → Users, click the role chips on any row (or use the three-dot menu → **Manage Roles**). The primary role stays as it is, and you tick any additional roles the person should also hold — HR Admin, Sub Admin, Librarian or Teacher. Changes take effect the next time that person signs in, so ask them to sign out and back in."
+  },
+  {
+    "question": "Who can print ID cards, and who can only see their own?",
+    "answer": "Printing the register — a whole class or the staff list — is **Sub Admin and above**. Everyone else sees just their own card: teachers, librarians, guards and students all get a **My card** tab on the ID Cards page, and the same card under **My Profile → My ID Card**. You can download your own card from either place. Nobody below Sub Admin can open anyone else's card, and that is enforced by the server rather than by hiding a button."
+  },
+  {
+    "question": "Where do I find my own ID card?",
+    "answer": "Two places, the same card: **My Profile → My ID Card**, or the **My card** tab on the ID Cards page. Use **Download my card** to save it as a PDF that prints at the standard 85.6 × 54 mm. If it says no card is issued, ask the office to check your staff or student record — cards are issued from those, not from your login."
+  },
+  {
+    "question": "Who can scan an ID card at the gate?",
+    "answer": "Every staff role, including **Guard**. Open **Scan QR** (in the Gate menu, or the Scan tab at the bottom of the screen on a phone) and point the camera at the QR on the back of the card. The same scanner reads pickup QRs, visitor passes and ID cards — it recognises which is which automatically, so there is nothing to switch between. A scan shows only what is already printed on the card, plus whether the person is still active."
+  },
+  {
+    "question": "A student or staff member lost their ID card. How do I stop the old one working?",
+    "answer": "Open **ID Cards**, find the person, and use **Replace card** in the preview panel. You must type a reason — it is kept against the old card so the history answers \"what happened to that one?\" months later. The moment you confirm, the lost card is refused at the gate and a new one appears here and on the parent portal, ready to print. Nothing needs to be collected from the person first: the old card is dead whether or not it is ever found."
+  },
+  {
+    "question": "What is the difference between Replace card and Revoke?",
+    "answer": "**Replace card** kills the old card *and* issues a new one — use it when the person needs a working card straight away, such as a lost or damaged card. **Revoke** kills the card and issues nothing — use it when they should not be carrying one at all: a card reported stolen, or one handed back by somebody who has left. Both take effect instantly at the gate. Revoking is reversible: if the person is still active, use **Issue new card** afterwards and they are carrying a working card again."
+  },
+  {
+    "question": "Does marking a staff exit cancel their ID card?",
+    "answer": "Yes, if you leave the **Revoke their ID card** box ticked — which it is by default. Deactivating the account alone is not enough: the gate refuses the card only while the account stays deactivated, so if that person is ever reinstated, a card they never handed back starts working again. Revoking retires the card permanently. If you untick the box the dialog warns you, and note that once the account is inactive that person no longer appears in the ID Cards register, so revoking later is harder than doing it now."
+  },
+  {
+    "question": "What does the gate see when a cancelled or expired card is scanned?",
+    "answer": "Each failure says something different, because a guard should act differently on each. **Replaced** — a newer card exists, so ask for that one; this is the one worth a second look, since the card was usually reported lost. **Revoked** — the office cancelled it and there is no replacement; send them to the office. **Expired** — a genuine card from a finished session; the person is who they say they are, but the office needs to issue a fresh card. **Card no longer valid** — the person has been deactivated entirely."
+  },
+  {
+    "question": "How long is an ID card valid, and can I extend it?",
+    "answer": "By default a card is valid until the last day of the academic session it was issued in, and it is refused at the gate from the next day. If you would rather keep perfectly good cards in circulation for another term, open the person in **ID Cards**, choose **Extend**, and pick a new date. Nothing is reprinted and the QR does not change — the same plastic in their pocket simply stays valid, because the expiry date lives in the system rather than inside the QR code."
+  },
+  {
+    "question": "Why can I not print a card for someone, or add them to a print run?",
+    "answer": "Their card has been revoked — you will see a red **Revoked** tag beside their name and a note in the preview. Printing it would produce a card the gate refuses on sight, which is worse than handing over nothing, so revoked cards are left out of print runs even when you select a whole page (the count is shown so it never looks like a bug). Use **Issue new card** to give them a working one, then print that."
+  },
+  {
+    "question": "The app on my phone is not showing the latest changes. What do I do?",
+    "answer": "Pull down from the top of the screen to refresh. The installed app keeps running the version it downloaded when you opened it, so a new feature will not appear on its own; pulling down now checks for a newer version and reloads onto it, as well as refetching your data and clearing cached pages. If you have the app open while an update is released, one pull is all it takes — you no longer need to clear site data or reinstall."
   }
 ]

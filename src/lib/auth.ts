@@ -6,7 +6,19 @@ const REFRESH_TOKEN_KEY = 'refresh_token';
 
 export interface AuthUser {
   sub: number;
+  /**
+   * The PRIMARY role. Unchanged and still the headline role everywhere a
+   * single word is shown ("Signed in as Admin"). Never removed — read this
+   * when you want the user's main identity, not their capabilities.
+   */
   role: string;
+  /**
+   * Effective roles — primary ∪ any additional roles granted from the admin
+   * panel. Optional on purpose: access tokens live for 7 days, so for a week
+   * after the backend shipped this claim most tokens in the wild still carry
+   * only `role`. Read it through `getEffectiveRoles()`, which falls back.
+   */
+  roles?: string[];
   firstName: string;
   lastName: string;
   mustChangePassword: boolean;
@@ -65,6 +77,38 @@ export function getUser(): AuthUser | null {
 
 export function isAuthenticated(): boolean {
   return getUser() !== null;
+}
+
+/**
+ * Every role the signed-in user holds — primary first, then any additional
+ * roles, deduped. Mirrors `effectiveRoles()` on the backend.
+ *
+ * A token minted before multi-role shipped has no `roles[]` claim, so it falls
+ * back to `[role]` and behaves exactly as it did before. Returns `[]` when
+ * nobody is signed in.
+ */
+export function getEffectiveRoles(user?: AuthUser | null): string[] {
+  const actor = user === undefined ? getUser() : user;
+  if (!actor) return [];
+  const out: string[] = [];
+  const add = (value: unknown) => {
+    if (typeof value !== 'string' || !value || out.includes(value)) return;
+    out.push(value);
+  };
+  add(actor.role);
+  if (Array.isArray(actor.roles)) actor.roles.forEach(add);
+  return out;
+}
+
+/** Does the signed-in user hold this exact role, primary or additional? */
+export function hasRole(role: string, user?: AuthUser | null): boolean {
+  return getEffectiveRoles(user).includes(role);
+}
+
+/** Does the signed-in user hold ANY of these exact roles? */
+export function hasAnyRole(roles: readonly string[], user?: AuthUser | null): boolean {
+  const held = getEffectiveRoles(user);
+  return roles.some((r) => held.includes(r));
 }
 
 /** Returns true if the stored access token is missing or past its expiry time. */
@@ -207,7 +251,7 @@ export async function authFetch(
   url: string,
   options: RequestInit = {},
 ): Promise<Response> {
-  let headers: Record<string, string> = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...getAuthHeaders(),
     ...((options.headers as Record<string, string>) || {}),
@@ -281,12 +325,13 @@ export async function authFetch(
         Authorization: `Bearer ${data.access_token}`,
       };
       res = await fetch(url, { ...options, headers: newHeaders });
-    } catch (error: any) {
+    } catch (error) {
       onRefreshFailed();
       // Only log out if it's a genuine auth rejection, NOT a transient network error or abort.
       // Transient errors (offline, Cloudflare 5xx, Android background abort) must not log the user out.
       const isNetworkError =
-        error instanceof TypeError || error?.name === 'AbortError';
+        error instanceof TypeError ||
+        (error as { name?: string } | null)?.name === 'AbortError';
       if (!isNetworkError) {
         logout();
       }
@@ -301,6 +346,28 @@ export async function authFetch(
 
   if (res.status === 503 && typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('service-unavailable'));
+  }
+
+  // Surface the server's own refusal message app-wide. Most screens catch
+  // errors with a generic "Failed to X, please try again", which hides the
+  // one thing a 403 always carries: WHY (e.g. a read-only support session,
+  // or a role below the route's minimum). `SupportSessionNotices` in the
+  // root layout listens and shows it; pages keep their local handling.
+  if (res.status === 403 && typeof window !== 'undefined') {
+    void res
+      .clone()
+      .json()
+      .then((body: { message?: string | string[] }) => {
+        const message = Array.isArray(body?.message)
+          ? body.message[0]
+          : body?.message;
+        if (message) {
+          window.dispatchEvent(
+            new CustomEvent('access-denied', { detail: { message } }),
+          );
+        }
+      })
+      .catch(() => {});
   }
 
   return res;
