@@ -389,8 +389,8 @@ export const NAV_CONFIG: NavGroup[] = [
         href: '/dashboard/billing',
         icon: Receipt,
         iconColor: 'text-emerald-600',
-        // Commercial terms are the school owner's business, nobody else's.
-        rbacKey: 'isSuperAdmin',
+        // Commercial terms are admin/owner business, nobody else's.
+        rbacKey: 'isAdmin',
       },
     ],
   },
