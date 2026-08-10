@@ -133,6 +133,13 @@ export type StaffAttendanceStatus =
   | 'HALF_DAY'
   | 'ON_LEAVE'
   | 'HOLIDAY';
+/**
+ * `NOT_MARKED` is never stored — it is the *absence* of an attendance row. The
+ * daily endpoint synthesises it for rostered staff with no record when the
+ * list is filtered to `status=NOT_MARKED`, so only the daily register and its
+ * filter deal in this value; a submitted status is always a real one.
+ */
+export type DailyAttendanceStatus = StaffAttendanceStatus | 'NOT_MARKED';
 export type AttendanceMethod = 'MANUAL' | 'WEBAUTHN' | 'GEOFENCE' | 'BYPASS';
 export type CheckOutReason =
   | 'REGULAR'
@@ -584,6 +591,12 @@ export const hrApi = {
         search?: string;
         employeeCode?: string;
         staffId?: string;
+        /**
+         * Narrows the list only — `summary` and `lateArrivals` always describe
+         * the whole day, so the filter buttons keep their counts while one of
+         * them is active.
+         */
+        status?: DailyAttendanceStatus;
       },
     ) => {
       const p = new URLSearchParams({ date });
@@ -592,6 +605,7 @@ export const hrApi = {
       if (opts?.search) p.set('search', opts.search);
       if (opts?.employeeCode) p.set('employeeCode', opts.employeeCode);
       if (opts?.staffId) p.set('staffId', opts.staffId);
+      if (opts?.status) p.set('status', opts.status);
       return req<PaginatedDailyAttendance>(
         'GET',
         `/hr/staff-attendance/daily?${p.toString()}`,
