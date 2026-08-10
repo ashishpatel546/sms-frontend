@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, ChevronsUpDown, Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { naturalCompare } from '@/lib/utils';
 import { Skeleton } from './skeleton';
+import { Pagination } from './FilterBar';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    THE TABLE
@@ -85,6 +86,16 @@ export interface DataTableProps<T> {
   className?: string;
   /** Rows to show while loading. */
   skeletonRows?: number;
+  /**
+   * Page the table client-side. Slicing the array before handing it over would
+   * be wrong — sorting happens in here, so a pre-sliced array sorts only within
+   * the visible page. Paging after the sort keeps the order global.
+   * Omit to render every row, as before.
+   */
+  pageSize?: number;
+  /** 1-based. Controlled when supplied, otherwise the table keeps its own. */
+  page?: number;
+  onPageChange?: (page: number) => void;
 }
 
 const alignClass = {
@@ -139,12 +150,15 @@ export function DataTable<T>({
   dense = false,
   className,
   skeletonRows = 5,
+  pageSize,
+  page,
+  onPageChange,
 }: DataTableProps<T>) {
   const [sort, setSort] = React.useState<{ key: string; direction: 'asc' | 'desc' } | null>(
     defaultSort ? { key: defaultSort.key, direction: defaultSort.direction ?? 'asc' } : null,
   );
 
-  const rows = React.useMemo(() => {
+  const sortedRows = React.useMemo(() => {
     const list = data ?? [];
     if (!sort) return list;
     const col = columns.find((c) => c.key === sort.key);
@@ -163,12 +177,28 @@ export function DataTable<T>({
     });
   }, [data, sort, columns]);
 
+  // Paging happens after the sort, so the order is over the whole set.
+  const [ownPage, setOwnPage] = React.useState(1);
+  const currentPage = page ?? ownPage;
+  const setCurrentPage = onPageChange ?? setOwnPage;
+  const pageCount = pageSize ? Math.max(1, Math.ceil(sortedRows.length / pageSize)) : 1;
+  // Clamp rather than reset: the row count can shrink under a filter while the
+  // page number stays put, and an out-of-range page renders as a blank table.
+  const safePage = Math.min(Math.max(1, currentPage), pageCount);
+  const rows = React.useMemo(
+    () => (pageSize ? sortedRows.slice((safePage - 1) * pageSize, safePage * pageSize) : sortedRows),
+    [sortedRows, pageSize, safePage],
+  );
+
   const toggleSort = (key: string) => {
     setSort((prev) =>
       prev?.key === key
         ? { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
         : { key, direction: 'asc' },
     );
+    // A re-sort reorders everything; staying on page 4 would show a slice of a
+    // list the reader never saw the start of.
+    setCurrentPage(1);
   };
 
   const pad = dense ? 'px-3 py-2' : 'px-4 py-3';
@@ -468,9 +498,18 @@ export function DataTable<T>({
         </>
       )}
 
-      {footer && (
+      {(footer || (pageSize && !isEmpty)) && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line bg-surface-secondary px-4 py-2.5 text-[12.5px] text-ink-muted">
           {footer}
+          {pageSize && !isEmpty && (
+            <Pagination
+              page={safePage}
+              pageCount={pageCount}
+              onPageChange={setCurrentPage}
+              total={sortedRows.length}
+              pageSize={pageSize}
+            />
+          )}
         </div>
       )}
     </section>
