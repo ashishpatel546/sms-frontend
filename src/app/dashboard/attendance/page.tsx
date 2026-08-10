@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { API_BASE_URL } from "@/lib/api";
 import { getUser, authFetch } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
@@ -42,11 +42,30 @@ export default function AttendancePage() {
     const [sections, setSections] = useState<Section[]>([]);
     const [loadingSections, setLoadingSections] = useState(false);
 
-    const [selectedClassId, setSelectedClassId] = useState("");
+    // Deep link from the daily register board on /dashboard/reports, which sends
+    // the owner straight from "3-B is empty" to this screen with the slot already
+    // chosen. Read straight off `window.location` rather than `useSearchParams`,
+    // which would force a Suspense boundary around this whole client page.
+    const initialParams = useMemo(() => {
+        if (typeof window === "undefined") return { classId: "", sectionId: "", date: null as string | null };
+        const params = new URLSearchParams(window.location.search);
+        return {
+            classId: params.get("classId") || "",
+            sectionId: params.get("sectionId") || "",
+            date: params.get("date"),
+        };
+    }, []);
+
+    const [selectedClassId, setSelectedClassId] = useState(initialParams.classId);
     const [selectedSectionId, setSelectedSectionId] = useState("");
+    // The class-change effect below clears the section on every run, so an incoming
+    // section can't just be the initial state — it has to wait for that class's
+    // sections to load and then be applied once.
+    const pendingSectionRef = useRef<string | null>(initialParams.sectionId || null);
     // Use local date (not UTC) so the default "today" matches the teacher's wall clock.
     // `toISOString()` would shift to UTC and produce yesterday's date in IST after ~6:30pm local.
     const [selectedDate, setSelectedDate] = useState(() => {
+        if (initialParams.date) return initialParams.date;
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     });
@@ -138,6 +157,15 @@ export default function AttendancePage() {
                 if (res.ok) {
                     const data = await res.json();
                     setSections(data);
+                    // Apply a deep-linked section exactly once — after this, changing
+                    // class manually behaves normally and clears the section.
+                    if (pendingSectionRef.current) {
+                        const wanted = pendingSectionRef.current;
+                        pendingSectionRef.current = null;
+                        if (data.some((s: Section) => String(s.id) === wanted)) {
+                            setSelectedSectionId(wanted);
+                        }
+                    }
                 }
             } catch (err) {
                 console.error("Failed to fetch sections", err);
