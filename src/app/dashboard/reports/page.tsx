@@ -7,15 +7,53 @@ import { todayLocalDate, sortByName } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
-import { 
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
-    PieChart, Pie, LineChart, Line 
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+    PieChart, Pie, Cell, LineChart, Line, ComposedChart,
 } from 'recharts';
 import { Wallet, AlertCircle, ClipboardList, CalendarCheck, Users, UserCircle, Download } from "lucide-react";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
 import { hrApi, PayrollMonthlySummary } from "@/lib/hr-api";
+import { attendanceSettingsApi, type AttendanceTodaySummary } from "@/lib/attendance-settings-api";
+import { ATTENDANCE_TONE } from "@/lib/attendanceColors";
+import DailyAttendanceRegister from "@/components/DailyAttendanceRegister";
 
 const COLORS = ['#0ea5e9', '#f43f5e', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'];
+
+interface AttendanceTrendPoint {
+  date: string;
+  present: number;
+  marked: number;
+  totalStudents: number;
+  registersTaken: number;
+  attendancePercent: number | null;
+  coveragePercent: number;
+}
+
+function AttendanceTrendTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: { payload: AttendanceTrendPoint }[];
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg shadow-md px-3 py-2 text-xs space-y-0.5">
+      <p className="font-semibold text-slate-700">{label}</p>
+      <p className="text-amber-600 font-medium">
+        {d.attendancePercent === null ? 'No attendance marked' : `${d.attendancePercent}% present (of ${d.marked} marked)`}
+      </p>
+      <p className="text-sky-600 font-medium">
+        {d.coveragePercent}% of school reported ({d.marked}/{d.totalStudents} students)
+      </p>
+    </div>
+  );
+}
 
 // ── Library Fees Report (used inside reports page) ────────────────────────────
 
@@ -131,6 +169,11 @@ export default function ReportsDashboard() {
     const [salaryYear, setSalaryYear] = useState(new Date().getFullYear());
     const [salaryData, setSalaryData] = useState<PayrollMonthlySummary[]>([]);
 
+    // Staff attendance for today — the same figures /dashboard already shows,
+    // read here as a breakdown rather than a row of counters.
+    const [staffAttendanceSummary, setStaffAttendanceSummary] = useState<AttendanceTodaySummary | null>(null);
+    const [staffAttendanceError, setStaffAttendanceError] = useState(false);
+
     // FILTERS
     const [academicSessions, setAcademicSessions] = useState<any[]>([]);
     const [examTerms, setExamTerms] = useState<any[]>([]);
@@ -215,11 +258,31 @@ export default function ReportsDashboard() {
     const [examClassAvg, setExamClassAvg] = useState([]);
     const [topPerformers, setTopPerformers] = useState<any[]>([]);
     const [attendanceByClass, setAttendanceByClass] = useState([]);
-    const [attendanceTrend, setAttendanceTrend] = useState([]);
+    const [attendanceTrend, setAttendanceTrend] = useState<AttendanceTrendPoint[]>([]);
     const [staffDistribution, setStaffDistribution] = useState([]);
     const [enrollmentClass, setEnrollmentClass] = useState([]);
     const collectionStatusWithFill = collectionStatus.map((entry, index) => ({ ...entry, fill: COLORS[index % COLORS.length] }));
     const staffDistributionWithFill = staffDistribution.map((entry: any, index: number) => ({ ...entry, fill: COLORS[index % COLORS.length] }));
+
+    // Colours come from ATTENDANCE_TONE so this donut, the staff calendar and its
+    // legend can't drift apart. Zero-value slices are dropped — recharts still
+    // renders a label for them, which litters the ring with "0"s.
+    const staffAttendanceChartData = staffAttendanceSummary
+        ? [
+              { name: 'Present', value: staffAttendanceSummary.summary.PRESENT, fill: ATTENDANCE_TONE.PRESENT.fill },
+              // `lateArrivals`, not `summary.LATE` — the latter is a legacy bucket
+              // that auto-compute no longer writes, so it trends to 0 regardless.
+              { name: 'Late', value: staffAttendanceSummary.lateArrivals, fill: ATTENDANCE_TONE.LATE.fill },
+              { name: 'Half day', value: staffAttendanceSummary.summary.HALF_DAY, fill: ATTENDANCE_TONE.HALF_DAY.fill },
+              { name: 'On leave', value: staffAttendanceSummary.summary.ON_LEAVE, fill: ATTENDANCE_TONE.LEAVE.fill },
+              { name: 'Absent', value: staffAttendanceSummary.summary.ABSENT, fill: ATTENDANCE_TONE.ABSENT.fill },
+              { name: 'Holiday', value: staffAttendanceSummary.summary.HOLIDAY, fill: ATTENDANCE_TONE.HOLIDAY.fill },
+              // Grey by elimination: sage, marigold, iris, lapis, vermilion and brass
+              // are all claimed above, and every other hue tried read as a near
+              // neighbour of one of them — teal beside Present, magenta beside Absent.
+              { name: 'Not marked', value: staffAttendanceSummary.summary.NOT_MARKED ?? 0, fill: 'var(--color-ink-faint)' },
+          ].filter((d) => d.value > 0)
+        : [];
     const [admissionsTrend, setAdmissionsTrend] = useState([]);
 
     useEffect(() => {
@@ -383,6 +446,17 @@ export default function ReportsDashboard() {
             .then((data) => { if (data?.hr_portal) setHrPortalEnabled(true); if (data?.library_management) setLibraryEnabled(true); })
             .catch(() => {});
     }, []);
+
+    // Staff attendance donut — HR-only data, so don't even ask for it unless the
+    // school has the HR Portal; the request would just 403.
+    useEffect(() => {
+        if (activeTab !== 'STAFF' || !hrPortalEnabled) return;
+        setStaffAttendanceError(false);
+        attendanceSettingsApi
+            .todaySummary()
+            .then(setStaffAttendanceSummary)
+            .catch(() => setStaffAttendanceError(true));
+    }, [activeTab, hrPortalEnabled]);
 
     // SALARY
     useEffect(() => {
@@ -819,7 +893,13 @@ export default function ReportsDashboard() {
                                 </div>
                             </div>
                             
-                            <div className="h-72 flex-1 mt-4 relative">
+                            {/* min-h, not h: `flex-1` sets flex-basis:0% which overrides
+                                `height` on a column flex container's main axis. On lg the
+                                card is a stretched grid item so there was space to grow
+                                into, but at grid-cols-1 the card is auto-height, free
+                                space is 0, and the chart collapsed to nothing on mobile.
+                                min-height isn't overridden, so it survives both. */}
+                            <div className="min-h-72 flex-1 mt-4 relative">
                                 {collectionStatus.every((d) => d.value === 0) ? (
                                     <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
                                         <svg className="w-12 h-12 mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
@@ -828,13 +908,28 @@ export default function ReportsDashboard() {
                                 ) : (
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
+                                            {/* `minAngle`, and a smaller gap: with paddingAngle 5,
+                                                a slice whose own angle was under ~5° had the
+                                                padding eat the entire sector, so a month where
+                                                collection was small next to outstanding dues drew
+                                                the blue arc as a bare gap in the ring — the legend
+                                                said "Collected" in blue and nothing on the chart
+                                                was blue. minAngle keeps a small slice honest-ish
+                                                but visible; exact figures are in the tooltip.
+                                                <Cell> makes the per-slice colour explicit rather
+                                                than relying on recharts reading `fill` off the datum. */}
                                             <Pie
                                                 data={collectionStatusWithFill}
                                                 innerRadius={70}
                                                 outerRadius={100}
-                                                paddingAngle={5}
+                                                paddingAngle={2}
+                                                minAngle={6}
                                                 dataKey="value"
-                                            />
+                                            >
+                                                {collectionStatusWithFill.map((entry: any, i: number) => (
+                                                    <Cell key={i} fill={entry.fill} />
+                                                ))}
+                                            </Pie>
                                             <Tooltip formatter={(val: any) => `₹${val.toLocaleString()}`} />
                                             <Legend verticalAlign="bottom" height={36}/>
                                         </PieChart>
@@ -1147,7 +1242,7 @@ export default function ReportsDashboard() {
                             </div>
                         ) : (
                         <>
-                        <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-[600px] overflow-y-auto">
+                        <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-150 overflow-y-auto">
                             {pendingDuesLoading ? (
                                 <div className="p-12 flex justify-center">
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -1462,7 +1557,7 @@ export default function ReportsDashboard() {
                             </div>
                         ) : (
                         <>
-                        <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-[600px] overflow-y-auto">
+                        <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-150 overflow-y-auto">
                             {receivedLoading ? (
                                 <div className="p-12 flex justify-center">
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -1548,9 +1643,9 @@ export default function ReportsDashboard() {
                 <div className="space-y-6">
                     {/* Filters Row */}
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap gap-4 items-end">
-                        <div className="flex-1 min-w-[150px]">
+                        <div className="flex-1 min-w-37.5">
                             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Academic Year</label>
-                            <select 
+                            <select
                                 className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-white"
                                 value={selectedExamYear}
                                 onChange={(e) => setSelectedExamYear(e.target.value)}
@@ -1561,9 +1656,9 @@ export default function ReportsDashboard() {
                                 ))}
                             </select>
                         </div>
-                        <div className="flex-1 min-w-[150px]">
+                        <div className="flex-1 min-w-37.5">
                             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Exam Term</label>
-                            <select 
+                            <select
                                 className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-white"
                                 value={selectedExamTerm}
                                 onChange={(e) => setSelectedExamTerm(e.target.value)}
@@ -1574,9 +1669,9 @@ export default function ReportsDashboard() {
                                 ))}
                             </select>
                         </div>
-                        <div className="flex-1 min-w-[150px]">
+                        <div className="flex-1 min-w-37.5">
                             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Class</label>
-                            <select 
+                            <select
                                 className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-white"
                                 value={selectedExamClass}
                                 onChange={(e) => {
@@ -1593,7 +1688,7 @@ export default function ReportsDashboard() {
                             </select>
                         </div>
                         {selectedExamClass && availableSections.length > 0 && (
-                            <div className="flex-1 min-w-[150px]">
+                            <div className="flex-1 min-w-37.5">
                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Section</label>
                                 <select 
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-white"
@@ -1714,8 +1809,13 @@ export default function ReportsDashboard() {
                         </div>
 
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                            <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
-                                <h2 className="text-lg font-bold text-slate-800">School-Wide Daily Trend</h2>
+                            <div className="flex justify-between items-start mb-3 flex-wrap gap-4">
+                                <div>
+                                    <h2 className="text-lg font-bold text-slate-800">School-Wide Daily Trend</h2>
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                        Bars show what % of the school marked attendance. Line shows % present among those marked.
+                                    </p>
+                                </div>
                                 <div className="flex items-center gap-2">
                                     <div className="w-40">
                                         <AppDatePicker
@@ -1732,19 +1832,50 @@ export default function ReportsDashboard() {
                                     </div>
                                 </div>
                             </div>
+                            {attendanceTrend.length > 0 && (() => {
+                                const latest = attendanceTrend[attendanceTrend.length - 1];
+                                const lowCoverage = latest.coveragePercent < 50;
+                                return (
+                                    <p className={`text-xs mb-3 ${lowCoverage ? 'text-amber-600 font-medium' : 'text-slate-500'}`}>
+                                        {lowCoverage && '⚠ '}Latest ({latest.date}): {latest.marked}/{latest.totalStudents} students marked
+                                        <span className="font-semibold"> ({latest.coveragePercent}%)</span>
+                                        {latest.attendancePercent !== null && (
+                                            <>
+                                              · <span className="font-semibold">{latest.attendancePercent}%</span> present
+                                            </>
+                                        )}
+                                    </p>
+                                );
+                            })()}
                             <div className="h-72">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={attendanceTrend}>
+                                    <ComposedChart data={attendanceTrend}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                                         <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#64748B'}} />
                                         <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{fill: '#64748B'}} />
-                                        <Tooltip formatter={(val: any) => `${val}%`} />
-                                        <Line type="monotone" dataKey="percent" name="Attendance %" stroke="#f59e0b" strokeWidth={3} dot={{r:4, fill:'#f59e0b'}} activeDot={{r:6}} />
-                                    </LineChart>
+                                        <Tooltip content={<AttendanceTrendTooltip />} />
+                                        <Legend wrapperStyle={{fontSize: 12}} />
+                                        <Bar dataKey="coveragePercent" name="School coverage" fill="#bae6fd" radius={[4, 4, 0, 0]} barSize={16} />
+                                        <Line
+                                            type="monotone"
+                                            dataKey="attendancePercent"
+                                            name="Attendance (marked)"
+                                            stroke="#f59e0b"
+                                            strokeWidth={3}
+                                            dot={{r: 4, fill: '#f59e0b'}}
+                                            activeDot={{r: 6}}
+                                            connectNulls={false}
+                                        />
+                                    </ComposedChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
                     </div>
+
+                    {/* Which classes still owe attendance for a given date. Sits
+                        below the two charts: those are the month's shape, this is
+                        the day's outstanding work. */}
+                    <DailyAttendanceRegister />
                 </div>
             )}
 
@@ -1838,15 +1969,61 @@ export default function ReportsDashboard() {
                                             innerRadius={60}
                                             outerRadius={100}
                                             paddingAngle={2}
+                                            minAngle={6}
                                             dataKey="value"
                                             label
-                                        />
+                                        >
+                                            {staffDistributionWithFill.map((entry: any, i: number) => (
+                                                <Cell key={i} fill={entry.fill} />
+                                            ))}
+                                        </Pie>
                                         <Tooltip />
                                         <Legend verticalAlign="bottom" height={36}/>
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
+
+                        {hrPortalEnabled && (
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                                <h2 className="text-lg font-bold text-slate-800 mb-4">Staff Attendance Today</h2>
+                                <div className="h-72">
+                                    {staffAttendanceError ? (
+                                        <div className="h-full flex items-center justify-center text-center text-sm text-rose-600 px-4">
+                                            Couldn&apos;t load staff attendance. Refresh to try again.
+                                        </div>
+                                    ) : !staffAttendanceSummary ? (
+                                        <div className="h-full flex items-center justify-center text-sm text-slate-400">
+                                            Loading…
+                                        </div>
+                                    ) : staffAttendanceChartData.length === 0 ? (
+                                        <div className="h-full flex items-center justify-center text-sm text-slate-500">
+                                            No attendance recorded yet today.
+                                        </div>
+                                    ) : (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={staffAttendanceChartData}
+                                                    innerRadius={60}
+                                                    outerRadius={100}
+                                                    paddingAngle={2}
+                                                    minAngle={6}
+                                                    dataKey="value"
+                                                    label
+                                                >
+                                                    {staffAttendanceChartData.map((entry, i) => (
+                                                        <Cell key={i} fill={entry.fill} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip />
+                                                <Legend verticalAlign="bottom" height={36}/>
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -1962,7 +2139,7 @@ export default function ReportsDashboard() {
                                         value={customNotifMessage}
                                         onChange={(e) => setCustomNotifMessage(e.target.value)}
                                         placeholder="Write your custom reminder message here..."
-                                        className="w-full border-slate-300 rounded-lg p-3 text-sm focus:ring-brand/40 focus:border-brand min-h-[120px]"
+                                        className="w-full border-slate-300 rounded-lg p-3 text-sm focus:ring-brand/40 focus:border-brand min-h-30"
                                     />
                                 ) : (
                                     <div className="w-full border border-slate-200 bg-slate-50 rounded-lg p-4 text-sm text-slate-500 italic">
