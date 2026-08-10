@@ -130,6 +130,10 @@ const BY_WORD: Record<string, Pigment> = {
   trial: 'attn',
   expiringsoon: 'attn',
   needsattention: 'attn',
+  // An unfilled cell in the register. Not danger — nobody has claimed this
+  // person was absent yet; somebody just has to go and find out.
+  notmarked: 'attn',
+  unmarked: 'attn',
 
   // ── correction ──────────────────────────────────────────────────────────
   absent: 'danger',
