@@ -24,7 +24,7 @@ import { AlertCircle, CalendarCheck } from 'lucide-react';
 import { fetcher } from '@/lib/api';
 import { cn, todayLocalDate } from '@/lib/utils';
 import { Panel, PanelHeader, PanelBody } from '@/components/ui/Panel';
-import { FilterBar, FilterField, SegmentedControl } from '@/components/ui/FilterBar';
+import { FilterBar, FilterField, SegmentedControl, Pagination } from '@/components/ui/FilterBar';
 import { AppDatePicker } from '@/components/ui/AppDatePicker';
 import { Checkbox } from '@/components/ui/Field';
 import { EmptyState, ErrorState } from '@/components/ui/EmptyState';
@@ -185,11 +185,26 @@ function SectionTile({ row, date }: { row: RegisterRow; date: string }) {
   );
 }
 
+/** The board pages by CLASS, not by row: a class's sections belong together, and
+ *  splitting 3-A and 3-B across a page break would break the thing the board is
+ *  for. Details pages by row, since there the row is the unit. */
+const CLASSES_PER_PAGE = 6;
+const ROWS_PER_PAGE = 25;
+
 export default function DailyAttendanceRegister() {
   const router = useRouter();
   const [date, setDate] = React.useState(todayLocalDate());
   const [onlyPending, setOnlyPending] = React.useState(false);
   const [view, setView] = React.useState<'board' | 'details'>('board');
+  const [page, setPage] = React.useState(1);
+
+  // Anything that changes the contents of the list sends you back to page 1 —
+  // otherwise you keep a page number that no longer exists and see nothing.
+  // Done in the handlers rather than an effect: resetting in an effect renders
+  // the stale page first and then corrects it.
+  const changeDate = (v: string) => { setDate(v); setPage(1); };
+  const changeOnlyPending = (v: boolean) => { setOnlyPending(v); setPage(1); };
+  const changeView = (v: 'board' | 'details') => { setView(v); setPage(1); };
 
   const { data, error, isLoading } = useSWR<RegisterResponse>(
     `/attendance/daily-register?date=${date}`,
@@ -311,6 +326,18 @@ export default function DailyAttendanceRegister() {
   const takenDue = due.filter((r) => r.marked).length;
   const takenPct = due.length > 0 ? Math.round((takenDue / due.length) * 100) : 0;
 
+  // Page over classes on the board and over rows in Details — different units,
+  // so the count in the footer is honest about which one it's showing.
+  const pageCount =
+    view === 'board'
+      ? Math.max(1, Math.ceil(groups.length / CLASSES_PER_PAGE))
+      : Math.max(1, Math.ceil(visibleRows.length / ROWS_PER_PAGE));
+  const safePage = Math.min(page, pageCount);
+  const pagedGroups = React.useMemo(
+    () => groups.slice((safePage - 1) * CLASSES_PER_PAGE, safePage * CLASSES_PER_PAGE),
+    [groups, safePage],
+  );
+
   return (
     <Panel>
       <PanelHeader
@@ -322,7 +349,7 @@ export default function DailyAttendanceRegister() {
           actions={
             <SegmentedControl
               value={view}
-              onValueChange={setView}
+              onValueChange={changeView}
               size="sm"
               options={[
                 { value: 'board', label: 'Board' },
@@ -332,12 +359,12 @@ export default function DailyAttendanceRegister() {
           }
         >
           <FilterField label="Date" width="md">
-            <AppDatePicker value={date} onChange={setDate} max={todayLocalDate()} />
+            <AppDatePicker value={date} onChange={changeDate} max={todayLocalDate()} />
           </FilterField>
           <Checkbox
             label="Only pending"
             checked={onlyPending}
-            onChange={(e) => setOnlyPending(e.target.checked)}
+            onChange={(e) => changeOnlyPending(e.target.checked)}
             className="py-0"
           />
         </FilterBar>
@@ -408,7 +435,7 @@ export default function DailyAttendanceRegister() {
               />
             ) : view === 'board' ? (
               <div className="space-y-3">
-                {groups.map((g, i) => (
+                {pagedGroups.map((g, i) => (
                   <div
                     key={g.classId}
                     className={cn(
@@ -417,18 +444,32 @@ export default function DailyAttendanceRegister() {
                     )}
                   >
                     <div className="text-[13px] font-semibold text-ink lg:pt-2">{g.className}</div>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                    {/* Steps up with the viewport so tiles stay a readable size
+                        rather than stretching to fill a wide monitor. */}
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
                       {g.rows.map((row) => (
                         <SectionTile key={row.sectionId} row={row} date={data.date} />
                       ))}
                     </div>
                   </div>
                 ))}
+
+                <Pagination
+                  page={safePage}
+                  pageCount={pageCount}
+                  onPageChange={setPage}
+                  total={groups.length}
+                  pageSize={CLASSES_PER_PAGE}
+                  className="pt-1"
+                />
               </div>
             ) : (
               <DataTable
                 columns={columns}
                 data={visibleRows}
+                pageSize={ROWS_PER_PAGE}
+                page={safePage}
+                onPageChange={setPage}
                 rowKey={(r) => `${r.classId}-${r.sectionId}`}
                 defaultSort={{ key: 'className', direction: 'asc' }}
                 isRowFlagged={(r) => stateOf(r) === 'pending'}
