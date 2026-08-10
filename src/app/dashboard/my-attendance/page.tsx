@@ -15,6 +15,14 @@ import toast, { Toaster } from "react-hot-toast";
 import { startRegistration, startAuthentication } from "@simplewebauthn/browser";
 import { getOrCreateDeviceKeyPair, signChallenge, getDevicePublicKey, clearDeviceKeyPair } from "@/lib/device-crypto";
 import { todayLocalDate, formatTime } from "@/lib/utils";
+import {
+  acquirePreciseFix,
+  describeAccuracy,
+  explainFixError,
+  GeolocationFixError,
+  DEFAULT_TARGET_ACCURACY_M,
+  type PreciseFix,
+} from "@/lib/geolocation";
 import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
 import { CheckCircle2, Clock3, TriangleAlert } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
@@ -85,6 +93,63 @@ const todayStr = todayLocalDate();
 
 type CheckInState = "idle" | "locating" | "authenticating" | "submitting" | "done" | "error";
 
+/**
+ * Live readout of how precisely the device has located itself.
+ *
+ * Shown during acquisition rather than only on failure, because the number is
+ * the explanation. A teacher told "±1200m" understands immediately that the
+ * phone is guessing from the network and that turning GPS on is the fix —
+ * where "you are outside the school zone", the message this replaces, sent
+ * people standing at the gate walking in circles looking for a better spot.
+ */
+function GpsPrecision({ accuracy, settling }: { accuracy: number | null; settling: boolean }) {
+  if (accuracy === null) return null;
+
+  const good = accuracy <= DEFAULT_TARGET_ACCURACY_M;
+  const usable = accuracy <= DEFAULT_TARGET_ACCURACY_M * 4;
+  // Fills as the fix converges on the target; a wildly coarse fix barely
+  // registers, which is the honest picture.
+  const filled = Math.max(2, Math.min(100, (DEFAULT_TARGET_ACCURACY_M / accuracy) * 100));
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] text-gray-500">
+          {settling ? "Improving location precision…" : "Location precision"}
+        </span>
+        <span
+          className={`text-[11px] font-medium tabular-nums ${
+            good ? "text-green-700" : usable ? "text-amber-700" : "text-red-700"
+          }`}
+        >
+          {describeAccuracy(accuracy)}
+        </span>
+      </div>
+      <div
+        role="progressbar"
+        aria-label="Location precision"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(filled)}
+        aria-valuetext={`Accurate to ${describeAccuracy(accuracy)}`}
+        className="mt-1 h-1 w-full rounded-full bg-gray-200 overflow-hidden"
+      >
+        <div
+          className={`h-full rounded-full transition-[width] duration-500 ${
+            good ? "bg-green-500" : usable ? "bg-amber-500" : "bg-red-500"
+          }`}
+          style={{ width: `${filled}%` }}
+        />
+      </div>
+      {!usable && !settling && (
+        <p className="text-[11px] text-red-700 mt-1">
+          Turn on Location/GPS and step outdoors, then try again.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function MyAttendancePage() {
   const [records, setRecords] = useState<AttendanceRow[]>([]);
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -95,12 +160,19 @@ export default function MyAttendancePage() {
   // Today's check-in state
   const [checkInState, setCheckInState] = useState<CheckInState>("idle");
   const [checkInMsg, setCheckInMsg] = useState("");
+  /**
+   * Best accuracy seen so far while locating, in metres. Surfaced live because
+   * it is the one number that explains a refusal: "±1300m" tells someone their
+   * phone is guessing from the network far better than any wording can.
+   */
+  const [checkInAccuracy, setCheckInAccuracy] = useState<number | null>(null);
   const [todayRecord, setTodayRecord] = useState<AttendanceRow | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<"PRESENT" | "LATE" | "HALF_DAY">("PRESENT");
 
   // Checkout state
   const [checkOutState, setCheckOutState] = useState<CheckInState>("idle");
   const [checkOutMsg, setCheckOutMsg] = useState("");
+  const [checkOutAccuracy, setCheckOutAccuracy] = useState<number | null>(null);
   const [checkOutReason, setCheckOutReason] = useState<CheckOutReason>("REGULAR");
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -305,31 +377,33 @@ export default function MyAttendancePage() {
     if (!navigator.geolocation) { toast.error("Your browser does not support GPS location"); return; }
 
     setCheckInState("locating");
-    setCheckInMsg("Getting your location and preparing device check…");
+    setCheckInMsg("Finding your location…");
+    setCheckInAccuracy(null);
 
-    // Fetch GPS and auth challenge in parallel — both are needed before we can
-    // show the biometric prompt; doing them in parallel saves ~1-2 seconds.
-    let position: GeolocationPosition;
+    // Location and auth challenge in parallel — both are needed before the
+    // biometric prompt, and the challenge fetch is free while GPS settles.
+    // Ordering matters beyond speed: a failed fix must never reach the prompt,
+    // or the user scans a fingerprint only to be told their GPS was no good.
+    let fix: PreciseFix;
     let challengeOpts: any;
     try {
-      [position, challengeOpts] = await Promise.all([
-        new Promise<GeolocationPosition>((resolve, reject) =>
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 0, // never use a cached position — always fetch live GPS
-          })
-        ),
+      [fix, challengeOpts] = await Promise.all([
+        acquirePreciseFix({
+          // Live feedback while the fix tightens. Without it a 20s wait looks
+          // like the app has hung, which is what pushes people to give up and
+          // ask HR to mark them manually.
+          onProgress: ({ accuracy }) => setCheckInAccuracy(accuracy),
+        }),
         hrApi.attendance.webauthn.selfGetAuthChallenge(),
       ]);
+      setCheckInAccuracy(fix.accuracy);
     } catch (e: any) {
       setCheckInState("error");
-      if (e?.code === 1) setCheckInMsg("Location permission denied. Please allow location access and try again.");
-      else if (e?.code === 2) setCheckInMsg("Location unavailable. Please check your GPS.");
-      else {
-        const msg = e?.info?.message ?? e?.message ?? "Preparation failed. Please try again.";
-        setCheckInMsg(msg);
-      }
+      setCheckInMsg(
+        e instanceof GeolocationFixError
+          ? explainFixError(e)
+          : e?.info?.message ?? e?.message ?? "Preparation failed. Please try again."
+      );
       return;
     }
 
@@ -352,8 +426,9 @@ export default function MyAttendancePage() {
       const localTime = new Date().toTimeString().slice(0, 8);
       const isoTime = new Date().toISOString();
       const record = await hrApi.attendance.selfCheckIn({
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
+        lat: fix.lat,
+        lng: fix.lng,
+        accuracy: fix.accuracy,
         clientTimestamp: isoTime,
         checkInTime: isoTime,
         status: selectedStatus,
@@ -368,9 +443,12 @@ export default function MyAttendancePage() {
       if (info?.code === "PENDING_CHECKOUT") {
         setPendingCheckOut({ date: info.pendingDate, checkInTime: "—", daysAgo: 1 });
       }
-      const msg = info?.message ?? "Check-in failed. You may be outside the school zone.";
       setCheckInState("error");
-      setCheckInMsg(msg);
+      // The server distinguishes "you are elsewhere" from "your phone cannot
+      // tell where you are", and its message already says which. The old
+      // fallback asserted the first for every failure, so someone standing at
+      // the gate with a weak fix was told to move closer.
+      setCheckInMsg(info?.message ?? "Check-in failed. Please try again.");
     }
   };
 
@@ -378,28 +456,26 @@ export default function MyAttendancePage() {
     if (!navigator.geolocation) { toast.error("Your browser does not support GPS location"); return; }
 
     setCheckOutState("locating");
-    setCheckOutMsg("Getting your location and preparing device check…");
+    setCheckOutMsg("Finding your location…");
+    setCheckOutAccuracy(null);
 
-    let position: GeolocationPosition;
+    let fix: PreciseFix;
     let challengeOpts: any;
     try {
-      [position, challengeOpts] = await Promise.all([
-        new Promise<GeolocationPosition>((resolve, reject) =>
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 0, // never use a cached position — always fetch live GPS
-          })
-        ),
+      [fix, challengeOpts] = await Promise.all([
+        acquirePreciseFix({
+          onProgress: ({ accuracy }) => setCheckOutAccuracy(accuracy),
+        }),
         hrApi.attendance.webauthn.selfGetAuthChallenge(),
       ]);
+      setCheckOutAccuracy(fix.accuracy);
     } catch (e: any) {
       setCheckOutState("error");
-      if (e?.code === 1) setCheckOutMsg("Location permission denied. Please allow location access and try again.");
-      else {
-        const msg = e?.info?.message ?? e?.message ?? "Preparation failed. Please try again.";
-        setCheckOutMsg(msg);
-      }
+      setCheckOutMsg(
+        e instanceof GeolocationFixError
+          ? explainFixError(e)
+          : e?.info?.message ?? e?.message ?? "Preparation failed. Please try again."
+      );
       return;
     }
 
@@ -424,8 +500,9 @@ export default function MyAttendancePage() {
       // a client-supplied status would be silently ignored. The preview
       // shown before this call (see `initiateCheckOut`) is the honest signal.
       const record = await hrApi.attendance.selfCheckOut({
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
+        lat: fix.lat,
+        lng: fix.lng,
+        accuracy: fix.accuracy,
         clientTimestamp: isoTime,
         checkOutTime: isoTime,
         reason: checkOutReason,
@@ -577,6 +654,10 @@ export default function MyAttendancePage() {
             {(checkInState === "locating" || checkInState === "authenticating" || checkInState === "submitting") && <p className="text-xs text-blue-600 mt-1">{checkInMsg}</p>}
             {checkOutState === "error" && <p className="text-xs text-red-600 mt-1">{checkOutMsg}</p>}
             {(checkOutState === "locating" || checkOutState === "authenticating" || checkOutState === "submitting") && <p className="text-xs text-amber-600 mt-1">{checkOutMsg}</p>}
+            <GpsPrecision
+              accuracy={checkInState !== "idle" ? checkInAccuracy : checkOutAccuracy}
+              settling={checkInState === "locating" || checkOutState === "locating"}
+            />
           </div>
         </div>
 

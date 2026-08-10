@@ -282,12 +282,24 @@ export interface AttendanceReport {
   rows: AttendanceReportDetailRow[];
 }
 
+/** One vertex of a drawn campus outline. */
+export interface BoundaryPoint {
+  lat: number;
+  lng: number;
+}
+
 export interface AttendanceZone {
   id: number;
   name: string;
   lat: number;
   lng: number;
   radiusMeters: number;
+  /**
+   * Traced campus outline. When set it replaces the circle entirely and
+   * `radiusMeters` is ignored; `lat`/`lng` remain the map centre. Null on zones
+   * created before boundaries existed, which stay circles until redrawn.
+   */
+  boundary: BoundaryPoint[] | null;
   isActive: boolean;
 }
 
@@ -515,6 +527,8 @@ export const hrApi = {
       status?: StaffAttendanceStatus;
       lat?: number;
       lng?: number;
+      /** Mandatory when `method` is GEOFENCE; meaningless for MANUAL. */
+      accuracy?: number;
       checkInTime?: string;
       checkOutTime?: string;
       clientTimestamp?: string;
@@ -523,6 +537,12 @@ export const hrApi = {
     selfCheckIn: (data: {
       lat: number;
       lng: number;
+      /**
+       * `GeolocationCoordinates.accuracy` in metres. Required — the server
+       * rejects the request without it rather than assuming the coordinates
+       * can be trusted. See `acquirePreciseFix` in `lib/geolocation.ts`.
+       */
+      accuracy: number;
       clientTimestamp?: string;
       checkInTime?: string;
       status?: 'PRESENT' | 'LATE' | 'HALF_DAY';
@@ -536,6 +556,8 @@ export const hrApi = {
     selfCheckOut: (data: {
       lat: number;
       lng: number;
+      /** Required, for the same reason as on check-in. */
+      accuracy: number;
       clientTimestamp?: string;
       checkOutTime?: string;
       reason: CheckOutReason;
@@ -656,6 +678,7 @@ export const hrApi = {
         lat: number;
         lng: number;
         radiusMeters?: number;
+        boundary?: BoundaryPoint[];
       }) => req<AttendanceZone>('POST', '/hr/staff-attendance/zones', data),
       update: (id: number, data: Partial<AttendanceZone>) =>
         req<AttendanceZone>('PATCH', `/hr/staff-attendance/zones/${id}`, data),
