@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { hrApi, StaffAttendanceRecord, AttendanceBypassWindow, StaffBiometric, WebauthnRegistrationPermit, DailyAttendanceSummary, HrPendingCheckoutItem, AttendanceMethod } from "@/lib/hr-api";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { hrApi, StaffAttendanceRecord, AttendanceBypassWindow, StaffBiometric, WebauthnRegistrationPermit, DailyAttendanceSummary, DailyAttendanceStatus, HrPendingCheckoutItem, AttendanceMethod } from "@/lib/hr-api";
 import { useRbac } from "@/lib/rbac";
-import { todayLocalDate } from "@/lib/utils";
+import { cn, todayLocalDate } from "@/lib/utils";
+import { StatusChip } from "@/components/ui/StatusChip";
+import { PIGMENT_CLASS, pigmentFor } from "@/components/ui/pigment";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
 import StaffPicker from "@/components/StaffPicker";
@@ -27,9 +29,16 @@ dayjs.extend(duration);
  * extending it locally here avoids touching that shared file. Every record
  * the daily/monthly endpoints return now carries `isLate` alongside `status`.
  */
-type AttendanceRow = StaffAttendanceRecord & { isLate?: boolean };
+type AttendanceRow = Omit<StaffAttendanceRecord, "status"> & {
+  isLate?: boolean;
+  /** `NOT_MARKED` only ever arrives on the synthetic roster rows. */
+  status: DailyAttendanceStatus;
+};
 
 const PAGE_SIZE = 20;
+
+/** `null` is "everything on the register", not a status of its own. */
+type StatusFilter = DailyAttendanceStatus | null;
 
 /** `7.53` hours → `07:31:48`. */
 function formatHoursAsHms(hours: number): string {
@@ -46,7 +55,7 @@ function formatHoursAsHms(hours: number): string {
  * and the API can never disagree — subtracting the timestamps here is only the
  * fallback for payloads that predate that field.
  */
-function calcDuration(record: Pick<StaffAttendanceRecord, "checkInTime" | "checkOutTime" | "workedHours">): string | null {
+function calcDuration(record: Pick<AttendanceRow, "checkInTime" | "checkOutTime" | "workedHours">): string | null {
   const { checkInTime, checkOutTime, workedHours } = record;
   if (typeof workedHours === "number" && workedHours > 0) return formatHoursAsHms(workedHours);
   if (!checkInTime || !checkOutTime) return null;
@@ -66,7 +75,7 @@ function calcDuration(record: Pick<StaffAttendanceRecord, "checkInTime" | "check
  * stored checkout precedes the check-in (rows written before the backend
  * started rejecting that ordering). Silence was the original bug.
  */
-function durationOf(r: StaffAttendanceRecord): { text: string | null; invalid: boolean } {
+function durationOf(r: AttendanceRow): { text: string | null; invalid: boolean } {
   const text = calcDuration(r);
   if (text) return { text, invalid: false };
   const bothPresent = Boolean(r.checkInTime && r.checkOutTime);
@@ -102,7 +111,7 @@ function defaultResolvedCheckOut(pendingDate: string, checkInTime: string): { ch
   return { checkOutDate: chosen.format("YYYY-MM-DD"), checkOutTime: chosen.format("HH:mm") };
 }
 
-const staffNameOf = (r: StaffAttendanceRecord) =>
+const staffNameOf = (r: AttendanceRow) =>
   r.staff?.user ? `${r.staff.user.firstName} ${r.staff.user.lastName}` : `Staff #${r.staffId}`;
 
 interface Provenance {
@@ -139,11 +148,11 @@ function describeSource(
   return { ...base, actorName: isSelf || !actorName ? null : actorName };
 }
 
-const checkInSource = (r: StaffAttendanceRecord): Provenance =>
+const checkInSource = (r: AttendanceRow): Provenance =>
   describeSource(r.method, r.markedBy, r.staff?.user?.id, staffNameOf(r));
 
 /** Null while the record is still open — there is no check-out to describe. */
-const checkOutSource = (r: StaffAttendanceRecord): Provenance | null =>
+const checkOutSource = (r: AttendanceRow): Provenance | null =>
   r.checkOutTime ? describeSource(r.checkOutMethod, r.checkOutBy, r.staff?.user?.id, staffNameOf(r)) : null;
 
 /** `475` minutes → `7h 55m`. Used for the "that's how long they worked" preview. */
@@ -169,15 +178,6 @@ const DURATION_TEXT: Record<string, string> = {
   HALF_DAY: "text-blue-700 font-medium",
   ON_LEAVE: "text-purple-700",
   ABSENT: "text-red-500",
-};
-
-const STATUS_STYLES: Record<string, string> = {
-  PRESENT: "bg-green-100 text-green-700",
-  LATE: "bg-amber-100 text-amber-700",
-  ABSENT: "bg-red-100 text-red-700",
-  HALF_DAY: "bg-blue-100 text-blue-700",
-  ON_LEAVE: "bg-purple-100 text-purple-700",
-  HOLIDAY: "bg-gray-100 text-gray-600",
 };
 
 /**
@@ -256,6 +256,74 @@ function EventCell({
   );
 }
 
+interface Tally {
+  key: StatusFilter;
+  label: string;
+  count: number;
+}
+
+/**
+ * The day's totals, and the filter, as one control — the tally line at the
+ * foot of a paper register, made clickable. Colour comes from the shared
+ * pigment map, so a "Present" tally, the "Present" chip in the table and a
+ * "Present" badge anywhere else in the app are the same green by construction.
+ *
+ * These are toggle buttons (`aria-pressed`), not ARIA tabs: below them is one
+ * table whose contents change, not eight panels, and toggles get correct
+ * keyboard behaviour without a hand-rolled roving tabindex. Every button is
+ * 44px tall and the strip scrolls inside itself on a phone rather than
+ * widening the page.
+ */
+function TallyStrip({
+  tallies,
+  active,
+  onChange,
+}: {
+  tallies: Tally[];
+  active: StatusFilter;
+  onChange: (next: StatusFilter) => void;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Filter the register by status"
+      /* `overflow-x-auto` forces overflow-y to `auto` too (CSS resolves a
+         `visible` axis to `auto` when the other axis is not visible), so any
+         emphasis painted OUTSIDE a button box — a box-shadow ring, an outline —
+         gets sliced off at the strip's top and bottom edges. Hence `ring-inset`
+         on the active pill below and `ring-inset` on focus: everything stays
+         inside the button. `py-1` keeps the pills off the scroll edges. */
+      className="-mx-3 flex gap-2 overflow-x-auto px-3 py-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+    >
+      {tallies.map(({ key, label, count }) => {
+        const p = PIGMENT_CLASS[key ? pigmentFor(key) : "neutral"];
+        const isActive = active === key;
+        return (
+          <button
+            key={label}
+            type="button"
+            aria-pressed={isActive}
+            onClick={() => onChange(isActive ? null : key)}
+            className={cn(
+              "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-3.5 text-sm transition-colors",
+              "focus-visible:ring-brand focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none",
+              isActive
+                ? cn(p.chip, "ring-brand/45 font-semibold ring-2 ring-inset")
+                : "border-line bg-surface text-ink-soft hover:border-line-strong hover:bg-surface-secondary",
+            )}
+          >
+            <span aria-hidden className={cn("size-2 shrink-0 rounded-full", p.dot)} />
+            <span className="whitespace-nowrap">{label}</span>
+            <span className={cn("tabular text-[13px] font-semibold", !isActive && "text-ink")}>
+              {count}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function StaffAttendancePage() {
   const rbac = useRbac();
   const today = todayLocalDate();
@@ -264,6 +332,9 @@ export default function StaffAttendancePage() {
   const [records, setRecords] = useState<AttendanceRow[]>([]);
   const [bypass, setBypass] = useState<AttendanceBypassWindow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  /** Watched by an IntersectionObserver to pull the next page into view. */
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   // Pagination + server-side search
   const [currentPage, setCurrentPage] = useState(1);
@@ -273,8 +344,12 @@ export default function StaffAttendancePage() {
   // Real "checked in after the cutoff today" count — see the field doc on
   // PaginatedDailyAttendance.lateArrivals for why this isn't summary.LATE.
   const [lateArrivals, setLateArrivals] = useState(0);
+  /** Everyone on the register for the date — people, not attendance records. */
+  const [totalStaff, setTotalStaff] = useState(0);
   const [draftSearch, setDraftSearch] = useState({ name: "", mobile: "", employeeCode: "", staffId: "" });
   const [activeSearch, setActiveSearch] = useState({ name: "", mobile: "", employeeCode: "", staffId: "" });
+  /** Which tally is open. Narrows the table only — the counts stay whole-day. */
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(null);
 
   // Manual mark form
   const [showMark, setShowMark] = useState(false);
@@ -321,35 +396,87 @@ export default function StaffAttendancePage() {
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
 
+  /** The query the list is currently showing — everything except the page. */
+  const queryArgs = useMemo(
+    () => ({
+      search: [activeSearch.name, activeSearch.mobile].filter(Boolean).join(" ").trim() || undefined,
+      employeeCode: activeSearch.employeeCode || undefined,
+      staffId: activeSearch.staffId || undefined,
+      status: statusFilter ?? undefined,
+    }),
+    [activeSearch, statusFilter],
+  );
+
+  /**
+   * Page 1: replaces the list. Runs whenever the date, the search or the open
+   * tally changes. The bypass window rides along because it is the only other
+   * thing this screen needs on first paint.
+   */
   const loadRecords = useCallback(async () => {
     setLoading(true);
     try {
-      const search = [activeSearch.name, activeSearch.mobile].filter(Boolean).join(" ").trim() || undefined;
       const [recs, bp] = await Promise.allSettled([
-        hrApi.attendance.daily(date, {
-          page: currentPage,
-          limit: PAGE_SIZE,
-          search,
-          employeeCode: activeSearch.employeeCode || undefined,
-          staffId: activeSearch.staffId || undefined,
-        }),
+        hrApi.attendance.daily(date, { page: 1, limit: PAGE_SIZE, ...queryArgs }),
         hrApi.attendance.bypass.getActive(),
       ]);
       if (recs.status === "fulfilled") {
-        setRecords(recs.value.data);
+        setRecords(recs.value.data as AttendanceRow[]);
+        setCurrentPage(1);
         setTotalPages(recs.value.totalPages);
         setTotalRecords(recs.value.total);
         setSummary(recs.value.summary);
         setLateArrivals(recs.value.lateArrivals ?? 0);
+        setTotalStaff(recs.value.totalStaff ?? recs.value.total);
       }
       if (bp.status === "fulfilled") setBypass(bp.value);
     } catch { toast.error("Failed to load attendance"); }
     finally { setLoading(false); }
-  }, [date, currentPage, activeSearch]);
+  }, [date, queryArgs]);
 
   useEffect(() => { loadRecords(); }, [loadRecords]);
-  // Reset to page 1 when date changes
-  useEffect(() => { setCurrentPage(1); }, [date]);
+
+  const hasMore = currentPage < totalPages;
+
+  /**
+   * Appends the next page. The register now lists every staff member rather
+   * than only the marked ones, so a large school runs to hundreds of rows —
+   * they arrive as you scroll instead of behind numbered page links.
+   */
+  const loadMore = useCallback(async () => {
+    if (loading || loadingMore || currentPage >= totalPages) return;
+    setLoadingMore(true);
+    try {
+      const next = currentPage + 1;
+      const res = await hrApi.attendance.daily(date, { page: next, limit: PAGE_SIZE, ...queryArgs });
+      // Guard against a row arriving twice if a record was written between
+      // pages and shifted the offset.
+      setRecords((prev) => {
+        const seen = new Set(prev.map((r) => r.id));
+        return [...prev, ...(res.data as AttendanceRow[]).filter((r) => !seen.has(r.id))];
+      });
+      setCurrentPage(next);
+      setTotalPages(res.totalPages);
+      setTotalRecords(res.total);
+    } catch { toast.error("Failed to load more staff"); }
+    finally { setLoadingMore(false); }
+  }, [date, queryArgs, currentPage, totalPages, loading, loadingMore]);
+
+  /**
+   * Auto-loads when the sentinel nears the viewport. The Load more button
+   * below it stays in the DOM and does the same job — an IntersectionObserver
+   * alone would leave keyboard and screen-reader users with no way to reach
+   * page two.
+   */
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el || !hasMore) return;
+    const io = new IntersectionObserver(
+      (entries) => { if (entries[0]?.isIntersecting) void loadMore(); },
+      { rootMargin: "300px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, loadMore]);
 
   /**
    * The manual form can set both sides at once, so it needs the same ordering
@@ -597,9 +724,54 @@ export default function StaffAttendancePage() {
     }
   };
 
+  /**
+   * Legacy `status === 'LATE'` rows fold into Present, the same way the
+   * working-hours report and the backend's `status=PRESENT` filter do — so the
+   * number on the button and the rows behind it always match.
+   */
   const present = summary.PRESENT + summary.LATE;
-  const absent = summary.ABSENT;
+  const notMarked = summary.NOT_MARKED ?? 0;
+  /**
+   * Everyone the register covers, marked or not — `totalStaff` now counts
+   * people rather than records. "All" used to be the record count, which at a
+   * school that never marks anyone absent made it a synonym for "Present".
+   */
+  const rosterTotal = totalStaff;
+
+  const tallies: Tally[] = [
+    { key: null, label: "All", count: rosterTotal },
+    { key: "NOT_MARKED", label: "Not marked", count: notMarked },
+    { key: "PRESENT", label: "Present", count: present },
+    { key: "LATE", label: "Late", count: lateArrivals },
+    { key: "HALF_DAY", label: "Half day", count: summary.HALF_DAY },
+    { key: "ON_LEAVE", label: "On leave", count: summary.ON_LEAVE },
+    { key: "ABSENT", label: "Absent", count: summary.ABSENT },
+    // Holidays are rare and a zero here says nothing — the button appears on
+    // the days it means something, rather than sitting at 0 all year.
+    ...(summary.HOLIDAY > 0 || statusFilter === "HOLIDAY"
+      ? [{ key: "HOLIDAY" as StatusFilter, label: "Holiday", count: summary.HOLIDAY }]
+      : []),
+  ];
+
+  const activeTallyLabel = tallies.find((t) => t.key === statusFilter)?.label ?? "";
+
+  /** Changing the filter re-runs page 1 via `loadRecords`; no reset needed here. */
+  const chooseStatus = (next: StatusFilter) => setStatusFilter(next);
+
   const hasActiveSearch = Boolean(activeSearch.name || activeSearch.mobile || activeSearch.employeeCode || activeSearch.staffId);
+
+  /**
+   * Opens "Mark Manually" already pointed at one person on the date being
+   * viewed — the action a "Not marked" row exists to prompt.
+   */
+  const openMarkFor = (staffId: number, label: string) => {
+    setMarkSearchMode("quick");
+    setMarkStaffId(staffId);
+    setMarkStaffLabel(label);
+    setMarkDate(date);
+    setMarkForm({ status: "PRESENT", method: "MANUAL", checkInTime: "", checkOutTime: "", overrideReason: "" });
+    setShowMark(true);
+  };
 
   const applySearch = () => {
     const next = { ...draftSearch };
@@ -608,14 +780,12 @@ export default function StaffAttendancePage() {
       return;
     }
     setActiveSearch(next);
-    setCurrentPage(1);
   };
 
   const clearSearch = () => {
     const empty = { name: "", mobile: "", employeeCode: "", staffId: "" };
     setDraftSearch(empty);
     setActiveSearch(empty);
-    setCurrentPage(1);
   };
 
   return (
@@ -688,6 +858,8 @@ export default function StaffAttendancePage() {
         Use <strong>Mark Manually</strong> to record or override attendance (e.g., for a field visit).
         Open a <strong>Bypass Window</strong> to temporarily allow PIN-based marking when biometric devices are offline.
         Configure the allowed campus geo-zones via <strong>Geo-Zones</strong>.
+        The tallies under the date are also the filter: tap <strong>Not marked</strong> to list the staff who have no
+        record for the day yet and mark them from there, or any other tally to see just those people.
         The <strong>Check-in</strong> and <strong>Check-out</strong> columns each show how that half was recorded, and name the
         admin when someone other than the staff member recorded it. A small <strong>Late</strong> badge on a check-in means
         that staff member arrived after the late cutoff — it is tracked separately from Status, which is now decided purely
@@ -862,19 +1034,37 @@ export default function StaffAttendancePage() {
           </div>
         </div>
       )}
-      {/* Date picker + stats */}
-      <div className="flex flex-wrap items-center gap-3">
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="border rounded-lg px-3 py-2 text-sm" />
-        <span className="text-sm text-gray-600">Present: <strong className="text-green-700">{present}</strong></span>
-        <span className="text-sm text-gray-600">Late: <strong className="text-amber-700">{lateArrivals}</strong></span>
-        <span className="text-sm text-gray-600">Absent: <strong className="text-red-700">{absent}</strong></span>
-        <span className="text-sm text-gray-600" title="Active staff with no attendance record for this date">
-          Not Marked: <strong className="text-orange-600">{summary.NOT_MARKED ?? 0}</strong>
-        </span>
-        <span className="text-sm text-gray-600">Total: <strong>{totalRecords}</strong></span>
-        {hasActiveSearch && (
-          <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded px-2 py-0.5">{totalRecords} result{totalRecords === 1 ? "" : "s"} for search</span>
-        )}
+      {/* The day's register: pick a date, then read — or open — its tallies. */}
+      <div className="bg-surface border-line space-y-3 rounded-xl border p-3 sm:p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <label htmlFor="register-date" className="text-ink-soft text-sm font-medium">
+            Register for
+          </label>
+          <input
+            id="register-date"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="border-line min-h-11 rounded-lg border px-3 py-2 text-sm"
+          />
+          {hasActiveSearch && (
+            <span className="bg-accent-info-tint text-accent-info-deep border-accent-info-edge rounded-full border px-2.5 py-1 text-xs">
+              {totalRecords} result{totalRecords === 1 ? "" : "s"} for your search
+            </span>
+          )}
+        </div>
+
+        <TallyStrip tallies={tallies} active={statusFilter} onChange={chooseStatus} />
+
+        <p className="text-ink-muted text-xs">
+          <strong className="text-ink-soft font-semibold">All</strong> lists every one of the{" "}
+          {rosterTotal} staff on the register for this date, marked or not.{" "}
+          {notMarked > 0
+            ? `${notMarked} ${notMarked === 1 ? "has" : "have"} no record yet.`
+            : "Everyone has a record."}{" "}
+          A late arrival still counts under Present or Half day: Late counts check-in
+          time, not the day&apos;s outcome.
+        </p>
       </div>
 
       {/* Multi-field search — fill any one or more, then click Search */}
@@ -946,7 +1136,15 @@ export default function StaffAttendancePage() {
       {loading ? (
         <p className="text-sm text-gray-500">Loading…</p>
       ) : records.length === 0 ? (
-        <p className="text-sm text-gray-500">{hasActiveSearch ? "No staff match your search." : "No attendance records for this date."}</p>
+        <p className="text-ink-muted text-sm">
+          {hasActiveSearch
+            ? "No staff match your search."
+            : statusFilter === "NOT_MARKED"
+              ? "Everyone on the roster has a record for this date."
+              : statusFilter
+                ? `Nobody is ${activeTallyLabel.toLowerCase()} on this date.`
+                : "No attendance records for this date."}
+        </p>
       ) : (
         <>
           {/* Mobile cards */}
@@ -956,6 +1154,7 @@ export default function StaffAttendancePage() {
               const inTime = clock(r.checkInTime);
               const outTime = clock(r.checkOutTime);
               const outSource = checkOutSource(r);
+              const unmarked = r.status === "NOT_MARKED";
               return (
                 <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
@@ -966,7 +1165,7 @@ export default function StaffAttendancePage() {
                         {r.staff?.user?.mobile ? ` · ${r.staff.user.mobile}` : ""}
                       </p>
                     </div>
-                    <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
+                    <StatusChip status={r.status} className="shrink-0" />
                   </div>
                   {/* Check-in and check-out side by side: the whole point of the
                       audit split is comparing the two, so they stay adjacent
@@ -974,7 +1173,7 @@ export default function StaffAttendancePage() {
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div className="space-y-1">
                       <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Check-in</p>
-                      <EventCell time={inTime} source={inTime ? checkInSource(r) : null} late={r.isLate} emptyLabel="Not checked in" />
+                      <EventCell time={inTime} source={inTime ? checkInSource(r) : null} late={r.isLate} emptyLabel={unmarked ? "—" : "Not checked in"} />
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Check-out</p>
@@ -982,7 +1181,7 @@ export default function StaffAttendancePage() {
                         time={outTime}
                         source={outSource}
                         nextDay={Boolean(r.checkOutTime) && dayjs(r.checkOutTime).format("YYYY-MM-DD") !== r.date}
-                        emptyLabel="Still open"
+                        emptyLabel={unmarked ? "—" : "Still open"}
                       />
                     </div>
                   </div>
@@ -994,14 +1193,24 @@ export default function StaffAttendancePage() {
                         <TriangleAlert aria-hidden className="h-3.5 w-3.5" /> Check-out is before check-in
                       </span>
                     ) : (
-                      <span className="text-xs text-gray-400">No duration yet</span>
+                      <span className="text-xs text-gray-400">{unmarked ? "Nothing recorded" : "No duration yet"}</span>
                     )}
-                    <button
-                      onClick={() => setViewStaff({ id: r.staffId, label: staffNameOf(r) })}
-                      className="text-blue-600 hover:underline text-xs font-medium"
-                    >
-                      View month →
-                    </button>
+                    <div className="flex items-center gap-3">
+                      {unmarked && rbac.canManageHR && (
+                        <button
+                          onClick={() => openMarkFor(r.staffId, staffNameOf(r))}
+                          className="text-accent-warn-deep hover:underline text-xs font-semibold"
+                        >
+                          Mark attendance
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setViewStaff({ id: r.staffId, label: staffNameOf(r) })}
+                        className="text-blue-600 hover:underline text-xs font-medium"
+                      >
+                        View month →
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -1029,6 +1238,7 @@ export default function StaffAttendancePage() {
                   const dur = durationOf(r);
                   const inTime = clock(r.checkInTime);
                   const outTime = clock(r.checkOutTime);
+                  const unmarked = r.status === "NOT_MARKED";
                   return (
                     <tr key={r.id} className="hover:bg-gray-50 align-top">
                       <td className="px-4 py-3">
@@ -1039,17 +1249,17 @@ export default function StaffAttendancePage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
+                        <StatusChip status={r.status} />
                       </td>
                       <td className="px-4 py-3">
-                        <EventCell time={inTime} source={inTime ? checkInSource(r) : null} late={r.isLate} emptyLabel="Not checked in" />
+                        <EventCell time={inTime} source={inTime ? checkInSource(r) : null} late={r.isLate} emptyLabel={unmarked ? "—" : "Not checked in"} />
                       </td>
                       <td className="px-4 py-3">
                         <EventCell
                           time={outTime}
                           source={checkOutSource(r)}
                           nextDay={Boolean(r.checkOutTime) && dayjs(r.checkOutTime).format("YYYY-MM-DD") !== r.date}
-                          emptyLabel="Still open"
+                          emptyLabel={unmarked ? "—" : "Still open"}
                         />
                       </td>
                       <td className="px-4 py-3">
@@ -1067,12 +1277,22 @@ export default function StaffAttendancePage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => setViewStaff({ id: r.staffId, label: staffNameOf(r) })}
-                          className="text-blue-600 hover:underline text-xs font-medium"
-                        >
-                          View
-                        </button>
+                        <div className="flex flex-col items-start gap-1">
+                          <button
+                            onClick={() => setViewStaff({ id: r.staffId, label: staffNameOf(r) })}
+                            className="text-blue-600 hover:underline text-xs font-medium"
+                          >
+                            View
+                          </button>
+                          {unmarked && rbac.canManageHR && (
+                            <button
+                              onClick={() => openMarkFor(r.staffId, staffNameOf(r))}
+                              className="text-accent-warn-deep hover:underline text-xs font-semibold"
+                            >
+                              Mark
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1081,61 +1301,25 @@ export default function StaffAttendancePage() {
             </table>
           </div>
 
-          {/* Pagination controls */}
-          {totalPages > 1 && (
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-              <p className="text-xs text-gray-500">
-                Page {currentPage} of {totalPages} &mdash; {totalRecords} record{totalRecords === 1 ? "" : "s"} total
-              </p>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
-                  className="px-2.5 py-1.5 text-xs border rounded-lg disabled:opacity-40 hover:bg-gray-50"
-                  aria-label="First page"
-                >
-                  «
-                </button>
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1.5 text-xs border rounded-lg disabled:opacity-40 hover:bg-gray-50"
-                >
-                  Prev
-                </button>
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
-                  const pg = start + i;
-                  return pg <= totalPages ? (
-                    <button
-                      key={pg}
-                      onClick={() => setCurrentPage(pg)}
-                      className={`px-3 py-1.5 text-xs border rounded-lg ${
-                        pg === currentPage ? "bg-blue-600 text-white border-blue-600" : "hover:bg-gray-50"
-                      }`}
-                    >
-                      {pg}
-                    </button>
-                  ) : null;
-                })}
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 text-xs border rounded-lg disabled:opacity-40 hover:bg-gray-50"
-                >
-                  Next
-                </button>
-                <button
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={currentPage === totalPages}
-                  className="px-2.5 py-1.5 text-xs border rounded-lg disabled:opacity-40 hover:bg-gray-50"
-                  aria-label="Last page"
-                >
-                  »
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Progressive loading. The sentinel sits above the button so the
+              observer fires a screenful early and the list usually extends
+              before anyone reaches the end of it. */}
+          <div ref={loadMoreRef} aria-hidden className="h-px" />
+          <div className="flex flex-col items-center gap-2 pt-1" aria-live="polite">
+            <p className="text-ink-muted text-xs">
+              Showing {records.length} of {totalRecords}
+              {statusFilter ? ` ${activeTallyLabel.toLowerCase()}` : ""} staff
+            </p>
+            {hasMore && (
+              <button
+                onClick={() => void loadMore()}
+                disabled={loadingMore}
+                className="border-line text-ink-soft hover:bg-surface-secondary hover:border-line-strong min-h-11 rounded-full border px-5 text-sm font-medium disabled:opacity-60"
+              >
+                {loadingMore ? "Loading…" : `Load ${Math.min(PAGE_SIZE, totalRecords - records.length)} more`}
+              </button>
+            )}
+          </div>
         </>
       )}
 
@@ -1469,32 +1653,51 @@ export default function StaffAttendancePage() {
               <p className="text-sm text-gray-500 py-4 text-center">Loading…</p>
             ) : (
               <>
-                <div className="grid grid-cols-2 gap-3">
+                {/* The two thresholds are read against each other, so they stay
+                    side by side down to the narrowest phone.
+                    "Min hours — Full Day" used to wrap to two lines in a
+                    half-width column while "Min hours — Half Day" did not,
+                    which pushed one input a line below the other. The unit now
+                    rides in the label instead of a second word ("Full day
+                    (hrs)"), so neither wraps — and `items-end` bottom-aligns
+                    the row so the inputs stay level even if one ever does. */}
+                <div className="grid grid-cols-2 items-end gap-3">
                   <div>
-                    <label className="text-sm font-medium">Min hours — Full Day</label>
+                    <label htmlFor="min-full-day" className="block text-sm font-medium">
+                      Full day (hrs)
+                    </label>
                     <input
+                      id="min-full-day"
                       type="number"
+                      inputMode="decimal"
                       step={0.5}
                       min={0.5}
                       max={24}
                       value={settingsForm.minFullDayHours}
                       onChange={(e) => setSettingsForm((f) => ({ ...f, minFullDayHours: Number(e.target.value) }))}
-                      className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
+                      className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Min hours — Half Day</label>
+                    <label htmlFor="min-half-day" className="block text-sm font-medium">
+                      Half day (hrs)
+                    </label>
                     <input
+                      id="min-half-day"
                       type="number"
+                      inputMode="decimal"
                       step={0.5}
                       min={0.5}
                       max={24}
                       value={settingsForm.minHalfDayHours}
                       onChange={(e) => setSettingsForm((f) => ({ ...f, minHalfDayHours: Number(e.target.value) }))}
-                      className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
+                      className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
                     />
                   </div>
                 </div>
+                <p className="text-ink-muted -mt-2 text-[11px]">
+                  Minimum hours worked for a day to count as full or half.
+                </p>
                 <div>
                   <label className="text-sm font-medium">Late cutoff time</label>
                   <div className="mt-1">
