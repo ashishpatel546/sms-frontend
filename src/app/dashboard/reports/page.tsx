@@ -7,15 +7,50 @@ import { todayLocalDate, sortByName } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
-import { 
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
-    PieChart, Pie, LineChart, Line 
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+    PieChart, Pie, LineChart, Line, ComposedChart,
 } from 'recharts';
 import { Wallet, AlertCircle, ClipboardList, CalendarCheck, Users, UserCircle, Download } from "lucide-react";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
 import { hrApi, PayrollMonthlySummary } from "@/lib/hr-api";
 
 const COLORS = ['#0ea5e9', '#f43f5e', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'];
+
+interface AttendanceTrendPoint {
+  date: string;
+  present: number;
+  marked: number;
+  totalStudents: number;
+  registersTaken: number;
+  attendancePercent: number | null;
+  coveragePercent: number;
+}
+
+function AttendanceTrendTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: { payload: AttendanceTrendPoint }[];
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg shadow-md px-3 py-2 text-xs space-y-0.5">
+      <p className="font-semibold text-slate-700">{label}</p>
+      <p className="text-amber-600 font-medium">
+        {d.attendancePercent === null ? 'No attendance marked' : `${d.attendancePercent}% present (of ${d.marked} marked)`}
+      </p>
+      <p className="text-sky-600 font-medium">
+        {d.coveragePercent}% of school reported ({d.marked}/{d.totalStudents} students)
+      </p>
+    </div>
+  );
+}
 
 // ── Library Fees Report (used inside reports page) ────────────────────────────
 
@@ -215,7 +250,7 @@ export default function ReportsDashboard() {
     const [examClassAvg, setExamClassAvg] = useState([]);
     const [topPerformers, setTopPerformers] = useState<any[]>([]);
     const [attendanceByClass, setAttendanceByClass] = useState([]);
-    const [attendanceTrend, setAttendanceTrend] = useState([]);
+    const [attendanceTrend, setAttendanceTrend] = useState<AttendanceTrendPoint[]>([]);
     const [staffDistribution, setStaffDistribution] = useState([]);
     const [enrollmentClass, setEnrollmentClass] = useState([]);
     const collectionStatusWithFill = collectionStatus.map((entry, index) => ({ ...entry, fill: COLORS[index % COLORS.length] }));
@@ -1147,7 +1182,7 @@ export default function ReportsDashboard() {
                             </div>
                         ) : (
                         <>
-                        <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-[600px] overflow-y-auto">
+                        <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-150 overflow-y-auto">
                             {pendingDuesLoading ? (
                                 <div className="p-12 flex justify-center">
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -1462,7 +1497,7 @@ export default function ReportsDashboard() {
                             </div>
                         ) : (
                         <>
-                        <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-[600px] overflow-y-auto">
+                        <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-150 overflow-y-auto">
                             {receivedLoading ? (
                                 <div className="p-12 flex justify-center">
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -1548,9 +1583,9 @@ export default function ReportsDashboard() {
                 <div className="space-y-6">
                     {/* Filters Row */}
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap gap-4 items-end">
-                        <div className="flex-1 min-w-[150px]">
+                        <div className="flex-1 min-w-37.5">
                             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Academic Year</label>
-                            <select 
+                            <select
                                 className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-white"
                                 value={selectedExamYear}
                                 onChange={(e) => setSelectedExamYear(e.target.value)}
@@ -1561,9 +1596,9 @@ export default function ReportsDashboard() {
                                 ))}
                             </select>
                         </div>
-                        <div className="flex-1 min-w-[150px]">
+                        <div className="flex-1 min-w-37.5">
                             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Exam Term</label>
-                            <select 
+                            <select
                                 className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-white"
                                 value={selectedExamTerm}
                                 onChange={(e) => setSelectedExamTerm(e.target.value)}
@@ -1574,9 +1609,9 @@ export default function ReportsDashboard() {
                                 ))}
                             </select>
                         </div>
-                        <div className="flex-1 min-w-[150px]">
+                        <div className="flex-1 min-w-37.5">
                             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Class</label>
-                            <select 
+                            <select
                                 className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-white"
                                 value={selectedExamClass}
                                 onChange={(e) => {
@@ -1593,7 +1628,7 @@ export default function ReportsDashboard() {
                             </select>
                         </div>
                         {selectedExamClass && availableSections.length > 0 && (
-                            <div className="flex-1 min-w-[150px]">
+                            <div className="flex-1 min-w-37.5">
                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Section</label>
                                 <select 
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-white"
@@ -1714,8 +1749,13 @@ export default function ReportsDashboard() {
                         </div>
 
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                            <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
-                                <h2 className="text-lg font-bold text-slate-800">School-Wide Daily Trend</h2>
+                            <div className="flex justify-between items-start mb-3 flex-wrap gap-4">
+                                <div>
+                                    <h2 className="text-lg font-bold text-slate-800">School-Wide Daily Trend</h2>
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                        Bars show what % of the school marked attendance. Line shows % present among those marked.
+                                    </p>
+                                </div>
                                 <div className="flex items-center gap-2">
                                     <div className="w-40">
                                         <AppDatePicker
@@ -1732,15 +1772,41 @@ export default function ReportsDashboard() {
                                     </div>
                                 </div>
                             </div>
+                            {attendanceTrend.length > 0 && (() => {
+                                const latest = attendanceTrend[attendanceTrend.length - 1];
+                                const lowCoverage = latest.coveragePercent < 50;
+                                return (
+                                    <p className={`text-xs mb-3 ${lowCoverage ? 'text-amber-600 font-medium' : 'text-slate-500'}`}>
+                                        {lowCoverage && '⚠ '}Latest ({latest.date}): {latest.marked}/{latest.totalStudents} students marked
+                                        <span className="font-semibold"> ({latest.coveragePercent}%)</span>
+                                        {latest.attendancePercent !== null && (
+                                            <>
+                                              · <span className="font-semibold">{latest.attendancePercent}%</span> present
+                                            </>
+                                        )}
+                                    </p>
+                                );
+                            })()}
                             <div className="h-72">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={attendanceTrend}>
+                                    <ComposedChart data={attendanceTrend}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                                         <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#64748B'}} />
                                         <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{fill: '#64748B'}} />
-                                        <Tooltip formatter={(val: any) => `${val}%`} />
-                                        <Line type="monotone" dataKey="percent" name="Attendance %" stroke="#f59e0b" strokeWidth={3} dot={{r:4, fill:'#f59e0b'}} activeDot={{r:6}} />
-                                    </LineChart>
+                                        <Tooltip content={<AttendanceTrendTooltip />} />
+                                        <Legend wrapperStyle={{fontSize: 12}} />
+                                        <Bar dataKey="coveragePercent" name="School coverage" fill="#bae6fd" radius={[4, 4, 0, 0]} barSize={16} />
+                                        <Line
+                                            type="monotone"
+                                            dataKey="attendancePercent"
+                                            name="Attendance (marked)"
+                                            stroke="#f59e0b"
+                                            strokeWidth={3}
+                                            dot={{r: 4, fill: '#f59e0b'}}
+                                            activeDot={{r: 6}}
+                                            connectNulls={false}
+                                        />
+                                    </ComposedChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
@@ -1962,7 +2028,7 @@ export default function ReportsDashboard() {
                                         value={customNotifMessage}
                                         onChange={(e) => setCustomNotifMessage(e.target.value)}
                                         placeholder="Write your custom reminder message here..."
-                                        className="w-full border-slate-300 rounded-lg p-3 text-sm focus:ring-brand/40 focus:border-brand min-h-[120px]"
+                                        className="w-full border-slate-300 rounded-lg p-3 text-sm focus:ring-brand/40 focus:border-brand min-h-30"
                                     />
                                 ) : (
                                     <div className="w-full border border-slate-200 bg-slate-50 rounded-lg p-4 text-sm text-slate-500 italic">
