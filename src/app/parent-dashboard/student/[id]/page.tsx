@@ -21,7 +21,7 @@ import { StudentBanner } from "./components/StudentBanner";
 import { AiToolsSection } from "./components/AiToolsSection";
 import { IdCardSection } from "./components/IdCardSection";
 import { SectionSkeleton, StudentRecordSkeleton } from "@/components/ui/Skeletons";
-import { ATTENDANCE_LEGEND, ATTENDANCE_TONE, attendanceCellClass } from "@/lib/attendanceColors";
+import { ATTENDANCE_LEGEND, ATTENDANCE_TONE, attendanceCellStyle } from "@/lib/attendanceColors";
 import { InitialsAvatar } from "@/components/ui/InitialsAvatar";
 import { AttendanceBottomSheet } from "./components/AttendanceBottomSheet";
 import { HomeworkBottomSheet } from "./components/HomeworkBottomSheet";
@@ -665,10 +665,6 @@ export default function StudentDashboardPage() {
         return { day: null, date: null, status: null, isSunday: false };
     });
 
-    // Colour comes from lib/attendanceColors so the cells, the legend and the
-    // donut cannot drift apart.
-    const getStatusColor = attendanceCellClass;
-
     /**
      * Selecting a section. Lifted out of the tab's inline handler unchanged so
      * the strip and the More sheet share one path — behaviour is identical to
@@ -1251,22 +1247,35 @@ export default function StudentDashboardPage() {
                                     }, []).map((week, wIndex) => {
                                         // only render weeks that have at least one day
                                         if (week.every((d: any) => d.day === null)) return null;
-                                        return week.map((d: any, i: number) => (
-                                            <div key={`${wIndex}-${i}`}
-                                                title={d.day ? (d.status === 'SUNDAY' ? `${d.date}: Sunday (Weekly Holiday)` : d.status ? `${d.date}: ${d.status}` : d.date) : ''}
-                                                className={`aspect-square flex items-center justify-center rounded-lg text-sm font-medium border ${d.day ? getStatusColor(d.status) : 'bg-transparent border-transparent'} transition-colors duration-200`}>
-                                                {d.day || ''}
-                                            </div>
-                                        ));
+                                        return week.map((d: any, i: number) => {
+                                            const { className, style } = d.day ? attendanceCellStyle(d.status) : { className: 'bg-transparent border-transparent', style: undefined };
+                                            return (
+                                                <div key={`${wIndex}-${i}`}
+                                                    title={d.day ? (d.status === 'SUNDAY' ? `${d.date}: Sunday (Weekly Holiday)` : d.status ? `${d.date}: ${d.status}` : d.date) : ''}
+                                                    style={style}
+                                                    className={`aspect-square flex items-center justify-center rounded-lg text-sm font-medium border ${className} transition-colors duration-200`}>
+                                                    {d.day || ''}
+                                                </div>
+                                            );
+                                        });
                                     })}
                                 </div>
                                 <div className="mt-6 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-ink">
-                                    {ATTENDANCE_LEGEND.map(status => (
+                                    {ATTENDANCE_LEGEND.filter(status => status !== 'LATE' && status !== 'HALF_DAY').map(status => (
                                         <div key={status} className="flex items-center gap-1.5">
                                             <span className={`size-3 rounded-full ${ATTENDANCE_TONE[status].dot}`} />
                                             {ATTENDANCE_TONE[status].label}
                                         </div>
                                     ))}
+                                    {/* Late/half-day both count as present, so their cell is a split circle — one glance shows both facts. */}
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="size-3 rounded-full" style={{ background: `linear-gradient(135deg, ${ATTENDANCE_TONE.PRESENT.fill} 50%, ${ATTENDANCE_TONE.LATE.fill} 50%)` }} />
+                                        Present + Late
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="size-3 rounded-full" style={{ background: `linear-gradient(135deg, ${ATTENDANCE_TONE.PRESENT.fill} 50%, ${ATTENDANCE_TONE.HALF_DAY.fill} 50%)` }} />
+                                        Present + Half day
+                                    </div>
                                 </div>
                             </div>
 
@@ -1281,6 +1290,7 @@ export default function StudentDashboardPage() {
                                                     unreadable flash of white in the dark theme. */}
                                                 <Tooltip
                                                     formatter={(val: any, name: any) => [`${val} days`, name]}
+                                                    wrapperStyle={{ zIndex: 10 }}
                                                     contentStyle={{
                                                         background: 'var(--surface)',
                                                         border: '1px solid var(--line)',

@@ -12,11 +12,13 @@ interface Props {
   onViewFull: () => void;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; circleBg: string; ringColor: string }> = {
+// LATE and HALF_DAY count as present, so their circle is split diagonally —
+// present green plus the status's own color — matching the full calendar's cells.
+const STATUS_CONFIG: Record<string, { label: string; circleBg: string; ringColor: string; circleStyle?: React.CSSProperties }> = {
   PRESENT:  { label: "P",  circleBg: "bg-green-500 text-white",                       ringColor: "ring-green-300"  },
   ABSENT:   { label: "A",  circleBg: "bg-red-500 text-white",                         ringColor: "ring-red-300"    },
-  LATE:     { label: "L",  circleBg: "bg-yellow-400 text-white",                      ringColor: "ring-yellow-300" },
-  HALF_DAY: { label: "H",  circleBg: "bg-purple-500 text-white",                      ringColor: "ring-purple-300" },
+  LATE:     { label: "L",  circleBg: "text-white",                                    ringColor: "ring-yellow-300", circleStyle: { background: "linear-gradient(135deg, #22c55e 50%, #facc15 50%)" } },
+  HALF_DAY: { label: "H",  circleBg: "text-white",                                    ringColor: "ring-purple-300", circleStyle: { background: "linear-gradient(135deg, #22c55e 50%, #a855f7 50%)" } },
   LEAVE:    { label: "Lv", circleBg: "bg-blue-500 text-white",                        ringColor: "ring-blue-300"   },
   HOLIDAY:  { label: "Ho", circleBg: "bg-sky-400 text-white",                         ringColor: "ring-sky-300"    },
   SUNDAY:   { label: "—",  circleBg: "bg-orange-100 text-orange-700 border border-orange-200", ringColor: "ring-orange-200" },
@@ -170,6 +172,7 @@ export const AttendanceBottomSheet = ({ studentId, isOpen, onClose, onViewFull }
                           {day}
                         </span>
                         <div
+                          style={!isFuture ? cfg?.circleStyle : undefined}
                           className={[
                             "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold transition-all",
                             isToday ? "ring-2 ring-brand ring-offset-1" : "",
