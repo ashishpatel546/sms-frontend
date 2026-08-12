@@ -153,6 +153,8 @@ export interface StaffAttendanceRecord {
   staffId: number;
   date: string;
   status: StaffAttendanceStatus;
+  /** Arrived after the late cutoff. Independent of `status` — a PRESENT or HALF_DAY row can also be late. */
+  isLate?: boolean;
   method: AttendanceMethod;
   checkInTime?: string;
   checkOutTime?: string;
