@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
 import { hrApi, StaffAttendanceRecord } from "@/lib/hr-api";
 import { AppMonthPicker } from "@/components/ui/AppDatePicker";
 
@@ -11,6 +12,15 @@ interface Props {
     staffLabel: string;
     onClose: () => void;
 }
+
+const STATUS_HEX: Record<string, string> = {
+    PRESENT: "#22c55e",
+    LATE: "#facc15",
+    HALF_DAY: "#a855f7",
+    ON_LEAVE: "#3b82f6",
+    ABSENT: "#ef4444",
+    HOLIDAY: "#0ea5e9",
+};
 
 function getStatusColor(status: string | null | undefined) {
     switch (status) {
@@ -23,6 +33,26 @@ function getStatusColor(status: string | null | undefined) {
         case "SUNDAY": return "bg-orange-50 text-orange-400 border-orange-200";
         default: return "bg-slate-50 border-slate-200 text-slate-500";
     }
+}
+
+/** `isLate` is an overlay fact independent of `status` — a PRESENT or HALF_DAY day can also be late. */
+function isLateOverlay(record: StaffAttendanceRecord | null | undefined) {
+    return !!record && (record.isLate === true || record.status === "LATE");
+}
+
+/**
+ * Present/Half-day days that are also late get a diagonal split cell (base color + late yellow)
+ * so both facts show at once instead of the late flag being silently swallowed by the status color.
+ */
+function getCellStyle(status: string | null | undefined, record: StaffAttendanceRecord | null | undefined) {
+    const late = isLateOverlay(record);
+    if (late && (status === "PRESENT" || status === "HALF_DAY")) {
+        return {
+            className: "text-white border-slate-300",
+            style: { background: `linear-gradient(135deg, ${STATUS_HEX[status]} 50%, ${STATUS_HEX.LATE} 50%)` },
+        };
+    }
+    return { className: getStatusColor(status), style: undefined };
 }
 
 export default function StaffAttendanceModal({ staffId, staffLabel, onClose }: Props) {
@@ -61,21 +91,47 @@ export default function StaffAttendanceModal({ staffId, staffLabel, onClose }: P
         return { day, date: dateStr, status, isSunday, record: rec };
     });
 
+    // Five disjoint buckets — every record lands in exactly one, which is what makes
+    // them safe to sum for a percentage and to draw as pie slices. Legacy
+    // status="LATE" rows fold into PRESENT: late is a kind of present, not a
+    // bucket of its own (matches the backend register and my-attendance).
     const counts = {
-        PRESENT: records.filter((r) => r.status === "PRESENT").length,
-        LATE: records.filter((r) => r.status === "LATE").length,
+        PRESENT: records.filter((r) => r.status === "PRESENT" || r.status === "LATE").length,
         HALF_DAY: records.filter((r) => r.status === "HALF_DAY").length,
         ON_LEAVE: records.filter((r) => r.status === "ON_LEAVE").length,
         ABSENT: records.filter((r) => r.status === "ABSENT").length,
         HOLIDAY: records.filter((r) => r.status === "HOLIDAY").length,
     };
-    const workingMarked = records.length;
-    const presentish = counts.PRESENT + counts.LATE + counts.HALF_DAY;
+    // Overlay, NOT a sixth bucket — a record can be isLate=true and still
+    // status=PRESENT. It overlaps the buckets above, so it can never be a pie
+    // slice or an addend in the percentage without double-counting those days.
+    const lateArrivals = records.filter((r) => isLateOverlay(r)).length;
+
+    const presentish = counts.PRESENT + counts.HALF_DAY;
+    // HOLIDAY rows are not working days — including them deflated the rate.
+    const workingMarked = presentish + counts.ON_LEAVE + counts.ABSENT;
     const pct = workingMarked > 0 ? Math.round((presentish / workingMarked) * 100) : 0;
+
+    const pieData = [
+        { name: "Present", value: counts.PRESENT, fill: STATUS_HEX.PRESENT },
+        { name: "Half Day", value: counts.HALF_DAY, fill: STATUS_HEX.HALF_DAY },
+        { name: "Leave", value: counts.ON_LEAVE, fill: STATUS_HEX.ON_LEAVE },
+        { name: "Absent", value: counts.ABSENT, fill: STATUS_HEX.ABSENT },
+        { name: "Holiday", value: counts.HOLIDAY, fill: STATUS_HEX.HOLIDAY },
+    ].filter((d) => d.value > 0);
+
+    const tiles = [
+        { label: "Present", value: counts.PRESENT, color: "text-green-600", bg: "bg-green-50 border-green-100" },
+        { label: "Late arrivals", value: lateArrivals, color: "text-yellow-600", bg: "bg-yellow-50 border-yellow-100" },
+        { label: "Half Day", value: counts.HALF_DAY, color: "text-purple-600", bg: "bg-purple-50 border-purple-100" },
+        { label: "Leave", value: counts.ON_LEAVE, color: "text-blue-600", bg: "bg-blue-50 border-blue-100" },
+        { label: "Absent", value: counts.ABSENT, color: "text-red-600", bg: "bg-red-50 border-red-100" },
+        { label: "Holiday", value: counts.HOLIDAY, color: "text-sky-600", bg: "bg-sky-50 border-sky-100" },
+    ];
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/55 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
                     <div>
                         <h2 className="text-lg font-bold text-slate-800">{staffLabel}</h2>
@@ -108,15 +164,20 @@ export default function StaffAttendanceModal({ staffId, staffLabel, onClose }: P
                                     ))}
                                 </div>
                                 <div className="grid grid-cols-7 gap-1.5">
-                                    {cells.map((c, i) => (
-                                        <div
-                                            key={i}
-                                            title={c.day ? (c.record ? `${c.date}: ${c.record.status} (${c.record.method})` : c.status === "SUNDAY" ? `${c.date}: Sunday` : c.date ?? "") : ""}
-                                            className={`aspect-square flex items-center justify-center rounded-lg text-xs font-bold border ${c.day ? getStatusColor(c.status) : "bg-transparent border-transparent"}`}
-                                        >
-                                            {c.day || ""}
-                                        </div>
-                                    ))}
+                                    {cells.map((c, i) => {
+                                        const { className, style } = c.day ? getCellStyle(c.status, c.record) : { className: "bg-transparent border-transparent", style: undefined };
+                                        const late = isLateOverlay(c.record);
+                                        return (
+                                            <div
+                                                key={i}
+                                                title={c.day ? (c.record ? `${c.date}: ${c.record.status}${late ? " (late)" : ""} (${c.record.method})` : c.status === "SUNDAY" ? `${c.date}: Sunday` : c.date ?? "") : ""}
+                                                style={style}
+                                                className={`aspect-square flex items-center justify-center rounded-lg text-xs font-bold border ${className}`}
+                                            >
+                                                {c.day || ""}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                                 <div className="flex flex-wrap justify-center gap-2 mt-4 text-[10px] font-medium text-slate-600">
                                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500" /> Present</span>
@@ -125,21 +186,54 @@ export default function StaffAttendanceModal({ staffId, staffLabel, onClose }: P
                                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Leave</span>
                                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Absent</span>
                                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-sky-500" /> Holiday</span>
+                                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full" style={{ background: "linear-gradient(135deg, #22c55e 50%, #facc15 50%)" }} /> Present + Late</span>
                                 </div>
                             </div>
 
-                            <div className="space-y-3">
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 text-center">
-                                    <p className="text-3xl font-black text-slate-800">{pct}%</p>
-                                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-1">Present rate</p>
+                            <div className="space-y-4">
+                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                                    {pieData.length > 0 ? (
+                                        <>
+                                            <div className="relative">
+                                                <ResponsiveContainer width="100%" height={200}>
+                                                    <PieChart>
+                                                        {/* minAngle keeps a single-day slice from vanishing behind paddingAngle */}
+                                                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={58} outerRadius={82} paddingAngle={3} minAngle={6} dataKey="value" />
+                                                        <Tooltip
+                                                            formatter={(val: any, name: any) => [`${val} days`, name]}
+                                                            wrapperStyle={{ zIndex: 10 }}
+                                                            contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
+                                                        />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                                <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+                                                    <span className="text-slate-800 text-3xl font-black">{pct}%</span>
+                                                    <span className="text-slate-500 text-[10px] mt-0.5 uppercase tracking-widest font-bold">Present rate</span>
+                                                </div>
+                                            </div>
+                                            {lateArrivals > 0 && (
+                                                <p className="text-[10px] text-slate-500 text-center mt-2 leading-snug">
+                                                    Includes {lateArrivals} late arrival{lateArrivals === 1 ? "" : "s"} — late days still count as present.
+                                                </p>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <p className="text-sm text-slate-500 text-center py-12">No attendance marked this month.</p>
+                                    )}
                                 </div>
+
                                 <div className="grid grid-cols-2 gap-2">
-                                    {Object.entries(counts).map(([k, v]) => (
-                                        <div key={k} className="border border-slate-200 rounded-lg p-2 text-center bg-white">
-                                            <div className="text-lg font-bold text-slate-800">{v}</div>
-                                            <div className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">{k.replace("_", " ")}</div>
+                                    {tiles.map((t) => (
+                                        <div key={t.label} className={`border rounded-lg p-2 text-center shadow-sm ${t.bg}`}>
+                                            <div className={`text-lg font-bold ${t.color}`}>{t.value}</div>
+                                            <div className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">{t.label}</div>
                                         </div>
                                     ))}
+                                </div>
+
+                                <div className="bg-slate-800 rounded-xl px-4 py-3 flex items-center justify-between text-white shadow-md">
+                                    <div className="font-medium text-[11px] text-slate-300 uppercase tracking-wider">Working days marked</div>
+                                    <div className="text-xl font-bold">{workingMarked}</div>
                                 </div>
                             </div>
                         </div>

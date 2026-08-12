@@ -115,6 +115,28 @@ export function attendanceCellClass(status: string | null | undefined): string {
   return ATTENDANCE_TONE[status as AttendanceStatus]?.cell ?? ATTENDANCE_EMPTY_CELL;
 }
 
+/**
+ * LATE and HALF_DAY both count as "present" in the percentage stat (see
+ * parent.service.ts), so their calendar cell is split diagonally — present
+ * green plus the status's own tone — instead of hiding the "counts as
+ * present" half. Every other status renders as the plain solid cell.
+ * `fill` values are `var(--color-*)` custom properties, so the gradient
+ * stays theme-aware in light/dark exactly like the rest of ATTENDANCE_TONE.
+ */
+export function attendanceCellStyle(
+  status: string | null | undefined,
+): { className: string; style?: { background: string } } {
+  if (status === 'LATE' || status === 'HALF_DAY') {
+    return {
+      className: 'text-white border-line',
+      style: {
+        background: `linear-gradient(135deg, ${ATTENDANCE_TONE.PRESENT.fill} 50%, ${ATTENDANCE_TONE[status].fill} 50%)`,
+      },
+    };
+  }
+  return { className: attendanceCellClass(status) };
+}
+
 /** Legend order — worst-to-know first would be alarmist, so it reads as a scale. */
 export const ATTENDANCE_LEGEND: AttendanceStatus[] = [
   'PRESENT',

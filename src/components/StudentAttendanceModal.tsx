@@ -86,6 +86,28 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
         }
     };
 
+    const STATUS_HEX: Record<string, string> = {
+        PRESENT: '#22c55e',
+        LATE: '#facc15',
+        HALF_DAY: '#a855f7',
+    };
+
+    /**
+     * LATE and HALF_DAY both count as "present" for the percentage stat (see
+     * parent.service.ts's presentForPct/lateForPct/halfDayForPct), so the cell
+     * is split diagonally (present green + the status's own color) to show
+     * both facts instead of hiding the "counts as present" half entirely.
+     */
+    const getCellStyle = (status: string | null | undefined) => {
+        if (status === 'LATE' || status === 'HALF_DAY') {
+            return {
+                className: 'text-white border-slate-300 shadow-sm',
+                style: { background: `linear-gradient(135deg, ${STATUS_HEX.PRESENT} 50%, ${STATUS_HEX[status]} 50%)` },
+            };
+        }
+        return { className: getStatusColor(status), style: undefined as { background: string } | undefined };
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/55 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
@@ -147,20 +169,24 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
                                         return rows;
                                     }, []).map((week, wIndex) => {
                                         if (week.every((d: any) => d.day === null)) return null;
-                                        return week.map((d: any, i: number) => (
-                                            <div key={`${wIndex}-${i}`}
-                                                title={d.day ? (d.status === 'SUNDAY' ? `${d.date}: Sunday (Weekly Holiday)` : d.status ? `${d.date}: ${d.status}` : d.date) : ''}
-                                                className={`aspect-square flex items-center justify-center rounded-xl text-sm font-bold border ${d.day ? getStatusColor(d.status) : 'bg-transparent border-transparent'} transition-all hover:scale-105 cursor-default`}>
-                                                {d.day || ''}
-                                            </div>
-                                        ));
+                                        return week.map((d: any, i: number) => {
+                                            const { className, style } = d.day ? getCellStyle(d.status) : { className: 'bg-transparent border-transparent', style: undefined };
+                                            return (
+                                                <div key={`${wIndex}-${i}`}
+                                                    title={d.day ? (d.status === 'SUNDAY' ? `${d.date}: Sunday (Weekly Holiday)` : d.status ? `${d.date}: ${d.status}` : d.date) : ''}
+                                                    style={style}
+                                                    className={`aspect-square flex items-center justify-center rounded-xl text-sm font-bold border ${className} transition-all hover:scale-105 cursor-default`}>
+                                                    {d.day || ''}
+                                                </div>
+                                            );
+                                        });
                                     })}
                                 </div>
                                 
                                 <div className="flex flex-wrap justify-center gap-3 mt-8 text-[11px] font-medium text-slate-600">
                                     <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-green-500 shadow-sm"></span> Present</div>
-                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-yellow-400 shadow-sm"></span> Late</div>
-                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-purple-500 shadow-sm"></span> Half Day</div>
+                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full shadow-sm" style={{ background: 'linear-gradient(135deg, #22c55e 50%, #facc15 50%)' }}></span> Present + Late</div>
+                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full shadow-sm" style={{ background: 'linear-gradient(135deg, #22c55e 50%, #a855f7 50%)' }}></span> Present + Half Day</div>
                                     <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-blue-500 shadow-sm"></span> Leave</div>
                                     <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500 shadow-sm"></span> Absent</div>
                                     <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-sky-500 shadow-sm"></span> Holiday</div>
@@ -175,7 +201,7 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
                                         <ResponsiveContainer width={240} height={240}>
                                             <PieChart>
                                                 <Pie data={pieData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={3} dataKey="value" />
-                                                <Tooltip formatter={(val: any, name: any) => [`${val} days`, name]} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                                                <Tooltip formatter={(val: any, name: any) => [`${val} days`, name]} wrapperStyle={{ zIndex: 10 }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                                             </PieChart>
                                         </ResponsiveContainer>
                                         <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">

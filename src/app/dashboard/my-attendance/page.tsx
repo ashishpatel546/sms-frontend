@@ -563,8 +563,11 @@ export default function MyAttendancePage() {
 
   // Five disjoint status buckets — every record falls into exactly one, which
   // is what makes them safe to sum for a percentage or draw as pie slices.
+  // Legacy status="LATE" rows (the check-in dropdown still offers it) fold
+  // into PRESENT, same as the backend's register buckets — late is a kind of
+  // present, not a sixth bucket.
   const counts = {
-    PRESENT: records.filter((r) => r.status === "PRESENT").length,
+    PRESENT: records.filter((r) => r.status === "PRESENT" || r.status === "LATE").length,
     HALF_DAY: records.filter((r) => r.status === "HALF_DAY").length,
     ON_LEAVE: records.filter((r) => r.status === "ON_LEAVE").length,
     ABSENT: records.filter((r) => r.status === "ABSENT").length,
@@ -574,7 +577,7 @@ export default function MyAttendancePage() {
   // be isLate=true and still status=PRESENT (arrived late, worked a full
   // day). Counting it alongside PRESENT/HALF_DAY here would double-count
   // those days, and it can't be a pie slice for the same reason.
-  const lateArrivalsCount = records.filter((r) => r.isLate).length;
+  const lateArrivalsCount = records.filter((r) => r.isLate || r.status === "LATE").length;
 
   const presentish = counts.PRESENT + counts.HALF_DAY;
   const workingMarked = counts.PRESENT + counts.HALF_DAY + counts.ON_LEAVE + counts.ABSENT;
@@ -922,6 +925,7 @@ export default function MyAttendancePage() {
                     <Pie data={pieData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={3} dataKey="value" />
                     <Tooltip
                       formatter={(val: any, name: any) => [`${val} days`, name]}
+                      wrapperStyle={{ zIndex: 10 }}
                       contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
                     />
                   </PieChart>
@@ -1093,15 +1097,18 @@ function CalendarBlock({ month, year, records, holidays }: { month: number; year
 
   const cells = Array.from({ length: 42 }, (_, i) => {
     const day = i - firstDayOfMonth + 1;
-    if (day < 1 || day > daysInMonth) return { day: null as number | null, status: null as string | null, date: null as string | null, label: "" };
+    if (day < 1 || day > daysInMonth) return { day: null as number | null, status: null as string | null, date: null as string | null, label: "", record: undefined as StaffAttendanceRecord | undefined };
     const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     const rec = recordByDate.get(dateStr);
-    if (rec) return { day, status: rec.status, date: dateStr, label: `${dateStr}: ${rec.status}` };
+    if (rec) {
+      const late = (rec as AttendanceRow).isLate === true || rec.status === "LATE";
+      return { day, status: rec.status, date: dateStr, label: `${dateStr}: ${rec.status}${late ? " (late)" : ""}`, record: rec };
+    }
     const isSunday = new Date(year, month - 1, day).getDay() === 0;
-    if (isSunday) return { day, status: "SUNDAY", date: dateStr, label: `${dateStr}: Sunday (Weekly Off)` };
+    if (isSunday) return { day, status: "SUNDAY", date: dateStr, label: `${dateStr}: Sunday (Weekly Off)`, record: undefined };
     const hol = findHolidayFor(dateStr, holidays);
-    if (hol) return { day, status: "HOLIDAY", date: dateStr, label: `${dateStr}: ${hol.description}` };
-    return { day, status: null, date: dateStr, label: dateStr };
+    if (hol) return { day, status: "HOLIDAY", date: dateStr, label: `${dateStr}: ${hol.description}`, record: undefined };
+    return { day, status: null, date: dateStr, label: dateStr, record: undefined };
   });
 
   const colorFor = (status: string | null) => {
@@ -1117,6 +1124,28 @@ function CalendarBlock({ month, year, records, holidays }: { month: number; year
     }
   };
 
+  const STATUS_HEX: Record<string, string> = {
+    PRESENT: "#22c55e",
+    LATE: "#facc15",
+    HALF_DAY: "#a855f7",
+  };
+
+  /**
+   * `isLate` is an overlay fact independent of `status` — a PRESENT or HALF_DAY day can
+   * also be late. Split the cell diagonally (base color + late yellow) so both show at
+   * once instead of the late flag being silently swallowed by the status color.
+   */
+  const cellStyleFor = (status: string | null, rec: StaffAttendanceRecord | undefined) => {
+    const late = !!rec && ((rec as AttendanceRow).isLate === true || rec.status === "LATE");
+    if (late && (status === "PRESENT" || status === "HALF_DAY")) {
+      return {
+        className: "text-white border-slate-300 shadow-sm",
+        style: { background: `linear-gradient(135deg, ${STATUS_HEX[status]} 50%, ${STATUS_HEX.LATE} 50%)` } as { background: string } | undefined,
+      };
+    }
+    return { className: colorFor(status), style: undefined as { background: string } | undefined };
+  };
+
   return (
     <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200">
       <h4 className="text-slate-800 font-bold text-center mb-4">{monthNames[month - 1]} {year}</h4>
@@ -1126,15 +1155,19 @@ function CalendarBlock({ month, year, records, holidays }: { month: number; year
         ))}
       </div>
       <div className="grid grid-cols-7 gap-1.5">
-        {cells.map((c, i) => (
-          <div
-            key={i}
-            title={c.day ? c.label : ""}
-            className={`aspect-square flex items-center justify-center rounded-lg text-xs font-bold border ${c.day ? colorFor(c.status) : "bg-transparent border-transparent"}`}
-          >
-            {c.day ?? ""}
-          </div>
-        ))}
+        {cells.map((c, i) => {
+          const { className, style } = c.day ? cellStyleFor(c.status, c.record) : { className: "bg-transparent border-transparent", style: undefined };
+          return (
+            <div
+              key={i}
+              title={c.day ? c.label : ""}
+              style={style}
+              className={`aspect-square flex items-center justify-center rounded-lg text-xs font-bold border ${className}`}
+            >
+              {c.day ?? ""}
+            </div>
+          );
+        })}
       </div>
       <div className="flex flex-wrap justify-center gap-2 mt-4 text-[10px] font-medium text-slate-600">
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500" /> Present</span>
@@ -1144,6 +1177,7 @@ function CalendarBlock({ month, year, records, holidays }: { month: number; year
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Absent</span>
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-sky-500" /> Holiday</span>
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-orange-100 border border-orange-200" /> Sunday</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full" style={{ background: "linear-gradient(135deg, #22c55e 50%, #facc15 50%)" }} /> Present + Late</span>
       </div>
     </div>
   );
