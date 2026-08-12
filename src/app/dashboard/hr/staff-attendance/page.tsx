@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { hrApi, StaffAttendanceRecord, AttendanceBypassWindow, StaffBiometric, WebauthnRegistrationPermit, DailyAttendanceSummary, DailyAttendanceStatus, HrPendingCheckoutItem, AttendanceMethod } from "@/lib/hr-api";
+import { hrApi, StaffAttendanceRecord, AttendanceBypassWindow, StaffBiometric, WebauthnRegistrationPermit, DailyAttendanceSummary, DailyAttendanceStatus, HrPendingCheckoutItem, AttendanceMethod, AttendanceReportInclude } from "@/lib/hr-api";
 import { useRbac } from "@/lib/rbac";
 import { cn, todayLocalDate } from "@/lib/utils";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -375,11 +375,25 @@ export default function StaffAttendancePage() {
 
   // Working-hours report download
   const [showReport, setShowReport] = useState(false);
+  /**
+   * "month" picks a whole calendar month (so February is 28/29 days and January
+   * 31, without the user doing the arithmetic); "custom" is a free from/to
+   * range, capped at REPORT_MAX_DAYS.
+   */
+  const [reportMode, setReportMode] = useState<"month" | "custom">("month");
+  const [reportMonth, setReportMonth] = useState(today.slice(0, 7)); // YYYY-MM
   const [reportForm, setReportForm] = useState<{ from: string; to: string; staffId: number | null }>({
     from: `${today.slice(0, 8)}01`,
     to: today,
     staffId: null,
   });
+  /**
+   * Which blocks to download. Summary alone is answered by a single grouped
+   * query on the server, so leaving Detail off on a whole-school report is the
+   * difference between ~200 rows and ~6,000 — hence Detail defaults to off.
+   */
+  const [reportSummary, setReportSummary] = useState(true);
+  const [reportDetail, setReportDetail] = useState(false);
   const [reportBusy, setReportBusy] = useState<null | "csv" | "pdf">(null);
 
   // Pending checkouts
@@ -669,33 +683,53 @@ export default function StaffAttendancePage() {
     }
   };
 
-  const REPORT_MAX_DAYS = 92;
+  /**
+   * One month, matching the backend cap. 31 rather than 30 so a custom range
+   * covering a 31-day month is allowed — capping at 30 would reject a whole
+   * calendar month, which the Month mode offers.
+   */
+  const REPORT_MAX_DAYS = 31;
 
-  const validateReportRange = (): boolean => {
-    if (!reportForm.from || !reportForm.to) {
-      toast.error("Select both dates");
-      return false;
-    }
-    if (reportForm.from > reportForm.to) {
-      toast.error("'From' must be on or before 'To'");
-      return false;
-    }
-    const span = dayjs(reportForm.to).diff(dayjs(reportForm.from), "day") + 1;
-    if (span > REPORT_MAX_DAYS) {
-      toast.error(`Date range too large — maximum ${REPORT_MAX_DAYS} days`);
-      return false;
-    }
-    return true;
+  /**
+   * The range actually requested. Month mode derives it from the picked month
+   * and clamps the end to today, so "this month" never asks for future dates.
+   */
+  const reportRange = (): { from: string; to: string } => {
+    if (reportMode === "custom") return { from: reportForm.from, to: reportForm.to };
+    const start = dayjs(`${reportMonth}-01`);
+    const end = start.endOf("month");
+    const to = end.format("YYYY-MM-DD");
+    return { from: start.format("YYYY-MM-DD"), to: to > today ? today : to };
   };
 
+  /** Null when the form is valid, else the reason to show the user. */
+  const reportError = (): string | null => {
+    if (!reportSummary && !reportDetail) return "Pick at least one section to include";
+    // Cleared month input: guard before dayjs turns it into "Invalid Date" and
+    // the range checks below silently pass on NaN.
+    if (reportMode === "month" && !reportMonth) return "Select a month";
+    const { from, to } = reportRange();
+    if (!from || !to) return "Select both dates";
+    if (from > to) return "'From' must be on or before 'To'";
+    if (dayjs(to).diff(dayjs(from), "day") + 1 > REPORT_MAX_DAYS) {
+      return `Date range too large — maximum ${REPORT_MAX_DAYS} days (one month)`;
+    }
+    return null;
+  };
+
+  /** 'summary' | 'detail' | 'both' from the two checkboxes. */
+  const reportInclude = (): AttendanceReportInclude =>
+    reportSummary && reportDetail ? "both" : reportDetail ? "detail" : "summary";
+
   const handleReportCsv = async () => {
-    if (!validateReportRange()) return;
+    const err = reportError();
+    if (err) return toast.error(err);
     setReportBusy("csv");
     try {
       await hrApi.attendance.exportReportCsv({
-        from: reportForm.from,
-        to: reportForm.to,
+        ...reportRange(),
         staffId: reportForm.staffId ?? undefined,
+        include: reportInclude(),
       });
       toast.success("Report downloaded");
     } catch (e: any) {
@@ -706,13 +740,14 @@ export default function StaffAttendancePage() {
   };
 
   const handleReportPdf = async () => {
-    if (!validateReportRange()) return;
+    const err = reportError();
+    if (err) return toast.error(err);
     setReportBusy("pdf");
     try {
       const report = await hrApi.attendance.getReport({
-        from: reportForm.from,
-        to: reportForm.to,
+        ...reportRange(),
         staffId: reportForm.staffId ?? undefined,
+        include: reportInclude(),
       });
       const { buildAttendanceReportPdf } = await import("@/lib/attendance-report-pdf");
       buildAttendanceReportPdf(report);
@@ -1548,40 +1583,119 @@ export default function StaffAttendancePage() {
           <div className="bg-white rounded-xl p-6 w-full max-w-sm space-y-4 max-h-[90vh] overflow-y-auto">
             <h2 className="font-semibold text-lg">Download Attendance Report</h2>
             <p className="text-sm text-gray-600">
-              Working-hours report with per-staff totals (present/absent/not-marked days, worked hours) and a
-              day-by-day detail — for one staff member or everyone. Maximum range: {REPORT_MAX_DAYS} days.
+              Working-hours report for one staff member or everyone. One month at a time (max {REPORT_MAX_DAYS} days).
             </p>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium">From</label>
-                <div className="mt-1">
-                  <AppDatePicker value={reportForm.from} max={today} onChange={(v) => setReportForm((f) => ({ ...f, from: v }))} />
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium">To</label>
-                <div className="mt-1">
-                  <AppDatePicker value={reportForm.to} max={today} onChange={(v) => setReportForm((f) => ({ ...f, to: v }))} />
-                </div>
-              </div>
+
+            <div className="flex gap-1 bg-gray-100 rounded-lg p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setReportMode("month")}
+                className={`flex-1 py-1.5 rounded-md font-medium ${reportMode === "month" ? "bg-white shadow text-gray-900" : "text-gray-500"}`}
+              >
+                By month
+              </button>
+              <button
+                type="button"
+                onClick={() => setReportMode("custom")}
+                className={`flex-1 py-1.5 rounded-md font-medium ${reportMode === "custom" ? "bg-white shadow text-gray-900" : "text-gray-500"}`}
+              >
+                Custom range
+              </button>
             </div>
+
+            {reportMode === "month" ? (
+              <div>
+                <label className="text-sm font-medium" htmlFor="report-month">Month</label>
+                <input
+                  id="report-month"
+                  type="month"
+                  value={reportMonth}
+                  max={today.slice(0, 7)}
+                  onChange={(e) => setReportMonth(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
+                />
+                <p className="text-[11px] text-gray-500 mt-1">
+                  {(() => {
+                    const { from, to } = reportRange();
+                    return `Covers ${from} to ${to} — the whole month, ending today for the current month.`;
+                  })()}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">From</label>
+                  <div className="mt-1">
+                    <AppDatePicker value={reportForm.from} max={today} onChange={(v) => setReportForm((f) => ({ ...f, from: v }))} />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">To</label>
+                  <div className="mt-1">
+                    <AppDatePicker value={reportForm.to} max={today} onChange={(v) => setReportForm((f) => ({ ...f, to: v }))} />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <StaffPicker
               label="Staff Member (leave empty for all staff)"
               value={reportForm.staffId}
               onChange={(id) => setReportForm((f) => ({ ...f, staffId: id }))}
             />
+
+            {/* Sections: leaving Detail off keeps a whole-school download small. */}
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">Include</legend>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={reportSummary}
+                  onChange={(e) => setReportSummary(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  Summary
+                  <span className="block text-[11px] text-gray-500">
+                    One row per staff member — present/absent/not-marked days and worked hours.
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={reportDetail}
+                  onChange={(e) => setReportDetail(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  Day-by-day detail
+                  <span className="block text-[11px] text-gray-500">
+                    Every marked day with check-in/out times and who recorded them. Large for all staff.
+                  </span>
+                </span>
+              </label>
+            </fieldset>
+
+            {reportError() ? (
+              <p role="alert" className="flex items-start gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-[11px] text-red-700">
+                <TriangleAlert aria-hidden className="mt-px h-3.5 w-3.5 shrink-0" />
+                {reportError()}
+              </p>
+            ) : null}
+
             <div className="flex gap-2 justify-end">
               <button onClick={() => setShowReport(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Close</button>
               <button
                 onClick={handleReportCsv}
-                disabled={reportBusy !== null}
+                disabled={reportBusy !== null || reportError() !== null}
                 className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-60"
               >
                 {reportBusy === "csv" ? "Preparing…" : "Download CSV"}
               </button>
               <button
                 onClick={handleReportPdf}
-                disabled={reportBusy !== null}
+                disabled={reportBusy !== null || reportError() !== null}
                 className="px-4 py-2 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-60"
               >
                 {reportBusy === "pdf" ? "Preparing…" : "Download PDF"}
