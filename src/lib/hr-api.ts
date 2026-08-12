@@ -234,17 +234,23 @@ export interface PaginatedDailyAttendance {
   lateArrivals?: number;
 }
 
+/** Which blocks of the attendance report to build — see `getReport`. */
+export type AttendanceReportInclude = "summary" | "detail" | "both";
+
 export interface AttendanceReportSummaryRow {
   staffId: number;
   name: string;
   employeeCode: number | null;
   mobile: string | null;
+  /** Days of the range this person was employed (range clipped by joining/exit). */
+  daysEmployedInRange: number;
   present: number;
   late: number;
   halfDay: number;
   absent: number;
   onLeave: number;
   holiday: number;
+  /** Employed days with no attendance row at all — counted against `daysEmployedInRange`. */
   notMarked: number;
   daysWithRecords: number;
   totalWorkedHours: number;
@@ -253,6 +259,8 @@ export interface AttendanceReportSummaryRow {
 
 export interface AttendanceReportDetailRow {
   staffId: number;
+  /** The staff member's own user id — compare with `markedById`/`checkOutById`. */
+  userId: number | null;
   name: string;
   employeeCode: number | null;
   mobile: string | null;
@@ -269,8 +277,12 @@ export interface AttendanceReportDetailRow {
   checkOutMethod: AttendanceMethod | null;
   /** Who recorded the check-in. */
   markedByName: string | null;
+  /** User id behind `markedByName` — never decide "self" by comparing names. */
+  markedById: number | null;
   /** Who recorded the check-out. */
   checkOutByName: string | null;
+  /** User id behind `checkOutByName`. */
+  checkOutById: number | null;
 }
 
 export interface AttendanceReport {
@@ -278,6 +290,8 @@ export interface AttendanceReport {
   to: string;
   generatedAt: string;
   totalDaysInRange: number;
+  /** Which blocks were requested — branch on this, not on array length. */
+  include: AttendanceReportInclude;
   summary: AttendanceReportSummaryRow[];
   rows: AttendanceReportDetailRow[];
 }
@@ -633,9 +647,16 @@ export const hrApi = {
         `/hr/staff-attendance/daily?${p.toString()}`,
       );
     },
-    getReport: (opts: { from: string; to: string; staffId?: number }) => {
+    getReport: (opts: {
+      from: string;
+      to: string;
+      staffId?: number;
+      include?: AttendanceReportInclude;
+    }) => {
       const p = new URLSearchParams({ from: opts.from, to: opts.to });
       if (opts.staffId) p.set('staffId', String(opts.staffId));
+      // Omitted => the server's 'both' default, so older callers are unchanged.
+      if (opts.include) p.set('include', opts.include);
       return req<AttendanceReport>(
         'GET',
         `/hr/staff-attendance/report?${p.toString()}`,
@@ -645,6 +666,7 @@ export const hrApi = {
       from: string;
       to: string;
       staffId?: number;
+      include?: AttendanceReportInclude;
     }): Promise<void> => {
       const p = new URLSearchParams({
         from: opts.from,
@@ -652,6 +674,7 @@ export const hrApi = {
         format: 'csv',
       });
       if (opts.staffId) p.set('staffId', String(opts.staffId));
+      if (opts.include) p.set('include', opts.include);
       const res = await authFetch(
         `${base()}/hr/staff-attendance/report?${p.toString()}`,
       );
