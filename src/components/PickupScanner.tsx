@@ -7,11 +7,17 @@ import toast from "react-hot-toast";
 import { GraduationCap, ClipboardCheck, Hash } from "lucide-react";
 import VisitorScanPanel from "./VisitorScanPanel";
 import IdCardScanPanel from "./IdCardScanPanel";
+import InventoryScanPanel from "./InventoryScanPanel";
+import { useRbac } from "@/lib/rbac";
+import { useFeatureFlag } from "@/lib/useSchoolFeatures";
+import { lookupItem, type InventoryItem } from "@/lib/inventory-api";
 
 // idle → requesting (camera perm) → scanning → verifying → confirming (step 1 & 2) → success | error
-// "visitor": a V1:-prefixed visitor QR was decoded — VisitorScanPanel takes over
-// "idcard":  an IDC1:-prefixed printed ID card — IdCardScanPanel takes over
-type ScanState = "idle" | "requesting" | "scanning" | "verifying" | "confirming" | "success" | "error" | "visitor" | "idcard";
+// "visitor":   a V1:-prefixed visitor QR was decoded — VisitorScanPanel takes over
+// "idcard":    an IDC1:-prefixed printed ID card — IdCardScanPanel takes over
+// "inventory": an INV1:-prefixed stock label, or any code that turned out to
+//              be stock rather than a pass — InventoryScanPanel takes over
+type ScanState = "idle" | "requesting" | "scanning" | "verifying" | "confirming" | "success" | "error" | "visitor" | "idcard" | "inventory";
 
 interface VerifyResult {
   id: string;
@@ -25,9 +31,15 @@ interface VerifyResult {
   parentName: string;
 }
 
-interface ConfirmForm {
-  enteredName: string;
-  enteredPin: string;
+/** The subset of Html5Qrcode's instance surface this component calls. */
+interface Html5QrcodeInstance {
+  start: (
+    cameraIdOrConfig: string,
+    config: { fps: number; qrbox: { width: number; height: number } },
+    onSuccess: (decodedText: string) => void | Promise<void>,
+    onError: () => void,
+  ) => Promise<unknown>;
+  stop: () => Promise<void>;
 }
 
 export default function PickupScanner() {
@@ -37,15 +49,34 @@ export default function PickupScanner() {
   const [scannedToken, setScannedToken] = useState<string | null>(null);
   const [visitorToken, setVisitorToken] = useState<string | null>(null);
   const [idCardToken, setIdCardToken] = useState<string | null>(null);
+  const [inventoryCode, setInventoryCode] = useState<string | null>(null);
+  // Set only on the fallback path, where the lookup already happened — saves
+  // the panel repeating a request whose answer we are holding.
+  const [inventoryItem, setInventoryItem] = useState<InventoryItem | null>(null);
   const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
   const [enteredName, setEnteredName] = useState("");
   const [enteredPin, setEnteredPin] = useState("");
   const [confirmedAt, setConfirmedAt] = useState<string | null>(null);
+  // Decided when the pass is verified, not while rendering: reading the clock
+  // during render makes the same props produce different output.
+  const [expiringSoon, setExpiringSoon] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
 
   const scannerRef = useRef<HTMLDivElement>(null);
-  const html5QrScannerRef = useRef<any>(null);
+  const html5QrScannerRef = useRef<Html5QrcodeInstance | null>(null);
+
+  // Whether an unrecognised code is worth trying against the store catalogue.
+  // Both halves matter: a school without the module has no catalogue to hit,
+  // and a GUARD would only earn a 403 from the lookup route (SUB_ADMIN+).
+  const rbac = useRbac();
+  const inventoryEnabled = useFeatureFlag("inventory_management").enabled === true;
+  const canLookUpStock = inventoryEnabled && rbac.canManageInventory;
+  // Read inside the decode callback, which is created once per camera start.
+  const canLookUpStockRef = useRef(canLookUpStock);
+  useEffect(() => {
+    canLookUpStockRef.current = canLookUpStock;
+  }, [canLookUpStock]);
 
   // ─── Camera permission + scanner start ──────────────────────────────────────
   // Explicitly request camera via getUserMedia first (required on Android Chrome
@@ -61,13 +92,14 @@ export default function PickupScanner() {
       });
       // Release immediately — html5-qrcode will re-acquire the stream
       stream.getTracks().forEach((t) => t.stop());
-    } catch (err: any) {
+    } catch (err) {
+      const name = err instanceof Error ? err.name : "";
       const denied =
-        err.name === "NotAllowedError" || err.name === "PermissionDeniedError";
+        name === "NotAllowedError" || name === "PermissionDeniedError";
       setErrorMsg(
         denied
           ? "Camera access was denied. Open your browser's site settings, allow the camera for this page, then try again."
-          : `Could not access camera: ${err.message ?? err}`,
+          : `Could not access camera: ${err instanceof Error ? err.message : String(err)}`,
       );
       setScanState("error");
       return;
@@ -94,7 +126,9 @@ export default function PickupScanner() {
         /back|rear|environment/i.test(c.label)
       ) ?? cameras[cameras.length - 1];
 
-      const scanner = new Html5Qrcode("pickup-qr-reader", { verbose: false } as any);
+      const scanner: Html5QrcodeInstance = new Html5Qrcode("pickup-qr-reader", {
+        verbose: false,
+      });
       html5QrScannerRef.current = scanner;
 
       const boxSize = Math.min(260, Math.round(window.innerWidth * 0.7));
@@ -109,6 +143,7 @@ export default function PickupScanner() {
           // the fallthrough rather than a case.
           //   V1:    visitor pass          → VisitorScanPanel
           //   IDC1:  printed ID card       → IdCardScanPanel
+          //   INV1:  inventory stock label → InventoryScanPanel
           if (decodedText.startsWith("V1:")) {
             setVisitorToken(decodedText.slice(3));
             setScanState("visitor");
@@ -119,6 +154,12 @@ export default function PickupScanner() {
             // string, prefix included.
             setIdCardToken(decodedText);
             setScanState("idcard");
+            return;
+          }
+          if (decodedText.startsWith("INV1:")) {
+            // Whole string again — /inventory/items/lookup parses the prefix.
+            setInventoryCode(decodedText);
+            setScanState("inventory");
             return;
           }
           setScanState("verifying");
@@ -153,19 +194,38 @@ export default function PickupScanner() {
   // ─── Verify scanned token ───────────────────────────────────────────────────
   const verifyToken = async (token: string) => {
     try {
-      const res = await authFetch(`${API_BASE_URL}/pickup/verify/${token}`);
+      // Pickup QRs predate the prefix convention, so an unprefixed code is
+      // *assumed* to be one. Encoded because the fallback below means arbitrary
+      // product barcodes now reach this path too, and a "/" in one would
+      // otherwise silently become a different route.
+      const res = await authFetch(`${API_BASE_URL}/pickup/verify/${encodeURIComponent(token)}`);
       if (res.ok) {
         const data: VerifyResult = await res.json();
         setVerifyResult(data);
+        setExpiringSoon(new Date(data.expiresAt).getTime() - Date.now() < 5 * 60 * 1000);
         setEnteredName(data.authorizedPersonName);
         setEnteredPin("");
         setConfirmStep(1);
         setScanState("confirming");
-      } else {
-        const err = await res.json();
-        setErrorMsg(err.message || "Invalid or expired QR code");
-        setScanState("error");
+        return;
       }
+      // Not a pickup token. Before calling it invalid, try the store catalogue:
+      // a Code-128 label we printed, or a publisher's EAN-13 on a textbook,
+      // both arrive here as an unprefixed string. Only if that misses too is
+      // the code genuinely unrecognised — and then the pickup error is the
+      // honest one, since that is what the person was most likely scanning.
+      const err = await res.json().catch(() => ({}));
+      if (canLookUpStockRef.current) {
+        const item = await lookupItem(token).catch(() => null);
+        if (item) {
+          setInventoryItem(item);
+          setInventoryCode(token);
+          setScanState("inventory");
+          return;
+        }
+      }
+      setErrorMsg(err.message || "Invalid or expired QR code");
+      setScanState("error");
     } catch {
       setErrorMsg("Network error. Please try again.");
       setScanState("error");
@@ -211,6 +271,8 @@ export default function PickupScanner() {
     setScannedToken(null);
     setVisitorToken(null);
     setIdCardToken(null);
+    setInventoryCode(null);
+    setInventoryItem(null);
     setVerifyResult(null);
     setEnteredName("");
     setEnteredPin("");
@@ -226,6 +288,8 @@ export default function PickupScanner() {
     setScannedToken(null);
     setVisitorToken(null);
     setIdCardToken(null);
+    setInventoryCode(null);
+    setInventoryItem(null);
     setVerifyResult(null);
     setEnteredName("");
     setEnteredPin("");
@@ -259,6 +323,17 @@ export default function PickupScanner() {
     );
   }
 
+  if (scanState === "inventory" && inventoryCode) {
+    return (
+      <InventoryScanPanel
+        code={inventoryCode}
+        initialItem={inventoryItem}
+        onDone={restartScanner}
+        onCancel={handleReset}
+      />
+    );
+  }
+
   if (scanState === "idle") {
     return (
       <div className="flex flex-col items-center gap-6 py-8">
@@ -271,7 +346,10 @@ export default function PickupScanner() {
         </div>
         <div className="text-center space-y-1">
           <h2 className="text-white font-bold text-xl">QR Scanner</h2>
-          <p className="text-slate-400 text-sm">Scan a pickup QR, a visitor entry QR or a printed ID card — the type is detected automatically</p>
+          <p className="text-slate-400 text-sm">
+            Scan a pickup QR, a visitor entry QR, a printed ID card
+            {canLookUpStock ? " or a stock label" : ""} — the type is detected automatically
+          </p>
         </div>
         <div className="px-4 py-3 bg-slate-800/60 border border-slate-700 rounded-xl text-slate-400 text-xs text-center max-w-xs">
           📷 Camera access is required. Your browser will ask for permission when you tap Start Camera. Once allowed, it stays remembered for this site.
@@ -313,7 +391,10 @@ export default function PickupScanner() {
             ✕ Cancel
           </button>
         </div>
-        <p className="text-slate-400 text-sm">Point the back camera at the QR — pickup, visitor pass or ID card</p>
+        <p className="text-slate-400 text-sm">
+          Point the back camera at the code — pickup, visitor pass, ID card
+          {canLookUpStock ? " or stock label" : ""}
+        </p>
         <div id="pickup-qr-reader" ref={scannerRef} className="overflow-hidden rounded-2xl border border-slate-700" />
       </div>
     );
@@ -331,7 +412,7 @@ export default function PickupScanner() {
   if (scanState === "confirming" && verifyResult) {
     const expiresAt = new Date(verifyResult.expiresAt);
     const expiryStr = expiresAt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
-    const isExpiringSoon = (expiresAt.getTime() - Date.now()) < 5 * 60 * 1000;
+    const isExpiringSoon = expiringSoon;
 
     const studentCard = (
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">

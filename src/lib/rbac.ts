@@ -130,6 +130,16 @@ export interface RbacPermissions {
    */
   canViewOwnIdCard: boolean;
 
+  /** Inventory: manage catalog, sell/issue at the counter, view reports (SUB_ADMIN+). */
+  canManageInventory: boolean;
+
+  /**
+   * See one's own store purchases and borrowings. Everyone with an account:
+   * a parent sees their children's, a student and a staff member their own —
+   * the API scopes by the JWT, so the menu can afford to be generous.
+   */
+  canViewOwnInventory: boolean;
+
   // ── Multi-role helpers ──────────────────────────────────────────────────
   /** Does the user hold this exact role, primary or additional? */
   hasRole: (role: string) => boolean;
@@ -224,6 +234,9 @@ export function useRbac(): RbacPermissions {
     canManageIdCards: level >= 60,
     // Any signed-in member of the school: STUDENT is level 10, the floor.
     canViewOwnIdCard: level >= 10,
+
+    canManageInventory: level >= 60,
+    canViewOwnInventory: level >= 10,
 
     hasRole: has,
     hasAnyRole: hasAny,

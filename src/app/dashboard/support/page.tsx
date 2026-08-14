@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { getUser } from "@/lib/auth";
-import { getEnv } from "@/lib/env";
 import QRCode from "react-qr-code";
 import QRCodeGen from "qrcode";
 import { Mail, MessageCircle, ChevronDown, ChevronUp, Printer } from "lucide-react";
@@ -18,9 +17,8 @@ const INSTALL_GUIDE_PREVIEW_SCALE = 0.55;
 export default function DashboardSupportPage() {
   const [activeTab, setActiveTab] = useState<"contact" | "faqs" | "install">("faqs");
   const [user, setUser] = useState<any>(null);
-  
+
   // Form State
-  const [schoolName, setSchoolName] = useState("");
   const [issue, setIssue] = useState("");
   
   // FAQ State
@@ -35,6 +33,9 @@ export default function DashboardSupportPage() {
   // from (prod, stage, or a local tunnel), so `window.location.origin` is
   // always correct.
   const schoolInfo = useSchoolInfo();
+  // The tenant's real name, resolved per request — a single deployment serves
+  // every school, so this can never come from a build-time env var.
+  const schoolName = schoolInfo?.name ?? "";
   const [includeLogo, setIncludeLogo] = useState(true);
   const [includeContact, setIncludeContact] = useState(true);
   const [guideSrcDoc, setGuideSrcDoc] = useState("");
@@ -49,8 +50,6 @@ export default function DashboardSupportPage() {
     if (u) {
       setUser(u);
     }
-    // Load School Config
-    setSchoolName(getEnv('SCHOOL_NAME') || "EduSphere Academy");
 
     // Load FAQs
     fetch('/faq.json')
@@ -117,7 +116,7 @@ export default function DashboardSupportPage() {
     
     // Construct the WhatsApp message
     const name = `${user.firstName || ''} ${user.lastName || ''}`.trim();
-    const message = `Hello, I need help.\n\n*Name:* ${name}\n*Mobile:* ${user.mobile || 'N/A'}\n*School:* ${schoolName}\n*Role:* ${user.role || 'N/A'}\n\n*Issue Details:*\n${issue}`;
+    const message = `Hello, I need help.\n\n*Name:* ${name}\n*Mobile:* ${user.mobile || 'N/A'}\n*School:* ${schoolName || 'N/A'}\n*Role:* ${user.role || 'N/A'}\n\n*Issue Details:*\n${issue}`;
     
     // Encode the URI and redirect to wa.me
     const encodeMessage = encodeURIComponent(message);
@@ -290,7 +289,7 @@ export default function DashboardSupportPage() {
                      <div className="text-slate-500">Role:</div>
                      <div className="font-medium text-slate-800 text-right capitalize">{user?.role?.replace("_", " ")}</div>
                      <div className="text-slate-500">School:</div>
-                     <div className="font-medium text-slate-800 text-right">{schoolName}</div>
+                     <div className="font-medium text-slate-800 text-right">{schoolName || '—'}</div>
                   </div>
                 </div>
 

@@ -1,0 +1,50 @@
+[
+  {
+    "question": "How do I see my child's attendance?",
+    "answer": "Open your child from the **Home** tab. The attendance card shows this month at a glance, and tapping it opens the full record day by day. If more than one child is linked to your number, Home lists them all — open each child separately."
+  },
+  {
+    "question": "How do I pay fees, and where is the receipt?",
+    "answer": "Open your child, then the **Fees** section. It shows what has been paid and what is still due; **Pay now** opens the secure payment page. Once a payment succeeds the receipt appears against it — tap the payment to view or download the receipt as a PDF. Receipts are not sent automatically, so save the PDF if you need a copy."
+  },
+  {
+    "question": "My payment was deducted but the fees still show as due. What do I do?",
+    "answer": "Give it a few minutes and pull down to refresh — the confirmation from the bank can lag behind the deduction. If the amount is still showing as due after that, contact the school office with the date, amount and the reference shown on your bank statement. Do not pay a second time."
+  },
+  {
+    "question": "Where do I see homework and exam results?",
+    "answer": "Both are on your child's page. **Homework** lists what has been assigned with its due date, and **Results** shows marks once the school has published them for an exam. If an exam has finished but nothing is showing, the school has not published the marks yet."
+  },
+  {
+    "question": "How do I change my password?",
+    "answer": "Go to **Profile** → **Security & Login** and use the Change Password form. Your password is at least 6 characters. If you have forgotten it, the school office can reset it for you."
+  },
+  {
+    "question": "Why can't I see my child, or why is a child missing?",
+    "answer": "Your account is linked to your child's record by the **mobile number** the school has on file. If a child is missing, the office likely has a different number against that child. Ask the school office to update the contact number and the child will appear the next time you sign in."
+  },
+  {
+    "question": "My name or mobile number is wrong. Can I fix it myself?",
+    "answer": "No — parent details are maintained by the school so records stay accurate. Ask the school office to correct them. Once they do, sign out and sign in again to see the change."
+  },
+  {
+    "question": "How do I turn on notifications for attendance and fee reminders?",
+    "answer": "When you first open the portal you are asked to allow notifications — tap **Allow**. If you dismissed it, enable notifications for this site in your phone's browser settings, or install the app to the home screen (below) and allow them there. Notifications are sent per device, so allow them on each phone you use."
+  },
+  {
+    "question": "How do I install this as an app on my phone?",
+    "answer": "On **Android** (Chrome), open the browser menu and choose **Add to Home screen** or **Install app**. On **iPhone** (Safari), tap the Share button and choose **Add to Home Screen**. It then opens like any other app, full screen, and can show notifications."
+  },
+  {
+    "question": "The app is not showing the latest information. What do I do?",
+    "answer": "Pull down from the top of the screen to refresh. The installed app keeps running the version it downloaded when you opened it, so pulling down both refetches your data and moves you onto the newest version if one has been released."
+  },
+  {
+    "question": "Can I see my child's ID card?",
+    "answer": "Yes. Open your child's page — the ID card is shown there and can be saved as a PDF for your records. The printed plastic card still comes from the school office."
+  },
+  {
+    "question": "Who do I contact — the school or app support?",
+    "answer": "Anything about your child — attendance, fees, marks, homework, transport, a wrong name or number — is the **school office**, using the contact details on this page. Contact **app support** only when the app itself misbehaves: you cannot sign in, a page fails to load, or a payment went through but was not recorded."
+  }
+]
