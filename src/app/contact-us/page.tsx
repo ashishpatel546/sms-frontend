@@ -1,32 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import QRCode from "react-qr-code";
-import { Mail, Phone, MapPin, ArrowLeft } from "lucide-react";
-import { getEnv } from "@/lib/env";
+import { Mail, ArrowLeft } from "lucide-react";
+import { useSchoolInfoState } from "@/lib/useSchoolInfo";
 
 export default function ContactUsPage() {
   const router = useRouter();
-  const [schoolName, setSchoolName] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
   const [issue, setIssue] = useState("");
 
   const supportNumber = "7838160389";
   const supportEmail = "support@colegios.in";
-  
-  useEffect(() => {
-    // Populate school name if configured
-    setSchoolName(getEnv('SCHOOL_NAME') || "EduSphere Academy");
-  }, []);
+
+  // The school is whichever tenant this subdomain resolves to — never a
+  // build-time env var, since one deployment serves every school.
+  // `GET /school/info` is public, so this works before anyone logs in.
+  const { info: schoolInfo, settled } = useSchoolInfoState();
+  const schoolName = schoolInfo?.name ?? "";
 
   const handleWhatsAppSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!mobile || !issue) return;
-    
+
     // Construct the WhatsApp message
-    const message = `Hello, I need help.\n\n*School:* ${schoolName}\n*Mobile:* ${mobile}\n*Email:* ${email || 'N/A'}\n\n*Issue Details:*\n${issue}`;
+    const message = `Hello, I need help.\n\n*School:* ${schoolName || 'Not identified'}\n*Mobile:* ${mobile}\n*Email:* ${email || 'N/A'}\n\n*Issue Details:*\n${issue}`;
     
     // Encode the URI and redirect to wa.me
     const encodeMessage = encodeURIComponent(message);
@@ -158,7 +158,8 @@ export default function ContactUsPage() {
                     type="text"
                     disabled
                     value={schoolName}
-                    className="w-full bg-walnut-800/50 border border-white/12/50 text-brass-100/70 cursor-not-allowed rounded-xl px-4 py-3.5 font-medium"
+                    placeholder={settled ? "School could not be identified" : "Loading…"}
+                    className="w-full bg-walnut-800/50 border border-white/12/50 text-brass-100/70 cursor-not-allowed rounded-xl px-4 py-3.5 font-medium placeholder-brass-100/40"
                   />
                   <div className="absolute right-4 top-[50%] -translate-y-[50%]">
                     <svg className="w-5 h-5 text-brass-100/55" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/></svg>

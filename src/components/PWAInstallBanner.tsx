@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { X, Download, Share } from 'lucide-react';
-import { getEnv } from "@/lib/env";
-
-const schoolName = getEnv('SCHOOL_NAME') || 'School Management System';
+import { useSchoolInfo } from "@/lib/useSchoolInfo";
 
 interface BeforeInstallPromptEvent extends Event {
     prompt: () => Promise<void>;
@@ -18,6 +16,10 @@ export default function PWAInstallBanner() {
     const [isIOS, setIsIOS] = useState(false);
     const [isEdgeFallback, setIsEdgeFallback] = useState(false);
     const [isInstalled, setIsInstalled] = useState(false);
+
+    // What the user is installing is *their school's* app, so the name comes
+    // from the resolved tenant rather than a build-time env var.
+    const schoolName = useSchoolInfo()?.name || 'School Management System';
 
     // Ref so async callbacks always see the live "prompt received" state without stale closures
     const installPromptReceived = useRef(false);

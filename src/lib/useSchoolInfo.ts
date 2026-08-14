@@ -10,6 +10,7 @@ export interface SchoolInfo {
   address?: string | null;
   phone?: string | null;
   email?: string | null;
+  website?: string | null;
   logoUrl?: string | null;
   logoDataUrl?: string | null;
   logoUpdatedAt?: string | null;
@@ -98,6 +99,7 @@ export function useSchoolInfoState(): SchoolInfoState {
               address: data.address ?? null,
               phone: data.phone ?? null,
               email: data.email ?? null,
+              website: data.website ?? null,
               logoUrl: data.logoUrl ?? null,
               logoDataUrl: null,
               logoUpdatedAt: data.logoUpdatedAt ?? null,
