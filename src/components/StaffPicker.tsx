@@ -52,7 +52,7 @@ export default function StaffPicker({
     // If value is set externally but selected is not yet loaded, fetch the staff record
     useEffect(() => {
         if (value && !selected) {
-            authFetch(`${API_BASE_URL}/staff?id=${value}&limit=1`)
+            authFetch(`${API_BASE_URL}/staff?id=${value}&page=1&limit=1`)
                 .then(r => r.ok ? r.json() : null)
                 .then(data => {
                     const item = data?.data?.[0] ?? (Array.isArray(data) ? data[0] : null);
@@ -61,6 +61,9 @@ export default function StaffPicker({
                 .catch(() => { });
         }
         if (!value) {
+            // Clearing local state in response to the controlled `value` prop
+            // being reset from outside (e.g. a form reset after submit).
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setSelected(null);
             setQuery("");
         }
@@ -75,10 +78,13 @@ export default function StaffPicker({
         setLoading(true);
         try {
             // Detect if query is numeric → search by mobile, otherwise by name
+            // `page` as well as `limit`: /staff only paginates when it sees
+            // BOTH, so `limit` alone was silently ignored and a one-letter
+            // query returned the entire roster.
             const isMobile = /^\d+$/.test(q.trim());
             const params = isMobile
-                ? `mobile=${encodeURIComponent(q.trim())}&limit=10`
-                : `search=${encodeURIComponent(q.trim())}&limit=10`;
+                ? `mobile=${encodeURIComponent(q.trim())}&page=1&limit=10`
+                : `search=${encodeURIComponent(q.trim())}&page=1&limit=10`;
             const res = await authFetch(`${API_BASE_URL}/staff?${params}`);
             if (res.ok) {
                 const data = await res.json();
