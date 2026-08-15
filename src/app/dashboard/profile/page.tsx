@@ -156,45 +156,50 @@ export default function ProfilePage() {
         <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
             <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">My Profile</h1>
 
-            {/* Tabs */}
-            <div className="bg-slate-100 border border-slate-200 rounded-2xl p-1.5 flex gap-1.5 mb-6">
+            {/* Tabs. On a phone the three full labels are wider than the screen,
+                so each tab is allowed to shrink (min-w-0) and drops to a short
+                label — otherwise the last tab is pushed off the right edge. */}
+            <div className="bg-slate-100 border border-slate-200 rounded-2xl p-1 sm:p-1.5 flex gap-1 sm:gap-1.5 mb-6">
                 <button
                     onClick={() => setActiveTab("general")}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === "general"
+                    className={`min-w-0 flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 px-2 sm:px-4 rounded-xl text-[13px] sm:text-sm font-semibold transition-all duration-200 ${activeTab === "general"
                         ? "bg-white shadow text-indigo-600 border border-slate-200"
                         : "text-slate-500 hover:text-slate-700"
                     }`}
                 >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                    General Information
+                    <span className="truncate sm:hidden">General</span>
+                    <span className="truncate hidden sm:inline">General Information</span>
                 </button>
                 <button
                     onClick={() => setActiveTab("security")}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === "security"
+                    className={`min-w-0 flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 px-2 sm:px-4 rounded-xl text-[13px] sm:text-sm font-semibold transition-all duration-200 ${activeTab === "security"
                         ? "bg-white shadow text-indigo-600 border border-slate-200"
                         : "text-slate-500 hover:text-slate-700"
                     }`}
                 >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
-                    Security &amp; Login
+                    <span className="truncate sm:hidden">Security</span>
+                    <span className="truncate hidden sm:inline">Security &amp; Login</span>
                 </button>
                 {hasIdCards && (
                     <button
                         onClick={() => setActiveTab("idcard")}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === "idcard"
+                        className={`min-w-0 flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 px-2 sm:px-4 rounded-xl text-[13px] sm:text-sm font-semibold transition-all duration-200 ${activeTab === "idcard"
                             ? "bg-white shadow text-indigo-600 border border-slate-200"
                             : "text-slate-500 hover:text-slate-700"
                         }`}
                     >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 11a2 2 0 100-4 2 2 0 000 4zm-2.5 5a2.5 2.5 0 015 0M15 9h3M15 13h3" />
                         </svg>
-                        My ID Card
+                        <span className="truncate sm:hidden">ID Card</span>
+                        <span className="truncate hidden sm:inline">My ID Card</span>
                     </button>
                 )}
             </div>

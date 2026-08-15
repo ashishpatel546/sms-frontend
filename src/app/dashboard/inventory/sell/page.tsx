@@ -4,13 +4,12 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import toast, { Toaster } from 'react-hot-toast';
-import { Minus, Plus, Printer, ScanLine, Trash2, User, Users, UserRoundSearch } from 'lucide-react';
+import { Minus, Plus, Printer, Trash2, User, Users, UserRoundSearch } from 'lucide-react';
 
 import { fetcher } from '@/lib/api';
 import {
   createSale,
   errorMessage,
-  lookupItem,
   PAYMENT_MODES,
   PAYMENT_MODE_LABELS,
   type InventoryBuyerType,
@@ -24,8 +23,7 @@ import { Field, FieldGrid, Input } from '@/components/ui/Field';
 import { SegmentedControl } from '@/components/ui/FilterBar';
 import { Button } from '@/components/ui/button';
 import { Money } from '@/components/ui/Money';
-import StableScanner from '@/components/inventory/StableScanner';
-import { useKeyboardWedge } from '@/components/inventory/useKeyboardWedge';
+import ItemFinder from '@/components/inventory/ItemFinder';
 import StudentPicker from '@/components/inventory/StudentPicker';
 import StaffPicker from '@/components/StaffPicker';
 import AuthorizerPicker from '@/components/inventory/AuthorizerPicker';
@@ -42,9 +40,6 @@ interface CartLine {
 export default function SellCounterPage() {
   const router = useRouter();
   const [cart, setCart] = React.useState<CartLine[]>([]);
-  const [manualCode, setManualCode] = React.useState('');
-  const [scannerOpen, setScannerOpen] = React.useState(false);
-  const [lookingUp, setLookingUp] = React.useState(false);
 
   const [buyerType, setBuyerType] = React.useState<InventoryBuyerType>('STUDENT');
   const [studentId, setStudentId] = React.useState<number | null>(null);
@@ -94,30 +89,12 @@ export default function SellCounterPage() {
     return true;
   };
 
-  // Deliberately NOT memoized: both the scanner and the wedge hold the latest
-  // callback in a ref, and this closure must see the current cart.
-  const lookupAndAdd = async (code: string, { fromScanner = false } = {}) => {
-    if (!code.trim()) return;
-    setLookingUp(true);
-    try {
-      const item = await lookupItem(code.trim());
-      const added = addToCart(item);
-      if (added) {
-        toast.success(`Added ${item.name}`);
-        // One scan, one line. The camera kept running here once, and a book
-        // held in front of it re-added itself until stock ran out — the exact
-        // opposite of how a counter scanner behaves. Close, let the operator
-        // see the cart change, and reopen for the next item on purpose.
-        if (fromScanner) setScannerOpen(false);
-      }
-    } catch {
-      toast.error(`No item found for "${code}"`);
-    } finally {
-      setLookingUp(false);
-    }
+  /** What the finder hands back — scanned, typed, or chosen from a name search. */
+  const onPickItem = (item: InventoryItem): boolean => {
+    const added = addToCart(item);
+    if (added) toast.success(`Added ${item.name}`);
+    return added;
   };
-
-  useKeyboardWedge(lookupAndAdd, !receipt);
 
   const setQty = (itemId: number, qty: number) => {
     setCart((prev) =>
@@ -131,7 +108,6 @@ export default function SellCounterPage() {
 
   const resetForm = () => {
     setCart([]);
-    setManualCode('');
     setBuyerType('STUDENT');
     setStudentId(null);
     setStaffId(null);
@@ -197,35 +173,13 @@ export default function SellCounterPage() {
         <div className="space-y-4">
           <Panel>
             <PanelHeader title="Scan or search" />
-            <PanelBody className="space-y-3">
-              {scannerOpen ? (
-                <StableScanner
-                  onCode={(code) => {
-                    void lookupAndAdd(code, { fromScanner: true });
-                  }}
-                  onClose={() => setScannerOpen(false)}
-                />
-              ) : (
-                <Button type="button" variant="outline" block onClick={() => setScannerOpen(true)}>
-                  <ScanLine /> {cart.length > 0 ? 'Scan next item' : 'Open camera scanner'}
-                </Button>
-              )}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  lookupAndAdd(manualCode);
-                  setManualCode('');
-                }}
-                className="flex gap-2"
-              >
-                <Input
-                  value={manualCode}
-                  onChange={(e) => setManualCode(e.target.value)}
-                  placeholder="Type an item code, or scan with a USB/BT scanner"
-                  autoFocus
-                />
-                <Button type="submit" disabled={lookingUp || !manualCode.trim()}>Add</Button>
-              </form>
+            <PanelBody>
+              <ItemFinder
+                onPick={onPickItem}
+                submitLabel="Add"
+                scanLabel={cart.length > 0 ? 'Scan next item' : 'Open camera scanner'}
+                autoFocus
+              />
             </PanelBody>
           </Panel>
 

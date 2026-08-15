@@ -88,14 +88,15 @@ export default function ExaminationsDataEntryPage() {
 
     useEffect(() => {
         Promise.all([
-            authFetch(`${API_BASE_URL}/classes/names-only`).then(r => r.json()),
-            authFetch(`${API_BASE_URL}/academic-sessions`).then(r => r.json()),
-            authFetch(`${API_BASE_URL}/subjects`).then(r => r.json()),
+            fetcher(`${API_BASE_URL}/classes/names-only`),
+            fetcher(`${API_BASE_URL}/academic-sessions`),
+            fetcher(`${API_BASE_URL}/subjects`),
         ]).then(([classesData, sessionsData, subjectsData]) => {
+            const sessionList = Array.isArray(sessionsData) ? sessionsData : [];
             setClasses(sortByName(Array.isArray(classesData) ? classesData : []));
-            setSessions(Array.isArray(sessionsData) ? sessionsData : []);
+            setSessions(sessionList);
             setSubjects(Array.isArray(subjectsData) ? subjectsData : []);
-            const activeSession = sessionsData.find((s: any) => s.isActive);
+            const activeSession = sessionList.find((s: any) => s.isActive);
             if (activeSession) setSelectedSessionId(activeSession.id.toString());
         }).catch(() => { });
     }, []);
@@ -105,8 +106,7 @@ export default function ExaminationsDataEntryPage() {
             setExamCategories([]);
             return;
         }
-        authFetch(`${API_BASE_URL}/exams/categories/active?sessionId=${selectedSessionId}`)
-            .then(r => r.json())
+        fetcher(`${API_BASE_URL}/exams/categories/active?sessionId=${selectedSessionId}`)
             .then(data => {
                 setExamCategories(Array.isArray(data) ? data : []);
                 setSelectedExamCategoryId("");

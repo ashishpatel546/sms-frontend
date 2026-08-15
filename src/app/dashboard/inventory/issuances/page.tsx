@@ -3,7 +3,7 @@
 import * as React from 'react';
 import useSWR from 'swr';
 import toast, { Toaster } from 'react-hot-toast';
-import { BookUp, Plus, ScanLine, Trash2, User, Users } from 'lucide-react';
+import { BookUp, Plus, Trash2, User, Users } from 'lucide-react';
 
 import {
   createIssuance,
@@ -12,7 +12,6 @@ import {
   fetchIssuances,
   fetchInventorySettings,
   issuanceOutstanding,
-  lookupItem,
   returnIssuance,
   type InventoryBorrowerType,
   type InventoryIssuance,
@@ -31,8 +30,7 @@ import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import StaffPicker from '@/components/StaffPicker';
 import StudentPicker from '@/components/inventory/StudentPicker';
-import StableScanner from '@/components/inventory/StableScanner';
-import { useKeyboardWedge } from '@/components/inventory/useKeyboardWedge';
+import ItemFinder from '@/components/inventory/ItemFinder';
 
 const PAGE_SIZE = 20;
 
@@ -181,8 +179,6 @@ function IssueDialog({
   onSaved: () => void;
 }) {
   const [item, setItem] = React.useState<InventoryItem | null>(null);
-  const [manualCode, setManualCode] = React.useState('');
-  const [scannerOpen, setScannerOpen] = React.useState(false);
   const [qty, setQty] = React.useState('1');
   const [borrowerType, setBorrowerType] = React.useState<InventoryBorrowerType>('STUDENT');
   const [studentId, setStudentId] = React.useState<number | null>(null);
@@ -193,23 +189,6 @@ function IssueDialog({
 
   const maxDate = new Date();
   maxDate.setDate(maxDate.getDate() + maxLoanDays);
-
-  const lookup = React.useCallback(async (code: string) => {
-    if (!code.trim()) return;
-    try {
-      const found = await lookupItem(code.trim());
-      setItem(found);
-      setScannerOpen(false);
-    } catch {
-      toast.error(`No item found for "${code}"`);
-    }
-  }, []);
-
-  // A USB/Bluetooth gun types its payload and presses Enter. Issuing is the
-  // other counter flow, so it gets the same zero-configuration support the
-  // sell screen has — only while an item is still to be chosen, so a scan
-  // can't overwrite one already picked.
-  useKeyboardWedge(lookup, !item);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -252,30 +231,12 @@ function IssueDialog({
                   <Button type="button" variant="ghost" size="sm" onClick={() => setItem(null)}><Trash2 className="size-3.5" /></Button>
                 </PanelBody>
               </Panel>
-            ) : scannerOpen ? (
-              <StableScanner onCode={lookup} onClose={() => setScannerOpen(false)} />
             ) : (
-              <div className="space-y-2">
-                <Button type="button" variant="outline" block onClick={() => setScannerOpen(true)}><ScanLine /> Scan item</Button>
-                {/* A div, not a form: this sits inside the issue form, and a
-                    nested <form> is invalid HTML — React warns, and Enter here
-                    submits whichever form the browser guesses. Enter is wired
-                    by hand so the code box still behaves as one expects. */}
-                <div className="flex gap-2">
-                  <Input
-                    value={manualCode}
-                    onChange={(e) => setManualCode(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        void lookup(manualCode);
-                      }
-                    }}
-                    placeholder="Or type the item code"
-                  />
-                  <Button type="button" variant="outline" onClick={() => void lookup(manualCode)}>Find</Button>
-                </div>
-              </div>
+              // The same finder the sell counter uses: scan or type a code, or
+              // — when the item carries no readable label — pick a category and
+              // search the name. Unmounts once an item is chosen, which also
+              // stops the USB/Bluetooth wedge inside it from overwriting it.
+              <ItemFinder onPick={(found) => setItem(found)} submitLabel="Find" scanLabel="Scan item" />
             )}
 
             <Field label="Quantity" required>

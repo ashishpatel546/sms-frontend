@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRbac } from '@/lib/rbac';
 import { authFetch } from '@/lib/auth';
-import { API_BASE_URL } from '@/lib/api';
+import { API_BASE_URL, fetcher } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { BookOpen, RefreshCw, Download, Plus, PlusCircle, Edit2, BookX, CheckCircle, AlertTriangle, Clock, Upload, ScanLine } from 'lucide-react';
 import NumberInput from '@/components/ui/NumberInput';
@@ -797,7 +797,7 @@ function IssueReturnTab() {
   const [settings, setSettings] = useState<LibrarySettings | null>(null);
 
   useEffect(() => {
-    authFetch(`${API_BASE_URL}/library/settings`).then(r => r.json()).then(setSettings).catch(() => {});
+    fetcher(`${API_BASE_URL}/library/settings`).then(setSettings).catch(() => {});
   }, []);
 
   const onIssued = () => setSubTab('active');
@@ -1342,8 +1342,8 @@ function ReturnModal({ issuance, onClose, onReturned }: { issuance: Issuance; on
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    authFetch(`${API_BASE_URL}/library/issuances/${issuance.id}/late-fee`)
-      .then(r => r.json()).then(setLateFeeInfo).catch(() => {});
+    fetcher(`${API_BASE_URL}/library/issuances/${issuance.id}/late-fee`)
+      .then(setLateFeeInfo).catch(() => {});
   }, [issuance.id]);
 
   const fee = lateFeeInfo?.lateFeeCharged ?? 0;
@@ -1861,7 +1861,7 @@ function SettingsTab() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    authFetch(`${API_BASE_URL}/library/settings`).then(r => r.json()).then(d => { setForm(d); setLoading(false); }).catch(() => setLoading(false));
+    fetcher(`${API_BASE_URL}/library/settings`).then(d => { setForm(d); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
   const handleSave = async (e: React.FormEvent) => {
