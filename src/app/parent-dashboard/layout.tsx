@@ -10,7 +10,7 @@ import { getSchoolSlug } from "@/lib/env";
 import { API_BASE_URL } from "@/lib/api";
 import NotificationPermissionBanner from "@/components/NotificationPermissionBanner";
 import { useSchoolInfo } from "@/lib/useSchoolInfo";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { ThemePicker } from "@/components/ui/ThemePicker";
 import PullToRefresh from "@/components/ui/PullToRefresh";
 import { cn } from "@/lib/utils";
 
@@ -99,7 +99,7 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
             <header className="rail-surface sticky top-0 z-50 border-b border-rail-line px-4 pt-[env(safe-area-inset-top)]">
                 <div className="mx-auto flex h-14 max-w-5xl items-center gap-3">
                     <Link href="/parent-dashboard" className="flex min-w-0 items-center gap-2.5">
-                        <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-linear-to-br from-brass-500 to-marigold-400 font-display text-[15px] font-bold text-white">
+                        <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-linear-to-br from-tile-from to-tile-to font-display text-[15px] font-bold text-tile-ink">
                             {logoSrc ? (
                                 // next/image with `unoptimized` so the S3 URL is fetched
                                 // directly — the optimiser proxy can drop cross-origin
@@ -163,10 +163,10 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
                             </span>
                         </span>
 
-                        <ThemeToggle onInk />
+                        <ThemePicker onInk />
 
-                        <span className="hidden items-center gap-2 rounded-lg border border-white/12 bg-white/8 py-1 pr-3 pl-1 sm:flex">
-                            <span className="grid size-7 place-items-center rounded-md bg-linear-to-br from-brass-500 to-marigold-400 font-display text-[11px] font-bold text-white select-none">
+                        <span className="hidden items-center gap-2 rounded-lg border border-rail-line bg-rail-selected py-1 pr-3 pl-1 sm:flex">
+                            <span className="grid size-7 place-items-center rounded-md bg-linear-to-br from-tile-from to-tile-to font-display text-[11px] font-bold text-tile-ink select-none">
                                 {user.firstName?.[0]}{user.lastName?.[0]}
                             </span>
                             <span className="max-w-32 truncate text-[12.5px] font-semibold text-rail-ink">
@@ -176,7 +176,7 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
 
                         <button
                             onClick={() => logout()}
-                            className="hidden size-9 cursor-pointer items-center justify-center rounded-md text-rail-ink-soft transition-colors hover:bg-vermilion-500/20 hover:text-vermilion-200 md:flex"
+                            className="hidden size-9 cursor-pointer items-center justify-center rounded-md text-rail-ink-soft transition-colors hover:bg-rail-danger-bg hover:text-rail-danger-ink md:flex"
                             aria-label="Sign out"
                             title="Sign out"
                         >
@@ -232,8 +232,8 @@ function BarLink({
             className={cn(
                 'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors',
                 active
-                    ? 'bg-white/12 text-rail-ink'
-                    : 'text-rail-ink-soft hover:bg-white/8 hover:text-rail-ink',
+                    ? 'bg-rail-selected text-rail-ink'
+                    : 'text-rail-ink-soft hover:bg-rail-hover hover:text-rail-ink',
             )}
         >
             <Icon className="size-4" aria-hidden />

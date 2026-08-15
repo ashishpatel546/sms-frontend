@@ -103,7 +103,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
             {/* ── Mobile backdrop ──────────────────────────────────────── */}
             {isMobileOpen && (
                 <div
-                    className="fixed inset-0 z-30 bg-walnut-950/60 backdrop-blur-sm md:hidden"
+                    className="fixed inset-0 z-30 bg-rail-scrim backdrop-blur-sm md:hidden"
                     onClick={onMobileClose}
                     aria-hidden="true"
                 />
@@ -139,7 +139,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                         className="flex min-w-0 items-center gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-brand-light"
                         title={school?.name || 'Dashboard'}
                     >
-                        <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-linear-to-br from-brass-500 to-marigold-400 font-display text-[15px] font-bold text-white">
+                        <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-linear-to-br from-tile-from to-tile-to font-display text-[15px] font-bold text-tile-ink">
                             {logoSrc ? (
                                 <Image
                                     src={logoSrc}
@@ -171,7 +171,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                     {/* Mobile close button */}
                     <button
                         onClick={onMobileClose}
-                        className="ml-auto cursor-pointer rounded-md p-1.5 text-rail-ink-muted transition-colors hover:bg-white/8 hover:text-rail-ink md:hidden"
+                        className="ml-auto cursor-pointer rounded-md p-1.5 text-rail-ink-muted transition-colors hover:bg-rail-hover hover:text-rail-ink md:hidden"
                         aria-label="Close menu"
                     >
                         <X className="size-4" />
@@ -227,8 +227,8 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                                     'focus-visible:ring-2 focus-visible:ring-brand-light',
                                                     collapsed ? 'mx-1 justify-center px-0 py-2' : 'px-2.5 py-2',
                                                     active
-                                                        ? 'bg-linear-to-r from-brass-400/34 to-brass-400/8 text-white'
-                                                        : 'text-rail-ink-soft hover:bg-white/6 hover:text-white',
+                                                        ? 'bg-linear-to-r from-brass-400/34 to-brass-400/8 text-rail-active-ink'
+                                                        : 'text-rail-ink-soft hover:bg-rail-hover hover:text-rail-ink',
                                                 ].join(' ')}
                                             >
                                                 {/* Marigold marker in the margin — "you are here" */}
@@ -284,7 +284,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                 {!collapsed && (
                                     <button
                                         onClick={() => toggleGroup(group.label!)}
-                                        className="group flex w-full cursor-pointer items-center justify-between rounded-md px-2.5 pt-1 pb-1.5 transition-colors hover:bg-white/5"
+                                        className="group flex w-full cursor-pointer items-center justify-between rounded-md px-2.5 pt-1 pb-1.5 transition-colors hover:bg-rail-hover"
                                         aria-expanded={isOpen}
                                     >
                                         {/* Same brightness as the nav items below it. Small
@@ -321,7 +321,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                         <div>
                             {/* User info row */}
                             <div className="flex items-center gap-2.5 px-2 py-2">
-                                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-brass-500 to-marigold-400 font-display text-[11.5px] font-bold text-white select-none">
+                                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-tile-from to-tile-to font-display text-[11.5px] font-bold text-tile-ink select-none">
                                     {user?.firstName?.[0]}{user?.lastName?.[0]}
                                 </div>
                                 <div className="min-w-0 flex-1">
@@ -340,7 +340,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                     href="/dashboard/profile"
                                     onClick={onMobileClose}
                                     title="My profile"
-                                    className="flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 text-[12px] font-medium text-rail-ink-soft transition-colors hover:bg-white/8 hover:text-rail-ink"
+                                    className="flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 text-[12px] font-medium text-rail-ink-soft transition-colors hover:bg-rail-hover hover:text-rail-ink"
                                 >
                                     <User className="size-3.5" aria-hidden />
                                     Profile
@@ -348,7 +348,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                 <button
                                     onClick={() => logout()}
                                     title="Sign out"
-                                    className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md py-2 text-[12px] font-medium text-vermilion-300 transition-colors hover:bg-vermilion-500/16 hover:text-vermilion-200"
+                                    className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md py-2 text-[12px] font-medium text-rail-danger transition-colors hover:bg-rail-danger-bg hover:text-rail-danger-ink"
                                 >
                                     <LogOut className="size-3.5" aria-hidden />
                                     Sign out
@@ -361,14 +361,14 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                             <Link
                                 href="/dashboard/profile"
                                 title={`${user?.firstName} ${user?.lastName} — my profile`}
-                                className="flex size-8 items-center justify-center rounded-lg bg-linear-to-br from-brass-500 to-marigold-400 font-display text-[11.5px] font-bold text-white transition-all select-none hover:ring-2 hover:ring-brand-light/50"
+                                className="flex size-8 items-center justify-center rounded-lg bg-linear-to-br from-tile-from to-tile-to font-display text-[11.5px] font-bold text-tile-ink transition-all select-none hover:ring-2 hover:ring-brand-light/50"
                             >
                                 {user?.firstName?.[0]}{user?.lastName?.[0]}
                             </Link>
                             <button
                                 onClick={() => logout()}
                                 title="Sign out"
-                                className="cursor-pointer rounded-md p-1.5 text-rail-ink-muted transition-colors hover:bg-vermilion-500/16 hover:text-vermilion-300"
+                                className="cursor-pointer rounded-md p-1.5 text-rail-ink-muted transition-colors hover:bg-rail-danger-bg hover:text-rail-danger"
                                 aria-label="Sign out"
                             >
                                 <LogOut className="size-3.5" />

@@ -6,6 +6,7 @@ import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import ServiceUnavailableBanner from "@/components/ServiceUnavailableBanner";
 import SupportSessionNotices from "@/components/SupportSessionNotices";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { PaletteProvider } from "@/components/providers/PaletteProvider";
 
 // Force dynamic rendering so process.env is read at request time (from SSM-loaded runtime env),
 // not baked in at build time when env vars are not available.
@@ -38,12 +39,13 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const viewport: Viewport = {
-  // Matches the ink rail so the phone's status bar continues the chrome
-  // rather than sitting on a white seam above it.
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#0a0f1c" },
-    { media: "(prefers-color-scheme: dark)", color: "#060a14" },
-  ],
+  // The rail colour, so the phone's status bar continues the chrome rather than
+  // sitting on a seam above it. A single un-scoped value on purpose: the real
+  // colour depends on the palette AND the mode, which no media query knows, so
+  // PaletteProvider rewrites this tag at runtime. This is only the value that
+  // holds for the few milliseconds before it does — the walnut rail, which is
+  // the default palette in both modes.
+  themeColor: "#362b1f",
   width: "device-width",
   initialScale: 1,
   // Pinch-zoom stays available: this is an ERP read on phones all day, and
@@ -69,12 +71,21 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  // Both entries used to point at /colegios/pwa-logo.png, which is 1024×1024
+  // and 723 KB while declaring sizes="192x192" — so the browser downloaded
+  // three-quarters of a megabyte and scaled 1024px down to a 16px tab icon.
+  // That is why the favicon looked blank or muddy: it is a real bug, not a
+  // caching artefact. Correctly-sized files were already in public/ and simply
+  // unreferenced. Sizes below are the files' true dimensions; a browser picks
+  // the closest one instead of resampling the largest.
   icons: {
     icon: [
-      { url: "/colegios/pwa-logo.png", sizes: "192x192", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: [
-      { url: "/colegios/pwa-logo.png", sizes: "180x180", type: "image/png" },
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
   },
 };
@@ -109,6 +120,24 @@ export default function RootLayout({
             __html: `window.__ENV__ = ${JSON.stringify(envConfig)};`,
           }}
         />
+        {/* Stamp both theme axes before the first paint.
+            next-themes injects its own script, but the provider renders inside
+            <body>, so that script runs after <head> is parsed and the default
+            theme is briefly visible. Doing it here covers the palette (which
+            next-themes knows nothing about) and closes that flash for the mode
+            at the same time. Kept dependency-free and wrapped in try/catch:
+            it runs before anything else and must never be able to throw. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var d=document.documentElement;
+var p=localStorage.getItem('palette');
+d.setAttribute('data-palette',(p==='ink'||p==='assembly')?p:'ink');
+var t=localStorage.getItem('theme')||'light';
+if(t==='system'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
+if(t==='dark'||t==='light'){d.setAttribute('data-theme',t);}
+}catch(e){}})();`,
+          }}
+        />
       </head>
       <body className="antialiased">
         <ThemeProvider
@@ -118,11 +147,13 @@ export default function RootLayout({
           themes={["light", "dark"]}
           disableTransitionOnChange
         >
-          {children}
-          <PWAInstallBanner />
-          <ServiceWorkerRegistrar />
-          <ServiceUnavailableBanner />
-          <SupportSessionNotices />
+          <PaletteProvider>
+            {children}
+            <PWAInstallBanner />
+            <ServiceWorkerRegistrar />
+            <ServiceUnavailableBanner />
+            <SupportSessionNotices />
+          </PaletteProvider>
         </ThemeProvider>
       </body>
     </html>

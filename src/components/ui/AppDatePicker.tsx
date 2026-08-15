@@ -7,15 +7,23 @@
  * These use MUI x-date-pickers which render a proper calendar dialog/popover
  * on ALL devices (instead of the uncontrollable blue OS-native picker on mobile).
  *
- * Theme is derived automatically from next-themes' resolvedTheme, mapping to
- * the three app themes: light (Aurora Violet), dark (Midnight Navy), teal.
+ * Colour is READ FROM THE LIVE CSS VARIABLES rather than kept as a second copy
+ * of the palette here. That copy is exactly what went wrong before: it held the
+ * violet/navy of a retired design plus a dead `teal` branch, so every calendar
+ * in the app was off-palette in a way nothing else was. Reading the tokens
+ * means the picker follows both theme axes — light/dark and the palette — with
+ * nothing to keep in sync.
  *
- * Change once here → all pickers in the app update.
+ * It has to be read rather than passed straight through as `var(--brand)`:
+ * MUI's createTheme computes lighter/darker variants from the palette colours
+ * and rejects a `var()` it cannot parse. Only the styleOverrides below could
+ * take one, and then half the theme would be tokens and half literals.
  */
 
 import type {} from "@mui/x-date-pickers/themeAugmentation";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTheme } from "next-themes";
+import { usePalette } from "@/components/providers/PaletteProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { TimePicker } from "@mui/x-date-pickers/TimePicker";
 import { renderTimeViewClock } from "@mui/x-date-pickers/timeViewRenderers";
@@ -25,47 +33,70 @@ import { ThemeProvider, createTheme } from "@mui/material/styles";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 
-// ── Colour palettes — one per app theme ──────────────────────────────────────
+// ── Colour, read from the app's own tokens ───────────────────────────────────
 
-const PALETTES = {
-  light: {
-    mode: "light" as const,
-    brand: "#7c3aed",
-    brandAlpha: "rgba(124,58,237,0.08)",
-    surface: "#ffffff",
-    surfaceSec: "#f5f3ff",
-    ink: "#1e1b4b",
-    inkMuted: "#6b7280",
-    border: "#e2e8f0",
-  },
-  dark: {
-    mode: "dark" as const,
-    brand: "#60a5fa",
-    brandAlpha: "rgba(96,165,250,0.12)",
-    surface: "#082032",
-    surfaceSec: "#0d2942",
-    ink: "#eef5ff",
-    inkMuted: "#7ca8c9",
-    border: "rgba(255,255,255,0.12)",
-  },
-  teal: {
-    mode: "light" as const,
-    brand: "#0d9488",
-    brandAlpha: "rgba(13,148,136,0.08)",
-    surface: "#ffffff",
-    surfaceSec: "#ccfbf1",
-    ink: "#042f2e",
-    inkMuted: "#4b7c78",
-    border: "rgba(13,148,136,0.25)",
-  },
-} as const;
+interface Palette {
+  mode: "light" | "dark";
+  brand: string;
+  brandContrast: string;
+  brandAlpha: string;
+  surface: string;
+  surfaceSec: string;
+  ink: string;
+  inkMuted: string;
+  border: string;
+  shadow: string;
+}
 
-type ThemeKey = keyof typeof PALETTES;
-type Palette = (typeof PALETTES)[ThemeKey];
+/** Register & Ink, light. Used on the server and if a token cannot be read. */
+const FALLBACK: Palette = {
+  mode: "light",
+  brand: "#7d4907",
+  brandContrast: "#ffffff",
+  brandAlpha: "#f7ecd6",
+  surface: "#ffffff",
+  surfaceSec: "#faf8f3",
+  ink: "#211c16",
+  inkMuted: "#756d65",
+  border: "#e2ddd3",
+  shadow: "0 12px 32px -8px rgba(33, 28, 22, 0.18)",
+};
 
-function toThemeKey(rt: string | undefined): ThemeKey {
-  if (rt === "dark" || rt === "teal") return rt;
-  return "light";
+function readPalette(isDark: boolean): Palette {
+  if (typeof window === "undefined") return FALLBACK;
+  const cs = getComputedStyle(document.documentElement);
+  const read = (name: string, fallback: string) =>
+    cs.getPropertyValue(name).trim() || fallback;
+  return {
+    mode: isDark ? "dark" : "light",
+    brand: read("--brand", FALLBACK.brand),
+    brandContrast: read("--brand-contrast", FALLBACK.brandContrast),
+    brandAlpha: read("--brand-tint", FALLBACK.brandAlpha),
+    surface: read("--surface", FALLBACK.surface),
+    surfaceSec: read("--surface-secondary", FALLBACK.surfaceSec),
+    ink: read("--ink", FALLBACK.ink),
+    inkMuted: read("--ink-muted", FALLBACK.inkMuted),
+    border: read("--line", FALLBACK.border),
+    shadow: read("--shadow-glass-base", FALLBACK.shadow),
+  };
+}
+
+/**
+ * The live token values, re-read whenever either theme axis moves.
+ * `useState` seeds it on the first client render so a picker opened
+ * immediately is already correct; the effect covers every later switch.
+ */
+function useTokenPalette(): Palette {
+  const { resolvedTheme } = useTheme();
+  const { palette } = usePalette();
+  const isDark = resolvedTheme === "dark";
+  const [tokens, setTokens] = useState<Palette>(() => readPalette(isDark));
+
+  useEffect(() => {
+    setTokens(readPalette(isDark));
+  }, [isDark, palette]);
+
+  return tokens;
 }
 
 // ── MUI theme factory ────────────────────────────────────────────────────────
@@ -99,7 +130,7 @@ function buildMuiTheme(p: Palette) {
             color: p.ink,
             borderRadius: "50%",
             /* eslint-disable @typescript-eslint/naming-convention */
-            "&.Mui-selected": { backgroundColor: p.brand, color: "#fff" },
+            "&.Mui-selected": { backgroundColor: p.brand, color: p.brandContrast },
             "&.Mui-selected:hover": { backgroundColor: p.brand },
             "&.MuiPickerDay-today:not(.Mui-selected)": {
               borderColor: p.brand,
@@ -134,7 +165,7 @@ function buildMuiTheme(p: Palette) {
           root: { color: p.ink },
           button: {
             color: p.ink,
-            "&.Mui-selected": { backgroundColor: p.brand, color: "#fff" },
+            "&.Mui-selected": { backgroundColor: p.brand, color: p.brandContrast },
             "&:hover:not(.Mui-selected)": { backgroundColor: p.surfaceSec },
           },
         },
@@ -143,7 +174,7 @@ function buildMuiTheme(p: Palette) {
         styleOverrides: {
           button: {
             color: p.ink,
-            "&.Mui-selected": { backgroundColor: p.brand, color: "#fff" },
+            "&.Mui-selected": { backgroundColor: p.brand, color: p.brandContrast },
             "&:hover:not(.Mui-selected)": { backgroundColor: p.surfaceSec },
           },
         },
@@ -189,13 +220,13 @@ function buildTextFieldSx(p: Palette) {
   };
 }
 
-function popperSx(border: string) {
+function popperSx(p: Palette) {
   return {
     "& .MuiPaper-root": {
-      boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+      boxShadow: p.shadow,
       borderRadius: "0.75rem",
       overflow: "hidden",
-      border: `1px solid ${border}`,
+      border: `1px solid ${p.border}`,
     },
   };
 }
@@ -232,10 +263,8 @@ export function AppDatePicker({
   placeholder,
   className,
 }: AppDatePickerProps) {
-  const { resolvedTheme } = useTheme();
-  const key = toThemeKey(resolvedTheme);
-  const palette = PALETTES[key];
-  // Only rebuilds when the theme key changes
+  const palette = useTokenPalette();
+  // Only rebuilds when a token actually changed
   const muiTheme = useMemo(() => buildMuiTheme(palette), [palette]);
 
   const dayjsValue = value ? dayjs(value, "YYYY-MM-DD") : null;
@@ -268,7 +297,7 @@ export function AppDatePicker({
                   htmlInput: { placeholder: placeholder ?? "DD/MM/YYYY" },
                 },
               },
-              popper: { sx: popperSx(palette.border) },
+              popper: { sx: popperSx(palette) },
               dialog: {
                 sx: {
                   "& .MuiDialog-paper": { borderRadius: "1.25rem", overflow: "hidden" },
@@ -307,9 +336,7 @@ export function AppMonthPicker({
   placeholder,
   className,
 }: AppMonthPickerProps) {
-  const { resolvedTheme } = useTheme();
-  const key = toThemeKey(resolvedTheme);
-  const palette = PALETTES[key];
+  const palette = useTokenPalette();
   const muiTheme = useMemo(() => buildMuiTheme(palette), [palette]);
 
   // Use day-01 internally so dayjs can parse it
@@ -341,7 +368,7 @@ export function AppMonthPicker({
                   htmlInput: { placeholder: placeholder ?? "Select month" },
                 },
               },
-              popper: { sx: popperSx(palette.border) },
+              popper: { sx: popperSx(palette) },
               dialog: {
                 sx: {
                   "& .MuiDialog-paper": { borderRadius: "1.25rem", overflow: "hidden" },
@@ -381,9 +408,7 @@ export function AppTimePicker({
   placeholder,
   className,
 }: AppTimePickerProps) {
-  const { resolvedTheme } = useTheme();
-  const key = toThemeKey(resolvedTheme);
-  const palette = PALETTES[key];
+  const palette = useTokenPalette();
   const muiTheme = useMemo(() => buildMuiTheme(palette), [palette]);
 
   const dayjsValue = value ? dayjs(`2000-01-01T${value}`) : null;
@@ -416,7 +441,7 @@ export function AppTimePicker({
                   htmlInput: { placeholder: placeholder ?? "--:--" },
                 },
               },
-              popper: { sx: popperSx(palette.border) },
+              popper: { sx: popperSx(palette) },
               dialog: {
                 sx: {
                   "& .MuiDialog-paper": { borderRadius: "1.25rem", overflow: "hidden" },
