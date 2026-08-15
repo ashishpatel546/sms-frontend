@@ -17,9 +17,11 @@ import { AppDatePicker } from "@/components/ui/AppDatePicker";
 import { hrApi, PayrollMonthlySummary } from "@/lib/hr-api";
 import { attendanceSettingsApi, type AttendanceTodaySummary } from "@/lib/attendance-settings-api";
 import { ATTENDANCE_TONE } from "@/lib/attendanceColors";
+import {
+    CHART_CURSOR, CHART_GRID, CHART_TICK, CHART_TOOLTIP,
+    SERIES, SERIES_CONTEXT_SOFT, categorical,
+} from "@/lib/chartTokens";
 import DailyAttendanceRegister from "@/components/DailyAttendanceRegister";
-
-const COLORS = ['#0ea5e9', '#f43f5e', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'];
 
 interface AttendanceTrendPoint {
   date: string;
@@ -44,12 +46,14 @@ function AttendanceTrendTooltip({
   const d = payload[0]?.payload;
   if (!d) return null;
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-md px-3 py-2 text-xs space-y-0.5">
-      <p className="font-semibold text-slate-700">{label}</p>
-      <p className="text-amber-600 font-medium">
+    <div className="space-y-0.5 rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-raised">
+      <p className="font-semibold text-ink">{label}</p>
+      {/* Each line wears the colour of the mark it describes — the rate line
+          and the coverage bars — so the tooltip is read without a legend. */}
+      <p className="font-medium text-brand">
         {d.attendancePercent === null ? 'No attendance marked' : `${d.attendancePercent}% present (of ${d.marked} marked)`}
       </p>
-      <p className="text-sky-600 font-medium">
+      <p className="font-medium text-accent-info-deep">
         {d.coveragePercent}% of school reported ({d.marked}/{d.totalStudents} students)
       </p>
     </div>
@@ -331,8 +335,8 @@ export default function ReportsDashboard() {
     const [attendanceTrend, setAttendanceTrend] = useState<AttendanceTrendPoint[]>([]);
     const [staffDistribution, setStaffDistribution] = useState([]);
     const [enrollmentClass, setEnrollmentClass] = useState([]);
-    const collectionStatusWithFill = collectionStatus.map((entry, index) => ({ ...entry, fill: COLORS[index % COLORS.length] }));
-    const staffDistributionWithFill = staffDistribution.map((entry: any, index: number) => ({ ...entry, fill: COLORS[index % COLORS.length] }));
+    const collectionStatusWithFill = collectionStatus.map((entry, index) => ({ ...entry, fill: categorical(index) }));
+    const staffDistributionWithFill = staffDistribution.map((entry: any, index: number) => ({ ...entry, fill: categorical(index) }));
 
     // Colours come from ATTENDANCE_TONE so this donut, the staff calendar and its
     // legend can't drift apart. Zero-value slices are dropped — recharts still
@@ -954,12 +958,12 @@ export default function ReportsDashboard() {
                             <div className="h-72">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={monthlyCollection}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#64748B'}} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B'}} tickFormatter={(val) => `₹${val/1000}k`} />
-                                        <Tooltip formatter={(val: any) => `₹${val.toLocaleString()}`} cursor={{fill: '#F1F5F9'}} />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={CHART_GRID} />
+                                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={CHART_TICK} />
+                                        <YAxis axisLine={false} tickLine={false} tick={CHART_TICK} tickFormatter={(val) => `₹${val/1000}k`} />
+                                        <Tooltip {...CHART_TOOLTIP} formatter={(val: any) => `₹${val.toLocaleString()}`} cursor={CHART_CURSOR} />
                                         <Legend />
-                                        <Bar dataKey="collected" name="Collected" fill="#0ea5e9" radius={[4,4,0,0]} />
+                                        <Bar dataKey="collected" name="Collected" fill={SERIES.settled} radius={[4,4,0,0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
@@ -1013,7 +1017,7 @@ export default function ReportsDashboard() {
                                                     <Cell key={i} fill={entry.fill} />
                                                 ))}
                                             </Pie>
-                                            <Tooltip formatter={(val: any) => `₹${val.toLocaleString()}`} />
+                                            <Tooltip {...CHART_TOOLTIP} formatter={(val: any) => `₹${val.toLocaleString()}`} />
                                             <Legend verticalAlign="bottom" height={36}/>
                                         </PieChart>
                                     </ResponsiveContainer>
@@ -1172,13 +1176,13 @@ export default function ReportsDashboard() {
                             <div className="h-72 p-5">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={waivedOffTrend}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#64748B'}} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B'}} tickFormatter={(val) => `₹${val/1000}k`} />
-                                        <Tooltip formatter={(val: any) => `₹${val.toLocaleString()}`} />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={CHART_GRID} />
+                                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={CHART_TICK} />
+                                        <YAxis axisLine={false} tickLine={false} tick={CHART_TICK} tickFormatter={(val) => `₹${val/1000}k`} />
+                                        <Tooltip {...CHART_TOOLTIP} formatter={(val: any) => `₹${val.toLocaleString()}`} />
                                         <Legend />
-                                        <Line type="monotone" dataKey="waivedOff" name="Waived-off Trend" stroke="#f43f5e" strokeWidth={3} dot={{r: 4, fill: '#f43f5e'}} />
-                                        <Line type="monotone" dataKey="pending" name="Pending Trend" stroke="#f59e0b" strokeWidth={3} dot={{r: 4, fill: '#f59e0b'}} />
+                                        <Line type="monotone" dataKey="waivedOff" name="Waived-off Trend" stroke={SERIES.correction} strokeWidth={3} dot={{r: 4, fill: SERIES.correction}} />
+                                        <Line type="monotone" dataKey="pending" name="Pending Trend" stroke={SERIES.attention} strokeWidth={3} dot={{r: 4, fill: SERIES.attention}} />
                                     </LineChart>
                                 </ResponsiveContainer>
                             </div>
@@ -1794,11 +1798,11 @@ export default function ReportsDashboard() {
                             <div className="h-72">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={examClassAvg}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748B'}} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B'}} domain={[0, 100]} />
-                                        <Tooltip formatter={(val: any) => `${val}%`} cursor={{fill: '#F1F5F9'}} />
-                                        <Bar dataKey="avg" name="Average %" fill="#8b5cf6" radius={[4,4,0,0]} />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={CHART_GRID} />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={CHART_TICK} />
+                                        <YAxis axisLine={false} tickLine={false} tick={CHART_TICK} domain={[0, 100]} />
+                                        <Tooltip {...CHART_TOOLTIP} formatter={(val: any) => `${val}%`} cursor={CHART_CURSOR} />
+                                        <Bar dataKey="avg" name="Average %" fill={SERIES.brand} radius={[4,4,0,0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
@@ -1882,11 +1886,11 @@ export default function ReportsDashboard() {
                             <div style={{ height: Math.max(288, attendanceByClass.length * 28) }}>
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={attendanceByClass} layout="vertical">
-                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
-                                        <XAxis type="number" domain={[0, 100]} axisLine={false} tickLine={false} tick={{fill: '#64748B'}} />
-                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: '#64748B'}} width={80} />
-                                        <Tooltip formatter={(val: any) => `${val}%`} cursor={{fill: '#F1F5F9'}} />
-                                        <Bar dataKey="attendance" name="Attendance %" fill="#10b981" radius={[0,4,4,0]} />
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={CHART_GRID} />
+                                        <XAxis type="number" domain={[0, 100]} axisLine={false} tickLine={false} tick={CHART_TICK} />
+                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={CHART_TICK} width={80} />
+                                        <Tooltip {...CHART_TOOLTIP} formatter={(val: any) => `${val}%`} cursor={CHART_CURSOR} />
+                                        <Bar dataKey="attendance" name="Attendance %" fill={SERIES.settled} radius={[0,4,4,0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
@@ -1934,19 +1938,22 @@ export default function ReportsDashboard() {
                             <div className="h-72">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <ComposedChart data={attendanceTrend}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#64748B'}} />
-                                        <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{fill: '#64748B'}} />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={CHART_GRID} />
+                                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={CHART_TICK} />
+                                        <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={CHART_TICK} />
                                         <Tooltip content={<AttendanceTrendTooltip />} />
                                         <Legend wrapperStyle={{fontSize: 12}} />
-                                        <Bar dataKey="coveragePercent" name="School coverage" fill="#bae6fd" radius={[4, 4, 0, 0]} barSize={16} />
+                                        {/* Coverage is the context the rate is read against, so it
+                                            stays a pale fill behind the line rather than a second
+                                            competing series. */}
+                                        <Bar dataKey="coveragePercent" name="School coverage" fill={SERIES_CONTEXT_SOFT} radius={[4, 4, 0, 0]} barSize={16} />
                                         <Line
                                             type="monotone"
                                             dataKey="attendancePercent"
                                             name="Attendance (marked)"
-                                            stroke="#f59e0b"
+                                            stroke={SERIES.brand}
                                             strokeWidth={3}
-                                            dot={{r: 4, fill: '#f59e0b'}}
+                                            dot={{r: 4, fill: SERIES.brand}}
                                             activeDot={{r: 6}}
                                             connectNulls={false}
                                         />
@@ -1986,11 +1993,11 @@ export default function ReportsDashboard() {
                             <div className="h-72">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={enrollmentClass}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748B'}} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B'}} />
-                                        <Tooltip cursor={{fill: '#F1F5F9'}} />
-                                        <Bar dataKey="students" name="Enrolled Students" fill="#3b82f6" radius={[4,4,0,0]} />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={CHART_GRID} />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={CHART_TICK} />
+                                        <YAxis axisLine={false} tickLine={false} tick={CHART_TICK} />
+                                        <Tooltip {...CHART_TOOLTIP} cursor={CHART_CURSOR} />
+                                        <Bar dataKey="students" name="Enrolled Students" fill={SERIES.brand} radius={[4,4,0,0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
@@ -2026,11 +2033,11 @@ export default function ReportsDashboard() {
                             <div className="h-72">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={admissionsTrend}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                        <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{fill: '#64748B'}} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B'}} />
-                                        <Tooltip />
-                                        <Line type="monotone" dataKey="admissions" name="New Admissions" stroke="#10b981" strokeWidth={3} dot={{r: 4, fill: '#10b981'}} />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={CHART_GRID} />
+                                        <XAxis dataKey="year" axisLine={false} tickLine={false} tick={CHART_TICK} />
+                                        <YAxis axisLine={false} tickLine={false} tick={CHART_TICK} />
+                                        <Tooltip {...CHART_TOOLTIP} />
+                                        <Line type="monotone" dataKey="admissions" name="New Admissions" stroke={SERIES.brand} strokeWidth={3} dot={{r: 4, fill: SERIES.brand}} />
                                     </LineChart>
                                 </ResponsiveContainer>
                             </div>
@@ -2061,7 +2068,7 @@ export default function ReportsDashboard() {
                                                 <Cell key={i} fill={entry.fill} />
                                             ))}
                                         </Pie>
-                                        <Tooltip />
+                                        <Tooltip {...CHART_TOOLTIP} />
                                         <Legend verticalAlign="bottom" height={36}/>
                                     </PieChart>
                                 </ResponsiveContainer>
@@ -2100,7 +2107,7 @@ export default function ReportsDashboard() {
                                                         <Cell key={i} fill={entry.fill} />
                                                     ))}
                                                 </Pie>
-                                                <Tooltip />
+                                                <Tooltip {...CHART_TOOLTIP} />
                                                 <Legend verticalAlign="bottom" height={36}/>
                                             </PieChart>
                                         </ResponsiveContainer>
@@ -2138,13 +2145,13 @@ export default function ReportsDashboard() {
                                 <div className="h-72">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={salaryData}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                            <XAxis dataKey="monthName" axisLine={false} tickLine={false} tick={{ fill: '#64748B' }} />
-                                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748B' }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
-                                            <Tooltip formatter={(v: any) => `₹${Number(v).toLocaleString('en-IN')}`} cursor={{ fill: '#F1F5F9' }} />
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={CHART_GRID} />
+                                            <XAxis dataKey="monthName" axisLine={false} tickLine={false} tick={CHART_TICK} />
+                                            <YAxis axisLine={false} tickLine={false} tick={CHART_TICK} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+                                            <Tooltip {...CHART_TOOLTIP} formatter={(v: any) => `₹${Number(v).toLocaleString('en-IN')}`} cursor={CHART_CURSOR} />
                                             <Legend />
-                                            <Bar dataKey="totalGross" name="Gross Earnings" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
-                                            <Bar dataKey="totalNetPay" name="Net Pay" fill="#10b981" radius={[4, 4, 0, 0]} />
+                                            <Bar dataKey="totalGross" name="Gross Earnings" fill={SERIES.brand} radius={[4, 4, 0, 0]} />
+                                            <Bar dataKey="totalNetPay" name="Net Pay" fill={SERIES.settled} radius={[4, 4, 0, 0]} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </div>

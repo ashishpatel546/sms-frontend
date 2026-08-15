@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
+import { ATTENDANCE_TONE, attendanceCellClass } from "@/lib/attendanceColors";
+import { CHART_TOOLTIP } from "@/lib/chartTokens";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { AppMonthPicker } from "@/components/ui/AppDatePicker";
@@ -50,12 +52,12 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
     if (!studentId) return null;
 
     const pieData = attendance ? [
-        { name: "Present", value: attendance.present || 0, color: "#22c55e", fill: "#22c55e" },
-        { name: "Late", value: attendance.late || 0, color: "#facc15", fill: "#facc15" },
-        { name: "Half Day", value: attendance.halfDay || 0, color: "#a855f7", fill: "#a855f7" },
-        { name: "Leave", value: attendance.leave || 0, color: "#3b82f6", fill: "#3b82f6" },
-        { name: "Absent", value: attendance.absent || 0, color: "#ef4444", fill: "#ef4444" },
-        { name: "Holiday", value: attendance.holiday || 0, color: "#0ea5e9", fill: "#0ea5e9" },
+        { name: "Present", value: attendance.present || 0, color: ATTENDANCE_TONE.PRESENT.fill, fill: ATTENDANCE_TONE.PRESENT.fill },
+        { name: "Late", value: attendance.late || 0, color: ATTENDANCE_TONE.LATE.fill, fill: ATTENDANCE_TONE.LATE.fill },
+        { name: "Half Day", value: attendance.halfDay || 0, color: ATTENDANCE_TONE.HALF_DAY.fill, fill: ATTENDANCE_TONE.HALF_DAY.fill },
+        { name: "Leave", value: attendance.leave || 0, color: ATTENDANCE_TONE.LEAVE.fill, fill: ATTENDANCE_TONE.LEAVE.fill },
+        { name: "Absent", value: attendance.absent || 0, color: ATTENDANCE_TONE.ABSENT.fill, fill: ATTENDANCE_TONE.ABSENT.fill },
+        { name: "Holiday", value: attendance.holiday || 0, color: ATTENDANCE_TONE.HOLIDAY.fill, fill: ATTENDANCE_TONE.HOLIDAY.fill },
     ].filter(d => d.value > 0) : [];
 
     // Calendar logic
@@ -73,23 +75,15 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
         return { day: null, date: null, status: null, isSunday: false };
     });
 
-    const getStatusColor = (status: string | null | undefined) => {
-        switch (status) {
-            case 'PRESENT': return 'bg-green-500 border-green-600 text-white shadow-sm shadow-green-500/20';
-            case 'LATE': return 'bg-yellow-400 border-yellow-500 text-white shadow-sm shadow-yellow-400/20';
-            case 'HALF_DAY': return 'bg-purple-500 border-purple-600 text-white shadow-sm shadow-purple-500/20';
-            case 'LEAVE': return 'bg-blue-500 border-blue-600 text-white shadow-sm shadow-blue-500/20';
-            case 'ABSENT': return 'bg-red-500 border-red-600 text-white shadow-sm shadow-red-500/20';
-            case 'HOLIDAY': return 'bg-sky-500 border-sky-600 text-white shadow-sm shadow-sky-500/20';
-            case 'SUNDAY': return 'bg-orange-50 text-orange-400 border-orange-200';
-            default: return 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100';
-        }
-    };
+    // The calendar, the legend and the donut beside it all read the same
+    // statuses, so all three resolve through attendanceColors.ts. This used to
+    // be a switch of raw Tailwind colours that belonged to no theme.
+    const getStatusColor = attendanceCellClass;
 
     const STATUS_HEX: Record<string, string> = {
-        PRESENT: '#22c55e',
-        LATE: '#facc15',
-        HALF_DAY: '#a855f7',
+        PRESENT: ATTENDANCE_TONE.PRESENT.fill,
+        LATE: ATTENDANCE_TONE.LATE.fill,
+        HALF_DAY: ATTENDANCE_TONE.HALF_DAY.fill,
     };
 
     /**
@@ -101,7 +95,7 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
     const getCellStyle = (status: string | null | undefined) => {
         if (status === 'LATE' || status === 'HALF_DAY') {
             return {
-                className: 'text-white border-slate-300 shadow-sm',
+                className: 'border-line text-white shadow-sm',
                 style: { background: `linear-gradient(135deg, ${STATUS_HEX.PRESENT} 50%, ${STATUS_HEX[status]} 50%)` },
             };
         }
@@ -185,8 +179,8 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
                                 
                                 <div className="flex flex-wrap justify-center gap-3 mt-8 text-[11px] font-medium text-slate-600">
                                     <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-green-500 shadow-sm"></span> Present</div>
-                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full shadow-sm" style={{ background: 'linear-gradient(135deg, #22c55e 50%, #facc15 50%)' }}></span> Present + Late</div>
-                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full shadow-sm" style={{ background: 'linear-gradient(135deg, #22c55e 50%, #a855f7 50%)' }}></span> Present + Half Day</div>
+                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full shadow-sm" style={{ background: `linear-gradient(135deg, ${ATTENDANCE_TONE.PRESENT.fill} 50%, ${ATTENDANCE_TONE.LATE.fill} 50%)` }}></span> Present + Late</div>
+                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full shadow-sm" style={{ background: `linear-gradient(135deg, ${ATTENDANCE_TONE.PRESENT.fill} 50%, ${ATTENDANCE_TONE.HALF_DAY.fill} 50%)` }}></span> Present + Half Day</div>
                                     <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-blue-500 shadow-sm"></span> Leave</div>
                                     <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500 shadow-sm"></span> Absent</div>
                                     <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-sky-500 shadow-sm"></span> Holiday</div>
@@ -201,7 +195,7 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
                                         <ResponsiveContainer width={240} height={240}>
                                             <PieChart>
                                                 <Pie data={pieData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={3} dataKey="value" />
-                                                <Tooltip formatter={(val: any, name: any) => [`${val} days`, name]} wrapperStyle={{ zIndex: 10 }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                                                <Tooltip {...CHART_TOOLTIP} formatter={(val: any, name: any) => [`${val} days`, name]} wrapperStyle={{ zIndex: 10 }} />
                                             </PieChart>
                                         </ResponsiveContainer>
                                         <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">

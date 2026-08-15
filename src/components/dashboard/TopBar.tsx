@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PanelLeftClose, PanelLeftOpen, Menu } from "lucide-react";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { ThemePicker } from "@/components/ui/ThemePicker";
 import { NotificationBell } from "@/components/NotificationBell";
 import { NAV_CONFIG } from "@/lib/navConfig";
 
@@ -112,12 +112,12 @@ export function TopBar({ user, sidebarCollapsed, onToggleSidebar, onOpenMobileNa
 
                 {/* ── Right: theme, alerts, identity ── */}
                 <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
-                    <ThemeToggle />
+                    <ThemePicker />
                     <NotificationBell variant="light" />
 
                     {/* Identity pill — large screens only; the rail carries it elsewhere */}
                     <div className="hidden items-center gap-2 rounded-lg border border-line bg-surface py-1 pr-3 pl-1 lg:flex">
-                        <span className="grid size-7 place-items-center rounded-md bg-linear-to-br from-brass-500 to-marigold-400 font-display text-[11px] font-bold text-white select-none">
+                        <span className="grid size-7 place-items-center rounded-md bg-linear-to-br from-tile-from to-tile-to font-display text-[11px] font-bold text-tile-ink select-none">
                             {user?.firstName?.[0]}{user?.lastName?.[0]}
                         </span>
                         <span className="min-w-0">
