@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Papa from "papaparse";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, fetcher } from "@/lib/api";
 import { toast } from "react-hot-toast";
 import { useRbac } from "@/lib/rbac";
 import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
@@ -166,12 +166,13 @@ export default function StudentsPage() {
 
     useEffect(() => {
         Promise.all([
-            authFetch(`${API_BASE_URL}/classes/names-only`).then(r => r.json()),
-            authFetch(`${API_BASE_URL}/academic-sessions`).then(r => r.json())
+            fetcher(`${API_BASE_URL}/classes/names-only`),
+            fetcher(`${API_BASE_URL}/academic-sessions`)
         ]).then(([classesData, sessionsData]) => {
+            const sessionList = Array.isArray(sessionsData) ? sessionsData : [];
             setClasses(sortByName(Array.isArray(classesData) ? classesData : []));
-            setSessions(Array.isArray(sessionsData) ? sessionsData : []);
-            const activeSession = sessionsData.find((s: any) => s.isActive);
+            setSessions(sessionList);
+            const activeSession = sessionList.find((s: any) => s.isActive);
             if (activeSession) setSearchSessionId(activeSession.id.toString());
         }).catch(() => { });
     }, []);
@@ -189,8 +190,7 @@ export default function StudentsPage() {
         setSections([]);
         if (val) {
             setLoadingSections(true);
-            authFetch(`${API_BASE_URL}/classes/${val}/sections`)
-                .then(r => r.json())
+            fetcher(`${API_BASE_URL}/classes/${val}/sections`)
                 .then(data => setSections(Array.isArray(data) ? data : []))
                 .catch(() => setSections([]))
                 .finally(() => setLoadingSections(false));

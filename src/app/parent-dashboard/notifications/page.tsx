@@ -3,12 +3,9 @@
 import { Bell } from 'lucide-react';
 import useSWR from "swr";
 import Link from "next/link";
-import { authFetch } from "@/lib/auth";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, fetcher } from "@/lib/api";
 import { Panel } from "@/components/ui/Panel";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const fetcher = (url: string) => authFetch(url).then((r) => r.json());
 
 interface AppNotification {
   id: string;
@@ -49,7 +46,7 @@ export default function NotificationsPage() {
             <Skeleton key={i} className="h-20 w-full rounded-xl" />
           ))}
         </div>
-      ) : !notifications || notifications.length === 0 ? (
+      ) : !Array.isArray(notifications) || notifications.length === 0 ? (
         <Panel className="p-10 text-center">
           <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-surface-secondary text-ink-faint"><Bell className="size-6" aria-hidden /></div>
           <p className="text-ink font-semibold">No notifications yet</p>

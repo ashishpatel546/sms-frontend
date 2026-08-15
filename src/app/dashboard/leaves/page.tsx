@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, fetcher } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
@@ -337,8 +337,7 @@ export default function LeavesPage() {
     }, [pageSize]);
 
     useEffect(() => {
-        authFetch(`${API_BASE_URL}/classes/names-only`)
-            .then(r => r.json())
+        fetcher(`${API_BASE_URL}/classes/names-only`)
             .then(d => setClasses(sortByName(Array.isArray(d) ? d : [])))
             .catch(() => { });
     }, []);
@@ -373,8 +372,7 @@ export default function LeavesPage() {
         setSections([]);
         if (val) {
             setLoadingSections(true);
-            authFetch(`${API_BASE_URL}/classes/${val}/sections`)
-                .then(r => r.json())
+            fetcher(`${API_BASE_URL}/classes/${val}/sections`)
                 .then(d => setSections(Array.isArray(d) ? d : []))
                 .catch(() => setSections([]))
                 .finally(() => setLoadingSections(false));

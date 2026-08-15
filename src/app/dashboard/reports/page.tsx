@@ -11,7 +11,8 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     PieChart, Pie, Cell, LineChart, Line, ComposedChart,
 } from 'recharts';
-import { Wallet, AlertCircle, ClipboardList, CalendarCheck, Users, UserCircle, Download } from "lucide-react";
+import { Wallet, AlertCircle, ClipboardList, CalendarCheck, Users, UserCircle, Download, Boxes } from "lucide-react";
+import Link from "next/link";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
 import { hrApi, PayrollMonthlySummary } from "@/lib/hr-api";
 import { attendanceSettingsApi, type AttendanceTodaySummary } from "@/lib/attendance-settings-api";
@@ -157,15 +158,84 @@ function LibraryFeesReportSection() {
     );
 }
 
+// ── Inventory (used inside reports page) ───────────────────────────────────
+// The full inventory report set (Sales / Payments / Outstanding / Waived Off /
+// Borrow-Issue / Stock, each with its own filters and CSV+PDF export) lives at
+// its own dedicated screen rather than duplicated inline here — this is a
+// summary teaser plus a way in, matching how a school actually reaches it: the
+// Inventory module in the sidebar, of which reports are one tab.
+
+interface InventorySummaryTeaser {
+    salesCount: number;
+    salesValue: number;
+    collected: number;
+    outstanding: number;
+    waived: number;
+    lowStockCount: number;
+}
+
+function InventoryReportsTeaser() {
+    const [summary, setSummary] = useState<InventorySummaryTeaser | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        authFetch(`${API_BASE_URL}/inventory/reports/summary`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => setSummary(data))
+            .catch(() => {})
+            .finally(() => setLoading(false));
+    }, []);
+
+    const tile = (label: string, value: string, tone: string) => (
+        <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</p>
+            <p className={`mt-1 text-2xl font-bold ${tone}`}>{value}</p>
+        </div>
+    );
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-slate-800">Inventory — this month at a glance</h2>
+                <Link
+                    href="/dashboard/inventory/reports"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                >
+                    Open full inventory reports →
+                </Link>
+            </div>
+            {loading ? (
+                <p className="text-sm text-slate-500">Loading…</p>
+            ) : !summary ? (
+                <p className="text-sm text-slate-500">Could not load the inventory summary.</p>
+            ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    {tile('Sales', String(summary.salesCount), 'text-slate-800')}
+                    {tile('Sales value', `₹${Number(summary.salesValue).toLocaleString('en-IN')}`, 'text-slate-800')}
+                    {tile('Collected', `₹${Number(summary.collected).toLocaleString('en-IN')}`, 'text-green-700')}
+                    {tile('Outstanding', `₹${Number(summary.outstanding).toLocaleString('en-IN')}`, 'text-amber-600')}
+                    {tile('Low stock items', String(summary.lowStockCount), summary.lowStockCount > 0 ? 'text-red-600' : 'text-slate-800')}
+                </div>
+            )}
+            <p className="text-xs text-slate-500">
+                Sales vs. borrow reports, payments collected, outstanding balances, waive-offs and stock — with date range,
+                mobile, item, category, payment mode and status filters, each exportable as CSV or PDF — are on the full
+                inventory reports screen.
+            </p>
+        </div>
+    );
+}
+
 export default function ReportsDashboard() {
     const router = useRouter();
     const rbac = useRbac();
     const [mounted, setMounted] = useState(false);
-    const [activeTab, setActiveTab] = useState<'FEES' | 'PENDING_DUES' | 'FEE_RECEIVED' | 'EXAMINATIONS' | 'ATTENDANCE' | 'STUDENTS' | 'STAFF' | 'SALARY' | 'LIBRARY_FEES'>('FEES');
+    const [activeTab, setActiveTab] = useState<'FEES' | 'PENDING_DUES' | 'FEE_RECEIVED' | 'EXAMINATIONS' | 'ATTENDANCE' | 'STUDENTS' | 'STAFF' | 'SALARY' | 'LIBRARY_FEES' | 'INVENTORY'>('FEES');
 
     // HR Portal
     const [hrPortalEnabled, setHrPortalEnabled] = useState(false);
     const [libraryEnabled, setLibraryEnabled] = useState(false);
+    const [inventoryEnabled, setInventoryEnabled] = useState(false);
     const [salaryYear, setSalaryYear] = useState(new Date().getFullYear());
     const [salaryData, setSalaryData] = useState<PayrollMonthlySummary[]>([]);
 
@@ -443,7 +513,7 @@ export default function ReportsDashboard() {
     useEffect(() => {
         authFetch(`${API_BASE_URL}/school/features`)
             .then((r) => r.ok ? r.json() : null)
-            .then((data) => { if (data?.hr_portal) setHrPortalEnabled(true); if (data?.library_management) setLibraryEnabled(true); })
+            .then((data) => { if (data?.hr_portal) setHrPortalEnabled(true); if (data?.library_management) setLibraryEnabled(true); if (data?.inventory_management) setInventoryEnabled(true); })
             .catch(() => {});
     }, []);
 
@@ -845,6 +915,19 @@ export default function ReportsDashboard() {
                     >
                         <Download className="w-4 h-4" />
                         Library Fees
+                    </button>
+                )}
+                {inventoryEnabled && (
+                    <button
+                        onClick={() => setActiveTab('INVENTORY')}
+                        className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${
+                            activeTab === 'INVENTORY'
+                                ? "bg-white text-orange-700 shadow-sm ring-1 ring-black/5"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                        }`}
+                    >
+                        <Boxes className="w-4 h-4" />
+                        Inventory
                     </button>
                 )}
             </div>
@@ -1481,6 +1564,7 @@ export default function ReportsDashboard() {
                                 >
                                     <option value="">All Methods</option>
                                     <option value="CASH">Cash</option>
+                                    <option value="UPI">UPI</option>
                                     <option value="ONLINE">Online</option>
                                     <option value="CARD">Card</option>
                                     <option value="CHEQUE">Cheque</option>
@@ -2098,6 +2182,10 @@ export default function ReportsDashboard() {
 
             {activeTab === 'LIBRARY_FEES' && libraryEnabled && (
                 <LibraryFeesReportSection />
+            )}
+
+            {activeTab === 'INVENTORY' && inventoryEnabled && (
+                <InventoryReportsTeaser />
             )}
 
             {showNotifModal && (

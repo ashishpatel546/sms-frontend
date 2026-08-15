@@ -28,6 +28,8 @@ import {
   Sparkles,
   Receipt,
   IdCard,
+  Boxes,
+  ShoppingBag,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -218,10 +220,12 @@ export const NAV_CONFIG: NavGroup[] = [
         href: '/dashboard/pickup/scan',
         icon: QrCode,
         iconColor: 'text-cyan-500',
-        // One scanner, three QR families — it branches on the code's prefix
-        // (V1: visitor, IDC1: ID card, bare token: pickup). So it belongs to
-        // whichever of the three modules the school actually has.
-        featureFlag: ['pickup_management', 'visitor_management', 'id_cards'],
+        // One scanner, four code families — it branches on the code's prefix
+        // (V1: visitor, IDC1: ID card, INV1: stock label, bare token: pickup,
+        // falling back to a stock lookup so printed Code-128 and publishers'
+        // EAN-13 barcodes resolve too). So it belongs to whichever of the
+        // modules the school actually has.
+        featureFlag: ['pickup_management', 'visitor_management', 'id_cards', 'inventory_management'],
         guardAllowed: true,
       },
       {
@@ -268,6 +272,34 @@ export const NAV_CONFIG: NavGroup[] = [
         icon: BookOpen,
         iconColor: 'text-lime-600',
         featureFlag: 'library_management',
+      },
+    ],
+  },
+  {
+    label: 'Inventory',
+    items: [
+      {
+        id: 'inventory',
+        label: 'Inventory',
+        href: '/dashboard/inventory',
+        icon: Boxes,
+        iconColor: 'text-orange-500',
+        featureFlag: 'inventory_management',
+        rbacKey: 'canManageInventory',
+      },
+      {
+        // The other side of the counter: what *I* (or my children) bought and
+        // borrowed. Everyone with an account qualifies — the API scopes every
+        // answer to the JWT, so the menu can be generous where the store
+        // registers above cannot.
+        id: 'my-inventory',
+        label: 'My Inventory',
+        href: '/dashboard/my-inventory',
+        icon: ShoppingBag,
+        iconColor: 'text-amber-500',
+        featureFlag: 'inventory_management',
+        rbacKey: 'canViewOwnInventory',
+        guardAllowed: true,
       },
     ],
   },

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import Table from "../../../components/Table";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, fetcher } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { sortByName } from "@/lib/utils";
 import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
@@ -88,8 +88,7 @@ export default function EnrollmentPage() {
         }
         setLoadingFilterSections(true);
         setAvailableSections([]);
-        authFetch(`${API_BASE_URL}/classes/${filterClass}/sections`)
-            .then(r => r.json())
+        fetcher(`${API_BASE_URL}/classes/${filterClass}/sections`)
             .then(data => setAvailableSections(Array.isArray(data) ? data : []))
             .catch(() => setAvailableSections([]))
             .finally(() => setLoadingFilterSections(false));
@@ -163,8 +162,7 @@ export default function EnrollmentPage() {
         }
         setLoadingModalSections(true);
         setSections([]);
-        authFetch(`${API_BASE_URL}/classes/${selectedClass}/sections`)
-            .then(r => r.json())
+        fetcher(`${API_BASE_URL}/classes/${selectedClass}/sections`)
             .then(data => setSections(Array.isArray(data) ? data : []))
             .catch(() => setSections([]))
             .finally(() => setLoadingModalSections(false));

@@ -24,7 +24,7 @@ export default function PickupScanPage() {
           </div>
           <div>
             <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Scan QR</h1>
-            <p className="text-slate-400 text-sm">Pickup, visitor and ID card QR codes — detected automatically</p>
+            <p className="text-slate-400 text-sm">Pickup, visitor, ID card and stock codes — detected automatically</p>
           </div>
         </div>
 

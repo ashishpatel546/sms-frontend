@@ -3,10 +3,11 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRbac } from '@/lib/rbac';
 import { authFetch } from '@/lib/auth';
-import { API_BASE_URL } from '@/lib/api';
+import { API_BASE_URL, fetcher } from '@/lib/api';
 import toast from 'react-hot-toast';
-import { BookOpen, RefreshCw, Download, Plus, PlusCircle, Edit2, BookX, CheckCircle, AlertTriangle, Clock, Upload } from 'lucide-react';
+import { BookOpen, RefreshCw, Download, Plus, PlusCircle, Edit2, BookX, CheckCircle, AlertTriangle, Clock, Upload, ScanLine } from 'lucide-react';
 import NumberInput from '@/components/ui/NumberInput';
+import StableScanner from '@/components/inventory/StableScanner';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -80,6 +81,17 @@ const fmtTs = (d: string | Date) =>
   new Date(d).toISOString().replace('T', ' ').substring(0, 19);
 
 const fmtDate = (d: string) => d?.substring(0, 10) ?? '';
+
+/**
+ * A camera or USB-gun scan of a book's back-cover EAN-13 yields bare digits,
+ * while hand-entered ISBNs often carry hyphens — reduce both to the same form.
+ * (X is a valid ISBN-10 check digit.)
+ */
+const normalizeIsbn = (v: string) => v.replace(/[^0-9Xx]/g, '').toUpperCase();
+
+/** Digits (with optional hyphens/spaces) long enough to be an ISBN, not a title. */
+const looksLikeIsbn = (v: string) =>
+  /^[0-9Xx\- ]+$/.test(v.trim()) && normalizeIsbn(v).length >= 8;
 
 const getBorrowerName = (i: Issuance): string => {
   if (i.borrowerType === 'STUDENT') {
@@ -467,6 +479,7 @@ function BookFormModal({ book, onClose, onSaved }: { book: Book | null; onClose:
     description: book?.description ?? '',
   });
   const [saving, setSaving] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -515,7 +528,31 @@ function BookFormModal({ book, onClose, onSaved }: { book: Book | null; onClose:
         <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
           <div className="col-span-2">{field('title', 'Title *')}</div>
           <div className="col-span-2">{field('author', 'Author *')}</div>
-          {field('isbn', 'ISBN')}
+          <div>
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">ISBN</label>
+            <div className="flex gap-1.5">
+              <input type="text" value={form.isbn} onChange={e => setForm(f => ({ ...f, isbn: e.target.value }))}
+                className="w-full min-w-0 border rounded px-3 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
+              <button type="button" onClick={() => setScanOpen(v => !v)} title="Scan the barcode on the back cover"
+                aria-label="Scan ISBN barcode"
+                className={`shrink-0 border rounded px-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 dark:border-slate-600 ${scanOpen ? 'bg-lime-50 border-lime-400 text-lime-700 dark:bg-lime-900/30 dark:text-lime-300' : 'text-slate-600 dark:text-slate-300'}`}>
+                <ScanLine className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          {scanOpen && (
+            <div className="col-span-2">
+              <StableScanner
+                onCode={code => {
+                  const isbn = normalizeIsbn(code) || code.trim();
+                  setForm(f => ({ ...f, isbn }));
+                  setScanOpen(false);
+                  toast.success(`ISBN ${isbn} captured`);
+                }}
+                onClose={() => setScanOpen(false)}
+              />
+            </div>
+          )}
           {field('publisher', 'Publisher')}
           {field('subject', 'Subject')}
           {field('genre', 'Genre')}
@@ -760,7 +797,7 @@ function IssueReturnTab() {
   const [settings, setSettings] = useState<LibrarySettings | null>(null);
 
   useEffect(() => {
-    authFetch(`${API_BASE_URL}/library/settings`).then(r => r.json()).then(setSettings).catch(() => {});
+    fetcher(`${API_BASE_URL}/library/settings`).then(setSettings).catch(() => {});
   }, []);
 
   const onIssued = () => setSubTab('active');
@@ -801,6 +838,7 @@ function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | nu
   const [selectedBorrower, setSelectedBorrower] = useState<StudentOption | StaffOption | null>(null);
   const [loanDays, setLoanDays] = useState(0);
   const [issuing, setIssuing] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
 
   const bookDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const borrowerDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -815,11 +853,31 @@ function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | nu
     if (!v.trim()) { setBookSuggestions([]); return; }
     bookDebounce.current = setTimeout(async () => {
       try {
-        const res = await authFetch(`${API_BASE_URL}/library/books?title=${encodeURIComponent(v)}&limit=8`);
+        // A USB scanner gun types the EAN-13 into whichever box is focused —
+        // a digit string this long is an ISBN, not a title someone is typing.
+        const param = looksLikeIsbn(v)
+          ? `isbn=${encodeURIComponent(normalizeIsbn(v))}`
+          : `title=${encodeURIComponent(v)}`;
+        const res = await authFetch(`${API_BASE_URL}/library/books?${param}&limit=8`);
         const data: Pagination<Book> = await res.json();
         setBookSuggestions(data.data.filter(b => b.isActive && b.availableCopies > 0));
       } catch { /**/ }
     }, 300);
+  };
+
+  const handleScan = async (code: string) => {
+    const isbn = normalizeIsbn(code) || code.trim();
+    try {
+      const res = await authFetch(`${API_BASE_URL}/library/books?isbn=${encodeURIComponent(isbn)}&limit=5`);
+      const data: Pagination<Book> = await res.json();
+      const book = data.data.find(b => b.isActive);
+      if (!book) { toast.error(`No book found with ISBN ${isbn} — add it under Books first`); return; }
+      if (book.availableCopies <= 0) { toast.error(`"${book.title}" has no copies available`); return; }
+      setSelectedBook(book); setBookQuery(''); setBookSuggestions([]); setScanOpen(false);
+      toast.success(`"${book.title}" selected`);
+    } catch {
+      toast.error('Could not look up that ISBN');
+    }
   };
 
   const onBorrowerQueryChange = (v: string) => {
@@ -879,10 +937,22 @@ function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | nu
         {/* Book search */}
         <div className="relative">
           <label className="block text-xs font-medium mb-1">Book</label>
-          <input value={selectedBook ? selectedBook.title : bookQuery}
-            onChange={e => onBookQueryChange(e.target.value)}
-            placeholder="Search by title…"
-            className="w-full border rounded px-3 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
+          <div className="flex gap-1.5">
+            <input value={selectedBook ? selectedBook.title : bookQuery}
+              onChange={e => onBookQueryChange(e.target.value)}
+              placeholder="Search by title or scan ISBN…"
+              className="w-full min-w-0 border rounded px-3 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
+            <button type="button" onClick={() => setScanOpen(v => !v)} title="Scan the barcode on the back cover"
+              aria-label="Scan ISBN barcode"
+              className={`shrink-0 border rounded px-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 dark:border-slate-600 ${scanOpen ? 'bg-lime-50 border-lime-400 text-lime-700 dark:bg-lime-900/30 dark:text-lime-300' : 'text-slate-600 dark:text-slate-300'}`}>
+              <ScanLine className="w-4 h-4" />
+            </button>
+          </div>
+          {scanOpen && !selectedBook && (
+            <div className="mt-2">
+              <StableScanner onCode={handleScan} onClose={() => setScanOpen(false)} />
+            </div>
+          )}
           {bookSuggestions.length > 0 && !selectedBook && (
             <ul className="absolute z-10 left-0 right-0 mt-0.5 bg-white dark:bg-slate-800 border dark:border-slate-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
               {bookSuggestions.map(b => (
@@ -997,6 +1067,7 @@ function ActiveIssuancesPanel({ refreshKey }: { refreshKey: string }) {
   const [returnIssuance, setReturnIssuance] = useState<Issuance | null>(null);
 
   // Separate filter states
+  const [scanOpen, setScanOpen] = useState(false);
   const [filterBook, setFilterBook] = useState('');
   const [filterStudent, setFilterStudent] = useState('');
   const [filterStaff, setFilterStaff] = useState('');
@@ -1077,18 +1148,44 @@ function ActiveIssuancesPanel({ refreshKey }: { refreshKey: string }) {
     load(1, { status: val });
   };
 
+  // Returning a book: scan its back cover, resolve the ISBN to the title, and
+  // the list narrows to that book's open issuances ready to be returned.
+  const handleScan = async (code: string) => {
+    const isbn = normalizeIsbn(code) || code.trim();
+    try {
+      const res = await authFetch(`${API_BASE_URL}/library/books?isbn=${encodeURIComponent(isbn)}&limit=5`);
+      const data: Pagination<Book> = await res.json();
+      const book = data.data[0];
+      if (!book) { toast.error(`No book found with ISBN ${isbn}`); return; }
+      setScanOpen(false);
+      setFilterBook(book.title);
+      setPage(1);
+      load(1, { book: book.title });
+      toast.success(`Showing issuances of "${book.title}"`);
+    } catch {
+      toast.error('Could not look up that ISBN');
+    }
+  };
+
   return (
     <div className="space-y-3">
       {/* Filter grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
         <div>
           <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Book Name</label>
-          <input
-            value={filterBook}
-            onChange={e => handleFilterChange('book', e.target.value)}
-            placeholder="Search by book title…"
-            className="w-full border rounded-lg px-3 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600"
-          />
+          <div className="flex gap-1.5">
+            <input
+              value={filterBook}
+              onChange={e => handleFilterChange('book', e.target.value)}
+              placeholder="Search by book title…"
+              className="w-full min-w-0 border rounded-lg px-3 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600"
+            />
+            <button type="button" onClick={() => setScanOpen(v => !v)} title="Scan a book to find its issuances"
+              aria-label="Scan ISBN barcode"
+              className={`shrink-0 border rounded-lg px-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 dark:border-slate-600 ${scanOpen ? 'bg-lime-50 border-lime-400 text-lime-700 dark:bg-lime-900/30 dark:text-lime-300' : 'text-slate-600 dark:text-slate-300'}`}>
+              <ScanLine className="w-4 h-4" />
+            </button>
+          </div>
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Student Name</label>
@@ -1118,6 +1215,12 @@ function ActiveIssuancesPanel({ refreshKey }: { refreshKey: string }) {
           />
         </div>
       </div>
+
+      {scanOpen && (
+        <div className="max-w-md">
+          <StableScanner onCode={handleScan} onClose={() => setScanOpen(false)} />
+        </div>
+      )}
 
       {/* Due date + status row */}
       <div className="flex flex-wrap items-end gap-2">
@@ -1239,8 +1342,8 @@ function ReturnModal({ issuance, onClose, onReturned }: { issuance: Issuance; on
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    authFetch(`${API_BASE_URL}/library/issuances/${issuance.id}/late-fee`)
-      .then(r => r.json()).then(setLateFeeInfo).catch(() => {});
+    fetcher(`${API_BASE_URL}/library/issuances/${issuance.id}/late-fee`)
+      .then(setLateFeeInfo).catch(() => {});
   }, [issuance.id]);
 
   const fee = lateFeeInfo?.lateFeeCharged ?? 0;
@@ -1758,7 +1861,7 @@ function SettingsTab() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    authFetch(`${API_BASE_URL}/library/settings`).then(r => r.json()).then(d => { setForm(d); setLoading(false); }).catch(() => setLoading(false));
+    fetcher(`${API_BASE_URL}/library/settings`).then(d => { setForm(d); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
   const handleSave = async (e: React.FormEvent) => {

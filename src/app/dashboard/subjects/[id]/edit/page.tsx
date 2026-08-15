@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, fetcher } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 
@@ -26,9 +26,8 @@ export default function EditSubjectPage() {
 
     useEffect(() => {
         // Fetch fee categories
-        authFetch(`${API_BASE_URL}/fees/categories`)
-            .then(res => res.json())
-            .then(data => setFeeCategories(data))
+        fetcher(`${API_BASE_URL}/fees/categories`)
+            .then(data => setFeeCategories(Array.isArray(data) ? data : []))
             .catch(err => console.error("Failed to fetch fee categories", err));
 
         if (!id) return;
