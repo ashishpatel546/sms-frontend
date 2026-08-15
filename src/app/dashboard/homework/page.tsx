@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, fetcher } from "@/lib/api";
 import { getToken, authFetch, getUser } from "@/lib/auth";
 import { sortByName } from "@/lib/utils";
 import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
@@ -97,8 +97,7 @@ export default function HomeworkPage() {
     // Load classes on mount — use the lightweight endpoint (id+name only) to avoid
     // the N+1 staff-history queries and the eager sections.students join in findAllClasses()
     useEffect(() => {
-        authFetch(`${API_BASE_URL}/classes/names-only`, { headers: authHeaders })
-            .then((r) => r.json())
+        fetcher(`${API_BASE_URL}/classes/names-only`)
             .then((data) => setClasses(sortByName(Array.isArray(data) ? data : data.data || [])))
             .catch(console.error);
     }, []);
@@ -106,8 +105,7 @@ export default function HomeworkPage() {
     // Load sections when class changes
     useEffect(() => {
         if (!selectedClassId) { setSections([]); setSelectedSectionId(null); return; }
-        authFetch(`${API_BASE_URL}/classes/${selectedClassId}/sections`, { headers: authHeaders })
-            .then((r) => r.json())
+        fetcher(`${API_BASE_URL}/classes/${selectedClassId}/sections`)
             .then((data) => { setSections(Array.isArray(data) ? data : data.data || []); setSelectedSectionId(null); setSelectedSectionName(""); })
             .catch(console.error);
     }, [selectedClassId]);

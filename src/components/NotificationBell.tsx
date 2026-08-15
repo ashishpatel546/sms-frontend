@@ -3,10 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import useSWR from "swr";
 import { authFetch, getUser, getToken } from "@/lib/auth";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, fetcher } from "@/lib/api";
 import { getEnv } from "@/lib/env";
-
-const fetcher = (url: string) => authFetch(url).then((res) => res.json());
 
 interface AppNotification {
   id: string;
@@ -127,8 +125,11 @@ export function NotificationBell({ variant = 'light' }: { variant?: 'light' | 'd
     async function loadMerged() {
       const loginTime = getUserLoginTime();
       const local = await getLocalNotifications(loginTime);
-      const remote = notifications || [];
-      
+      // `fetcher` throws on a non-2xx, so `notifications` is either the array
+      // or undefined — never an error body. Array.isArray stays as a guard
+      // against a malformed 200 payload.
+      const remote = Array.isArray(notifications) ? notifications : [];
+
       const combined = [...remote, ...local];
       const uniqueMap = new Map();
       combined.forEach(n => {
@@ -156,11 +157,13 @@ export function NotificationBell({ variant = 'light' }: { variant?: 'light' | 'd
       }
     }
     
-    // Always load merged data when SWR changes, modal is opened, or a push notification arrives
-    if (notifications !== undefined || isOpen || pushTick > 0) {
+    // Always load merged data when SWR changes, modal is opened, or a push
+    // notification arrives. `error` counts as settled too: when the fetch
+    // fails, the locally cached (IndexedDB) notifications should still show.
+    if (notifications !== undefined || error || isOpen || pushTick > 0) {
       loadMerged();
     }
-  }, [notifications, isOpen, pushTick]);
+  }, [notifications, error, isOpen, pushTick]);
 
   const handleOpen = () => {
     setIsOpen(!isOpen);

@@ -82,12 +82,13 @@ export default function ExaminationsPage() {
 
     useEffect(() => {
         Promise.all([
-            authFetch(`${API_BASE_URL}/classes/names-only`).then(r => r.json()),
-            authFetch(`${API_BASE_URL}/academic-sessions`).then(r => r.json()),
+            fetcher(`${API_BASE_URL}/classes/names-only`),
+            fetcher(`${API_BASE_URL}/academic-sessions`),
         ]).then(([classesData, sessionsData]) => {
+            const sessionList = Array.isArray(sessionsData) ? sessionsData : [];
             setClasses(sortByName(Array.isArray(classesData) ? classesData : []));
-            setSessions(Array.isArray(sessionsData) ? sessionsData : []);
-            const activeSession = sessionsData.find((s: any) => s.isActive);
+            setSessions(sessionList);
+            const activeSession = sessionList.find((s: any) => s.isActive);
             if (activeSession) {
                 const activeId = activeSession.id.toString();
                 setSearchSessionId(activeId);
@@ -101,8 +102,7 @@ export default function ExaminationsPage() {
             setSelectedCategoryId("");
             return;
         }
-        authFetch(`${API_BASE_URL}/exams/categories/active?sessionId=${searchSessionId}`)
-            .then(r => r.json())
+        fetcher(`${API_BASE_URL}/exams/categories/active?sessionId=${searchSessionId}`)
             .then(data => {
                 setCategories(Array.isArray(data) ? data : []);
                 setSelectedCategoryId("");

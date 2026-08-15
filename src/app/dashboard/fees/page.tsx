@@ -13,6 +13,10 @@ import { Settings, Layers, Wallet, BadgePercent } from "lucide-react";
 import { sortByName } from "@/lib/utils";
 import NumberInput from "@/components/ui/NumberInput";
 
+// Mirrors the backend `PaymentMethod` enum (fee_payment / fee_adjustment).
+// Ordered by how often the counter actually uses them.
+const PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'ONLINE', 'CHEQUE'];
+
 export default function FeesDashboardPage() {
     const router = useRouter();
     const rbac = useRbac();
@@ -1241,8 +1245,8 @@ export default function FeesDashboardPage() {
                             {adjType === 'REFUND' && (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-900 mb-1">Refund Method</label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {['CASH', 'CARD', 'ONLINE', 'CHEQUE'].map(method => (
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {PAYMENT_METHODS.map(method => (
                                             <label key={method} className={`flex items-center justify-center p-2.5 border rounded-lg cursor-pointer transition-all text-xs font-medium ${adjPaymentMethod === method ? 'border-orange-500 bg-orange-50 text-orange-700 ring-1 ring-orange-500' : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-600'}`}>
                                                 <input type="radio" name="adjPaymentMethod" value={method} checked={adjPaymentMethod === method} onChange={(e) => setAdjPaymentMethod(e.target.value)} className="sr-only" />
                                                 {method}
@@ -2686,8 +2690,8 @@ export default function FeesDashboardPage() {
 
                                         <div className="mb-5 text-sm font-medium">
                                             <label className="block mb-3 text-gray-900">Payment Method</label>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                {['CASH', 'CARD', 'ONLINE', 'CHEQUE'].map(method => (
+                                            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                                                {PAYMENT_METHODS.map(method => (
                                                     <label key={method} className={`flex items-center justify-center p-3 border rounded-lg cursor-pointer transition-all ${payMethod === method ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500' : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-600'}`}>
                                                         <input type="radio" name="payMethod" value={method} checked={payMethod === method} onChange={(e) => setPayMethod(e.target.value)} className="sr-only" />
                                                         <span className="font-medium text-xs">{method}</span>

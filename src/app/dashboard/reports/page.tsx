@@ -1564,6 +1564,7 @@ export default function ReportsDashboard() {
                                 >
                                     <option value="">All Methods</option>
                                     <option value="CASH">Cash</option>
+                                    <option value="UPI">UPI</option>
                                     <option value="ONLINE">Online</option>
                                     <option value="CARD">Card</option>
                                     <option value="CHEQUE">Cheque</option>
