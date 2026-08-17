@@ -60,7 +60,7 @@ export function ThemePicker({
                 aria-label="Theme"
                 title="Theme"
                 className={cn(
-                    "flex size-9 cursor-pointer items-center justify-center gap-[3px] rounded-lg border transition-colors",
+                    "flex size-9 cursor-pointer items-center justify-center gap-0.75 rounded-lg border transition-colors",
                     "focus-visible:ring-3 focus-visible:ring-brand/16 focus-visible:outline-none",
                     onInk
                         ? "border-rail-line bg-rail-selected hover:bg-rail-hover"

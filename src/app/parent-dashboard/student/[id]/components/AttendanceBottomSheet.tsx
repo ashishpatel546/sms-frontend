@@ -129,7 +129,7 @@ export const AttendanceBottomSheet = ({ studentId, isOpen, onClose, onViewFull }
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-5 flex items-center gap-4">
                 {/* Percentage ring */}
                 <div className="flex flex-col items-center shrink-0">
-                  <div className="relative w-[72px] h-[72px]">
+                  <div className="relative w-18 h-18">
                     <svg viewBox="0 0 72 72" className="w-full h-full -rotate-90">
                       <circle cx="36" cy="36" r="28" fill="none" stroke="#e2e8f0" strokeWidth="7" />
                       <circle

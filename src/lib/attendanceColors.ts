@@ -43,6 +43,13 @@ interface AttendanceTone {
   /** The figure on that tile. Needs a dark override — a 700-step reads as
    *  near-black on walnut. */
   figure: string;
+  /**
+   * The Today tile's stamp: one ink class, because the border, the glyph and
+   * the word all take `currentColor`. The card behind it stays plain surface —
+   * a washed card would need a second set of hues and would turn an absent day
+   * into a red block.
+   */
+  stamp: string;
   label: string;
 }
 
@@ -53,6 +60,7 @@ export const ATTENDANCE_TONE: Record<AttendanceStatus, AttendanceTone> = {
     fill: 'var(--color-sage-500)',
     tile: 'bg-sage-500/10 border-sage-500/25',
     figure: 'text-sage-700 dark:text-sage-300',
+    stamp: 'text-sage-700 dark:text-sage-300',
     label: 'Present',
   },
   LATE: {
@@ -62,6 +70,7 @@ export const ATTENDANCE_TONE: Record<AttendanceStatus, AttendanceTone> = {
     fill: 'var(--color-marigold-500)',
     tile: 'bg-marigold-500/12 border-marigold-500/28',
     figure: 'text-marigold-700 dark:text-marigold-300',
+    stamp: 'text-marigold-700 dark:text-marigold-300',
     label: 'Late',
   },
   HALF_DAY: {
@@ -70,6 +79,7 @@ export const ATTENDANCE_TONE: Record<AttendanceStatus, AttendanceTone> = {
     fill: 'var(--color-iris-500)',
     tile: 'bg-iris-500/10 border-iris-500/25',
     figure: 'text-iris-700 dark:text-iris-200',
+    stamp: 'text-iris-700 dark:text-iris-300',
     label: 'Half day',
   },
   LEAVE: {
@@ -78,6 +88,7 @@ export const ATTENDANCE_TONE: Record<AttendanceStatus, AttendanceTone> = {
     fill: 'var(--color-lapis-500)',
     tile: 'bg-lapis-500/10 border-lapis-500/25',
     figure: 'text-lapis-700 dark:text-lapis-300',
+    stamp: 'text-lapis-700 dark:text-lapis-300',
     label: 'Leave',
   },
   ABSENT: {
@@ -86,6 +97,7 @@ export const ATTENDANCE_TONE: Record<AttendanceStatus, AttendanceTone> = {
     fill: 'var(--color-vermilion-500)',
     tile: 'bg-vermilion-500/10 border-vermilion-500/25',
     figure: 'text-vermilion-700 dark:text-vermilion-300',
+    stamp: 'text-vermilion-700 dark:text-vermilion-300',
     label: 'Absent',
   },
   HOLIDAY: {
@@ -94,6 +106,7 @@ export const ATTENDANCE_TONE: Record<AttendanceStatus, AttendanceTone> = {
     fill: 'var(--color-brass-300)',
     tile: 'bg-brass-500/10 border-brass-500/25',
     figure: 'text-brass-700 dark:text-brass-300',
+    stamp: 'text-brass-700 dark:text-brass-300',
     label: 'Holiday',
   },
   SUNDAY: {
@@ -102,6 +115,7 @@ export const ATTENDANCE_TONE: Record<AttendanceStatus, AttendanceTone> = {
     fill: 'var(--surface-inset)',
     tile: 'bg-surface-inset border-line',
     figure: 'text-ink-muted',
+    stamp: 'text-ink-muted',
     label: 'Sunday',
   },
 };
@@ -109,6 +123,18 @@ export const ATTENDANCE_TONE: Record<AttendanceStatus, AttendanceTone> = {
 /** A day with no record yet — inert, and still hoverable in the calendar. */
 export const ATTENDANCE_EMPTY_CELL =
   'bg-surface-secondary border-line text-ink hover:bg-surface-inset';
+
+/**
+ * Not a status the API returns — it is the absence of one, which on the Today
+ * tile is a real answer ("nobody has marked the register yet") rather than a
+ * gap. Dashed rather than solid so it reads as pending at a glance, and quiet
+ * enough that a parent checking at 8am isn't alarmed.
+ */
+export const ATTENDANCE_NOT_MARKED = {
+  stamp: 'text-ink-faint',
+  border: 'border-dashed',
+  label: 'Not marked',
+} as const;
 
 export function attendanceCellClass(status: string | null | undefined): string {
   if (!status) return ATTENDANCE_EMPTY_CELL;
