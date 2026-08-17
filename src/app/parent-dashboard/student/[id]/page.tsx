@@ -17,32 +17,27 @@ import ApplyLeaveModal from "@/components/ApplyLeaveModal";
 import LeaveTimeline from "@/components/LeaveTimeline";
 import { AppMonthPicker } from "@/components/ui/AppDatePicker";
 import { HomeSection } from "./components/HomeSection";
+import { SectionRail } from "./components/SectionRail";
+import type { SectionKey } from "./sectionStyle";
 import { StudentBanner } from "./components/StudentBanner";
 import { AiToolsSection } from "./components/AiToolsSection";
 import { IdCardSection } from "./components/IdCardSection";
 import { SectionSkeleton, StudentRecordSkeleton } from "@/components/ui/Skeletons";
 import { ATTENDANCE_LEGEND, ATTENDANCE_TONE, attendanceCellStyle } from "@/lib/attendanceColors";
 import { InitialsAvatar } from "@/components/ui/InitialsAvatar";
+import { createSubjectColorMap } from "@/lib/subjectColors";
 import { AttendanceBottomSheet } from "./components/AttendanceBottomSheet";
 import { HomeworkBottomSheet } from "./components/HomeworkBottomSheet";
 import FeesBottomSheet from "./components/FeesBottomSheet";
 import { useLibraryIssuances } from "./hooks/useStudentData";
 import {
     BookOpen,
-    CalendarCheck,
     CalendarDays,
-    House,
     ChevronLeft,
-    ClipboardList,
-    IdCard,
-    FileText,
     IndianRupee,
     Library,
     Palmtree,
     QrCode,
-    Sparkles,
-    UserRound,
-    type LucideIcon,
     CheckCircle2,
     AlertCircle,
     CreditCard,
@@ -52,110 +47,6 @@ import { StatusChip } from "@/components/ui/StatusChip";
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-/**
- * Every section, all visible in the grid. Ordered by the shape of a school day
- * — did they get in, what was set, what is owed, how did they do — then the
- * look-ups.
- */
-type SectionDef = [ActiveSection, LucideIcon, string];
-
-const ALL_SECTIONS: SectionDef[] = [
-    ["home", House, "Today"],
-    ["attendance", CalendarCheck, "Attendance"],
-    ["homework", BookOpen, "Homework"],
-    ["fees", IndianRupee, "Fees"],
-    ["results", FileText, "Results"],
-    ["ai-tutor", Sparkles, "AI tutor"],
-    ["library", Library, "Library"],
-    ["leaves", CalendarDays, "Leaves"],
-    ["pickup", QrCode, "QR codes"],
-    ["id-card", IdCard, "ID card"],
-    ["exam-schedule", ClipboardList, "Schedule"],
-    ["holidays", Palmtree, "Holidays"],
-    ["info", UserRound, "Profile"],
-];
-
-/** One tab, used by both the strip and the More sheet so they cannot drift. */
-function SectionTab({
-    sectionKey,
-    Icon,
-    label,
-    active,
-    onSelect,
-}: {
-    sectionKey: ActiveSection;
-    Icon: LucideIcon;
-    label: string;
-    active: boolean;
-    onSelect: (key: ActiveSection) => void;
-}) {
-    return (
-        <button
-            role="tab"
-            aria-selected={active}
-            aria-controls={`tabpanel-${sectionKey}`}
-            id={`tab-${sectionKey}`}
-            onClick={() => onSelect(sectionKey)}
-            className={`group/tab flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border px-1 py-2 font-medium transition-all duration-200 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none ${
-                active
-                    ? "border-brand bg-brand text-brand-contrast shadow-soft"
-                    : "border-line bg-surface text-ink-soft hover:-translate-y-0.5 hover:border-brand-edge hover:shadow-soft"
-            }`}
-        >
-            {/* The icon sits in its own tinted medallion, keyed to what the
-                section IS — presence, school work, money, AI. Identical grey
-                glyphs were unscannable; the colour is how you find "Fees"
-                without reading every label. Selected inverts to brass so
-                selection stays one language across the app. */}
-            <span
-                className={`grid size-7 shrink-0 place-items-center rounded-md transition-colors duration-200 ${
-                    active ? "bg-brand-contrast/18 text-brand-contrast" : SECTION_TONE[sectionKey]
-                }`}
-            >
-                <Icon className="size-4" aria-hidden="true" />
-            </span>
-            <span className="w-full overflow-hidden text-center text-[10px] leading-tight whitespace-nowrap">
-                {label}
-            </span>
-        </button>
-    );
-}
-
-/**
- * Section colour, grouped by what a section IS — so the colour carries
- * information rather than just breaking up the grid:
- *
- *   brass     home, profile            this child
- *   sage      attendance, results      how they are doing
- *   lapis     homework, schedule,      school work
- *             library
- *   marigold  fees, leaves             things needing a parent's action
- *   iris      AI tutor                 the AI platform (reserved pigment)
- *   stone     QR codes, holidays       logistics — deliberately quiet
- *
- * Vermilion is absent on purpose: nothing here is an error.
- */
-const SECTION_TONE: Record<string, string> = {
-    home: 'bg-brand-tint text-brand',
-    info: 'bg-brand-tint text-brand',
-    attendance: 'bg-accent-success-tint text-accent-success-deep',
-    results: 'bg-accent-success-tint text-accent-success-deep',
-    homework: 'bg-accent-info-tint text-accent-info-deep',
-    'exam-schedule': 'bg-accent-info-tint text-accent-info-deep',
-    library: 'bg-accent-info-tint text-accent-info-deep',
-    fees: 'bg-accent-warn-tint text-accent-warn-deep',
-    leaves: 'bg-accent-warn-tint text-accent-warn-deep',
-    'ai-tutor': 'bg-accent-ai-tint text-accent-ai',
-    pickup: 'bg-surface-inset text-ink-muted',
-    'id-card': 'bg-surface-inset text-ink-muted',
-    holidays: 'bg-surface-inset text-ink-muted',
-};
-
-/**
- * Leave states resolve through the pigment map like every other status in the
- * app: pending wants action, approved is settled, rejected is a correction.
- * `FIRST_APPROVED` is informational — it is a real step, not a finished one.
- */
 const LEAVE_STATUS_PIGMENT: Record<string, 'attn' | 'info' | 'success' | 'danger' | 'neutral'> = {
     PENDING: 'attn',
     FIRST_APPROVED: 'info',
@@ -772,34 +663,17 @@ export default function StudentDashboardPage() {
             <StudentBanner studentId={studentId as string} />
 
             {/* ── Section Nav ─────────────────────────────────────────────
-                Five daily destinations, then More.
+                On Today there is no nav here at all: the Quick Access grid
+                inside the panel IS the navigation, so the sections appear once
+                rather than twice. Inside a section a parent still needs to move
+                sideways and get back, so the rail appears there instead.
 
-                Twelve equal tabs said everything here matters equally, which
-                is how the portal ended up reading as an admin console. Four of
-                them carry nearly all the traffic; the other seven are things a
-                parent looks up a few times a term. Nothing is removed — the
-                rest move one tap away, and every panel below is untouched.
+                The twelve-tile grid this replaces gave every section identical
+                weight, which is how the portal read as an admin console.
             ──────────────────────────────────────────────────────────────── */}
-            {/* All twelve visible — four across on a phone, six on a tablet,
-                twelve in one row on a laptop. Every count divides evenly, so
-                there is never a stranded tile on the last row. */}
-            <div
-                role="tablist"
-                aria-label="Student sections"
-                className="grid grid-cols-4 gap-2 rounded-xl border border-line bg-surface p-2.5 shadow-soft sm:grid-cols-6 lg:grid-cols-12"
-                style={{ animationDelay: '50ms' }}
-            >
-                {ALL_SECTIONS.map(([key, Icon, label]) => (
-                    <SectionTab
-                        key={key}
-                        sectionKey={key}
-                        Icon={Icon}
-                        label={label}
-                        active={activeSection === key}
-                        onSelect={goToSection}
-                    />
-                ))}
-            </div>
+            {activeSection !== "home" && (
+                <SectionRail active={activeSection as SectionKey} onSelect={goToSection} />
+            )}
 
             {sectionLoading ? (
                 // The frame above is already on screen and stays put; only the
@@ -817,7 +691,7 @@ export default function StudentDashboardPage() {
                             aria-labelledby="tab-home"
                             className="animate-scale-in"
                         >
-                            <HomeSection studentId={studentId as string} academicYearString={academicYearString} sessionId={academicSessionId} onChangeSection={(sec) => setActiveSection(sec as ActiveSection)} />
+                            <HomeSection studentId={studentId as string} academicYearString={academicYearString} sessionId={academicSessionId} onChangeSection={goToSection} />
                         </div>
                     )}
 
@@ -1702,27 +1576,9 @@ export default function StudentDashboardPage() {
             {activeSection === "homework" && (
                 <div id="tabpanel-homework" role="tabpanel" aria-labelledby="tab-homework" className="space-y-4 animate-scale-in">
                     {(() => {
-                        // ── Homework helpers ──────────────────────────────────────────
-                        const subjectPalette = [
-                            { border: 'border-l-violet-500',  bg: 'bg-violet-500/10',  text: 'text-violet-600',  dot: 'bg-violet-500' },
-                            { border: 'border-l-sky-500',     bg: 'bg-sky-500/10',     text: 'text-sky-600',     dot: 'bg-sky-500' },
-                            { border: 'border-l-emerald-500', bg: 'bg-emerald-500/10', text: 'text-emerald-600', dot: 'bg-emerald-500' },
-                            { border: 'border-l-amber-500',   bg: 'bg-amber-500/10',   text: 'text-amber-600',   dot: 'bg-amber-500' },
-                            { border: 'border-l-rose-500',    bg: 'bg-rose-500/10',    text: 'text-rose-600',    dot: 'bg-rose-500' },
-                            { border: 'border-l-cyan-500',    bg: 'bg-cyan-500/10',    text: 'text-cyan-600',    dot: 'bg-cyan-500' },
-                            { border: 'border-l-fuchsia-500', bg: 'bg-fuchsia-500/10', text: 'text-fuchsia-600', dot: 'bg-fuchsia-500' },
-                            { border: 'border-l-orange-500',  bg: 'bg-orange-500/10',  text: 'text-orange-600',  dot: 'bg-orange-500' },
-                        ];
-                        const subjectColorMap = new Map<string, typeof subjectPalette[0]>();
-                        let paletteIdx = 0;
-                        const getSubjectColor = (subject: string) => {
-                            const key = subject.toLowerCase().trim();
-                            if (!subjectColorMap.has(key)) {
-                                subjectColorMap.set(key, subjectPalette[paletteIdx % subjectPalette.length]);
-                                paletteIdx++;
-                            }
-                            return subjectColorMap.get(key)!;
-                        };
+                        // Subject colours come from src/lib/subjectColors.ts so this
+                        // list and the Today card cannot drift apart.
+                        const getSubjectColor = createSubjectColorMap();
 
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);

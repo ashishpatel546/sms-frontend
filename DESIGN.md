@@ -138,7 +138,11 @@ Not negotiable, and not worth announcing in the UI:
 - **Focus** is always visible — one ring, defined once in the base layer.
 - **`prefers-reduced-motion`** kills the storm border and every transition.
 - **Safe-area insets** on the rail, the top bar and the bottom tab bar.
-- **No emoji as icons.** Use lucide.
+- **No emoji as icons.** Use lucide. One exception: the parent portal's Quick
+  Access chips are solid white glyphs on vivid gradient squircles, and lucide is
+  stroke-only — those twelve glyphs are Material Symbols (Rounded, filled),
+  vendored as path data in `parent-dashboard/student/[id]/sectionStyle.ts`.
+  That file is the only place they may be used; everything else is lucide.
 - **Motion** 150–320ms. One page-load sequence (`.stagger`): header, then tiles,
   then rows. Anything longer reads as lag in software people use for eight hours.
 
