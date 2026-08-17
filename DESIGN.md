@@ -138,14 +138,90 @@ Not negotiable, and not worth announcing in the UI:
 - **Focus** is always visible — one ring, defined once in the base layer.
 - **`prefers-reduced-motion`** kills the storm border and every transition.
 - **Safe-area insets** on the rail, the top bar and the bottom tab bar.
-- **No emoji as icons.** Use lucide.
+- **No emoji as icons.** Use lucide. One exception: the parent portal's Quick
+  Access chips are solid white glyphs on vivid gradient squircles, and lucide is
+  stroke-only — those twelve glyphs are Material Symbols (Rounded, filled),
+  vendored as path data in `parent-dashboard/student/[id]/sectionStyle.ts`.
+  That file is the only place they may be used; everything else is lucide.
 - **Motion** 150–320ms. One page-load sequence (`.stagger`): header, then tiles,
   then rows. Anything longer reads as lag in software people use for eight hours.
 
-## Themes
+## Themes — two axes
 
-`light` (default) and `dark`, both walnut, switched by `data-theme` via
-next-themes. The rail is walnut in both — that constancy is the design. On dark
-it sinks *below* the canvas instead of rising above it, so the seam still reads.
+The theme has **two independent axes**, and they must stay independent. Folding
+them into one list is the obvious simplification and it is wrong: it would make
+"I want the blue one" and "I want the dark one" mutually exclusive.
+
+| Axis | Attribute | Values | Owner |
+|---|---|---|---|
+| **Appearance** | `data-theme` | `light` · `dark` (+ `system`) | next-themes |
+| **Palette** | `data-palette` | `ink` · `assembly` | `PaletteProvider` |
+
+Four combinations. Both are stamped on `<html>` before first paint by the inline
+script in `layout.tsx`; `ThemePicker` in the top bar switches either one.
+
+**Register & Ink** (`ink`, the default) is the system described above: walnut
+rail, brass brand, warm paper. The rail is walnut in both appearances — that
+constancy is the design; on dark it sinks *below* the canvas instead of rising
+above it, so the seam still reads.
+
+**Assembly** (`assembly`) is white ground and flag pigments, taken from the
+AppMe Soft mark. Its one structural difference is that **the rail is light** — a
+pale blue wash. Every pigment keeps its job; only the hue filling it changes:
+
+| Job | Register & Ink | Assembly |
+|---|---|---|
+| Brand / primary action (always solid) | Brass | Royal blue |
+| "Act on this" (chip or 3px mark, never a button) | Marigold | Saffron |
+| Settled — present, paid, approved | Sage | Flag green |
+| Correction — absent, overdue, destructive | Vermilion | Vermilion |
+| Informational — links, on leave, focus ring | Lapis | Cyan |
+| AI platform | Iris | **Iris — unchanged**, it matches the hub |
 
 The old `teal` theme is retired.
+
+### Adding a palette
+
+1. One `[data-palette='<id>']` block in `globals.css`, plus its
+   `[data-palette='<id>'][data-theme='dark']` pair. **Redeclare the complete
+   token set** — a block written as a diff leaves stray tokens inheriting the
+   default palette's colour.
+2. One entry in `src/lib/palettes.ts` (name, hint, status-bar colour, and the
+   preview swatch the picker paints its miniature from).
+
+That is the whole procedure, and it is why two things below are load-bearing.
+
+**Why the ramps are redeclared, not renamed.** `@theme static` is not `inline`,
+so Tailwind emits `.bg-brass-500 { background-color: var(--color-brass-500) }`.
+Redeclaring that variable under a palette selector therefore repaints ~250 raw
+ramp utilities across 122 files without touching a line of TSX. Ramp *names*
+stay (`brass`, `walnut`, `marigold`) — they name the material's role in this
+codebase, not a literal colour. Read "brass" as "the brand ramp".
+
+**Why the ordering matters.** The palette blocks are unlayered, so they outrank
+Tailwind's layered `theme` output, and they sit *after* `[data-theme='dark']`:
+`[data-palette]` and `[data-theme]` have equal specificity, so source order
+breaks the tie. The combined selector is more specific and wins over both.
+
+**Rail states are tokens.** `--rail-hover`, `--rail-selected`,
+`--rail-active-ink`, `--rail-scrim`, `--rail-danger*` and `--tile-*` exist
+because the rail components used to paint themselves with literal `text-white`
+and `bg-white/8`, which silently assumes a dark ground. Never reintroduce one.
+
+### Charts
+
+`src/lib/chartTokens.ts` is the only place a chart gets a colour. Every value is
+a `var(--…)` string, which recharts writes into SVG presentation attributes, so
+charts follow both axes with no React state.
+
+Colour by meaning first — `SERIES.settled`, `.attention`, `.correction` — which
+covers nearly every chart here, because a school ERP plots statuses. The
+`categorical()` ramp (`--chart-1`…`--chart-5`) is only for slices that are
+identities with no status, is assigned in fixed order, and folds into an
+achromatic "other" past the fifth rather than cycling.
+
+Those five steps are **validated, not chosen by eye**: each palette × appearance
+was checked against the lightness band, chroma floor, adjacent-pair separation
+under deuteranopia/protanopia, and contrast on that theme's own surface. Re-run
+that check before changing any `--chart-*` value — the order in particular is
+what keeps adjacent slices apart, so do not reorder them to suit one chart.

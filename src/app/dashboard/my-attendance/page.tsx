@@ -24,6 +24,8 @@ import {
   type PreciseFix,
 } from "@/lib/geolocation";
 import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
+import { ATTENDANCE_TONE, attendanceCellClass } from "@/lib/attendanceColors";
+import { CHART_TOOLTIP } from "@/lib/chartTokens";
 import { CheckCircle2, Clock3, TriangleAlert } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
@@ -584,11 +586,11 @@ export default function MyAttendancePage() {
   const presentPct = workingMarked > 0 ? Math.round((presentish / workingMarked) * 100) : 0;
 
   const pieData = [
-    { name: "Present", value: counts.PRESENT, fill: "#22c55e" },
-    { name: "Half Day", value: counts.HALF_DAY, fill: "#a855f7" },
-    { name: "Leave", value: counts.ON_LEAVE, fill: "#3b82f6" },
-    { name: "Absent", value: counts.ABSENT, fill: "#ef4444" },
-    { name: "Holiday", value: counts.HOLIDAY, fill: "#0ea5e9" },
+    { name: "Present", value: counts.PRESENT, fill: ATTENDANCE_TONE.PRESENT.fill },
+    { name: "Half Day", value: counts.HALF_DAY, fill: ATTENDANCE_TONE.HALF_DAY.fill },
+    { name: "Leave", value: counts.ON_LEAVE, fill: ATTENDANCE_TONE.LEAVE.fill },
+    { name: "Absent", value: counts.ABSENT, fill: ATTENDANCE_TONE.ABSENT.fill },
+    { name: "Holiday", value: counts.HOLIDAY, fill: ATTENDANCE_TONE.HOLIDAY.fill },
   ].filter((d) => d.value > 0);
 
   return (
@@ -1111,23 +1113,15 @@ function CalendarBlock({ month, year, records, holidays }: { month: number; year
     return { day, status: null, date: dateStr, label: dateStr, record: undefined };
   });
 
-  const colorFor = (status: string | null) => {
-    switch (status) {
-      case "PRESENT": return "bg-green-500 border-green-600 text-white shadow-sm shadow-green-500/20";
-      case "LATE": return "bg-yellow-400 border-yellow-500 text-white shadow-sm shadow-yellow-400/20";
-      case "HALF_DAY": return "bg-purple-500 border-purple-600 text-white shadow-sm shadow-purple-500/20";
-      case "ON_LEAVE": return "bg-blue-500 border-blue-600 text-white shadow-sm shadow-blue-500/20";
-      case "ABSENT": return "bg-red-500 border-red-600 text-white shadow-sm shadow-red-500/20";
-      case "HOLIDAY": return "bg-sky-500 border-sky-600 text-white shadow-sm shadow-sky-500/20";
-      case "SUNDAY": return "bg-orange-50 text-orange-400 border-orange-200";
-      default: return "bg-slate-50 border-slate-200 text-slate-500";
-    }
-  };
+  // Staff records say ON_LEAVE where student records say LEAVE; normalising it
+  // here lets this calendar share the app's one attendance colour table.
+  const colorFor = (status: string | null) =>
+    attendanceCellClass(status === "ON_LEAVE" ? "LEAVE" : status);
 
   const STATUS_HEX: Record<string, string> = {
-    PRESENT: "#22c55e",
-    LATE: "#facc15",
-    HALF_DAY: "#a855f7",
+    PRESENT: ATTENDANCE_TONE.PRESENT.fill,
+    LATE: ATTENDANCE_TONE.LATE.fill,
+    HALF_DAY: ATTENDANCE_TONE.HALF_DAY.fill,
   };
 
   /**
@@ -1177,7 +1171,7 @@ function CalendarBlock({ month, year, records, holidays }: { month: number; year
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Absent</span>
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-sky-500" /> Holiday</span>
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-orange-100 border border-orange-200" /> Sunday</span>
-        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full" style={{ background: "linear-gradient(135deg, #22c55e 50%, #facc15 50%)" }} /> Present + Late</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full" style={{ background: `linear-gradient(135deg, ${ATTENDANCE_TONE.PRESENT.fill} 50%, ${ATTENDANCE_TONE.LATE.fill} 50%)` }} /> Present + Late</span>
       </div>
     </div>
   );

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
+import { ATTENDANCE_TONE, attendanceCellClass } from "@/lib/attendanceColors";
+import { CHART_TOOLTIP } from "@/lib/chartTokens";
 import { hrApi, StaffAttendanceRecord } from "@/lib/hr-api";
 import { AppMonthPicker } from "@/components/ui/AppDatePicker";
 
@@ -14,25 +16,21 @@ interface Props {
 }
 
 const STATUS_HEX: Record<string, string> = {
-    PRESENT: "#22c55e",
-    LATE: "#facc15",
-    HALF_DAY: "#a855f7",
-    ON_LEAVE: "#3b82f6",
-    ABSENT: "#ef4444",
-    HOLIDAY: "#0ea5e9",
+    PRESENT: ATTENDANCE_TONE.PRESENT.fill,
+    LATE: ATTENDANCE_TONE.LATE.fill,
+    HALF_DAY: ATTENDANCE_TONE.HALF_DAY.fill,
+    ON_LEAVE: ATTENDANCE_TONE.LEAVE.fill,
+    ABSENT: ATTENDANCE_TONE.ABSENT.fill,
+    HOLIDAY: ATTENDANCE_TONE.HOLIDAY.fill,
 };
 
+/**
+ * Staff records say ON_LEAVE where student records say LEAVE; everything else
+ * lines up. Normalising here is what lets both sides share one colour table
+ * instead of keeping a second, drifting copy of it.
+ */
 function getStatusColor(status: string | null | undefined) {
-    switch (status) {
-        case "PRESENT": return "bg-green-500 border-green-600 text-white";
-        case "LATE": return "bg-yellow-400 border-yellow-500 text-white";
-        case "HALF_DAY": return "bg-purple-500 border-purple-600 text-white";
-        case "ON_LEAVE": return "bg-blue-500 border-blue-600 text-white";
-        case "ABSENT": return "bg-red-500 border-red-600 text-white";
-        case "HOLIDAY": return "bg-sky-500 border-sky-600 text-white";
-        case "SUNDAY": return "bg-orange-50 text-orange-400 border-orange-200";
-        default: return "bg-slate-50 border-slate-200 text-slate-500";
-    }
+    return attendanceCellClass(status === "ON_LEAVE" ? "LEAVE" : status);
 }
 
 /** `isLate` is an overlay fact independent of `status` — a PRESENT or HALF_DAY day can also be late. */
@@ -186,7 +184,7 @@ export default function StaffAttendanceModal({ staffId, staffLabel, onClose }: P
                                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Leave</span>
                                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Absent</span>
                                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-sky-500" /> Holiday</span>
-                                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full" style={{ background: "linear-gradient(135deg, #22c55e 50%, #facc15 50%)" }} /> Present + Late</span>
+                                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full" style={{ background: `linear-gradient(135deg, ${ATTENDANCE_TONE.PRESENT.fill} 50%, ${ATTENDANCE_TONE.LATE.fill} 50%)` }} /> Present + Late</span>
                                 </div>
                             </div>
 

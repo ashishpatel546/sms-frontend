@@ -9,6 +9,8 @@ import { Loader } from "@/components/ui/Loader";
 import { StudentDetailsModal } from "@/components/StudentDetailsModal";
 import StudentAttendanceModal from "@/components/StudentAttendanceModal";
 import { PieChart, Pie, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { ATTENDANCE_TONE } from "@/lib/attendanceColors";
+import { CHART_TOOLTIP } from "@/lib/chartTokens";
 import { useMemo } from "react";
 import { sortByName } from "@/lib/utils";
 
@@ -373,12 +375,15 @@ export default function AttendancePage() {
         });
 
         return [
-            { name: 'Present', value: stats.PRESENT, color: '#22c55e', fill: '#22c55e' }, // green-500
-            { name: 'Absent', value: stats.ABSENT, color: '#ef4444', fill: '#ef4444' }, // red-500
-            { name: 'Leave', value: stats.LEAVE, color: '#3b82f6', fill: '#3b82f6' }, // blue-500
-            { name: 'Late', value: stats.LATE, color: '#eab308', fill: '#eab308' }, // yellow-500
-            { name: 'Half Day', value: stats.HALF_DAY, color: '#a855f7', fill: '#a855f7' }, // purple-500
-            { name: 'Holiday', value: stats.HOLIDAY, color: '#0ea5e9', fill: '#0ea5e9' } // sky-500
+            // Status colour comes from ATTENDANCE_TONE, never a literal: the
+            // donut sits beside a calendar and a legend that read the same
+            // statuses, and three separate lists of hexes is how they drift.
+            { name: 'Present', value: stats.PRESENT, color: ATTENDANCE_TONE.PRESENT.fill, fill: ATTENDANCE_TONE.PRESENT.fill },
+            { name: 'Absent', value: stats.ABSENT, color: ATTENDANCE_TONE.ABSENT.fill, fill: ATTENDANCE_TONE.ABSENT.fill },
+            { name: 'Leave', value: stats.LEAVE, color: ATTENDANCE_TONE.LEAVE.fill, fill: ATTENDANCE_TONE.LEAVE.fill },
+            { name: 'Late', value: stats.LATE, color: ATTENDANCE_TONE.LATE.fill, fill: ATTENDANCE_TONE.LATE.fill },
+            { name: 'Half Day', value: stats.HALF_DAY, color: ATTENDANCE_TONE.HALF_DAY.fill, fill: ATTENDANCE_TONE.HALF_DAY.fill },
+            { name: 'Holiday', value: stats.HOLIDAY, color: ATTENDANCE_TONE.HOLIDAY.fill, fill: ATTENDANCE_TONE.HOLIDAY.fill }
         ].filter(item => item.value > 0);
     };
 
@@ -632,7 +637,7 @@ export default function AttendancePage() {
                                                 paddingAngle={5}
                                                 dataKey="value"
                                             />
-                                            <Tooltip />
+                                            <Tooltip {...CHART_TOOLTIP} />
                                             <Legend verticalAlign="bottom" height={36} />
                                         </PieChart>
                                     </ResponsiveContainer>

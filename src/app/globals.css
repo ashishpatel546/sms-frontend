@@ -244,6 +244,26 @@
   --accent-ai-tint: #f1ecfc;
   --accent-ai-edge: #d9cdf8;
 
+  /* ── Chart series ────────────────────────────────────────────────────────
+     For the handful of genuinely CATEGORICAL charts — a pie of fee heads,
+     where the slices are identities with no order and no status. Anything
+     that plots a status (collected, pending, absent) uses the accent tokens
+     above instead; a chart is not allowed to invent a second meaning for
+     green.
+
+     Assigned in fixed order, never cycled. The order is chosen, not
+     arbitrary: it is what makes adjacent slices survive colour blindness.
+     Every set is checked against the lightness band, chroma floor, adjacent
+     CVD separation and contrast — see DESIGN.md before changing a value. */
+  --chart-1: #0e9f6e;
+  --chart-2: #1e4fd8;
+  --chart-3: #e02424;
+  --chart-4: #7c52e0;
+  --chart-5: #b26a02;
+  /* Everything past the fifth slice. Deliberately achromatic: "Other" is not
+     an identity, and giving it a hue implies it is one. */
+  --chart-other: #a6a4a0;
+
   /* The rail is walnut in both themes — that constancy is the design.
      Kept at the 750 step rather than anything darker: below about #2a2218 the
      warmth stops being legible on a glossy screen and the rail reads black,
@@ -256,6 +276,33 @@
   /* Group labels and meta on the rail. At 9.5px on walnut the old #a2988a only
      reached 4.86:1 and visually sank into the wood; this is 8.8:1. */
   --rail-ink-muted: #d8cdb9;
+
+  /* Rail STATES. These were literal `bg-white/8`, `text-white`, `bg-walnut-950/60`
+     in the rail components — which silently assumes the ground behind them is
+     dark. A palette whose rail is light needs the same states in the opposite
+     direction, so they are tokens now. Values here reproduce the old literals
+     exactly; Register & Ink must not shift by a pixel. */
+  --rail-hover: rgba(255, 255, 255, 0.08);
+  --rail-selected: rgba(255, 255, 255, 0.12);
+  --rail-active-ink: #ffffff;
+  --rail-scrim: rgba(20, 15, 9, 0.6);
+  /* The lit corner of the rail — brass, so it reads as a bell catching light
+     rather than a gradient someone added. */
+  --rail-bloom-near: rgba(245, 165, 36, 0.16);
+  --rail-bloom-far: rgba(245, 165, 36, 0.07);
+  --rail-danger: #f29a9a;
+  --rail-danger-ink: #f7c6c6;
+  --rail-danger-bg: rgba(224, 36, 36, 0.16);
+
+  /* The identity tile — school logo fallback and user initials. Its own tokens
+     because a brand gradient is not always safe to put white text on: the
+     marigold end of this one only works because it is brass-led. */
+  --tile-from: #a9670c;
+  --tile-to: #f5a524;
+  --tile-ink: #ffffff;
+
+  /* The hot centre of the storm border's arc. */
+  --beam-highlight: #fff6e4;
 
   /* Elevation. Shadows are warm-black, never grey — they belong to walnut. */
   --shadow-hairline: 0 0 0 1px rgba(33, 28, 22, 0.07);
@@ -343,6 +390,17 @@
   --accent-ai-tint: rgba(124, 82, 224, 0.2);
   --accent-ai-edge: rgba(155, 124, 234, 0.32);
 
+  /* Chart series, re-stepped for the dark ground — not the light set brightened.
+     The band a fill has to sit in is narrower here (roughly L 0.48–0.67): go
+     lighter and the slices turn pastel and stop separating, go darker and they
+     sink into the walnut. */
+  --chart-1: #0e9f6e;
+  --chart-2: #5b84e8;
+  --chart-3: #ef5a5a;
+  --chart-4: #9b7cea;
+  --chart-5: #c47a0a;
+  --chart-other: #8a8071;
+
   /* On dark the rail sinks below the canvas instead of rising above it — same
      material, opposite direction, so the seam still reads. */
   --rail: #140f09;
@@ -351,6 +409,24 @@
   --rail-ink: #ffffff;
   --rail-ink-soft: #e6ddd0;
   --rail-ink-muted: #c9bda9;
+
+  /* Rail states are unchanged from light: the rail is walnut in both themes,
+     so what sits on it behaves the same. */
+  --rail-hover: rgba(255, 255, 255, 0.08);
+  --rail-selected: rgba(255, 255, 255, 0.12);
+  --rail-active-ink: #ffffff;
+  --rail-scrim: rgba(10, 7, 4, 0.7);
+  --rail-bloom-near: rgba(245, 165, 36, 0.13);
+  --rail-bloom-far: rgba(245, 165, 36, 0.06);
+  --rail-danger: #f29a9a;
+  --rail-danger-ink: #f7c6c6;
+  --rail-danger-bg: rgba(224, 36, 36, 0.2);
+
+  --tile-from: #a9670c;
+  --tile-to: #f5a524;
+  --tile-ink: #ffffff;
+
+  --beam-highlight: #fff6e4;
 
   --shadow-hairline: 0 0 0 1px rgba(255, 255, 255, 0.06);
   --shadow-soft-base: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -363,6 +439,364 @@
   --page-bg-start: #140f09;
   --page-bg-mid: #1a130b;
   --page-bg-end: #221a11;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PALETTE: ASSEMBLY — white ground, flag pigments.
+
+   The second palette, and the reason `data-palette` exists alongside
+   `data-theme`. It takes its colour from the AppMe Soft mark — blue "App",
+   green "Me", saffron "Soft" — which lands on the three colours a school
+   assembly already flies. Where Register & Ink is a walnut register on a desk,
+   this is the morning line-up: white ground, flag pigments, nothing heavy.
+
+   THE RAIL IS LIGHT HERE. That is the one structural difference between the
+   two palettes, and it is why every rail state is a token — the components
+   used to assume a dark ground and paint themselves with literal white.
+
+   EVERY token in `:root` is redeclared below. Do not write this block as a
+   diff: a token left out silently inherits its walnut value and one stray
+   brown line turns up in an otherwise blue screen.
+
+   Ordering is load-bearing. These blocks are UNLAYERED, so they outrank
+   Tailwind's layered `theme` output, and they sit AFTER [data-theme='dark']
+   because `[data-palette]` and `[data-theme]` have equal specificity — source
+   order is what breaks the tie. The `[data-palette][data-theme='dark']` block
+   is (0,2,0) and wins over both.
+   ═══════════════════════════════════════════════════════════════════════════ */
+[data-palette='assembly'] {
+  color-scheme: light;
+
+  /* ── The raw ramps, re-pigmented ─────────────────────────────────────────
+     `@theme static` is NOT `inline`, so Tailwind emits utilities that
+     reference the variable — `.bg-brass-500 { background-color:
+     var(--color-brass-500) }`. Redeclaring the variable here therefore
+     repaints every `bg-brass-`, `text-walnut-` and `text-marigold-` utility in
+     the app — about 250 of them across 122 files — without touching a line of
+     TSX. (Written out rather than glob-style on purpose: a `*` followed by a
+     slash would close this comment.)
+
+     Ramp NAMES are kept. They are the material's name in this codebase, not a
+     literal colour claim, and renaming them would mean editing every file the
+     indirection exists to avoid. Read "brass" as "the brand ramp". ───────── */
+
+  /* Navy — the dark-ground material. Sign-in panel, and the rail after dark. */
+  --color-walnut-950: #050914;
+  --color-walnut-900: #08101f;
+  --color-walnut-850: #0b1526;
+  --color-walnut-800: #0f1c31;
+  --color-walnut-750: #14243d;
+  --color-walnut-700: #1a2c49;
+  --color-walnut-600: #203354;
+  --color-walnut-500: #2b4067;
+  --color-walnut-400: #3d5480;
+
+  /* Paper — cool white. The ground the work sits on. */
+  --color-paper-50: #ffffff;
+  --color-paper-100: #fafbfe;
+  --color-paper-200: #f4f7fc;
+  --color-paper-300: #edf1f9;
+  --color-paper-400: #e3e9f5;
+  --color-paper-500: #cbd5e9;
+  --color-paper-600: #a3afc8;
+
+  /* Royal — the brand and every primary action. The blue of the mark. */
+  --color-brass-50: #eff4ff;
+  --color-brass-100: #dfe8ff;
+  --color-brass-200: #bcccfb;
+  --color-brass-300: #8ea9f5;
+  --color-brass-400: #5a7fe9;
+  --color-brass-500: #2f56d6;
+  --color-brass-600: #2145bd;
+  --color-brass-700: #1b389c;
+  --color-brass-800: #162d7d;
+  --color-brass-900: #102055;
+
+  /* Cyan — informational only. Pushed off blue on purpose: with the brand now
+     blue, an azure "info" would be indistinguishable from a primary action. */
+  --color-lapis-50: #f0fbfe;
+  --color-lapis-100: #e0f6fd;
+  --color-lapis-200: #b6e4ef;
+  --color-lapis-300: #7dd0e3;
+  --color-lapis-400: #35b1cd;
+  --color-lapis-500: #0e91b0;
+  --color-lapis-600: #0d829f;
+  --color-lapis-700: #0e7490;
+  --color-lapis-800: #0b5c73;
+  --color-lapis-900: #08414f;
+
+  /* Saffron — "act on this". Same form rule as marigold: a pale chip or a 3px
+     marker, never a solid button. White on saffron fails contrast anyway, so
+     the rule is enforced by the colour as much as by the convention. */
+  --color-marigold-50: #fff8ef;
+  --color-marigold-100: #ffedd5;
+  --color-marigold-200: #fed7aa;
+  --color-marigold-300: #fdba74;
+  --color-marigold-400: #ff9933;
+  --color-marigold-500: #f27d0c;
+  --color-marigold-600: #dd6f08;
+  --color-marigold-700: #a94f05;
+  --color-marigold-800: #7c3a04;
+  --color-marigold-900: #4f2502;
+
+  /* Flag green — settled things. */
+  --color-sage-50: #f0fdf4;
+  --color-sage-100: #dcfce7;
+  --color-sage-200: #b7e8c2;
+  --color-sage-300: #7fd396;
+  --color-sage-400: #3fb765;
+  --color-sage-500: #1f9d47;
+  --color-sage-600: #16873b;
+  --color-sage-700: #106f2f;
+  --color-sage-800: #0c5726;
+  --color-sage-900: #093f1c;
+
+  /* Vermilion — the margin correction. Cooled a step so it reads as a
+     correction next to saffron rather than a second warm pigment. */
+  --color-vermilion-50: #fef2f2;
+  --color-vermilion-100: #fee2e2;
+  --color-vermilion-200: #fecaca;
+  --color-vermilion-300: #fca5a5;
+  --color-vermilion-400: #f87171;
+  --color-vermilion-500: #dc2626;
+  --color-vermilion-600: #c81e1e;
+  --color-vermilion-700: #b01818;
+  --color-vermilion-800: #8f1515;
+  --color-vermilion-900: #641010;
+
+  /* Iris is deliberately NOT redeclared: it marks the AI platform and matches
+     the hub's convention, so it must read the same in every palette. */
+
+  /* ── Semantic layer ─────────────────────────────────────────────────────── */
+  --background: #f7f9fd;
+  --foreground: #12224f;
+
+  /* Royal at the 700 step. White on it clears 9.4:1, so every primary button
+     in the app stays a solid blue with white text — no per-theme exception. */
+  --brand: #1b389c;
+  --brand-light: #2f56d6;
+  --brand-deep: #142a75;
+  --brand-tint: #e8eeff;
+  --brand-edge: #c3d2f8;
+  --brand-contrast: #ffffff;
+
+  --accent: #ff9933;
+  --accent-deep: #a94f05;
+  --accent-tint: #fff6ea;
+  --accent-edge: #fadfb6;
+  --accent-contrast: #3a1c02;
+
+  /* Surfaces — white cards on a barely-cool ground. The canvas is tinted just
+     enough (about 3%) that a white card has an edge without needing a border
+     to prove it. */
+  --surface: #ffffff;
+  --surface-secondary: #f5f8fd;
+  --surface-sunk: #eef2fa;
+  --surface-glass: rgba(255, 255, 255, 0.85);
+  --surface-inset: #e6ecf7;
+  --skeleton-sheen: rgba(27, 56, 156, 0.09);
+
+  /* Text — navy-black, the same family as the brand, so type and action read
+     as one system rather than blue furniture on grey text. */
+  --ink: #12224f;
+  --ink-soft: #4a5878;
+  --ink-muted: #64708e;
+  /* The faintest ink still has to be readable. The obvious value here was
+     #8b95ad, which looks right next to the others and measures 2.85:1 on the
+     canvas — it carries 11px field labels and footer text, so that is a fail,
+     not a subtlety. This clears 4.75:1 on a card and 4.5:1 on the canvas. */
+  --ink-faint: #68738d;
+
+  --line: #e3e9f5;
+  --line-strong: #cbd5e9;
+
+  --accent-success: #16873b;
+  --accent-success-deep: #106f2f;
+  --accent-success-tint: #eefaf1;
+  --accent-success-edge: #bfe6ca;
+
+  --accent-warn: #f27d0c;
+  --accent-warn-deep: #a94f05;
+  --accent-warn-tint: #fff6ea;
+  --accent-warn-edge: #fadfb6;
+
+  --accent-danger: #dc2626;
+  --accent-danger-deep: #b01818;
+  --accent-danger-tint: #fef2f2;
+  --accent-danger-edge: #f6c9c9;
+
+  --accent-info: #0e7490;
+  --accent-info-deep: #0b5c73;
+  --accent-info-tint: #e6f7fb;
+  --accent-info-edge: #b6e4ef;
+
+  --accent-ai: #7c52e0;
+  --accent-ai-tint: #f1ecfc;
+  --accent-ai-edge: #d9cdf8;
+
+  /* Chart series — validated on this palette's own white surface, not
+     inherited. Cyan sits second so it never lands next to the green. */
+  --chart-1: #16873b;
+  --chart-2: #0d829f;
+  --chart-3: #dc2626;
+  --chart-4: #7c52e0;
+  --chart-5: #a94f05;
+  --chart-other: #a3afc8;
+
+  /* ── The sky rail ────────────────────────────────────────────────────────
+     A pale blue wash rather than white. The rail still has to read as its own
+     region — on a dense ERP screen, navigation and work being visually the
+     same place is what makes a sidebar feel like a list of links. */
+  --rail: #edf2ff;
+  --rail-raised: #ffffff;
+  --rail-line: #dde5f7;
+  --rail-ink: #12224f;
+  --rail-ink-soft: #465370;
+  --rail-ink-muted: #5b688a;
+
+  /* Rail states, in the opposite direction from walnut: ink overlays on a
+     light ground, not white ones on a dark ground. */
+  --rail-hover: rgba(27, 56, 156, 0.07);
+  --rail-selected: rgba(27, 56, 156, 0.11);
+  --rail-active-ink: #1b389c;
+  --rail-scrim: rgba(18, 34, 79, 0.45);
+  --rail-bloom-near: rgba(255, 153, 51, 0.13);
+  --rail-bloom-far: rgba(47, 86, 214, 0.07);
+  --rail-danger: #b01818;
+  --rail-danger-ink: #8f1515;
+  --rail-danger-bg: rgba(220, 38, 38, 0.1);
+
+  /* The tile stays royal end-to-end. The saffron end of the walnut tile works
+     because brass leads it; a blue-to-saffron ramp would put white initials on
+     #ff9933 at 2.2:1. */
+  --tile-from: #2f56d6;
+  --tile-to: #1b389c;
+  --tile-ink: #ffffff;
+
+  --beam-highlight: #eaf0ff;
+
+  /* Elevation — cool navy shadows. A warm shadow under a white card on a cool
+     ground reads as dirt on the screen. */
+  --shadow-hairline: 0 0 0 1px rgba(18, 34, 79, 0.07);
+  --shadow-soft-base:
+    0 1px 2px rgba(18, 34, 79, 0.07), 0 1px 1px rgba(18, 34, 79, 0.04);
+  --shadow-raised-base:
+    0 2px 4px rgba(18, 34, 79, 0.06), 0 8px 20px -6px rgba(18, 34, 79, 0.12);
+  --shadow-glass-base:
+    0 12px 32px -8px rgba(18, 34, 79, 0.18), 0 2px 6px rgba(18, 34, 79, 0.07);
+  --shadow-brand-base: 0 6px 16px -4px rgba(27, 56, 156, 0.28);
+
+  --page-bg-start: #eef2fa;
+  --page-bg-mid: #f7f9fd;
+  --page-bg-end: #ffffff;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   ASSEMBLY, AFTER DARK. Navy ground, same pigment meanings at brighter steps.
+   The rail sinks below the canvas here, the same inversion the walnut dark
+   theme makes, so the seam between navigation and work still reads.
+   ─────────────────────────────────────────────────────────────────────────── */
+[data-palette='assembly'][data-theme='dark'] {
+  color-scheme: dark;
+
+  --background: #080d1a;
+  --foreground: #eef2fb;
+
+  /* Royal lightens so a primary button carries navy text rather than white —
+     the same move brass makes on the walnut dark theme. */
+  --brand: #93b0f5;
+  --brand-light: #c3d2f8;
+  --brand-deep: #c3d2f8;
+  --brand-tint: rgba(147, 176, 245, 0.16);
+  --brand-edge: rgba(147, 176, 245, 0.32);
+  --brand-contrast: #0c1531;
+
+  --accent: #fdba74;
+  --accent-deep: #fdba74;
+  --accent-tint: rgba(255, 153, 51, 0.17);
+  --accent-edge: rgba(255, 153, 51, 0.34);
+  --accent-contrast: #331802;
+
+  --surface: #101a2e;
+  --surface-secondary: #16223a;
+  --surface-sunk: #080d1a;
+  --surface-glass: rgba(16, 26, 46, 0.88);
+  --surface-inset: #1c2947;
+  --skeleton-sheen: rgba(195, 210, 248, 0.08);
+
+  --ink: #eef2fb;
+  --ink-soft: #c2cbdd;
+  --ink-muted: #96a1b8;
+  --ink-faint: #78849c;
+
+  --line: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.17);
+
+  --accent-success: #4ade80;
+  --accent-success-deep: #86efac;
+  --accent-success-tint: rgba(31, 157, 71, 0.2);
+  --accent-success-edge: rgba(74, 222, 128, 0.32);
+
+  --accent-warn: #fdba74;
+  --accent-warn-deep: #fdba74;
+  --accent-warn-tint: rgba(255, 153, 51, 0.18);
+  --accent-warn-edge: rgba(255, 153, 51, 0.32);
+
+  --accent-danger: #fca5a5;
+  --accent-danger-deep: #fca5a5;
+  --accent-danger-tint: rgba(220, 38, 38, 0.22);
+  --accent-danger-edge: rgba(252, 165, 165, 0.32);
+
+  --accent-info: #7dd0e3;
+  --accent-info-deep: #7dd0e3;
+  --accent-info-tint: rgba(53, 177, 205, 0.18);
+  --accent-info-edge: rgba(125, 208, 227, 0.32);
+
+  --accent-ai: #9b7cea;
+  --accent-ai-tint: rgba(124, 82, 224, 0.2);
+  --accent-ai-edge: rgba(155, 124, 234, 0.32);
+
+  --chart-1: #1f9d47;
+  --chart-2: #0e91b0;
+  --chart-3: #ef4444;
+  --chart-4: #9b7cea;
+  --chart-5: #dd6f08;
+  --chart-other: #78849c;
+
+  --rail: #050914;
+  --rail-raised: #16223a;
+  --rail-line: rgba(255, 255, 255, 0.07);
+  --rail-ink: #ffffff;
+  --rail-ink-soft: #d5deef;
+  --rail-ink-muted: #b9c4da;
+
+  --rail-hover: rgba(255, 255, 255, 0.08);
+  --rail-selected: rgba(255, 255, 255, 0.12);
+  --rail-active-ink: #ffffff;
+  --rail-scrim: rgba(3, 6, 14, 0.7);
+  --rail-bloom-near: rgba(147, 176, 245, 0.14);
+  --rail-bloom-far: rgba(253, 186, 116, 0.06);
+  --rail-danger: #fca5a5;
+  --rail-danger-ink: #fecaca;
+  --rail-danger-bg: rgba(220, 38, 38, 0.22);
+
+  --tile-from: #2f56d6;
+  --tile-to: #1b389c;
+  --tile-ink: #ffffff;
+
+  --beam-highlight: #dbe6ff;
+
+  --shadow-hairline: 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-soft-base: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-raised-base:
+    0 2px 4px rgba(0, 0, 0, 0.4), 0 8px 24px -6px rgba(0, 0, 0, 0.6);
+  --shadow-glass-base:
+    0 12px 32px -8px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --shadow-brand-base: 0 6px 16px -4px rgba(147, 176, 245, 0.26);
+
+  --page-bg-start: #080d1a;
+  --page-bg-mid: #0c1424;
+  --page-bg-end: #101a2e;
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
@@ -426,6 +860,17 @@
   --color-rail-ink: var(--rail-ink);
   --color-rail-ink-soft: var(--rail-ink-soft);
   --color-rail-ink-muted: var(--rail-ink-muted);
+  --color-rail-hover: var(--rail-hover);
+  --color-rail-selected: var(--rail-selected);
+  --color-rail-active-ink: var(--rail-active-ink);
+  --color-rail-scrim: var(--rail-scrim);
+  --color-rail-danger: var(--rail-danger);
+  --color-rail-danger-ink: var(--rail-danger-ink);
+  --color-rail-danger-bg: var(--rail-danger-bg);
+
+  --color-tile-from: var(--tile-from);
+  --color-tile-to: var(--tile-to);
+  --color-tile-ink: var(--tile-ink);
 
   --shadow-hairline: var(--shadow-hairline);
   --shadow-soft: var(--shadow-soft-base);
@@ -715,8 +1160,8 @@
     inset: 0;
     pointer-events: none;
     background:
-      radial-gradient(520px 260px at 0% 0%, rgba(245, 165, 36, 0.16), transparent 70%),
-      radial-gradient(400px 300px at 100% 100%, rgba(245, 165, 36, 0.07), transparent 72%);
+      radial-gradient(520px 260px at 0% 0%, var(--rail-bloom-near), transparent 70%),
+      radial-gradient(400px 300px at 100% 100%, var(--rail-bloom-far), transparent 72%);
   }
   .rail-surface > * {
     position: relative;
@@ -732,7 +1177,7 @@
     gap: 7px;
     position: relative;
     background: var(--rail);
-    color: #fff;
+    color: var(--rail-ink);
     font-family: var(--font-mono);
     font-size: 10.5px;
     font-weight: 500;
@@ -814,7 +1259,7 @@
         from var(--beam-angle),
         transparent 0 4%,
         var(--color-marigold-400) 7.5%,
-        #fff6e4 9.5%,
+        var(--beam-highlight) 9.5%,
         var(--color-marigold-400) 11.5%,
         transparent 17%
       ),
@@ -842,7 +1287,7 @@
         from var(--beam-angle),
         transparent 0 3%,
         var(--color-marigold-400) 8%,
-        #fff6e4 10%,
+        var(--beam-highlight) 10%,
         var(--color-marigold-400) 12%,
         transparent 19%
       ),
@@ -1761,5 +2206,306 @@
   .text-rose-500,
   .text-pink-500 {
     color: var(--accent-danger);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     BRIDGE, PART TWO — the shades the first pass missed.
+
+     An audit of every raw Tailwind colour class in src/ against the block
+     above found 406 in use and 159 covered: 1401 occurrences across 247
+     classes still resolved to stock Tailwind colours, which belong to no
+     theme and followed neither the mode nor the palette. This closes the
+     ones whose meaning is unambiguous.
+
+     Two rules decide the target:
+
+       · A STATUS hue (red, amber, green, blue, violet …) always means the
+         same thing wherever it appears, so it maps to the matching accent
+         token, which already carries its own light and dark steps.
+       · A NEUTRAL is ambiguous — slate-800 is a dark ground in one file and
+         a dark label in another — so neutrals map to the PIGMENT RAMPS
+         (walnut for dark, paper for light) rather than to semantic tokens.
+         The ramps are re-pigmented per palette but keep their lightness, so
+         a dark block stays dark and a light chip stays light in both.
+
+     Still scaffolding, not architecture: new code uses the tokens directly.
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  /* ── Neutral grounds. Dark in both palettes — navy under Assembly. ────── */
+  .bg-slate-700,
+  .bg-gray-700,
+  .bg-zinc-700,
+  .bg-neutral-700 {
+    background-color: var(--color-walnut-700);
+  }
+  .bg-slate-800,
+  .bg-gray-800,
+  .bg-zinc-800,
+  .bg-neutral-800 {
+    background-color: var(--color-walnut-800);
+  }
+  .bg-slate-900,
+  .bg-gray-900,
+  .bg-zinc-900,
+  .bg-neutral-900 {
+    background-color: var(--color-walnut-900);
+  }
+  .border-slate-600,
+  .border-gray-600 {
+    border-color: var(--color-walnut-600);
+  }
+  .border-slate-700,
+  .border-gray-700 {
+    border-color: var(--color-walnut-700);
+  }
+  .border-slate-800,
+  .border-gray-800 {
+    border-color: var(--color-walnut-800);
+  }
+
+  /* Text that sits ON those grounds. Light in both palettes. */
+  .text-slate-300,
+  .text-gray-300,
+  .text-zinc-300 {
+    color: var(--color-paper-300);
+  }
+  .text-slate-200,
+  .text-gray-200 {
+    color: var(--color-paper-200);
+  }
+
+  /* ── Neutral surfaces and rules on paper. ────────────────────────────── */
+  .bg-slate-300,
+  .bg-gray-300 {
+    background-color: var(--surface-inset);
+  }
+  .border-slate-100,
+  .border-gray-100,
+  .border-zinc-100,
+  .border-neutral-100,
+  .border-stone-100 {
+    border-color: var(--line);
+  }
+  .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+  .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--line);
+  }
+  .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+  .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--line);
+  }
+
+  /* ── Status fills. The 500/600 steps are the solid ones. ─────────────── */
+  .bg-red-500,
+  .bg-red-600,
+  .bg-rose-500,
+  .bg-rose-600 {
+    background-color: var(--accent-danger);
+  }
+  .bg-green-500,
+  .bg-green-600,
+  .bg-emerald-500,
+  .bg-emerald-600,
+  .bg-teal-500,
+  .bg-teal-600,
+  .bg-lime-600 {
+    background-color: var(--accent-success);
+  }
+  .bg-amber-500,
+  .bg-amber-600,
+  .bg-amber-700,
+  .bg-orange-500,
+  .bg-orange-600,
+  .bg-yellow-500 {
+    background-color: var(--accent-warn);
+  }
+  .bg-blue-500,
+  .bg-sky-500,
+  .bg-cyan-500,
+  .bg-indigo-500 {
+    background-color: var(--accent-info);
+  }
+  .bg-violet-500,
+  .bg-violet-600,
+  .bg-violet-700,
+  .bg-purple-500,
+  .bg-purple-600 {
+    background-color: var(--accent-ai);
+  }
+
+  /* ── Status text at the lighter steps — these appear on dark grounds, and
+     the accent tokens already brighten there, so one target serves both. ── */
+  .text-red-400,
+  .text-red-300,
+  .text-rose-400 {
+    color: var(--accent-danger);
+  }
+  .text-emerald-400,
+  .text-green-400,
+  .text-teal-400,
+  .text-lime-700 {
+    color: var(--accent-success);
+  }
+  .text-amber-300,
+  .text-amber-400,
+  .text-yellow-400,
+  .text-orange-400 {
+    color: var(--accent-warn);
+  }
+  .text-sky-400,
+  .text-blue-400,
+  .text-cyan-400 {
+    color: var(--accent-info);
+  }
+
+  /* ── Borders, rings and tints in the status hues. ────────────────────── */
+  .border-red-500,
+  .border-rose-500 {
+    border-color: var(--accent-danger);
+  }
+  .border-red-900 {
+    border-color: var(--accent-danger-edge);
+  }
+  .bg-red-950 {
+    background-color: var(--accent-danger-tint);
+  }
+  .border-amber-500,
+  .border-orange-500 {
+    border-color: var(--accent-warn);
+  }
+  .border-green-500,
+  .border-emerald-500,
+  .border-teal-500,
+  .border-lime-600 {
+    border-color: var(--accent-success);
+  }
+  .border-blue-500,
+  .border-indigo-500,
+  .border-sky-500 {
+    border-color: var(--accent-info);
+  }
+  .ring-red-500 {
+    --tw-ring-color: var(--accent-danger);
+  }
+  .ring-amber-500 {
+    --tw-ring-color: var(--accent-warn);
+  }
+  .ring-violet-500 {
+    --tw-ring-color: var(--accent-ai);
+  }
+  .ring-blue-500,
+  .ring-indigo-500 {
+    --tw-ring-color: var(--accent-info);
+  }
+
+  /* ── The deep steps. In this codebase a -900/-950 background is always a
+     tinted panel behind status text on a dark ground, never a solid fill. ── */
+  .bg-red-900,
+  .bg-rose-900 {
+    background-color: var(--accent-danger-tint);
+  }
+  .bg-green-900,
+  .bg-emerald-900,
+  .bg-teal-900,
+  .bg-lime-900 {
+    background-color: var(--accent-success-tint);
+  }
+  .bg-amber-900,
+  .bg-orange-900,
+  .bg-yellow-900 {
+    background-color: var(--accent-warn-tint);
+  }
+  .bg-blue-900,
+  .bg-indigo-900,
+  .bg-sky-900,
+  .bg-cyan-900 {
+    background-color: var(--accent-info-tint);
+  }
+  .bg-violet-900,
+  .bg-purple-900 {
+    background-color: var(--accent-ai-tint);
+  }
+
+  /* ── The soft steps used for edges and light-mode chips. ─────────────── */
+  .border-red-400,
+  .border-rose-400,
+  .border-red-200 {
+    border-color: var(--accent-danger-edge);
+  }
+  .border-green-300,
+  .border-emerald-300,
+  .border-teal-300,
+  .border-green-200,
+  .border-emerald-200 {
+    border-color: var(--accent-success-edge);
+  }
+  .border-amber-300,
+  .border-yellow-300,
+  .border-orange-300,
+  .border-amber-200,
+  .border-yellow-500 {
+    border-color: var(--accent-warn-edge);
+  }
+  .border-blue-300,
+  .border-indigo-400,
+  .border-sky-300,
+  .border-blue-200,
+  .border-indigo-200 {
+    border-color: var(--accent-info-edge);
+  }
+  .border-violet-300,
+  .border-purple-500,
+  .border-purple-300 {
+    border-color: var(--accent-ai-edge);
+  }
+  .ring-green-300,
+  .ring-emerald-300 {
+    --tw-ring-color: var(--accent-success-edge);
+  }
+
+  /* ── Remaining text steps. ───────────────────────────────────────────── */
+  .text-emerald-300,
+  .text-green-300,
+  .text-lime-700,
+  .text-teal-300 {
+    color: var(--accent-success);
+  }
+  .text-yellow-600,
+  .text-yellow-800,
+  .text-amber-700,
+  .text-orange-700 {
+    color: var(--accent-warn-deep);
+  }
+  .text-red-700,
+  .text-rose-700 {
+    color: var(--accent-danger-deep);
+  }
+  .text-blue-700,
+  .text-indigo-700,
+  .text-sky-700 {
+    color: var(--accent-info-deep);
+  }
+  .text-violet-700,
+  .text-purple-700 {
+    color: var(--accent-ai);
+  }
+
+  /* ── Gradient stops. A brand gradient must not stay stock-Tailwind. ──── */
+  .from-slate-100,
+  .from-gray-100 {
+    --tw-gradient-from: var(--surface-secondary);
+  }
+  .to-slate-200,
+  .to-gray-200 {
+    --tw-gradient-to: var(--surface-inset);
+  }
+  .to-purple-600,
+  .to-violet-600 {
+    --tw-gradient-to: var(--accent-ai);
+  }
+  .to-emerald-600,
+  .to-green-600,
+  .to-teal-600 {
+    --tw-gradient-to: var(--accent-success);
   }
 }

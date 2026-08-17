@@ -46,7 +46,6 @@ export interface NavItem {
    *  HR_ADMIN sees the Administration group AND the HR Portal group. */
   rbacKey?: string;
   /** Tailwind text-color class for the icon, e.g. "text-blue-500" */
-  iconColor: string;
   /**
    * GUARD is deny-by-default: when the logged-in role is GUARD the sidebar
    * shows ONLY items with this flag, ignoring the unkeyed-means-visible rule.
@@ -96,7 +95,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Dashboard',
         href: '/dashboard',
         icon: LayoutDashboard,
-        iconColor: 'text-violet-500',
         guardAllowed: true,
       },
       {
@@ -104,7 +102,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Notifications',
         href: '/dashboard/notifications',
         icon: Bell,
-        iconColor: 'text-sky-500',
         guardAllowed: true,
       },
     ],
@@ -117,14 +114,12 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Students',
         href: '/dashboard/students',
         icon: GraduationCap,
-        iconColor: 'text-blue-500',
       },
       {
         id: 'staff',
         label: 'Staff',
         href: '/dashboard/staff',
         icon: Users,
-        iconColor: 'text-indigo-500',
       },
       {
         // Cards are printed for students and staff, so it sits with the two
@@ -135,7 +130,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'ID Cards',
         href: '/dashboard/id-cards',
         icon: IdCard,
-        iconColor: 'text-cyan-500',
         featureFlag: 'id_cards',
         // Everyone who holds a card, not just the office: the page leads with
         // a "My card" tab and only shows the student/staff registers to
@@ -151,21 +145,18 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Subjects',
         href: '/dashboard/subjects',
         icon: BookOpen,
-        iconColor: 'text-emerald-500',
       },
       {
         id: 'classes',
         label: 'Classes',
         href: '/dashboard/classes',
         icon: School,
-        iconColor: 'text-orange-500',
       },
       {
         id: 'enrollment',
         label: 'Enrollment',
         href: '/dashboard/enrollment',
         icon: ClipboardList,
-        iconColor: 'text-amber-500',
         rbacKey: 'canManageEnrollments',
       },
       {
@@ -173,7 +164,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Attendance',
         href: '/dashboard/attendance',
         icon: CalendarCheck,
-        iconColor: 'text-green-500',
         featureFlag: 'attendance_management',
       },
       {
@@ -181,7 +171,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Leaves',
         href: '/dashboard/leaves',
         icon: CalendarDays,
-        iconColor: 'text-teal-500',
         featureFlag: 'leave_management',
       },
       {
@@ -189,7 +178,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Fees',
         href: '/dashboard/fees',
         icon: IndianRupee,
-        iconColor: 'text-rose-500',
         featureFlag: 'fee_management',
         rbacKey: 'canAccessFees',
       },
@@ -198,7 +186,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Examinations',
         href: '/dashboard/examinations',
         icon: FileText,
-        iconColor: 'text-purple-500',
         featureFlag: 'exam_management',
       },
       {
@@ -206,7 +193,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Homework',
         href: '/dashboard/homework',
         icon: Pencil,
-        iconColor: 'text-pink-500',
         featureFlag: 'homework_management',
       },
     ],
@@ -219,7 +205,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Scan QR',
         href: '/dashboard/pickup/scan',
         icon: QrCode,
-        iconColor: 'text-cyan-500',
         // One scanner, four code families — it branches on the code's prefix
         // (V1: visitor, IDC1: ID card, INV1: stock label, bare token: pickup,
         // falling back to a stock lookup so printed Code-128 and publishers'
@@ -233,7 +218,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Visitors',
         href: '/dashboard/visitors',
         icon: Users,
-        iconColor: 'text-teal-500',
         featureFlag: 'visitor_management',
         rbacKey: 'canManageVisitors',
         guardAllowed: true,
@@ -243,7 +227,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Pickup History',
         href: '/dashboard/pickup/history',
         icon: ClipboardList,
-        iconColor: 'text-slate-400',
         featureFlag: 'pickup_management',
       },
     ],
@@ -256,7 +239,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Reports',
         href: '/dashboard/reports',
         icon: BarChart2,
-        iconColor: 'text-amber-500',
         featureFlag: 'reports_analytics',
         rbacKey: 'isAdmin',
       },
@@ -270,7 +252,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Library',
         href: '/dashboard/library',
         icon: BookOpen,
-        iconColor: 'text-lime-600',
         featureFlag: 'library_management',
       },
     ],
@@ -283,7 +264,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Inventory',
         href: '/dashboard/inventory',
         icon: Boxes,
-        iconColor: 'text-orange-500',
         featureFlag: 'inventory_management',
         rbacKey: 'canManageInventory',
       },
@@ -296,7 +276,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'My Inventory',
         href: '/dashboard/my-inventory',
         icon: ShoppingBag,
-        iconColor: 'text-amber-500',
         featureFlag: 'inventory_management',
         rbacKey: 'canViewOwnInventory',
         guardAllowed: true,
@@ -311,7 +290,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'HR Overview',
         href: '/dashboard/hr',
         icon: Building2,
-        iconColor: 'text-blue-500',
         featureFlag: 'hr_portal',
         rbacKey: 'canAccessHR',
       },
@@ -320,7 +298,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Staff Attendance',
         href: '/dashboard/hr/staff-attendance',
         icon: Clock,
-        iconColor: 'text-emerald-500',
         featureFlag: 'hr_portal',
         rbacKey: 'canAccessHR',
       },
@@ -329,7 +306,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Staff Leaves',
         href: '/dashboard/hr/leaves',
         icon: CalendarDays,
-        iconColor: 'text-teal-500',
         featureFlag: 'hr_portal',
         rbacKey: 'canAccessHR',
       },
@@ -338,7 +314,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Leave Policies',
         href: '/dashboard/hr/leave-policies',
         icon: ScrollText,
-        iconColor: 'text-violet-500',
         featureFlag: 'hr_portal',
         rbacKey: 'canAccessHR',
       },
@@ -347,7 +322,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Payroll',
         href: '/dashboard/hr/payroll',
         icon: IndianRupee,
-        iconColor: 'text-rose-500',
         featureFlag: 'hr_portal',
         rbacKey: 'canManagePayroll',
       },
@@ -356,7 +330,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Salary Config',
         href: '/dashboard/hr/salary-config',
         icon: Settings,
-        iconColor: 'text-orange-500',
         featureFlag: 'hr_portal',
         rbacKey: 'canAccessHR',
       },
@@ -365,7 +338,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Attendance Zones',
         href: '/dashboard/hr/staff-attendance/zones',
         icon: MapPin,
-        iconColor: 'text-sky-500',
         featureFlag: 'hr_portal',
         rbacKey: 'canAccessHR',
       },
@@ -379,7 +351,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'My Attendance',
         href: '/dashboard/my-attendance',
         icon: Clock,
-        iconColor: 'text-emerald-500',
         featureFlag: 'hr_portal',
         rbacKey: 'canAccessHRSelfService',
         guardAllowed: true,
@@ -389,7 +360,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'My Leaves',
         href: '/dashboard/my-leaves',
         icon: CalendarDays,
-        iconColor: 'text-teal-500',
         featureFlag: 'hr_portal',
         rbacKey: 'canAccessHRSelfService',
       },
@@ -398,7 +368,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'My Salary',
         href: '/dashboard/my-salary',
         icon: IndianRupee,
-        iconColor: 'text-rose-500',
         featureFlag: 'hr_portal',
         rbacKey: 'canAccessHRSelfService',
       },
@@ -412,7 +381,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Admin Panel',
         href: '/dashboard/admin',
         icon: Shield,
-        iconColor: 'text-red-500',
         rbacKey: 'canAccessAdminPanel',
       },
       {
@@ -420,7 +388,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Billing',
         href: '/dashboard/billing',
         icon: Receipt,
-        iconColor: 'text-emerald-600',
         // Commercial terms are admin/owner business, nobody else's.
         rbacKey: 'isAdmin',
       },
@@ -434,7 +401,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Help & Support',
         href: '/dashboard/support',
         icon: HelpCircle,
-        iconColor: 'text-sky-500',
         guardAllowed: true,
       },
       {
@@ -442,7 +408,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Settings',
         href: '/dashboard/settings',
         icon: Settings,
-        iconColor: 'text-slate-400',
       },
     ],
   },
@@ -454,7 +419,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'AI Chat',
         href: '/dashboard/ai/chat',
         icon: Sparkles,
-        iconColor: 'text-violet-500',
         featureFlag: 'ai_tools',
       },
       {
@@ -462,7 +426,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Explain Topic',
         href: '/dashboard/ai/explain',
         icon: Sparkles,
-        iconColor: 'text-violet-400',
         featureFlag: 'ai_tools',
       },
       {
@@ -470,7 +433,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Practice Quiz',
         href: '/dashboard/ai/quiz',
         icon: Sparkles,
-        iconColor: 'text-violet-400',
         featureFlag: 'ai_tools',
       },
       {
@@ -478,7 +440,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Learning Path',
         href: '/dashboard/ai/learning-path',
         icon: Sparkles,
-        iconColor: 'text-violet-400',
         featureFlag: 'ai_tools',
       },
       {
@@ -486,7 +447,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Lesson Plan',
         href: '/dashboard/ai/lesson-plan',
         icon: Sparkles,
-        iconColor: 'text-indigo-500',
         featureFlag: 'ai_tools',
       },
       {
@@ -494,7 +454,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Question Paper',
         href: '/dashboard/ai/question-paper',
         icon: Sparkles,
-        iconColor: 'text-indigo-400',
         featureFlag: 'ai_tools',
       },
       {
@@ -502,7 +461,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Worksheet',
         href: '/dashboard/ai/worksheet',
         icon: Sparkles,
-        iconColor: 'text-indigo-400',
         featureFlag: 'ai_tools',
       },
       {
@@ -510,7 +468,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Assignment',
         href: '/dashboard/ai/assignment',
         icon: Sparkles,
-        iconColor: 'text-indigo-400',
         featureFlag: 'ai_tools',
       },
       {
@@ -518,7 +475,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'Teacher Chat',
         href: '/dashboard/ai/teacher-chat',
         icon: Sparkles,
-        iconColor: 'text-indigo-500',
         featureFlag: 'ai_tools',
       },
       // ── All roles ───────────────────────────────────────────────────
@@ -527,7 +483,6 @@ export const NAV_CONFIG: NavGroup[] = [
         label: 'My AI Plan',
         href: '/dashboard/ai/subscription',
         icon: Sparkles,
-        iconColor: 'text-amber-500',
         featureFlag: 'ai_tools',
       },
     ],

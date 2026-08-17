@@ -8,8 +8,15 @@ export default function manifest(): MetadataRoute.Manifest {
       'A comprehensive school management system powered by Colegios.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#1e3a5f',
-    theme_color: '#1e3a5f',
+    // The walnut rail and the paper canvas behind it. These were a navy that
+    // matched no token in the app — a leftover from an earlier palette.
+    //
+    // A manifest is baked at install time and cannot follow the palette the way
+    // <meta name="theme-color"> does (PaletteProvider rewrites that on every
+    // switch). So these state the DEFAULT palette: what the splash screen shows
+    // for the second before the app itself paints.
+    background_color: '#f2efe9',
+    theme_color: '#362b1f',
     orientation: 'portrait-primary',
     scope: '/',
     lang: 'en',
