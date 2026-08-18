@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, X, Clock, CircleDot, Plane, Palmtree, HelpCircle } from 'lucide-react';
+import { Check, X, Clock, CircleDot, Plane, Palmtree, HelpCircle, ChevronRight } from 'lucide-react';
 import {
   ATTENDANCE_TONE,
   ATTENDANCE_NOT_MARKED,
@@ -34,9 +34,6 @@ interface TodayAttendanceTileProps {
   status: AttendanceStatus | null;
   /** e.g. "Independence Day" — only when the day is a holiday. */
   holidayName?: string | null;
-  percentage: number;
-  daysPresent: number;
-  workingDays: number;
   isLoading: boolean;
   onOpen: () => void;
 }
@@ -44,9 +41,6 @@ interface TodayAttendanceTileProps {
 export const TodayAttendanceTile = ({
   status,
   holidayName,
-  percentage,
-  daysPresent,
-  workingDays,
   isLoading,
   onOpen,
 }: TodayAttendanceTileProps) => {
@@ -62,43 +56,32 @@ export const TodayAttendanceTile = ({
     <button
       onClick={onOpen}
       aria-label={`Today's attendance: ${label}. Open the attendance month.`}
-      className="flex min-h-42 w-full cursor-pointer flex-col items-center gap-1.5 rounded-xl border border-line bg-surface p-3 text-center shadow-soft transition-all hover:-translate-y-0.5 hover:border-brand-edge hover:shadow-raised focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+      className="flex min-h-33 w-full cursor-pointer flex-col items-center gap-1 rounded-xl border border-line bg-surface p-2.5 text-center shadow-soft transition-all hover:-translate-y-0.5 hover:border-brand-edge hover:shadow-raised focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
     >
       <span className="eyebrow w-full text-left">Today</span>
 
       {isLoading ? (
-        <Skeleton className="mt-2 h-17 w-24 rounded-xl" />
+        <Skeleton className="mt-2 h-13 w-20 rounded-lg" />
       ) : (
         <span
           /* The off-square tilt is the portal's existing stamp gesture — a
              rubber stamp pressed by hand, not a status pill. */
-          className={`mt-1 inline-flex -rotate-2 flex-col items-center gap-1 rounded-xl border-[2.5px] px-3.5 pt-2.5 pb-2 ${borderStyle} ${ink}`}
+          className={`mt-1.5 inline-flex -rotate-2 flex-col items-center gap-0.5 rounded-lg border-2 px-2 pt-1.5 pb-1 ${borderStyle} ${ink}`}
         >
-          <Icon className="size-5.5" strokeWidth={3} aria-hidden />
-          <span className="font-display text-[13.5px] leading-none font-extrabold tracking-[0.1em] uppercase">
+          <Icon className="size-4.5" strokeWidth={3} aria-hidden />
+          <span className="font-display text-[10px] leading-tight font-extrabold tracking-[0.06em] uppercase">
             {label}
           </span>
         </span>
       )}
 
       {isRestDay && holidayName && (
-        <span className="line-clamp-2 text-[11px] leading-snug text-ink-muted">
-          {holidayName} · No classes today
-        </span>
+        <span className="line-clamp-1 text-[10px] leading-tight text-ink-muted">{holidayName}</span>
       )}
 
-      <span className="mt-auto pt-1.5 text-[10.5px] leading-snug text-ink-muted">
-        {isLoading ? (
-          <Skeleton className="h-4 w-24" />
-        ) : (
-          <>
-            <span className="tabular text-[13px] font-bold text-ink">{percentage}%</span> this month
-            <br />
-            <span className="tabular">
-              {daysPresent} of {workingDays} days
-            </span>
-          </>
-        )}
+      <span className="mt-auto flex items-center gap-0.5 pt-1.5 text-[11px] font-semibold text-brand">
+        View
+        <ChevronRight className="size-3.5" aria-hidden />
       </span>
     </button>
   );
