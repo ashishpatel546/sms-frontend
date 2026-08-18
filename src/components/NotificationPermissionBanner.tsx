@@ -6,9 +6,46 @@ import { API_BASE_URL } from "@/lib/api";
 
 type BannerState = 'hidden' | 'prompt' | 'denied' | 'push_blocked';
 
+/**
+ * Dismissal has to outlive the page.
+ *
+ * The 'denied' and 'push_blocked' states are derived from browser settings, so
+ * they come back true on every single load. With dismissal held in component
+ * state only, a parent who once said no to notifications got the banner again
+ * on every navigation, forever — 105px off the top of a 667px phone screen,
+ * which is what pushed the dashboard's own content below the fold.
+ *
+ * Keyed by state so that dismissing "you blocked us" does not also hide the
+ * different, actionable "enable alerts" prompt if they later un-block.
+ */
+const DISMISS_KEY = 'notif-banner-dismissed';
+
+function isDismissed(state: BannerState): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return localStorage.getItem(`${DISMISS_KEY}:${state}`) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function rememberDismissal(state: BannerState): void {
+  try {
+    localStorage.setItem(`${DISMISS_KEY}:${state}`, '1');
+  } catch {
+    /* private mode — the banner simply returns next load, as it used to */
+  }
+}
+
 export default function NotificationPermissionBanner() {
   const [state, setState] = useState<BannerState>('hidden');
   const [isSubscribing, setIsSubscribing] = useState(false);
+
+  /** Hide now and stay hidden. */
+  const dismiss = (from: BannerState) => {
+    rememberDismissal(from);
+    setState('hidden');
+  };
 
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
@@ -27,7 +64,7 @@ export default function NotificationPermissionBanner() {
             }).catch(() => {});
           } else if (result.reason === 'push_service_blocked') {
             // Push is blocked even though permission is granted — show helpful banner
-            setState('push_blocked');
+            if (!isDismissed('push_blocked')) setState('push_blocked');
           }
         });
       });
@@ -35,12 +72,12 @@ export default function NotificationPermissionBanner() {
     }
 
     if (permission === "denied") {
-      setState('denied');
+      if (!isDismissed('denied')) setState('denied');
       return;
     }
 
     // permission === "default" — ask user to enable
-    setState('prompt');
+    if (!isDismissed('prompt')) setState('prompt');
   }, []);
 
   const handleEnable = async () => {
@@ -97,7 +134,7 @@ export default function NotificationPermissionBanner() {
             </span>
           </div>
           <button
-            onClick={() => setState('hidden')}
+            onClick={() => dismiss('push_blocked')}
             aria-label="Dismiss notification"
             className="text-xs text-amber-700 underline whitespace-nowrap hover:no-underline shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded"
           >
@@ -120,7 +157,7 @@ export default function NotificationPermissionBanner() {
             Notifications are blocked. To receive alerts, click the lock icon in your browser address bar and allow notifications for this site.
           </div>
           <button
-            onClick={() => setState('hidden')}
+            onClick={() => dismiss('denied')}
             aria-label="Dismiss notification"
             className="text-xs text-red-700 underline whitespace-nowrap hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded"
           >
@@ -153,7 +190,7 @@ export default function NotificationPermissionBanner() {
             {isSubscribing ? "Enabling…" : "Enable Alerts"}
           </button>
           <button
-            onClick={() => setState('hidden')}
+            onClick={() => dismiss('prompt')}
             aria-label="Dismiss notification banner"
             title="Dismiss (you can enable later from the bell icon)"
             className="p-1 text-ink-muted hover:text-ink hover:bg-surface-secondary rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"

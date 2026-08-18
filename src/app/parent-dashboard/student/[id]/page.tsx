@@ -600,21 +600,22 @@ export default function StudentDashboardPage() {
         <div className="max-w-5xl space-y-4 px-3 py-4 sm:px-5 sm:py-6">
             <Toaster position="top-right" />
 
-            {/* Back — only when multi-student (single-student parents never see the card grid) */}
-            {siblings.length > 0 && (
-                <Link
-                    href="/parent-dashboard"
-                    className="inline-flex items-center gap-1 text-[12.5px] font-medium text-ink-muted transition-colors hover:text-brand"
-                >
-                    <ChevronLeft className="size-3.5" aria-hidden />
-                    All children
-                </Link>
-            )}
-
-            {/* ── Student Switcher (shown when parent has 2+ students) ── */}
+            {/* ── Student Switcher (shown when parent has 2+ students) ──
+                The back link shares this row rather than taking one of its own:
+                on a 667px phone the identity chrome above the fold was three
+                stacked bands deep before any of the child's actual news. */}
             {siblings.length > 0 && (
                 <div className="animate-fade-in">
-                    <p className="eyebrow mb-2 px-0.5">Switch child</p>
+                    <div className="mb-2 flex items-center justify-between gap-3 px-0.5">
+                        <p className="eyebrow">Switch child</p>
+                        <Link
+                            href="/parent-dashboard"
+                            className="inline-flex items-center gap-1 text-[12px] font-medium text-ink-muted transition-colors hover:text-brand"
+                        >
+                            <ChevronLeft className="size-3.5" aria-hidden />
+                            All children
+                        </Link>
+                    </div>
                     <div className="flex gap-2.5 overflow-x-auto pb-1 no-scrollbar snap-x snap-mandatory">
                         {siblings.map((s, idx) => {
                             const isActive = String(s.id) === String(studentId);
@@ -660,7 +661,11 @@ export default function StudentDashboardPage() {
             )}
 
             {/* ── Student Header Card ── */}
-            <StudentBanner studentId={studentId as string} />
+            {/* Identity is said once. With a switcher on screen the highlighted
+                chip already carries avatar, name and class — the banner repeated
+                all three directly beneath it. Single-child parents have no
+                switcher, so for them the banner is the only place it appears. */}
+            {siblings.length === 0 && <StudentBanner studentId={studentId as string} />}
 
             {/* ── Section Nav ─────────────────────────────────────────────
                 On Today there is no nav here at all: the Quick Access grid
