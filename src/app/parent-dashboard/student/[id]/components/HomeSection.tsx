@@ -1,10 +1,9 @@
 import React from "react";
-import { IndianRupee } from "lucide-react";
 import { useAttendance, useFees, useNotifications, useHolidays, useHomework } from "../hooks/useStudentData";
-import { Skeleton } from "@/components/ui/skeleton";
 import type { AttendanceStatus } from "@/lib/attendanceColors";
 import { TodayAttendanceTile } from "./TodayAttendanceTile";
 import { TodayHomeworkCard } from "./TodayHomeworkCard";
+import { TodayFeesTile } from "./TodayFeesTile";
 import { QuickAccessGrid } from "./QuickAccessGrid";
 import { AnnouncementBanner } from "./AnnouncementBanner";
 import { RecentUpdates } from "./RecentUpdates";
@@ -101,11 +100,6 @@ export const HomeSection = ({ studentId, academicYearString, onChangeSection }: 
     [homeworkItems],
   );
 
-  // Same expression the attendance tab uses, so the two screens cannot disagree
-  // about how many working days the month had.
-  const workingDays =
-    attendance?.workingDaysCount ?? ((attendance?.total ?? 0) - (attendance?.holiday ?? 0));
-
   const allNotifs = notifications ?? [];
   const headline = allNotifs[0] ?? null;
 
@@ -133,52 +127,31 @@ export const HomeSection = ({ studentId, academicYearString, onChangeSection }: 
         </p>
       </div>
 
-      {/* ── The day's two questions, side by side at every width ─────────────
-          Not stacked on small screens: attendance and homework together are
-          what the page is for, and one above the other pushes homework below
-          the fold on a phone. 45/55 keeps the homework text readable at 375px.
+      {/* ── Today, in one band ───────────────────────────────────────────────
+          Three narrow tiles rather than two wide ones plus a full-width fee
+          strip. Each answers one question at a glance — did they get in, is
+          there homework, is anything owed — and the detail behind each is one
+          tap away. The tiles are a fixed height whatever the data says, so the
+          page does not reflow when homework arrives or a fee is paid.
       ──────────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-[45fr_55fr] gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <TodayAttendanceTile
           status={attStatus}
           holidayName={holidayName}
-          percentage={attendance?.percentage ?? 0}
-          daysPresent={attendance?.present ?? 0}
-          workingDays={workingDays}
           isLoading={isAttLoading}
           onOpen={() => onChangeSection('attendance')}
         />
         <TodayHomeworkCard
-          items={todayHomework}
+          count={todayHomework.length}
           isLoading={isHwLoading}
           onOpen={() => onChangeSection('homework')}
         />
+        <TodayFeesTile
+          totalDue={totalDue}
+          isLoading={isFeesLoading}
+          onOpen={() => onChangeSection('fees')}
+        />
       </div>
-
-      {/* ── Only rendered when something actually wants the parent ────────── */}
-      {isFeesLoading ? (
-        <Skeleton className="h-16 w-full rounded-xl" />
-      ) : (
-        totalDue > 0 && (
-          <button
-            onClick={() => onChangeSection('fees')}
-            className="group/due flex w-full cursor-pointer items-center gap-3 rounded-xl border border-accent-warn-edge bg-accent-warn-tint p-3.5 text-left transition-all hover:-translate-y-0.5 hover:shadow-soft"
-          >
-            <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-accent-warn/15 text-accent-warn-deep">
-              <IndianRupee className="size-5" aria-hidden />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="tabular block text-[17px] font-bold text-ink">
-                ₹{totalDue.toLocaleString('en-IN')}
-              </span>
-              <span className="block text-[12.5px] text-ink-muted">Fees outstanding</span>
-            </span>
-            <span className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-[13px] font-semibold text-brand-contrast transition-transform group-hover/due:scale-105">
-              Pay
-            </span>
-          </button>
-        )
-      )}
 
       <QuickAccessGrid onSelect={onChangeSection} />
 

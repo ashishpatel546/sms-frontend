@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { Popover } from "@base-ui/react/popover";
-import { Check, Monitor, Moon, Sun } from "lucide-react";
+import { Check, Monitor, Moon, Sun, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PALETTES, type PaletteId } from "@/lib/palettes";
 import { usePalette } from "@/components/providers/PaletteProvider";
 import { PalettePreview } from "@/components/ui/PalettePreview";
+import { IconButton } from "@/components/ui/button";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    THE THEME PICKER
@@ -84,6 +85,28 @@ export function ThemePicker({
                             "data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
                         )}
                     >
+                        {/* Picking a theme is not itself a reason to close — a
+                            person often wants to try appearance and palette in
+                            combination before settling. So selecting an option
+                            never dismisses the popup; this header is the one
+                            explicit way out, and Escape / an outside click both
+                            still work via the Popover's own behaviour. */}
+                        <div className="mb-2.5 flex items-center justify-between">
+                            <Popover.Title className="text-[13px] font-semibold text-ink">
+                                Theme
+                            </Popover.Title>
+                            <IconButton
+                                label="Close"
+                                render={<Popover.Close />}
+                                nativeButton
+                                variant="ghost"
+                                size="icon-sm"
+                                className="-mr-1"
+                            >
+                                <X aria-hidden />
+                            </IconButton>
+                        </div>
+
                         {/* ── Appearance ─────────────────────────────────── */}
                         <p className="eyebrow mb-1.5">Appearance</p>
                         <div
