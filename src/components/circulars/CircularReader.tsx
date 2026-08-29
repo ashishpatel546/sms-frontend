@@ -49,7 +49,11 @@ export function CircularReader({
 }) {
   const rbac = useRbac();
   const [downloading, setDownloading] = React.useState(false);
-  const [confirmingArchive, setConfirmingArchive] = React.useState(false);
+  // Both archive and restore now change what the whole school sees AND what
+  // sits in their notification feed, so neither is a one-click action.
+  const [confirming, setConfirming] = React.useState<
+    'archive' | 'restore' | null
+  >(null);
   const [reason, setReason] = React.useState('');
   const [working, setWorking] = React.useState(false);
   const closeRef = React.useRef<HTMLButtonElement>(null);
@@ -96,7 +100,9 @@ export function CircularReader({
     setWorking(true);
     try {
       await archiveCircular(circular.id, reason.trim() || undefined);
-      toast.success('Circular archived — the school can no longer see it.');
+      toast.success(
+        'Circular archived — hidden from the school and its notification withdrawn.',
+      );
       onChanged?.();
       onClose();
     } catch (e) {
@@ -110,7 +116,9 @@ export function CircularReader({
     setWorking(true);
     try {
       await restoreCircular(circular.id);
-      toast.success('Circular restored — it is visible to the school again.');
+      toast.success(
+        'Circular restored — the school can see it and has been notified again.',
+      );
       onChanged?.();
       onClose();
     } catch (e) {
@@ -231,15 +239,16 @@ export function CircularReader({
         </div>
 
         <footer className="shrink-0 border-t border-line bg-surface-secondary px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5">
-          {confirmingArchive ? (
+          {confirming === 'archive' ? (
             <div className="space-y-2.5">
               <p className="flex items-start gap-2 text-[12.5px] leading-relaxed text-ink">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0 text-accent-deep" aria-hidden />
                 <span>
                   This withdraws the circular from every parent and staff
-                  member. The text is not changed and nothing is deleted — but
-                  the notification already sent when it was issued cannot be
-                  recalled.
+                  member, and takes the notification announcing it back out of
+                  their feeds. The text is not changed and nothing is deleted —
+                  though a push already shown on someone&rsquo;s phone cannot
+                  be pulled back.
                 </span>
               </p>
               <Input
@@ -254,7 +263,27 @@ export function CircularReader({
                   {working ? <Loader2 className="animate-spin" /> : <Archive />}
                   {working ? 'Archiving…' : 'Yes, archive it'}
                 </Button>
-                <Button variant="ghost" onClick={() => setConfirmingArchive(false)} disabled={working}>
+                <Button variant="ghost" onClick={() => setConfirming(null)} disabled={working}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : confirming === 'restore' ? (
+            <div className="space-y-2.5">
+              <p className="flex items-start gap-2 text-[12.5px] leading-relaxed text-ink">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-accent-deep" aria-hidden />
+                <span>
+                  This puts the circular back in front of the school and
+                  announces it again — everyone is notified a second time,
+                  because archiving withdrew the first notification.
+                </span>
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button onClick={() => void handleRestore()} disabled={working}>
+                  {working ? <Loader2 className="animate-spin" /> : <ArchiveRestore />}
+                  {working ? 'Restoring…' : 'Yes, restore and notify'}
+                </Button>
+                <Button variant="ghost" onClick={() => setConfirming(null)} disabled={working}>
                   Cancel
                 </Button>
               </div>
@@ -269,12 +298,11 @@ export function CircularReader({
               )}
               {rbac.canArchiveCirculars &&
                 (archived ? (
-                  <Button variant="outline" onClick={() => void handleRestore()} disabled={working}>
-                    {working ? <Loader2 className="animate-spin" /> : <ArchiveRestore />}
-                    {working ? 'Restoring…' : 'Restore'}
+                  <Button variant="outline" onClick={() => setConfirming('restore')}>
+                    <ArchiveRestore /> Restore
                   </Button>
                 ) : (
-                  <Button variant="outline" onClick={() => setConfirmingArchive(true)}>
+                  <Button variant="outline" onClick={() => setConfirming('archive')}>
                     <Archive /> Archive
                   </Button>
                 ))}

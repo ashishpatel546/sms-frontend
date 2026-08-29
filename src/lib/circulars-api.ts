@@ -160,14 +160,19 @@ async function postJson<T>(path: string, body?: unknown): Promise<T> {
  * Withdraws a circular from the school's view. SUPER_ADMIN only.
  *
  * Not an edit and not a delete: the text, the attachment and the row all stay
- * exactly as issued — only who can see it changes. The notification that went
- * out when it was published cannot be recalled.
+ * exactly as issued — only who can see it changes. The in-app notification
+ * raised at publication is withdrawn along with it; a web push already shown
+ * on a device is the one part that cannot be taken back.
  */
 export function archiveCircular(id: string, reason?: string): Promise<Circular> {
   return postJson(`/circulars/${id}/archive`, reason ? { reason } : {});
 }
 
-/** Puts an archived circular back in front of the school. SUPER_ADMIN only. */
+/**
+ * Puts an archived circular back in front of the school, and announces it
+ * again — archiving withdrew the original notification, so a restored
+ * circular that stayed silent would be live but unannounced. SUPER_ADMIN only.
+ */
 export function restoreCircular(id: string): Promise<Circular> {
   return postJson(`/circulars/${id}/restore`);
 }
