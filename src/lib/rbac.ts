@@ -130,6 +130,44 @@ export interface RbacPermissions {
    */
   canViewOwnIdCard: boolean;
 
+  /**
+   * Circulars: read the school's notices. Everyone with an account, staff and
+   * parents alike — a circular is addressed to the whole school, so gating it
+   * by rank would defeat the point. Mirrors the backend's `@MinRole(STUDENT)`
+   * on the circulars controller.
+   */
+  canViewCirculars: boolean;
+  /**
+   * Circulars: issue one (ADMIN+). It notifies every parent and staff member
+   * and can never be edited, so it stays with the people who own what the
+   * school says publicly.
+   */
+  canIssueCirculars: boolean;
+  /**
+   * Circulars: archive (withdraw) or restore one — SUPER_ADMIN only.
+   *
+   * A step above issuing on purpose. Publishing is routine office work;
+   * pulling back something the whole school was already notified about is the
+   * school changing its mind in public, and belongs with the owner.
+   */
+  canArchiveCirculars: boolean;
+
+  /**
+   * Settings: reach the page at all (ADMIN+). Everything on it except the
+   * holiday calendar is read-only below SUPER_ADMIN — see `canEditSettings`.
+   */
+  canAccessSettings: boolean;
+  /**
+   * Settings: change academic sessions, designations, exam categories and the
+   * grading system (SUPER_ADMIN only).
+   *
+   * Deliberately narrower than `isAdmin`: these are the settings the rest of
+   * the app is built on — flipping the active session or a grade band rewrites
+   * what every other page reports. An ADMIN reads them and manages holidays,
+   * which is the one part of Settings that is routine calendar upkeep.
+   */
+  canEditSettings: boolean;
+
   /** Inventory: manage catalog, sell/issue at the counter, view reports (SUB_ADMIN+). */
   canManageInventory: boolean;
 
@@ -234,6 +272,14 @@ export function useRbac(): RbacPermissions {
     canManageIdCards: level >= 60,
     // Any signed-in member of the school: STUDENT is level 10, the floor.
     canViewOwnIdCard: level >= 10,
+
+    // Any signed-in member of the school reads circulars; the office issues.
+    canViewCirculars: level >= 10,
+    canIssueCirculars: level >= 80,
+    canArchiveCirculars: level >= 100,
+
+    canAccessSettings: level >= 80,
+    canEditSettings: level >= 100,
 
     canManageInventory: level >= 60,
     canViewOwnInventory: level >= 10,

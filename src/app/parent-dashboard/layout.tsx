@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import { Bell, CalendarDays, House, LifeBuoy, LogOut, UserRound, type LucideIcon } from "lucide-react";
+import { Bell, CalendarDays, House, LifeBuoy, LogOut, ScrollText, UserRound, type LucideIcon } from "lucide-react";
 import { getUser, logout, getRefreshToken, setTokens, resetRefreshState } from "@/lib/auth";
 import { getSchoolSlug } from "@/lib/env";
 import { API_BASE_URL } from "@/lib/api";
@@ -140,6 +140,12 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
                                 active={pathname === '/parent-dashboard/notifications'}
                             />
                             <BarLink
+                                href="/parent-dashboard/circulars"
+                                icon={ScrollText}
+                                label="Circulars"
+                                active={pathname.startsWith('/parent-dashboard/circulars')}
+                            />
+                            <BarLink
                                 href="/parent-dashboard/support"
                                 icon={LifeBuoy}
                                 label="Help"
@@ -202,6 +208,12 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
                         icon={Bell}
                         label="Alerts"
                         active={pathname === '/parent-dashboard/notifications'}
+                    />
+                    <Tab
+                        href="/parent-dashboard/circulars"
+                        icon={ScrollText}
+                        label="Circulars"
+                        active={pathname.startsWith('/parent-dashboard/circulars')}
                     />
                     <Tab
                         href="/parent-dashboard/support"
