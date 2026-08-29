@@ -104,6 +104,19 @@ export const NAV_CONFIG: NavGroup[] = [
         icon: Bell,
         guardAllowed: true,
       },
+      {
+        // Circulars sit beside Notifications because that is what they are to
+        // a reader — the school talking to everyone at once. No `featureFlag`:
+        // the module is part of every plan, so there is nothing to gate on.
+        // `guardAllowed` because a notice addressed to the whole school
+        // includes the person on the gate.
+        id: 'circulars',
+        label: 'Circulars',
+        href: '/dashboard/circulars',
+        icon: ScrollText,
+        rbacKey: 'canViewCirculars',
+        guardAllowed: true,
+      },
     ],
   },
   {
@@ -404,10 +417,15 @@ export const NAV_CONFIG: NavGroup[] = [
         guardAllowed: true,
       },
       {
+        // ADMIN and above. The page itself is mostly read-only below
+        // SUPER_ADMIN (`canEditSettings`) — holidays are the exception — but
+        // reading it is genuinely useful to an admin, so the gate is on
+        // reaching the page, not on editing it.
         id: 'settings',
         label: 'Settings',
         href: '/dashboard/settings',
         icon: Settings,
+        rbacKey: 'canAccessSettings',
       },
     ],
   },

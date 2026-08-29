@@ -5,7 +5,7 @@ import toast, { Toaster } from "react-hot-toast";
 import useSWR from "swr";
 import { API_BASE_URL, fetcher } from "@/lib/api";
 import { Loader } from "@/components/ui/Loader";
-import { Plus, Trash2, Edit2, CheckCircle2, XCircle, Settings2, GraduationCap, CalendarDays } from "lucide-react";
+import { Plus, Trash2, Edit2, CheckCircle2, XCircle, Settings2, GraduationCap, CalendarDays, Eye } from "lucide-react";
 import { useRbac } from "@/lib/rbac";
 import { authFetch } from "@/lib/auth";
 import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
@@ -476,6 +476,34 @@ export default function SettingsPage() {
     };
 
 
+    // Settings is ADMIN+. Below SUPER_ADMIN it is a reading room with one
+    // working desk: `canEditSettings` withholds sessions, designations, exam
+    // categories and grading, while the holiday calendar stays editable —
+    // that one is routine upkeep, the rest rewrite what every other page
+    // reports.
+    if (!rbac.canAccessSettings) {
+        return (
+            <main className="p-8 text-center">
+                <p className="text-sm text-ink-muted">
+                    Settings is visible to the school&rsquo;s admin and super admin only.
+                </p>
+            </main>
+        );
+    }
+
+    const viewOnlyNotice = !rbac.canEditSettings && activeTab !== 'holidays' && (
+        <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-accent-edge bg-accent-tint px-4 py-3">
+            <Eye className="w-4 h-4 mt-0.5 shrink-0 text-accent-deep" aria-hidden />
+            <div className="min-w-0">
+                <p className="text-[13.5px] font-semibold text-accent-deep">View only</p>
+                <p className="mt-0.5 text-[12.5px] leading-relaxed text-accent-deep/90">
+                    Academic sessions, designations, exam categories and the grading system are
+                    changed by a super admin. You can manage the <button type="button" onClick={() => setActiveTab('holidays')} className="underline underline-offset-2 font-semibold cursor-pointer">holiday calendar</button> here.
+                </p>
+            </div>
+        </div>
+    );
+
     return (
         <main className="p-4 flex-1 h-full overflow-y-auto w-full max-w-7xl mx-auto">
             {error && <div className="p-4 text-red-600 mb-4 bg-red-50 rounded">Error loading sessions</div>}
@@ -519,14 +547,16 @@ export default function SettingsPage() {
                 </div>
             </div>
 
+            {viewOnlyNotice}
+
             {activeTab === 'system' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Academic Sessions panel */}
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                         <h2 className="text-xl font-bold mb-4 text-slate-800">Academic Sessions</h2>
 
-                        {/* Create Session form — ADMIN+ only */}
-                        {rbac.canManageSessions && (
+                        {/* Create Session form — SUPER_ADMIN only; an ADMIN reads the table. */}
+                        {rbac.canEditSettings && (
                             <form onSubmit={handleCreateSession} className="mb-8 p-4 bg-slate-50 border border-slate-200 rounded-lg">
                                 <h3 className="text-sm font-semibold text-slate-700 mb-3">Add New Session</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -577,7 +607,7 @@ export default function SettingsPage() {
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
-                                                    {!s.isActive && rbac.canManageSessions && (
+                                                    {!s.isActive && rbac.canEditSettings && (
                                                         <button onClick={() => handleSetActive(s.id)} className="text-blue-600 hover:underline font-medium text-xs">
                                                             Set Active
                                                         </button>
@@ -598,7 +628,7 @@ export default function SettingsPage() {
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                         <h2 className="text-xl font-bold mb-4 text-slate-800">Staff Designations</h2>
 
-                        {rbac.isAdmin && (
+                        {rbac.canEditSettings && (
                             <form onSubmit={handleCreateDesignation} className="mb-8 p-4 bg-slate-50 border border-slate-200 rounded-lg">
                                 <h3 className="text-sm font-semibold text-slate-700 mb-3">Add Designation</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -680,7 +710,7 @@ export default function SettingsPage() {
                                                 <td className="px-4 py-3 font-semibold text-slate-800">{d.title}</td>
                                                 <td className="px-4 py-3 text-xs">{d.description || '-'}</td>
                                                 <td className="px-4 py-3 text-right">
-                                                    {rbac.isAdmin && (
+                                                    {rbac.canEditSettings && (
                                                         <div className="relative inline-block text-left">
                                                             <button
                                                                 type="button"
@@ -739,7 +769,7 @@ export default function SettingsPage() {
                             </div>
 
                             {/* Create category form — ADMIN+ only */}
-                            {rbac.canManageExamSettings && (
+                            {rbac.canEditSettings && (
                                 <form onSubmit={handleCreateCategory} className="mb-8 p-4 bg-slate-50 border border-slate-200 rounded-lg">
                                     <h3 className="text-sm font-semibold text-slate-700 mb-3">Add New Exam Category</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -777,7 +807,7 @@ export default function SettingsPage() {
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
-                                                    {rbac.canManageExamSettings && (
+                                                    {rbac.canEditSettings && (
                                                         <button onClick={() => handleToggleCategory(c.id, c.isActive)} className="text-blue-600 hover:underline font-medium text-xs">
                                                             {c.isActive ? 'Deactivate' : 'Activate'}
                                                         </button>
@@ -848,7 +878,7 @@ export default function SettingsPage() {
                                     <span className="text-sm text-slate-500 italic">Please create and activate exam categories first.</span>
                                 )}
                             </div>
-                            {rbac.canManageExamSettings && (
+                            {rbac.canEditSettings && (
                                 <button onClick={handleSaveSettings} className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition">Save Result Settings</button>
                             )}
                         </div>
@@ -875,7 +905,7 @@ export default function SettingsPage() {
                         </div>
 
                         {/* Add grading band form — ADMIN+ only */}
-                        {rbac.canManageExamSettings && (
+                        {rbac.canEditSettings && (
                             <form onSubmit={handleCreateGrading} className="mb-8 p-4 bg-slate-50 border border-slate-200 rounded-lg">
                                 <h3 className="text-sm font-semibold text-slate-700 mb-3">Add Grading Band</h3>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
@@ -935,7 +965,7 @@ export default function SettingsPage() {
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
-                                                    {rbac.canManageExamSettings && (
+                                                    {rbac.canEditSettings && (
                                                         <button onClick={() => handleDeleteGrading(g.id)} className="text-red-500 hover:text-red-700 hover:underline font-medium text-xs">
                                                             Delete
                                                         </button>
