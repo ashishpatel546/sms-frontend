@@ -12,10 +12,12 @@ import {
   FileText,
   Loader2,
   Paperclip,
+  Users,
   X,
 } from 'lucide-react';
 import {
   archiveCircular,
+  circularAudienceLabel,
   downloadCircularFile,
   fetchCircularFileUrl,
   formatFileSize,
@@ -157,6 +159,13 @@ export function CircularReader({
               {formatPublishedAt(circular.publishedAt)}
               {circular.createdByName ? ` · Issued by ${circular.createdByName}` : ''}
             </p>
+            {/* Staff only — see the note on CircularCard's `showAudience`. */}
+            {rbac.seesAllCirculars && (
+              <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-secondary px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.1em] text-ink-muted uppercase">
+                <Users className="size-3" aria-hidden />
+                Issued to {circularAudienceLabel(circular.audience)}
+              </p>
+            )}
           </div>
           <button
             ref={closeRef}

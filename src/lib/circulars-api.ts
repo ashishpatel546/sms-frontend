@@ -18,11 +18,49 @@ export const CIRCULAR_MAX_FILE_BYTES = 10 * 1024 * 1024;
 /** The list opens on the five most recent — the server's default page size. */
 export const CIRCULAR_PAGE_SIZE = 5;
 
+/**
+ * Who a circular is addressed to — mirrors `CircularAudience` on the server.
+ *
+ * This is a real boundary, not a label: the API decides from the token which
+ * of these a reader may see, so the parent portal never receives a STAFF
+ * circular in the first place. Nothing here is doing the hiding.
+ */
+export type CircularAudience = 'PARENT' | 'STAFF' | 'ALL';
+
+/** Label, and the plain sentence that says who will actually be told. */
+export const CIRCULAR_AUDIENCES: {
+  value: CircularAudience;
+  label: string;
+  who: string;
+}[] = [
+  {
+    value: 'ALL',
+    label: 'Everyone',
+    who: 'Every parent and every member of staff is notified.',
+  },
+  {
+    value: 'PARENT',
+    label: 'Parents',
+    who: 'Only parents are notified, and only they can see it.',
+  },
+  {
+    value: 'STAFF',
+    label: 'Staff',
+    who: 'Only staff are notified. Parents never see this circular.',
+  },
+];
+
+export function circularAudienceLabel(audience: CircularAudience): string {
+  return CIRCULAR_AUDIENCES.find((a) => a.value === audience)?.label ?? 'Everyone';
+}
+
 export interface Circular {
   id: string;
   title: string;
   description: string;
   publishedAt: string;
+  /** Who it went to. Defaults to everyone for circulars issued before audiences. */
+  audience: CircularAudience;
   fileName: string | null;
   fileMimeType: string | null;
   fileSize: number | null;
@@ -49,6 +87,12 @@ export interface CircularQuery {
    * role, so sending it as anyone else changes nothing.
    */
   includeArchived?: boolean;
+  /**
+   * Narrow to circulars a group can see — their own plus the school-wide ones,
+   * because those reached that group too. Staff only; a parent is already
+   * pinned to their own stream by the API and this cannot widen that.
+   */
+  audience?: Exclude<CircularAudience, 'ALL'>;
 }
 
 export class CircularApiError extends Error {
@@ -67,6 +111,7 @@ function buildQuery(query: CircularQuery): string {
   if (query.page) params.set('page', String(query.page));
   if (query.limit) params.set('limit', String(query.limit));
   if (query.includeArchived) params.set('includeArchived', 'true');
+  if (query.audience) params.set('audience', query.audience);
   const qs = params.toString();
   return qs ? `?${qs}` : '';
 }
@@ -126,11 +171,13 @@ export async function downloadCircularFile(id: string, fileName: string): Promis
 export async function createCircular(input: {
   title: string;
   description: string;
+  audience: CircularAudience;
   file?: File | null;
 }): Promise<Circular> {
   const form = new FormData();
   form.append('title', input.title);
   form.append('description', input.description);
+  form.append('audience', input.audience);
   if (input.file) form.append('file', input.file);
 
   const res = await authFetch(`${API_BASE_URL}/circulars`, { method: 'POST', body: form });
