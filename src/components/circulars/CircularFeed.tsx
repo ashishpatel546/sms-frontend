@@ -11,7 +11,7 @@ import {
 import { CircularCard } from './CircularCard';
 import { CircularReader } from './CircularReader';
 import { EmptyState, ErrorState } from '@/components/ui/EmptyState';
-import { FilterBar, SearchInput } from '@/components/ui/FilterBar';
+import { FilterBar, FilterField, SearchInput, SegmentedControl } from '@/components/ui/FilterBar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/Field';
@@ -19,6 +19,21 @@ import { useRbac } from '@/lib/rbac';
 
 /** Long enough that a phone keyboard isn't firing a request per keystroke. */
 const SEARCH_DEBOUNCE_MS = 300;
+
+/**
+ * The staff audience filter. `EVERYTHING` is the absence of a filter, not a
+ * value the API understands — asking for "PARENT" means "everything a parent
+ * can see", school-wide notices included, which is the question the office
+ * actually has ("what did parents get?").
+ */
+const EVERYTHING = 'EVERYTHING';
+type AudienceFilter = typeof EVERYTHING | 'PARENT' | 'STAFF';
+
+const AUDIENCE_FILTERS: { value: AudienceFilter; label: string }[] = [
+  { value: EVERYTHING, label: 'All' },
+  { value: 'PARENT', label: 'To parents' },
+  { value: 'STAFF', label: 'To staff' },
+];
 
 /**
  * THE CIRCULARS FEED — search, list, pagination and the reader.
@@ -42,6 +57,7 @@ export function CircularFeed({
   const [search, setSearch] = React.useState('');
   const [page, setPage] = React.useState(1);
   const [includeArchived, setIncludeArchived] = React.useState(false);
+  const [audience, setAudience] = React.useState<AudienceFilter>(EVERYTHING);
   const [reading, setReading] = React.useState<Circular | null>(null);
 
   // Debounce the typed term into the one the query keys off, and go back to
@@ -60,9 +76,10 @@ export function CircularFeed({
     page,
     limit: CIRCULAR_PAGE_SIZE,
     includeArchived: includeArchived || undefined,
+    audience: audience === EVERYTHING ? undefined : audience,
   };
   const { data, error, isLoading, mutate } = useSWR(
-    ['circulars', search, page, includeArchived],
+    ['circulars', search, page, includeArchived, audience],
     () => fetchCirculars(query),
     { revalidateOnFocus: false, keepPreviousData: true },
   );
@@ -71,7 +88,10 @@ export function CircularFeed({
   const totalPages = Math.max(1, Math.ceil(total / CIRCULAR_PAGE_SIZE));
   const from = total === 0 ? 0 : (page - 1) * CIRCULAR_PAGE_SIZE + 1;
   const to = Math.min(page * CIRCULAR_PAGE_SIZE, total);
+  // A filtered-empty list is not an empty school — say which it is, or the
+  // office concludes it never sent the notice it is looking for.
   const searching = search.trim().length > 0;
+  const filtered = audience !== EVERYTHING;
 
   return (
     <>
@@ -82,6 +102,22 @@ export function CircularFeed({
           placeholder="Search title or description…"
           aria-label="Search circulars"
         />
+        {/* Staff read every circular whatever its audience, so the filter is
+            the only way to answer "what did parents get?". A parent is pinned
+            to their own stream by the API and has nothing to filter. */}
+        {rbac.seesAllCirculars && (
+          <FilterField label="Audience">
+            <SegmentedControl
+              value={audience}
+              onValueChange={(v) => {
+                setAudience(v);
+                setPage(1);
+              }}
+              options={AUDIENCE_FILTERS}
+              size="sm"
+            />
+          </FilterField>
+        )}
         {/* Archived circulars exist for the super admin who withdrew them —
             an audit trail, not a second inbox. Nobody else is offered the
             switch, and the API refuses it for them anyway. */}
@@ -124,6 +160,19 @@ export function CircularFeed({
                 </Button>
               }
             />
+          ) : filtered ? (
+            <EmptyState
+              icon={<SearchX />}
+              title="Nothing for that audience"
+              description={`No circular has been issued to ${
+                audience === 'PARENT' ? 'parents' : 'staff'
+              } yet.`}
+              action={
+                <Button variant="outline" onClick={() => setAudience(EVERYTHING)}>
+                  Show all circulars
+                </Button>
+              }
+            />
           ) : (
             <EmptyState
               icon={<ScrollText />}
@@ -137,6 +186,7 @@ export function CircularFeed({
             <CircularCard
               key={circular.id}
               circular={circular}
+              showAudience={rbac.seesAllCirculars}
               onOpen={() => setReading(circular)}
             />
           ))

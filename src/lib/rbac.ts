@@ -151,6 +151,16 @@ export interface RbacPermissions {
    * school changing its mind in public, and belongs with the owner.
    */
   canArchiveCirculars: boolean;
+  /**
+   * Circulars: see every circular whatever its audience, and filter by it.
+   *
+   * True for staff, false for parents and students — deliberately asymmetric.
+   * A staff-only notice must never reach the parent gate, but nothing sent to
+   * parents is confidential from a teacher, and the office has to be able to
+   * check what went out. The API enforces the same split from the token; this
+   * only decides whether the filter is worth showing.
+   */
+  seesAllCirculars: boolean;
 
   /**
    * Settings: reach the page at all (ADMIN+). Everything on it except the
@@ -277,6 +287,10 @@ export function useRbac(): RbacPermissions {
     canViewCirculars: level >= 10,
     canIssueCirculars: level >= 80,
     canArchiveCirculars: level >= 100,
+    // GUARD (30) is the floor of "employed here" — below it there are only
+    // parents and students. A teacher who is ALSO a parent signs in to a
+    // separate parent account, which is why holding PARENT is disqualifying.
+    seesAllCirculars: level >= 30 && !has('PARENT'),
 
     canAccessSettings: level >= 80,
     canEditSettings: level >= 100,

@@ -4,20 +4,33 @@ import * as React from 'react';
 import toast from 'react-hot-toast';
 import { AlertTriangle, FileUp, Loader2, Lock, Send, X } from 'lucide-react';
 import {
+  CIRCULAR_AUDIENCES,
   CIRCULAR_DESCRIPTION_MAX,
   CIRCULAR_DESCRIPTION_MIN,
   CIRCULAR_MAX_FILE_BYTES,
   CIRCULAR_TITLE_MAX,
+  type CircularAudience,
   createCircular,
   formatFileSize,
 } from '@/lib/circulars-api';
-import { Field, Input, Label, Textarea } from '@/components/ui/Field';
+import { Field, Fieldset, Input, Label, Textarea } from '@/components/ui/Field';
 import { Note } from '@/components/ui/Panel';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 /** Below this much headroom the counter starts warning rather than informing. */
 const COUNTER_WARN_AT = 100;
+
+/**
+ * Who is about to be interrupted, as a sentence subject. The confirmation and
+ * the toast both name them: "everyone has been notified" is exactly the phrase
+ * that stops someone reading the audience they just chose.
+ */
+const AUDIENCE_PHRASE: Record<CircularAudience, string> = {
+  ALL: 'Every parent and staff member',
+  PARENT: 'Every parent',
+  STAFF: 'Every member of staff',
+};
 
 /**
  * ISSUING A CIRCULAR.
@@ -36,6 +49,10 @@ export function IssueCircularDialog({
 }) {
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
+  // Everyone is the default: it is what a circular meant before audiences
+  // existed, and the mistake it risks (too many people told) is the one the
+  // office can see and correct. The other way round, nobody notices.
+  const [audience, setAudience] = React.useState<CircularAudience>('ALL');
   const [file, setFile] = React.useState<File | null>(null);
   const [fileError, setFileError] = React.useState<string | null>(null);
   const [confirming, setConfirming] = React.useState(false);
@@ -91,9 +108,12 @@ export function IssueCircularDialog({
       await createCircular({
         title: trimmedTitle,
         description: trimmedDescription,
+        audience,
         file,
       });
-      toast.success('Circular issued — everyone has been notified.');
+      toast.success(
+        `Circular issued — ${AUDIENCE_PHRASE[audience].toLowerCase()} has been notified.`,
+      );
       onIssued();
       onClose();
     } catch (e) {
@@ -153,10 +173,49 @@ export function IssueCircularDialog({
             icon={<Lock />}
             title="Published once, and final"
           >
-            A circular cannot be edited or withdrawn after it is issued, and
-            everyone is notified immediately. To correct one, issue a new
-            circular.
+            A circular cannot be edited after it is issued, and the audience
+            you choose is notified immediately. To correct one, issue a new
+            circular — only the school&rsquo;s owner can withdraw one.
           </Note>
+
+          <Fieldset
+            legend="Who is this for?"
+            description="Only this group is notified, and a staff circular never reaches the parent portal."
+          >
+            <div className="space-y-2">
+              {CIRCULAR_AUDIENCES.map((option) => {
+                const selected = audience === option.value;
+                return (
+                  <label
+                    key={option.value}
+                    className={cn(
+                      'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
+                      selected
+                        ? 'border-brand bg-brand-tint'
+                        : 'border-line bg-surface-secondary hover:border-line-strong',
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="circular-audience"
+                      value={option.value}
+                      checked={selected}
+                      onChange={() => setAudience(option.value)}
+                      className="mt-0.5 size-4 shrink-0 accent-brand"
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-[13.5px] font-semibold text-ink">
+                        {option.label}
+                      </span>
+                      <span className="mt-0.5 block text-[12px] leading-relaxed text-ink-muted">
+                        {option.who}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </Fieldset>
 
           <Field label="Title" required>
             <Input
@@ -259,8 +318,12 @@ export function IssueCircularDialog({
               <p className="flex items-start gap-2 text-[12.5px] leading-relaxed text-ink">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0 text-accent-deep" aria-hidden />
                 <span>
-                  Every parent and staff member will be notified straight away,
-                  and this circular can never be edited. Issue it?
+                  {AUDIENCE_PHRASE[audience]} will be notified straight away,
+                  and this circular can never be edited.
+                  {audience === 'STAFF' && ' Parents will not see it at all.'}
+                  {audience === 'PARENT' &&
+                    ' Staff can still find it in the circulars list, but will not be notified.'}{' '}
+                  Issue it?
                 </span>
               </p>
               <div className="flex flex-wrap items-center gap-2">
