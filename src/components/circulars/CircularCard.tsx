@@ -1,9 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { Archive, FileText, Paperclip } from 'lucide-react';
+import { Archive, FileText, Paperclip, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatFileSize, type Circular } from '@/lib/circulars-api';
+import {
+  circularAudienceLabel,
+  formatFileSize,
+  type Circular,
+} from '@/lib/circulars-api';
 
 /** A circular issued within this window is still worth pointing at. */
 const NEW_FOR_DAYS = 3;
@@ -24,10 +28,17 @@ export function isRecent(iso: string): boolean {
 export function CircularCard({
   circular,
   onOpen,
+  showAudience = false,
   className,
 }: {
   circular: Circular;
   onOpen: () => void;
+  /**
+   * Staff only. A parent's feed contains nothing but circulars addressed to
+   * them, so the badge would tell them something they already know — and a
+   * row of "To: Parents" on every card is noise, not information.
+   */
+  showAudience?: boolean;
   className?: string;
 }) {
   const published = new Date(circular.publishedAt);
@@ -84,6 +95,12 @@ export function CircularCard({
               <span className="inline-flex items-center gap-1 rounded-full border border-line-strong bg-surface-inset px-1.5 py-0.5 font-mono text-[9.5px] font-semibold tracking-[0.12em] text-ink-muted uppercase">
                 <Archive className="size-2.5" aria-hidden />
                 Archived
+              </span>
+            )}
+            {showAudience && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-line bg-surface-secondary px-1.5 py-0.5 font-mono text-[9.5px] font-semibold tracking-[0.12em] text-ink-muted uppercase">
+                <Users className="size-2.5" aria-hidden />
+                {circularAudienceLabel(circular.audience)}
               </span>
             )}
           </span>
