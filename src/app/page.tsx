@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
 import { getSchoolSlug } from "@/lib/env";
 import { setTokens, getDashboardRoute, getUser, markMustChangePasswordFlow } from "@/lib/auth";
+import { formatMobileInput, isValidMobile, MOBILE_ERROR } from "@/lib/mobile";
 import SplashScreen from "@/components/SplashScreen";
 import { BorderBeam } from "@/components/ui/BorderBeam";
 import {
@@ -79,6 +80,10 @@ export default function LoginPage() {
   const handleParentLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!isValidMobile(mobile)) {
+      setError(MOBILE_ERROR);
+      return;
+    }
     setIsLoading(true);
     try {
       const slug = getSchoolSlug();
@@ -109,13 +114,20 @@ export default function LoginPage() {
   const handleStaffLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    const identifier = staffIdentifier.trim();
+    // identifier is mobile-or-email; only mobile-looking input is checked
+    // against isValidMobile so email logins are never blocked here.
+    if (/^[+\d\s\-().]+$/.test(identifier) && !isValidMobile(formatMobileInput(identifier))) {
+      setError(MOBILE_ERROR);
+      return;
+    }
     setIsLoading(true);
     try {
       const slug = getSchoolSlug();
       const res = await fetch(`${API_BASE_URL}/auth/login/staff`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(slug ? { 'X-School-Slug': slug } : {}) },
-        body: JSON.stringify({ identifier: staffIdentifier, password }),
+        body: JSON.stringify({ identifier, password }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || "Invalid mobile number or password");
@@ -274,7 +286,13 @@ export default function LoginPage() {
                             id="staff-id"
                             type="text"
                             value={staffIdentifier}
-                            onChange={e => setStaffIdentifier(e.target.value)}
+                            onChange={e => {
+                              const v = e.target.value;
+                              const trimmed = v.trim();
+                              setStaffIdentifier(
+                                /^[+\d\s\-().]+$/.test(trimmed) ? formatMobileInput(v) : v.trimStart(),
+                              );
+                            }}
                             required
                             autoComplete="username"
                             suppressHydrationWarning
@@ -358,10 +376,11 @@ export default function LoginPage() {
                               type="tel"
                               inputMode="numeric"
                               value={mobile}
-                              onChange={e => setMobile(e.target.value)}
+                              onChange={e => setMobile(formatMobileInput(e.target.value))}
                               required
                               autoComplete="tel"
                               suppressHydrationWarning
+                              maxLength={10}
                               placeholder="9876543210"
                               className={inputClass}
                             />

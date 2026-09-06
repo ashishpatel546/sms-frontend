@@ -11,6 +11,25 @@ interface AppNotification {
   title: string;
   message: string;
   createdAt: string;
+  /** Local (IndexedDB-mirrored push) rows only — already resolved to the
+   * recipient's own role by the backend before it was pushed. */
+  url?: string | null;
+  /** Remote (persisted) rows only — the backend hands back both, since one
+   * notification can address parents and staff with different destinations. */
+  parentLink?: string | null;
+  staffLink?: string | null;
+}
+
+/** Same-origin-path guard, mirroring the service worker's own check. */
+function isSafePath(url: string | null | undefined): url is string {
+  return typeof url === 'string' && url.startsWith('/') && !url.startsWith('//');
+}
+
+function linkFor(notif: AppNotification): string | null {
+  if (isSafePath(notif.url)) return notif.url;
+  const isParent = getUser()?.role === 'PARENT';
+  const link = isParent ? notif.parentLink : notif.staffLink;
+  return isSafePath(link) ? link : null;
 }
 
 // Helper to get the current user's login time from the JWT iat claim (ms)
@@ -49,6 +68,7 @@ async function getLocalNotifications(loginTime: number | null): Promise<AppNotif
             title: n.title,
             message: n.message,
             createdAt: n.timestamp,
+            url: n.url ?? null,
           }));
           // Only show push notifications received after this user logged in
           const filtered = loginTime
@@ -278,15 +298,23 @@ export function NotificationBell({ variant = 'light' }: { variant?: 'light' | 'd
                 No notifications right now
               </div>
             )}
-            {mergedNotifications?.map((notif) => (
-              <div key={notif.id} className={`p-4 border-b transition-colors ${theme.item}`}>
-                <h4 className={`font-medium text-sm ${theme.title}`}>{notif.title}</h4>
-                <p className={`text-sm mt-1.5 leading-snug wrap-break-word whitespace-pre-wrap ${theme.message}`}>{notif.message}</p>
-                <span className={`text-xs font-medium mt-2.5 block ${theme.date}`}>
-                   {new Date(notif.createdAt).toLocaleDateString()} at {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-            ))}
+            {mergedNotifications?.map((notif) => {
+              const href = linkFor(notif);
+              const Row = href ? 'a' : 'div';
+              return (
+                <Row
+                  key={notif.id}
+                  {...(href ? { href, onClick: () => setIsOpen(false) } : {})}
+                  className={`block p-4 border-b transition-colors ${theme.item} ${href ? 'cursor-pointer' : ''}`}
+                >
+                  <h4 className={`font-medium text-sm ${theme.title}`}>{notif.title}</h4>
+                  <p className={`text-sm mt-1.5 leading-snug wrap-break-word whitespace-pre-wrap ${theme.message}`}>{notif.message}</p>
+                  <span className={`text-xs font-medium mt-2.5 block ${theme.date}`}>
+                     {new Date(notif.createdAt).toLocaleDateString()} at {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </Row>
+              );
+            })}
           </div>
         </div>
       )}

@@ -29,6 +29,9 @@ export const PHOTO_ASPECT = 3 / 4;
 const FULL_MAX_EDGE = 1200;
 /** Longest side of the list/form thumbnail. */
 const THUMB_MAX_EDGE = 200;
+/** Gallery photos (activities) are viewed larger than an ID-card thumbnail. */
+const GALLERY_FULL_MAX_EDGE = 1600;
+const GALLERY_THUMB_MAX_EDGE = 320;
 
 /** Quality ladder, walked downward only if the blob misses its ceiling. */
 const FULL_QUALITY_STEPS = [0.85, 0.72, 0.6, 0.5];
@@ -242,6 +245,41 @@ export async function preparePhoto(
   );
   const thumb = await encodeUnder(
     scaleTo(cropped, THUMB_MAX_EDGE),
+    THUMB_BYTE_CEILING,
+    THUMB_QUALITY_STEPS,
+  );
+
+  return {
+    full,
+    thumb,
+    previewUrl: URL.createObjectURL(thumb),
+    fullBytes: full.size,
+    thumbBytes: thumb.size,
+  };
+}
+
+/**
+ * Uncropped variant of `preparePhoto`, for photo galleries (activities) rather
+ * than ID-card portraits — there is no `PHOTO_ASPECT` lock here, and no crop
+ * dialog: the whole frame is kept, just downscaled and re-encoded. Same
+ * canvas/encode primitives as the ID-card path, so both share one place that
+ * knows how to fit a phone photo under the server's size limits.
+ */
+export async function prepareGalleryPhoto(
+  image: HTMLImageElement,
+): Promise<PreparedPhoto> {
+  const source = document.createElement('canvas');
+  source.width = image.width;
+  source.height = image.height;
+  context2d(source).drawImage(image, 0, 0);
+
+  const full = await encodeUnder(
+    scaleTo(source, GALLERY_FULL_MAX_EDGE),
+    FULL_BYTE_CEILING,
+    FULL_QUALITY_STEPS,
+  );
+  const thumb = await encodeUnder(
+    scaleTo(source, GALLERY_THUMB_MAX_EDGE),
     THUMB_BYTE_CEILING,
     THUMB_QUALITY_STEPS,
   );

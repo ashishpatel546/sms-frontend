@@ -10,8 +10,17 @@ import { useRbac } from "@/lib/rbac";
 import { authFetch } from "@/lib/auth";
 import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 
+type SettingsTab = 'system' | 'examination' | 'holidays';
+
+/** Deep link from a holiday push notification (`?tab=holidays`) — holidays have no route of their own, just this tab. Mount-only, matching /dashboard/attendance's read to avoid a Suspense boundary around this page. */
+function initialSettingsTab(): SettingsTab {
+    if (typeof window === "undefined") return 'system';
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    return tab === 'examination' || tab === 'holidays' ? tab : 'system';
+}
+
 export default function SettingsPage() {
-    const [activeTab, setActiveTab] = useState<'system' | 'examination' | 'holidays'>('system');
+    const [activeTab, setActiveTab] = useState<SettingsTab>(initialSettingsTab);
     const rbac = useRbac();
     const readOnly = useReadOnlySession();
 

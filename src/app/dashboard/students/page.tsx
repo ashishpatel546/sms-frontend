@@ -49,6 +49,7 @@ export default function StudentsPage() {
     const [searchMobile, setSearchMobile] = useState("");
     const [searchParents, setSearchParents] = useState("");
     const [searchPen, setSearchPen] = useState("");
+    const [searchAdmissionNumber, setSearchAdmissionNumber] = useState("");
     const [searchStatus, setSearchStatus] = useState("");
     const [searchClassId, setSearchClassId] = useState("");
     const [searchSectionId, setSearchSectionId] = useState("");
@@ -129,6 +130,7 @@ export default function StudentsPage() {
         if (searchMobile) params.append("mobile", searchMobile);
         if (searchParents) params.append("parentsName", searchParents);
         if (searchPen) params.append("pen", searchPen);
+        if (searchAdmissionNumber) params.append("admissionNumber", searchAdmissionNumber);
         if (searchStatus !== "") params.append("enrollmentStatus", searchStatus);
         if (searchClassId) params.append("classId", searchClassId);
         if (searchSectionId) params.append("sectionId", searchSectionId);
@@ -298,6 +300,14 @@ export default function StudentsPage() {
             width: 'w-14',
             className: 'tabular',
             card: 'meta',
+        },
+        {
+            key: 'admissionNumber',
+            header: 'Admission No.',
+            sortable: true,
+            className: 'tabular',
+            card: 'meta',
+            render: (row) => row.admissionNumber || '—',
         },
         {
             key: 'rollNo',
@@ -471,6 +481,9 @@ export default function StudentsPage() {
                             <Field label="PEN" htmlFor="f-pen" hint="Permanent enrollment number">
                                 <Input id="f-pen" value={searchPen} onChange={e => setSearchPen(e.target.value)} placeholder="e.g. 1234567890" />
                             </Field>
+                            <Field label="Admission No." htmlFor="f-admission-number">
+                                <Input id="f-admission-number" value={searchAdmissionNumber} onChange={e => setSearchAdmissionNumber(e.target.value)} placeholder="e.g. 150" />
+                            </Field>
                             <Field label="Status" htmlFor="f-status">
                                 <Select id="f-status" value={searchStatus} onChange={e => setSearchStatus(e.target.value)}>
                                     <option value="">All</option>
@@ -587,7 +600,7 @@ export default function StudentsPage() {
                                     <p className="font-semibold mb-2">CSV Format Requirements:</p>
                                     <ul className="list-disc pl-5 space-y-1">
                                         <li>Must contain headers exactly as shown below (order matters):</li>
-                                        <li className="font-mono text-xs bg-gray-100 p-1 rounded overflow-x-auto whitespace-nowrap">firstName,lastName,gender,dateOfBirth,mobile,email,alternateMobile,category,religion,bloodGroup,aadhaarNumber,fathersName,fatherAadhaarNumber,mothersName,motherAadhaarNumber,addressLine1,addressLine2,landmark,city,state,postalCode,country,classId,sectionId,academicSessionId,subjectIds,pen,fatherPan,motherPan,fatherOccupation,motherOccupation,fatherIncome,motherIncome,aparId,abhaId</li>
+                                        <li className="font-mono text-xs bg-gray-100 p-1 rounded overflow-x-auto whitespace-nowrap">firstName,lastName,gender,dateOfBirth,mobile,email,alternateMobile,category,religion,bloodGroup,aadhaarNumber,fathersName,fatherAadhaarNumber,mothersName,motherAadhaarNumber,addressLine1,addressLine2,landmark,city,state,postalCode,country,classId,sectionId,academicSessionId,subjectIds,pen,fatherPan,motherPan,fatherOccupation,motherOccupation,fatherIncome,motherIncome,aparId,abhaId,admissionNumber</li>
                                         <li><span className="font-semibold text-red-600">Required:</span> firstName, gender, dateOfBirth, mobile, fathersName, mothersName, category, religion</li>
                                         <li><span className="font-semibold">Optional fields</span> can be left empty, but the column must still be present.</li>
                                         <li><span className="font-semibold">dateOfBirth:</span> Use format YYYY-MM-DD</li>
@@ -597,8 +610,8 @@ export default function StudentsPage() {
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            const headers = "firstName,lastName,gender,dateOfBirth,mobile,email,alternateMobile,category,religion,bloodGroup,aadhaarNumber,fathersName,fatherAadhaarNumber,mothersName,motherAadhaarNumber,addressLine1,addressLine2,landmark,city,state,postalCode,country,classId,sectionId,academicSessionId,subjectIds,pen,fatherPan,motherPan,fatherOccupation,motherOccupation,fatherIncome,motherIncome,aparId,abhaId";
-                                            const sample = "John,Doe,Male,2010-05-15,9876543210,john.doe@example.com,,General,HINDU,O+,,Ramesh Doe,,Sunita Doe,,12 Main Street,,Near Park,Delhi,Delhi,110001,India,1,1,1,1|2,,,,,,,,,";
+                                            const headers = "firstName,lastName,gender,dateOfBirth,mobile,email,alternateMobile,category,religion,bloodGroup,aadhaarNumber,fathersName,fatherAadhaarNumber,mothersName,motherAadhaarNumber,addressLine1,addressLine2,landmark,city,state,postalCode,country,classId,sectionId,academicSessionId,subjectIds,pen,fatherPan,motherPan,fatherOccupation,motherOccupation,fatherIncome,motherIncome,aparId,abhaId,admissionNumber";
+                                            const sample = "John,Doe,Male,2010-05-15,9876543210,john.doe@example.com,,General,HINDU,O+,,Ramesh Doe,,Sunita Doe,,12 Main Street,,Near Park,Delhi,Delhi,110001,India,1,1,1,1|2,,,,,,,,,,";
                                             const blob = new Blob([headers + "\n" + sample], { type: "text/csv" });
                                             const url = URL.createObjectURL(blob);
                                             const a = document.createElement("a");

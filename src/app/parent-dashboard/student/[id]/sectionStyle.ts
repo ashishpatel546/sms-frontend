@@ -45,6 +45,7 @@ export type SectionKey =
   | 'pickup'
   | 'id-card'
   | 'holidays'
+  | 'activities'
   | 'info';
 
 export interface SectionStyle {
@@ -74,6 +75,7 @@ export const QUICK_ACCESS_SECONDARY: SectionKey[] = [
   'pickup',
   'id-card',
   'holidays',
+  'activities',
   'info',
 ];
 
@@ -132,6 +134,13 @@ export const SECTION_STYLE: Record<SectionKey, SectionStyle> = {
     label: 'Holidays',
     gradient: 'bg-[linear-gradient(135deg,#0284c7_0%,#075985_100%)]', // sky 600→800
     path: 'M18.95 20.3L14 15.35q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.95 4.95q.275.275.275.7t-.275.7t-.7.275t-.7-.275M7.625 18.675q-.7.7-1.638.663t-1.437-.813q-1.5-2.325-1.588-5.037T4.2 8.375q.075.85.425 1.913t.963 2.237t1.462 2.413t1.875 2.437zM10.3 16q-1.2-1.2-2.1-2.613T6.788 10.65t-.575-2.412t.462-1.613q.525-.55 1.613-.5t2.425.563t2.75 1.425t2.612 2.112zm8.25-11.475q.775.5.825 1.425t-.65 1.625L17.45 8.85Q16.275 7.825 15.038 7t-2.4-1.45t-2.226-.988T8.5 4.125Q10.875 2.9 13.575 3t4.975 1.525',
+  },
+  activities: {
+    label: 'Activities',
+    gradient: 'bg-[linear-gradient(135deg,#65a30d_0%,#3f6212_100%)]', // lime 600→900
+    // A plain five-point star, NOT from Material Symbols like the other paths
+    // in this file — kept simple on purpose so it needs no attribution.
+    path: 'M12 2l2.9 6.26L22 9.27l-5 4.87L18.2 21 12 17.77 5.8 21 7 14.14 2 9.27l7.1-1.01z',
   },
   info: {
     label: 'Profile',
