@@ -20,6 +20,8 @@ interface StatTileProps extends React.HTMLAttributes<HTMLDivElement> {
   pigment?: Pigment;
   /** Optional footer, e.g. a mini bar or sparkline. */
   children?: React.ReactNode;
+  /** Tighter padding, smaller value type, no hint row — for dense rows like the main dashboard. */
+  compact?: boolean;
 }
 
 /**
@@ -41,6 +43,7 @@ export const StatTile = React.forwardRef<HTMLDivElement, StatTileProps>(
       pigment = 'info',
       className,
       children,
+      compact = false,
       ...props
     },
     ref,
@@ -55,7 +58,8 @@ export const StatTile = React.forwardRef<HTMLDivElement, StatTileProps>(
       <div
         ref={ref}
         className={cn(
-          'relative overflow-hidden rounded-xl border border-line bg-surface px-4 py-3.5 shadow-soft transition-all',
+          'relative overflow-hidden rounded-xl border border-line bg-surface shadow-soft transition-all',
+          compact ? 'px-3 py-2.5' : 'px-4 py-3.5',
           interactive && 'cursor-pointer hover:-translate-y-0.5 hover:shadow-raised',
           className,
         )}
@@ -78,11 +82,16 @@ export const StatTile = React.forwardRef<HTMLDivElement, StatTileProps>(
           )}
         </div>
 
-        <div className="tabular mt-1.5 font-display text-[24px] leading-none font-semibold tracking-tight text-ink sm:text-[28px]">
+        <div
+          className={cn(
+            'tabular font-display leading-none font-semibold tracking-tight text-ink',
+            compact ? 'mt-1 text-[19px]' : 'mt-1.5 text-[24px] sm:text-[28px]',
+          )}
+        >
           {value}
         </div>
 
-        {(hint || delta) && (
+        {!compact && (hint || delta) && (
           <div className="mt-2 flex flex-wrap items-center gap-x-1.5 text-[12.5px] text-ink-muted">
             {delta && (
               <span

@@ -5,7 +5,7 @@ import { authFetch } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
 import {
   LockOpen, Lock, CheckCircle2, XCircle, Undo2, Pencil,
-  ClipboardList, Trash2, type LucideIcon,
+  ClipboardList, Trash2, PartyPopper, Archive, type LucideIcon,
 } from "lucide-react";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -34,6 +34,9 @@ const ACTION_META: Record<string, { Icon: LucideIcon; pigment: Pigment }> = {
   STUDENT_UPDATED:      { Icon: Pencil,       pigment: "info"    },
   HOMEWORK_UPDATED:     { Icon: Pencil,       pigment: "info"    },
   HOMEWORK_DELETED:     { Icon: Trash2,       pigment: "danger"  },
+  ACTIVITY_PUBLISHED:   { Icon: PartyPopper,  pigment: "success" },
+  ACTIVITY_UPDATED:     { Icon: Pencil,       pigment: "info"    },
+  ACTIVITY_ARCHIVED:    { Icon: Archive,      pigment: "neutral" },
 };
 
 function timeAgo(iso: string): string {

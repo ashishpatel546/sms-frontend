@@ -111,6 +111,7 @@ export default function DashboardStats({ selectedDate }: { selectedDate: string 
             {cards.map(card => (
                 <StatTile
                     key={card.label}
+                    compact
                     label={card.label}
                     value={loading ? <Skeleton className="h-7 w-16" /> : card.value}
                     hint={loading ? undefined : card.hint}

@@ -181,6 +181,9 @@ export interface RbacPermissions {
   /** Inventory: manage catalog, sell/issue at the counter, view reports (SUB_ADMIN+). */
   canManageInventory: boolean;
 
+  /** Activities: create/publish/archive school events, manage participants and photos (SUB_ADMIN+). */
+  canManageActivities: boolean;
+
   /**
    * See one's own store purchases and borrowings. Everyone with an account:
    * a parent sees their children's, a student and a staff member their own —
@@ -297,6 +300,8 @@ export function useRbac(): RbacPermissions {
 
     canManageInventory: level >= 60,
     canViewOwnInventory: level >= 10,
+
+    canManageActivities: level >= 60,
 
     hasRole: has,
     hasAnyRole: hasAny,

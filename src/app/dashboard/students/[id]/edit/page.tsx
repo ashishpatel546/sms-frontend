@@ -34,6 +34,7 @@ export default function EditStudentPage() {
         email: "",
         pen: "",
         aparId: "",
+        admissionNumber: "",
         abhaId: "",
         fathersName: "",
         fatherAadhaarNumber: "",
@@ -138,6 +139,7 @@ export default function EditStudentPage() {
                         email: student.email || "",
                         pen: student.pen || "",
                         aparId: student.aparId || "",
+                        admissionNumber: student.admissionNumber || "",
                         abhaId: student.abhaId || "",
                         fathersName: student.fathersName || "",
                         fatherAadhaarNumber: student.fatherAadhaarNumber || "",
@@ -363,7 +365,7 @@ export default function EditStudentPage() {
             if (!payload.address) delete (payload as any).address;
 
             // Remove optional empty string fields to prevent validation errors
-            const optionalFields = ['email', 'aadhaarNumber', 'pen', 'aparId', 'abhaId', 'mobile', 'alternateMobile', 'category', 'bloodGroup', 'religion', 'dateOfBirth', 'fatherAadhaarNumber', 'fatherPan', 'fatherOccupation', 'motherAadhaarNumber', 'motherPan', 'motherOccupation', 'guardianName', 'guardianRelation', 'guardianPhone'];
+            const optionalFields = ['email', 'aadhaarNumber', 'pen', 'aparId', 'admissionNumber', 'abhaId', 'mobile', 'alternateMobile', 'category', 'bloodGroup', 'religion', 'dateOfBirth', 'fatherAadhaarNumber', 'fatherPan', 'fatherOccupation', 'motherAadhaarNumber', 'motherPan', 'motherOccupation', 'guardianName', 'guardianRelation', 'guardianPhone'];
             optionalFields.forEach(field => {
                 const key = field as keyof typeof payload;
                 if (!(payload as any)[key]) {
@@ -471,6 +473,13 @@ export default function EditStudentPage() {
                                     <span className="text-xs text-gray-400">(Optional)</span>
                                 </label>
                                 <input type="text" id="aparId" name="aparId" value={formData.aparId} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="Academic Bank of Credits ID" />
+                            </div>
+                            <div>
+                                <label htmlFor="admissionNumber" className="block mb-2">
+                                    <span className="block text-sm font-medium text-gray-900">Admission No.</span>
+                                    <span className="text-xs text-gray-400">(Optional)</span>
+                                </label>
+                                <input type="text" id="admissionNumber" name="admissionNumber" value={formData.admissionNumber} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="e.g. 150" />
                             </div>
                             <div>
                                 <label htmlFor="abhaId" className="block mb-2">
