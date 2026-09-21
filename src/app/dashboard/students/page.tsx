@@ -71,11 +71,15 @@ export default function StudentsPage() {
     const [showBulkModal, setShowBulkModal] = useState(false);
     const [bulkFile, setBulkFile] = useState<File | null>(null);
     const [bulkUploading, setBulkUploading] = useState(false);
-    const [bulkResult, setBulkResult] = useState<{ successful: number; failed: number; errors: string[] } | null>(null);
+    const [bulkResult, setBulkResult] = useState<{ successful: number; failed: number; skipped?: number; errors: string[] } | null>(null);
     const [bulkValidation, setBulkValidation] = useState<{ errors: string[]; warnings: string[]; rowCount: number } | null>(null);
 
     const REQUIRED_HEADERS = ["firstName", "gender", "dateOfBirth", "mobile", "category", "religion", "fathersName", "mothersName"];
     const REQUIRED_FIELDS = REQUIRED_HEADERS;
+    const ADMISSION_NUMBER_MAX_LENGTH = 50;
+    // Column headers are matched by name on the server, so order is cosmetic.
+    const BULK_TEMPLATE_HEADERS = "admissionNumber,firstName,lastName,gender,dateOfBirth,mobile,email,alternateMobile,category,religion,bloodGroup,aadhaarNumber,fathersName,fatherAadhaarNumber,mothersName,motherAadhaarNumber,addressLine1,addressLine2,landmark,city,state,postalCode,country,classId,sectionId,academicSessionId,subjectIds,pen,fatherPan,motherPan,fatherOccupation,motherOccupation,fatherIncome,motherIncome,aparId,abhaId";
+    const BULK_TEMPLATE_SAMPLE = "150,John,Doe,Male,2010-05-15,9876543210,john.doe@example.com,,General,HINDU,O+,,Ramesh Doe,,Sunita Doe,,12 Main Street,,Near Park,Delhi,Delhi,110001,India,1,1,1,1|2,,,,,,,,,";
     const DATE_DDMMYYYY = /^\d{2}-\d{2}-\d{4}$/;
     const DATE_YYYYMMDD = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -100,8 +104,21 @@ export default function StudentsPage() {
                 errors.push(`Missing required column(s): ${missingHeaders.join(", ")}`);
             }
 
+            const admissionNumberRows = new Map<string, number>();
             (result.data as Record<string, string>[]).forEach((row, i) => {
                 const rowNum = i + 1;
+                const admissionNumber = row.admissionNumber?.trim() ?? "";
+                if (admissionNumber) {
+                    const firstRow = admissionNumberRows.get(admissionNumber);
+                    if (firstRow !== undefined) {
+                        errors.push(`Row ${rowNum}: admissionNumber "${admissionNumber}" is duplicated in this file (first used in row ${firstRow}) — this row will be skipped`);
+                    } else {
+                        admissionNumberRows.set(admissionNumber, rowNum);
+                    }
+                    if (admissionNumber.length > ADMISSION_NUMBER_MAX_LENGTH) {
+                        errors.push(`Row ${rowNum}: admissionNumber "${admissionNumber}" must be at most ${ADMISSION_NUMBER_MAX_LENGTH} characters`);
+                    }
+                }
                 const missingFields = REQUIRED_FIELDS.filter(f => !row[f]?.trim());
                 if (missingFields.length > 0) {
                     errors.push(`Row ${rowNum}: Missing required fields: ${missingFields.join(", ")}`);
@@ -265,7 +282,7 @@ export default function StudentsPage() {
                 const result = await res.json();
                 setBulkResult(result);
                 
-                if (result.successful > 0 && result.failed === 0) {
+                if (result.successful > 0 && result.failed === 0 && !result.skipped) {
                     toast.success(`Successfully imported ${result.successful} students`);
                     fetchStudents(1); // Refresh list
                     setTimeout(() => closeBulkModal(), 2000);
@@ -599,10 +616,11 @@ export default function StudentsPage() {
                                 <div className="mb-4 text-sm text-gray-600 bg-blue-50 p-4 rounded-lg border border-blue-100">
                                     <p className="font-semibold mb-2">CSV Format Requirements:</p>
                                     <ul className="list-disc pl-5 space-y-1">
-                                        <li>Must contain headers exactly as shown below (order matters):</li>
-                                        <li className="font-mono text-xs bg-gray-100 p-1 rounded overflow-x-auto whitespace-nowrap">firstName,lastName,gender,dateOfBirth,mobile,email,alternateMobile,category,religion,bloodGroup,aadhaarNumber,fathersName,fatherAadhaarNumber,mothersName,motherAadhaarNumber,addressLine1,addressLine2,landmark,city,state,postalCode,country,classId,sectionId,academicSessionId,subjectIds,pen,fatherPan,motherPan,fatherOccupation,motherOccupation,fatherIncome,motherIncome,aparId,abhaId,admissionNumber</li>
+                                        <li>Headers must match the names shown below exactly (column order does not matter):</li>
+                                        <li className="font-mono text-xs bg-gray-100 p-1 rounded overflow-x-auto whitespace-nowrap">{BULK_TEMPLATE_HEADERS}</li>
                                         <li><span className="font-semibold text-red-600">Required:</span> firstName, gender, dateOfBirth, mobile, fathersName, mothersName, category, religion</li>
                                         <li><span className="font-semibold">Optional fields</span> can be left empty, but the column must still be present.</li>
+                                        <li><span className="font-semibold">admissionNumber:</span> Optional, up to 50 characters, unique within your school. Rows whose number is already in use (or repeated earlier in the file) are skipped and reported below.</li>
                                         <li><span className="font-semibold">dateOfBirth:</span> Use format YYYY-MM-DD</li>
                                         <li><span className="font-semibold">subjectIds:</span> Pipe-separated values e.g. <code className="bg-gray-200 px-1 rounded">1|3|4</code></li>
                                         <li><span className="font-semibold">country:</span> Full country name e.g. <code className="bg-gray-200 px-1 rounded">INDIA</code> (leave blank to default to INDIA)</li>
@@ -610,9 +628,7 @@ export default function StudentsPage() {
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            const headers = "firstName,lastName,gender,dateOfBirth,mobile,email,alternateMobile,category,religion,bloodGroup,aadhaarNumber,fathersName,fatherAadhaarNumber,mothersName,motherAadhaarNumber,addressLine1,addressLine2,landmark,city,state,postalCode,country,classId,sectionId,academicSessionId,subjectIds,pen,fatherPan,motherPan,fatherOccupation,motherOccupation,fatherIncome,motherIncome,aparId,abhaId,admissionNumber";
-                                            const sample = "John,Doe,Male,2010-05-15,9876543210,john.doe@example.com,,General,HINDU,O+,,Ramesh Doe,,Sunita Doe,,12 Main Street,,Near Park,Delhi,Delhi,110001,India,1,1,1,1|2,,,,,,,,,,";
-                                            const blob = new Blob([headers + "\n" + sample], { type: "text/csv" });
+                                            const blob = new Blob([BULK_TEMPLATE_HEADERS + "\n" + BULK_TEMPLATE_SAMPLE], { type: "text/csv" });
                                             const url = URL.createObjectURL(blob);
                                             const a = document.createElement("a");
                                             a.href = url;
@@ -670,9 +686,10 @@ export default function StudentsPage() {
                                     )}
 
                                     {bulkResult && (
-                                        <div className={`p-4 mb-4 text-sm rounded-lg ${bulkResult.failed > 0 ? 'bg-orange-50 text-orange-800 border border-orange-200' : 'bg-green-50 text-green-800 border border-green-200'}`}>
+                                        <div className={`p-4 mb-4 text-sm rounded-lg ${(bulkResult.failed > 0 || !!bulkResult.skipped) ? 'bg-orange-50 text-orange-800 border border-orange-200' : 'bg-green-50 text-green-800 border border-green-200'}`}>
                                             <p className="font-bold mb-2">Import Results:</p>
                                             <p>{bulkResult.successful} students successfully created and enrolled.</p>
+                                            {!!bulkResult.skipped && <p>{bulkResult.skipped} skipped.</p>}
                                             {bulkResult.failed > 0 && <p>{bulkResult.failed} failed.</p>}
                                             {bulkResult.errors?.length > 0 && (
                                                 <div className="mt-2 max-h-32 overflow-y-auto text-xs bg-white p-2 rounded border border-orange-100">
