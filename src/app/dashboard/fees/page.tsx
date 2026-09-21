@@ -205,9 +205,15 @@ export default function FeesDashboardPage() {
     };
 
     // --- Collection State ---
+    // Cache of full student records seen so far — populated lazily as students
+    // are searched/selected rather than bulk-loaded, so receipt-building code
+    // further down (students.find(...) by selectedStudentId) keeps working
+    // without ever fetching the whole school's roster.
     const [students, setStudents] = useState<any[]>([]);
     const [selectedStudentId, setSelectedStudentId] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
+    const [collectionSearchResults, setCollectionSearchResults] = useState<any[]>([]);
+    const [isSearchingCollection, setIsSearchingCollection] = useState(false);
     const [collectionYear, setCollectionYear] = useState("2026-2027");
     const [studentFeeDetails, setStudentFeeDetails] = useState<any>(null);
     const [loadingCollection, setLoadingCollection] = useState(false);
@@ -239,11 +245,10 @@ export default function FeesDashboardPage() {
     useEffect(() => {
         const fetchSetupData = async () => {
             try {
-                const [catRes, structRes, classRes, studentRes, settingsRes, discountRes, sessionRes, regularCatRes, addOnCatRes] = await Promise.all([
+                const [catRes, structRes, classRes, settingsRes, discountRes, sessionRes, regularCatRes, addOnCatRes] = await Promise.all([
                     authFetch(`${API_BASE_URL}/fees/categories`),
                     authFetch(`${API_BASE_URL}/fees/structures`),
                     authFetch(`${API_BASE_URL}/classes`),
-                    authFetch(`${API_BASE_URL}/students`),
                     authFetch(`${API_BASE_URL}/fees/settings`),
                     authFetch(`${API_BASE_URL}/fees/discounts`),
                     authFetch(`${API_BASE_URL}/academic-sessions`),
@@ -253,7 +258,6 @@ export default function FeesDashboardPage() {
                 if (catRes.ok) setCategories(await catRes.json());
                 if (structRes.ok) setStructures(await structRes.json());
                 if (classRes.ok) setClasses(sortByName(await classRes.json()));
-                if (studentRes.ok) setStudents(await studentRes.json());
                 if (settingsRes.ok) setGlobalSettings(await settingsRes.json());
                 if (discountRes.ok) setDiscounts(await discountRes.json());
                 if (regularCatRes.ok) setRegularCategories(await regularCatRes.json());
@@ -600,21 +604,49 @@ export default function FeesDashboardPage() {
         }
     };
 
-    // Filter Students based on Search Query
-    const filteredStudents = students.filter(s => {
-        if (!searchQuery) return false;
-        const searchLower = searchQuery.toLowerCase();
-        return s.id.toString().includes(searchLower) ||
-            s.firstName.toLowerCase().includes(searchLower) ||
-            s.lastName.toLowerCase().includes(searchLower);
-    });
-
-    const handleSelectStudent = (studentId: string) => {
-        setSelectedStudentId(studentId);
-        const student = students.find(s => s.id.toString() === studentId);
-        if (student) {
-            setSearchQuery(`${student.firstName} ${student.lastName} (ID: ${student.id})`);
+    // Server-side collection search, debounced — replaces the old
+    // unbounded-fetch-then-client-filter approach, which pulled every student
+    // in the school on every page load. Matches by name or admission number
+    // (the backend's generic `search` OR-group covers both).
+    useEffect(() => {
+        if (!searchQuery || selectedStudentId) {
+            setCollectionSearchResults([]);
+            return;
         }
+        setIsSearchingCollection(true);
+        const timer = setTimeout(async () => {
+            try {
+                const params = new URLSearchParams({ search: searchQuery, page: '1', limit: '8' });
+                const res = await authFetch(`${API_BASE_URL}/students?${params.toString()}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setCollectionSearchResults(data?.data ?? (Array.isArray(data) ? data : []));
+                }
+            } catch {
+                // silent — the box just shows no results, no need to toast on every keystroke
+            } finally {
+                setIsSearchingCollection(false);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery, selectedStudentId]);
+
+    // Upserts full student records into the `students` cache by id, so
+    // students.find(...) elsewhere (receipt building) keeps resolving
+    // whichever student was actually selected/searched.
+    const cacheStudents = (rows: any[]) => {
+        setStudents(prev => {
+            const byId = new Map(prev.map(s => [s.id, s]));
+            for (const row of rows) byId.set(row.id, row);
+            return Array.from(byId.values());
+        });
+    };
+
+    const handleSelectStudent = (student: any) => {
+        cacheStudents([student]);
+        setSelectedStudentId(student.id.toString());
+        setSearchQuery(`${student.firstName} ${student.lastName} (ID: ${student.id})`);
+        setCollectionSearchResults([]);
     };
 
     // Fetch Student Fees whenever student changes
@@ -2050,7 +2082,7 @@ export default function FeesDashboardPage() {
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 mb-6 relative z-20">
                         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                             <div className="w-full md:w-1/2">
-                                <label className="block mb-2 text-sm font-medium text-gray-900">Search Student by Name or ID</label>
+                                <label className="block mb-2 text-sm font-medium text-gray-900">Search Student by Name or Admission No.</label>
                                 <input
                                     type="text"
                                     value={searchQuery}
@@ -2058,24 +2090,37 @@ export default function FeesDashboardPage() {
                                         setSearchQuery(e.target.value);
                                         if (selectedStudentId) setSelectedStudentId(""); // Clear selection if typing
                                     }}
-                                    placeholder="Search e.g., 'John', '12'"
+                                    placeholder="Search e.g., 'John' or admission no."
                                     className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-3 transition-colors focus:ring-brand/40 focus:border-brand shadow-sm"
                                 />
 
                                 {/* Search Results Dropdown */}
                                 {searchQuery && !selectedStudentId && (
                                     <ul className="absolute z-30 mt-1 w-full md:w-1/2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                        {filteredStudents.length > 0 ? (
-                                            filteredStudents.map(s => (
-                                                <li
-                                                    key={s.id}
-                                                    onClick={() => handleSelectStudent(s.id.toString())}
-                                                    className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors"
-                                                >
-                                                    <div className="font-medium text-gray-900">{s.firstName} {s.lastName}</div>
-                                                    <div className="text-xs text-gray-500">ID: {s.id}</div>
-                                                </li>
-                                            ))
+                                        {isSearchingCollection ? (
+                                            <li className="px-4 py-3 text-sm text-gray-500">Searching...</li>
+                                        ) : collectionSearchResults.length > 0 ? (
+                                            collectionSearchResults.map(s => {
+                                                const enr = s.enrollments?.find((e: any) => e.status === 'ACTIVE') || s.enrollments?.[0];
+                                                const classNameStr = enr?.class?.name || s.class?.name;
+                                                const sectionNameStr = enr?.section?.name || s.section?.name;
+                                                const classSection = [classNameStr, sectionNameStr].filter(Boolean).join(' - ');
+                                                const rollNo = enr?.rollNo;
+                                                const line2 = [s.admissionNumber ? `Adm# ${s.admissionNumber}` : null, classSection || null, rollNo ? `Roll ${rollNo}` : null].filter(Boolean).join(' · ');
+                                                const parents = [s.fathersName, s.mothersName].filter(Boolean).join(' / ');
+                                                const line3 = [parents || null, s.mobile || null].filter(Boolean).join(' · ');
+                                                return (
+                                                    <li
+                                                        key={s.id}
+                                                        onClick={() => handleSelectStudent(s)}
+                                                        className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors"
+                                                    >
+                                                        <div className="font-medium text-gray-900">{s.firstName} {s.lastName}</div>
+                                                        {line2 && <div className="text-xs text-gray-500">{line2}</div>}
+                                                        {line3 && <div className="text-xs text-gray-400">{line3}</div>}
+                                                    </li>
+                                                );
+                                            })
                                         ) : (
                                             <li className="px-4 py-3 text-sm text-gray-500">No students found matching your search.</li>
                                         )}

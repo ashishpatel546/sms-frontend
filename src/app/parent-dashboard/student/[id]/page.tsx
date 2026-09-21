@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import FeatureNotAvailableNotice from "@/components/parent/FeatureNotAvailableNotice";
 import Link from "next/link";
@@ -22,6 +22,7 @@ import type { SectionKey } from "./sectionStyle";
 import { StudentBanner } from "./components/StudentBanner";
 import { AiToolsSection } from "./components/AiToolsSection";
 import { IdCardSection } from "./components/IdCardSection";
+import { ActivitiesSection } from "./components/ActivitiesSection";
 import { SectionSkeleton, StudentRecordSkeleton } from "@/components/ui/Skeletons";
 import { ATTENDANCE_LEGEND, ATTENDANCE_TONE, attendanceCellStyle } from "@/lib/attendanceColors";
 import { InitialsAvatar } from "@/components/ui/InitialsAvatar";
@@ -68,7 +69,13 @@ const LEAVE_TYPE_LABELS: Record<string, string> = {
 };
 const fmtDate = (d: string) => { const [y, m, day] = d.split("-"); return `${day}/${m}/${y}`; };
 
-type ActiveSection = "home" | "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework" | "pickup" | "id-card" | "leaves" | "library" | "ai-tutor";
+type ActiveSection = "home" | "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework" | "pickup" | "id-card" | "leaves" | "library" | "ai-tutor" | "activities";
+
+/** Allowlist for the `?section=` deep link — an unknown value falls back to "home" rather than rendering a blank panel. */
+const DEEP_LINK_SECTIONS: readonly ActiveSection[] = [
+    "home", "fees", "attendance", "results", "holidays", "info", "exam-schedule",
+    "homework", "pickup", "id-card", "leaves", "library", "ai-tutor", "activities",
+];
 
 /**
  * Sections whose data THIS page fetches, and which therefore need the loading
@@ -114,7 +121,26 @@ export default function StudentDashboardPage() {
     const currentMonth = parseInt(attendanceMonth.split('-')[1]);
     const [academicSessionId, setAcademicSessionId] = useState<number | null>(null);
     const [academicYearString, setAcademicYearString] = useState<string>("");
-    const [activeSection, setActiveSection] = useState<ActiveSection>("home");
+
+    // Deep link from a push notification (e.g. a newly published activity),
+    // which sends the parent straight to `?section=activities&activityId=…`.
+    // Read straight off `window.location` rather than `useSearchParams`, which
+    // would force a Suspense boundary around this whole page — same tradeoff
+    // as /dashboard/attendance. Mount-only: a second push notification for a
+    // different activity while this page is already open will not re-open a
+    // new card, only a fresh visit will.
+    const deepLink = useMemo(() => {
+        if (typeof window === "undefined") return { section: null as ActiveSection | null, activityId: null as string | null };
+        const params = new URLSearchParams(window.location.search);
+        const section = params.get("section");
+        const isValidSection = (s: string | null): s is ActiveSection =>
+            !!s && (DEEP_LINK_SECTIONS as readonly string[]).includes(s);
+        return {
+            section: isValidSection(section) ? section : null,
+            activityId: params.get("activityId"),
+        };
+    }, []);
+    const [activeSection, setActiveSection] = useState<ActiveSection>(() => deepLink.section ?? "home");
 
     const [info, setInfo] = useState<any>(null);
     const [attendance, setAttendance] = useState<any>(null);
@@ -1563,6 +1589,20 @@ export default function StudentDashboardPage() {
             {activeSection === "id-card" && (
                 <div id="tabpanel-id-card" role="tabpanel" aria-labelledby="tab-id-card" className="animate-scale-in">
                     <IdCardSection studentId={String(studentId)} />
+                </div>
+            )}
+
+            {/* ════════════════════════════════
+                ACTIVITIES TAB
+
+                Self-fetching, like the ID card tab — gated on the school's
+                `activity_management` flag, resolved from the API's own 403.
+                Deliberately NOT in PAGE_FETCHED_SECTIONS: see that list's
+                comment for why a self-contained tab must stay off it.
+            ════════════════════════════════ */}
+            {activeSection === "activities" && (
+                <div id="tabpanel-activities" role="tabpanel" aria-labelledby="tab-activities" className="animate-scale-in">
+                    <ActivitiesSection studentId={String(studentId)} initialActivityId={deepLink.activityId} />
                 </div>
             )}
 

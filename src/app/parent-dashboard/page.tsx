@@ -27,9 +27,13 @@ export default function ParentDashboardPage() {
             });
             if (!res.ok) throw new Error("Failed to load students");
             const data = await res.json();
-            // If there is exactly one student, go straight to their dashboard
+            // If there is exactly one student, go straight to their dashboard.
+            // The query string rides along — a push notification (e.g. a new
+            // activity) links here as `?section=...`, and the single-child
+            // redirect must not drop it on the floor.
             if (data.length === 1) {
-                router.replace(`/parent-dashboard/student/${data[0].id}`);
+                const search = typeof window !== "undefined" ? window.location.search : "";
+                router.replace(`/parent-dashboard/student/${data[0].id}${search}`);
                 return;
             }
             setError("");
@@ -116,7 +120,10 @@ export default function ParentDashboardPage() {
                         {students.map((student, idx) => (
                             <Link
                                 key={student.id}
-                                href={`/parent-dashboard/student/${student.id}`}
+                                // Carries a notification's `?section=...` through to
+                                // whichever child the parent picks — see the
+                                // single-child redirect above for why.
+                                href={`/parent-dashboard/student/${student.id}${typeof window !== "undefined" ? window.location.search : ""}`}
                                 className="group/child relative flex flex-col overflow-hidden rounded-xl border border-line bg-surface p-4 shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-edge hover:shadow-raised sm:p-5"
                             >
                                 {/* The brass rail marks a child's card the way a pigment

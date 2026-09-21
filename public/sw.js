@@ -17,7 +17,7 @@
 // to reach the devices that are stale RIGHT NOW: changing these bytes is the
 // only signal their already-installed worker still listens to, and it is what
 // carries the new detection code onto them.
-const CACHE_NAME = 'school-ms-v8';
+const CACHE_NAME = 'school-ms-v9';
 
 // App shell files to cache immediately
 const APP_SHELL = [
@@ -168,6 +168,9 @@ self.addEventListener('push', (event) => {
       icon: '/icons/icon-192x192.png',
       badge: '/icons/icon-192x192.png',
       data: payload,
+      // A re-publish ("Notify again") carries the same tag, so it replaces
+      // the earlier OS notification instead of stacking a duplicate.
+      tag: payload.tag || undefined,
     };
 
     // Show native push popup
@@ -183,6 +186,11 @@ self.addEventListener('push', (event) => {
             title: notificationTitle,
             message: payload.message,
             timestamp: payload.timestamp || new Date().toISOString(),
+            // Same-origin path the backend picked for this recipient's role
+            // (see AppNotificationsService#dispatchWebPush) — stored so the
+            // in-app NotificationBell list can link straight to it too, not
+            // just the native OS popup.
+            url: payload.url || null,
           };
           store.add(item);
 
@@ -228,10 +236,17 @@ self.addEventListener('push', (event) => {
 // Handle push notification click
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  // The URL to open when the notification is clicked.
-  // We open the parent-dashboard since push notifications currently target parents.
-  // If there's already a window open for this origin, focus it; otherwise open a new one.
-  const targetUrl = '/parent-dashboard';
+  // Where a tap lands: the per-recipient deep link the backend picked
+  // (AppNotificationsService#dispatchWebPush — a parent and a staff member
+  // reading the SAME notification can carry different links), validated
+  // same-origin so a compromised/odd payload can never redirect off-app.
+  // Falls back to the notifications list, which reads sensibly for every
+  // audience — including installed PWAs still running the OLD worker that
+  // never received a `url` at all.
+  const linkUrl = event.notification.data?.url;
+  const isSafeSameOriginPath =
+    typeof linkUrl === 'string' && linkUrl.startsWith('/') && !linkUrl.startsWith('//');
+  const targetUrl = isSafeSameOriginPath ? linkUrl : '/parent-dashboard/notifications';
   event.waitUntil(
     clients
       .matchAll({ type: 'window', includeUncontrolled: true })

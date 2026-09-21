@@ -30,6 +30,7 @@ import {
   IdCard,
   Boxes,
   ShoppingBag,
+  PartyPopper,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -266,6 +267,18 @@ export const NAV_CONFIG: NavGroup[] = [
         href: '/dashboard/library',
         icon: BookOpen,
         featureFlag: 'library_management',
+      },
+    ],
+  },
+  {
+    label: 'Activities',
+    items: [
+      {
+        id: 'activities',
+        label: 'Activities',
+        href: '/dashboard/activities',
+        icon: PartyPopper,
+        featureFlag: 'activity_management',
       },
     ],
   },
