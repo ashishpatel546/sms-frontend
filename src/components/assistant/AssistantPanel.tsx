@@ -201,7 +201,11 @@ export function AssistantPanel() {
   );
   const outOfCredits = credits !== null && credits.limit > 0 && credits.remaining <= 0;
   const serverVoice = !!caps?.voice.transcribe && !serverSttDown && canRecord();
-  const canListen = serverVoice || canRecogniseOnDevice();
+  const voiceIn = caps?.voice.input ?? 'device';
+  const voiceOut = caps?.voice.output ?? 'device';
+  const canListen = voiceIn !== 'off' && (serverVoice || canRecogniseOnDevice());
+  // The school can switch reading aloud off in the hub.
+  const readAloud = speakReplies && voiceOut !== 'off';
 
   useEffect(() => {
     if (!speaker.current) speaker.current = new Speaker(!!caps?.voice.speak);
@@ -275,11 +279,11 @@ export function AssistantPanel() {
       speaker.current?.stop();
       setLastSent({ text, mode });
       const reply = await send(text, mode);
-      if (reply && mode === 'voice' && speakReplies && !reply.error && reply.text) {
+      if (reply && mode === 'voice' && readAloud && !reply.error && reply.text) {
         void speaker.current?.say(reply.text);
       }
     },
-    [busy, send, speakReplies],
+    [busy, send, readAloud],
   );
 
   const onSend = () => {
@@ -290,7 +294,7 @@ export function AssistantPanel() {
 
   const onDecide = async (messageId: string, index: number, decision: 'confirm' | 'cancel') => {
     const note = await decide(messageId, index, decision);
-    if (note?.text && speakReplies && lastSent?.mode === 'voice') {
+    if (note?.text && readAloud && lastSent?.mode === 'voice') {
       void speaker.current?.say(note.text);
     }
   };
@@ -378,16 +382,18 @@ export function AssistantPanel() {
             <h2 className="font-display text-[16px] font-semibold text-ink">Assistant</h2>
             <CreditsLine credits={credits} />
           </div>
-          <button
-            type="button"
-            onClick={toggleSpeak}
-            aria-pressed={speakReplies}
-            title={speakReplies ? 'Spoken questions get spoken answers' : 'Answers are not read aloud'}
-            className="grid size-10 cursor-pointer place-items-center rounded-md text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink"
-          >
-            {speakReplies ? <Volume2 className="size-[18px]" aria-hidden /> : <VolumeX className="size-[18px]" aria-hidden />}
-            <span className="sr-only">{speakReplies ? 'Stop reading answers aloud' : 'Read answers aloud'}</span>
-          </button>
+          {voiceOut !== 'off' && (
+            <button
+              type="button"
+              onClick={toggleSpeak}
+              aria-pressed={speakReplies}
+              title={speakReplies ? 'Spoken questions get spoken answers' : 'Answers are not read aloud'}
+              className="grid size-10 cursor-pointer place-items-center rounded-md text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink"
+            >
+              {speakReplies ? <Volume2 className="size-[18px]" aria-hidden /> : <VolumeX className="size-[18px]" aria-hidden />}
+              <span className="sr-only">{speakReplies ? 'Stop reading answers aloud' : 'Read answers aloud'}</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {

@@ -209,7 +209,17 @@ export interface Capabilities {
   idleMinutes: number;
   credits: { remaining: number; limit: number; month: string };
   confirmMode: 'agent' | 'user';
-  voice: { transcribe: boolean; speak: boolean };
+  /**
+   * input/output: what the school chose in the hub — no voice, the device's
+   * own speech, or server speech. transcribe/speak: whether server speech
+   * works right now; when it does not, the device's own is used instead.
+   */
+  voice: {
+    input: 'off' | 'device' | 'server';
+    output: 'off' | 'device' | 'server';
+    transcribe: boolean;
+    speak: boolean;
+  };
   limits: { maxMessageChars: number; maxAudioSeconds: number };
 }
 
