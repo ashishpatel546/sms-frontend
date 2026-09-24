@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AssistantError,
   cancelDrafts,
+  clearAssistantToken,
   confirmDrafts,
   deleteConversation,
   getCapabilities,
@@ -199,6 +200,8 @@ export function useAssistantChat(active: boolean) {
             setCredits({ remaining: e.remaining, limit: e.limit });
             break;
           case 'error':
+            // The next request mints a fresh assistant token.
+            if (e.code === 'SESSION_EXPIRED') clearAssistantToken();
             patch(reply.id, (m) => ({ ...m, error: { code: e.code, message: e.message } }));
             final = { ...final, error: { code: e.code, message: e.message } };
             if (e.code === 'CREDITS_EXHAUSTED') {

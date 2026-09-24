@@ -185,6 +185,8 @@ export function AssistantPanel() {
     }
   });
   const [elapsed, setElapsed] = useState(0);
+  /** Server transcription turned out unavailable: use the device's recognition. */
+  const [serverSttDown, setServerSttDown] = useState(false);
 
   const scroller = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -198,7 +200,7 @@ export function AssistantPanel() {
     (r): r is string => !!r,
   );
   const outOfCredits = credits !== null && credits.limit > 0 && credits.remaining <= 0;
-  const serverVoice = !!caps?.voice.transcribe && canRecord();
+  const serverVoice = !!caps?.voice.transcribe && !serverSttDown && canRecord();
   const canListen = serverVoice || canRecogniseOnDevice();
 
   useEffect(() => {
@@ -323,6 +325,11 @@ export function AssistantPanel() {
       }
       await submit(text, 'voice');
     } catch (err) {
+      if (err instanceof AssistantError && err.code === 'VOICE_UNAVAILABLE' && canRecogniseOnDevice()) {
+        setServerSttDown(true);
+        setVoiceError('Switched to this device’s voice input. Tap the mic and say it again.');
+        return;
+      }
       setVoiceError(err instanceof AssistantError ? err.message : "Couldn't make out the audio. Try again.");
     } finally {
       setTranscribing(false);
