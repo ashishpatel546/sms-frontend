@@ -187,6 +187,8 @@ export function AssistantPanel() {
   const [elapsed, setElapsed] = useState(0);
   /** Server transcription turned out unavailable: use the device's recognition. */
   const [serverSttDown, setServerSttDown] = useState(false);
+  /** The device's recognition failed: use server transcription. */
+  const [deviceSttDown, setDeviceSttDown] = useState(false);
 
   const scroller = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -200,16 +202,21 @@ export function AssistantPanel() {
     (r): r is string => !!r,
   );
   const outOfCredits = credits !== null && credits.limit > 0 && credits.remaining <= 0;
-  const serverVoice = !!caps?.voice.transcribe && !serverSttDown && canRecord();
   const voiceIn = caps?.voice.input ?? 'device';
   const voiceOut = caps?.voice.output ?? 'device';
+  const serverSttReady = !!caps?.voice.transcribe && !serverSttDown && canRecord();
+  // The school's choice comes first; the other route is the fallback.
+  const serverVoice =
+    voiceIn === 'server'
+      ? serverSttReady
+      : voiceIn === 'device' && serverSttReady && (!canRecogniseOnDevice() || deviceSttDown);
   const canListen = voiceIn !== 'off' && (serverVoice || canRecogniseOnDevice());
   // The school can switch reading aloud off in the hub.
   const readAloud = speakReplies && voiceOut !== 'off';
 
   useEffect(() => {
-    if (!speaker.current) speaker.current = new Speaker(!!caps?.voice.speak);
-    else speaker.current.setServer(!!caps?.voice.speak);
+    speaker.current ??= new Speaker();
+    speaker.current.configure(caps?.voice.output === 'server' ? 'server' : 'device', !!caps?.voice.speak);
   }, [caps]);
 
   // Focus the composer on open; stop audio and listening on close.
@@ -299,6 +306,18 @@ export function AssistantPanel() {
     }
   };
 
+  /** The device's recognition failed: fall back to server transcription if the school has it. */
+  const switchToServerStt = useCallback(
+    (err: unknown) => {
+      if (!(err instanceof AssistantError) || err.code !== 'DEVICE_STT_FAILED') return false;
+      if (!(caps?.voice.transcribe && !serverSttDown && canRecord())) return false;
+      setDeviceSttDown(true);
+      setVoiceError('Switched to the assistant’s voice input. Tap the mic and say it again.');
+      return true;
+    },
+    [caps, serverSttDown],
+  );
+
   const startMic = async () => {
     setVoiceError(null);
     speaker.current?.stop();
@@ -312,6 +331,7 @@ export function AssistantPanel() {
       setElapsed(0);
       setListening(l);
     } catch (err) {
+      if (switchToServerStt(err)) return;
       setVoiceError(err instanceof AssistantError ? err.message : "Couldn't start the microphone.");
     }
   };
@@ -329,6 +349,7 @@ export function AssistantPanel() {
       }
       await submit(text, 'voice');
     } catch (err) {
+      if (switchToServerStt(err)) return;
       if (err instanceof AssistantError && err.code === 'VOICE_UNAVAILABLE' && canRecogniseOnDevice()) {
         setServerSttDown(true);
         setVoiceError('Switched to this device’s voice input. Tap the mic and say it again.');
@@ -338,7 +359,7 @@ export function AssistantPanel() {
     } finally {
       setTranscribing(false);
     }
-  }, [listening, submit]);
+  }, [listening, submit, switchToServerStt]);
 
   useEffect(() => {
     stopListeningRef.current = () => void stopMic();

@@ -7,8 +7,12 @@ import { AssistantError, speak as serverSpeak, transcribe } from './client';
  *
  *   server  — audio recorded here, transcribed / synthesised by sms-agent
  *             (metered against the school's credits);
- *   device  — the browser's own speech recognition and speech synthesis,
- *             used when server voice is switched off or unavailable.
+ *   device  — the browser's own speech recognition and speech synthesis
+ *             (free).
+ *
+ * The school's hub setting picks which route comes first; the other is the
+ * fallback — e.g. device first, and sms-agent's model on a device that
+ * cannot listen or has no voice for the language.
  */
 
 type SpeechRecognitionCtor = new () => {
@@ -65,7 +69,12 @@ export interface Listening {
 
 function micError(err: unknown): AssistantError {
   const name = (err as { name?: string; error?: string })?.name ?? (err as { error?: string })?.error;
-  if (name === 'NotAllowedError' || name === 'not-allowed' || name === 'service-not-allowed') {
+  // The browser's recognition service itself failed (not the microphone):
+  // server transcription can still work.
+  if (name === 'service-not-allowed' || name === 'network' || name === 'language-not-supported') {
+    return new AssistantError('DEVICE_STT_FAILED', "This device's voice input isn't working.");
+  }
+  if (name === 'NotAllowedError' || name === 'not-allowed') {
     return new AssistantError(
       'MIC_BLOCKED',
       'Microphone access is blocked. Allow it in the browser settings for this site.',
@@ -195,22 +204,43 @@ export function speakableText(text: string, max = 600): string {
   return stop > max / 3 ? cut.slice(0, stop + 1) : cut;
 }
 
+/** Whether the device has a voice for this language ("hi-IN", "en-IN"). */
+function deviceHasVoice(lang: string): boolean {
+  if (!canSpeakOnDevice()) return false;
+  const prefix = lang.slice(0, 2).toLowerCase();
+  return window.speechSynthesis
+    .getVoices()
+    .some((v) => v.lang.toLowerCase().replace('_', '-').startsWith(prefix));
+}
+
 export class Speaker {
   private audio: HTMLAudioElement | null = null;
   private abort: AbortController | null = null;
   private serverFailed = false;
+  private prefer: 'device' | 'server' = 'device';
+  private server = false;
 
-  constructor(private server: boolean) {}
-
-  setServer(server: boolean) {
+  /**
+   * prefer: the school's choice. server: whether sms-agent can speak (the
+   * choice itself, or the fallback for a device without a voice).
+   */
+  configure(prefer: 'device' | 'server', server: boolean) {
+    this.prefer = prefer;
     this.server = server;
+    // Browsers load their voice list lazily; ask early so it is ready.
+    if (canSpeakOnDevice()) window.speechSynthesis.getVoices();
   }
 
   async say(text: string, onEnd?: () => void): Promise<void> {
     this.stop();
     const line = speakableText(text);
     if (!line) return;
-    if (this.server && !this.serverFailed) {
+    const lang = /[ऀ-ॿ]/.test(line) ? 'hi-IN' : 'en-IN';
+    const useServer =
+      this.server &&
+      !this.serverFailed &&
+      (this.prefer === 'server' || !deviceHasVoice(lang));
+    if (useServer) {
       try {
         this.abort = new AbortController();
         const blob = await serverSpeak(line, this.abort.signal);
@@ -233,7 +263,7 @@ export class Speaker {
     }
     if (!canSpeakOnDevice()) return;
     const u = new SpeechSynthesisUtterance(line);
-    u.lang = /[ऀ-ॿ]/.test(line) ? 'hi-IN' : 'en-IN';
+    u.lang = lang;
     const voice = window.speechSynthesis.getVoices().find((v) => v.lang === u.lang);
     if (voice) u.voice = voice;
     u.onend = () => onEnd?.();
