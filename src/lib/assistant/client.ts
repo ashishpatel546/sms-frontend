@@ -24,9 +24,13 @@ interface StoredToken {
   token: string;
   expiresAt: number;
   owner: string;
+  /** The assistant session (= conversation) the token belongs to. */
+  sessionId?: string;
 }
 
 const TOKEN_KEY = 'assistant_session';
+/** Last assistant session, kept past its token so a refresh can resume it. */
+const SESSION_KEY = 'assistant_session_id';
 const REFRESH_BUFFER_MS = 3 * 60_000;
 let inflight: Promise<string> | null = null;
 
@@ -44,11 +48,32 @@ function readToken(): StoredToken | null {
   }
 }
 
+/** Drops the token; the next one resumes the same session if it is still live. */
 export function clearAssistantToken() {
   try {
     sessionStorage.removeItem(TOKEN_KEY);
   } catch {
     /* storage unavailable */
+  }
+}
+
+/** Drops the token and the session: the next token starts a new conversation. */
+export function forgetAssistantSession() {
+  clearAssistantToken();
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+function lastSessionId(): string | undefined {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    const s = raw ? (JSON.parse(raw) as { id: string; owner: string }) : null;
+    return s && s.owner === ownerId() ? s.id : undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -92,20 +117,28 @@ export async function getAssistantToken(force = false): Promise<string> {
   }
   if (!inflight) {
     inflight = (async () => {
+      // Continue the conversation if it is still live; sms-backend starts a
+      // new session when it ended (new chat, or idle too long).
+      const resume = lastSessionId();
       const res = await authFetch(`${API_BASE_URL}/agent/session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: '{}',
+        body: JSON.stringify(resume ? { resume } : {}),
       });
       if (!res.ok) throw await readError(res, 'Could not start the assistant.');
-      const data = (await res.json()) as { token: string; expiresAt: string };
+      const data = (await res.json()) as { token: string; expiresAt: string; sessionId: string };
       const value: StoredToken = {
         token: data.token,
         expiresAt: Date.parse(data.expiresAt),
         owner: ownerId(),
+        sessionId: data.sessionId,
       };
       try {
         sessionStorage.setItem(TOKEN_KEY, JSON.stringify(value));
+        sessionStorage.setItem(
+          SESSION_KEY,
+          JSON.stringify({ id: data.sessionId, owner: value.owner }),
+        );
       } catch {
         /* storage unavailable: keep it for this call only */
       }
@@ -171,6 +204,9 @@ export type AssistantEvent =
 
 export interface Capabilities {
   model: string;
+  /** This session's conversation; a different id than before means a fresh one. */
+  conversationId: string;
+  idleMinutes: number;
   credits: { remaining: number; limit: number; month: string };
   confirmMode: 'agent' | 'user';
   voice: { transcribe: boolean; speak: boolean };

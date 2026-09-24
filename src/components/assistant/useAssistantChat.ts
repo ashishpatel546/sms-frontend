@@ -7,6 +7,7 @@ import {
   clearAssistantToken,
   confirmDrafts,
   deleteConversation,
+  forgetAssistantSession,
   getCapabilities,
   getConversation,
   streamChat,
@@ -41,27 +42,8 @@ export interface Credits {
   limit: number;
 }
 
-const CONV_KEY = 'assistant_conversation';
-
 let seq = 0;
 const nextId = () => `m${Date.now().toString(36)}${(seq++).toString(36)}`;
-
-function storedConversationId(): string | undefined {
-  try {
-    return sessionStorage.getItem(CONV_KEY) ?? undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function storeConversationId(id: string | undefined) {
-  try {
-    if (id) sessionStorage.setItem(CONV_KEY, id);
-    else sessionStorage.removeItem(CONV_KEY);
-  } catch {
-    /* storage unavailable */
-  }
-}
 
 function outcomeState(r: ActionResult): DraftState {
   if (r.outcome === 'cancelled') return 'cancelled';
@@ -78,15 +60,26 @@ export function useAssistantChat(active: boolean) {
   const conversationId = useRef<string | undefined>(undefined);
   const abort = useRef<AbortController | null>(null);
   const loaded = useRef(false);
+  /** A new chat still ending the old session; the next message waits for it. */
+  const resetting = useRef<Promise<void> | null>(null);
   const [attempt, setAttempt] = useState(0);
 
-  // First open: capabilities, and the conversation from earlier in this tab.
+  // Each open: capabilities, and the conversation if it is still live. The
+  // conversation is the assistant session; one that ended (a new chat, or
+  // idle past the backend's limit) comes back under a new id, and the panel
+  // starts fresh.
+  useEffect(() => {
+    if (!active) loaded.current = false;
+  }, [active]);
+
   useEffect(() => {
     if (!active || loaded.current) return;
     loaded.current = true;
     (async () => {
+      let c: Capabilities;
       try {
-        const c = await getCapabilities();
+        await resetting.current;
+        c = await getCapabilities();
         setCaps(c);
         setCredits({ remaining: c.credits.remaining, limit: c.credits.limit });
         setStartError(null);
@@ -99,21 +92,19 @@ export function useAssistantChat(active: boolean) {
         );
         return;
       }
-      const id = storedConversationId();
-      if (!id) return;
-      const conv = await getConversation(id).catch(() => null);
-      if (!conv) {
-        storeConversationId(undefined);
-        return;
-      }
-      conversationId.current = conv.id;
+      if (c.conversationId === conversationId.current) return;
+      conversationId.current = c.conversationId;
+      const conv = await getConversation(c.conversationId).catch(() => null);
       setMessages(
+        !conv
+          ? []
+          : 
         conv.transcript.map((t) => ({
-          id: nextId(),
-          role: t.role,
-          text: t.text,
-          drafts: t.drafts?.map((d) => ({ ...d })),
-        })),
+              id: nextId(),
+              role: t.role,
+              text: t.text,
+              drafts: t.drafts?.map((d) => ({ ...d })),
+            })),
       );
     })();
   }, [active, attempt]);
@@ -156,8 +147,10 @@ export function useAssistantChat(active: boolean) {
         streaming: true,
         spoken: mode === 'voice',
       };
-      setMessages((ms) => [...ms, { id: nextId(), role: 'user', text: message }, reply]);
+      const question: ChatMessage = { id: nextId(), role: 'user', text: message };
+      setMessages((ms) => [...ms, question, reply]);
       setBusy(true);
+      await resetting.current;
       const ctrl = new AbortController();
       abort.current = ctrl;
       let final: ChatMessage = reply;
@@ -165,8 +158,12 @@ export function useAssistantChat(active: boolean) {
       const onEvent = (e: AssistantEvent) => {
         switch (e.type) {
           case 'start':
+            // A different session means the earlier conversation ended:
+            // this question opens a fresh one.
+            if (conversationId.current && e.conversationId !== conversationId.current) {
+              setMessages((ms) => ms.filter((m) => m.id === question.id || m.id === reply.id));
+            }
             conversationId.current = e.conversationId;
-            storeConversationId(e.conversationId);
             break;
           case 'status':
             patch(reply.id, (m) => ({ ...m, status: e.label }));
@@ -200,6 +197,11 @@ export function useAssistantChat(active: boolean) {
             setCredits({ remaining: e.remaining, limit: e.limit });
             break;
           case 'error':
+            if (e.code === 'SESSION_ENDED' && !retried) {
+              // Idle too long: ask again in a fresh conversation.
+              ended = true;
+              break;
+            }
             // The next request mints a fresh assistant token.
             if (e.code === 'SESSION_EXPIRED') clearAssistantToken();
             patch(reply.id, (m) => ({ ...m, error: { code: e.code, message: e.message } }));
@@ -211,12 +213,21 @@ export function useAssistantChat(active: boolean) {
         }
       };
 
+      let retried = false;
+      let ended = false;
       try {
         await streamChat(
           { message, conversationId: conversationId.current, mode },
           onEvent,
           ctrl.signal,
         );
+        if (ended) {
+          retried = true;
+          forgetAssistantSession();
+          patch(reply.id, (m) => ({ ...m, text: '', status: undefined }));
+          final = reply;
+          await streamChat({ message, mode }, onEvent, ctrl.signal);
+        }
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
           const e =
@@ -285,13 +296,17 @@ export function useAssistantChat(active: boolean) {
     [caps, markDrafts, messages, patch],
   );
 
+  /** Ends the conversation (and its assistant session); the next message starts fresh. */
   const newChat = useCallback(() => {
     abort.current?.abort();
     const old = conversationId.current;
     conversationId.current = undefined;
-    storeConversationId(undefined);
     setMessages([]);
-    if (old) void deleteConversation(old);
+    const ending = old ? deleteConversation(old) : Promise.resolve();
+    resetting.current = ending.finally(() => {
+      forgetAssistantSession();
+      resetting.current = null;
+    });
   }, []);
 
   return {

@@ -396,11 +396,11 @@ export function AssistantPanel() {
               input.current?.focus();
             }}
             disabled={busy || empty}
-            title="New conversation"
-            className="grid size-10 cursor-pointer place-items-center rounded-md text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink disabled:cursor-default disabled:opacity-40"
+            title="Start a new conversation"
+            className="flex h-10 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink disabled:cursor-default disabled:opacity-40"
           >
-            <SquarePen className="size-[18px]" aria-hidden />
-            <span className="sr-only">Start a new conversation</span>
+            <SquarePen className="size-4" aria-hidden />
+            New chat
           </button>
           <button
             type="button"
