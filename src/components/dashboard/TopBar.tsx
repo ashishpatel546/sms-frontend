@@ -6,6 +6,7 @@ import { PanelLeftClose, PanelLeftOpen, Menu } from "lucide-react";
 import { ThemePicker } from "@/components/ui/ThemePicker";
 import { NotificationBell } from "@/components/NotificationBell";
 import { NAV_CONFIG } from "@/lib/navConfig";
+import { AssistantLauncher } from "@/components/assistant/AssistantLauncher";
 
 interface TopBarProps {
     user: any;
@@ -112,6 +113,7 @@ export function TopBar({ user, sidebarCollapsed, onToggleSidebar, onOpenMobileNa
 
                 {/* ── Right: theme, alerts, identity ── */}
                 <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+                    <AssistantLauncher />
                     <ThemePicker />
                     <NotificationBell variant="light" />
 
