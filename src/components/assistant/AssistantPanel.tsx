@@ -32,6 +32,18 @@ import { DraftCard } from './DraftCard';
 import { useAssistantChat, type ChatMessage, type Credits } from './useAssistantChat';
 
 const SPEAK_KEY = 'assistant_speak_replies';
+/** A press shorter than this is a tap: the mic stays on until Done. */
+const TAP_MS = 350;
+/** Sliding this far from the mic while holding cancels on release. */
+const CANCEL_PX = 72;
+
+interface Hold {
+  downAt: number;
+  x: number;
+  y: number;
+  released: boolean;
+  cancel: boolean;
+}
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -174,6 +186,10 @@ export function AssistantPanel() {
 
   const [draftText, setDraftText] = useState('');
   const [listening, setListening] = useState<Listening | null>(null);
+  /** Started with a tap (or assistive tech): listens until Done. */
+  const [handsFree, setHandsFree] = useState(false);
+  /** Slid away from the mic while holding: releasing throws the recording away. */
+  const [armedCancel, setArmedCancel] = useState(false);
   const [listenStart, setListenStart] = useState(0);
   const [transcribing, setTranscribing] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
@@ -196,6 +212,10 @@ export function AssistantPanel() {
   const speaker = useRef<Speaker | null>(null);
   const [lastSent, setLastSent] = useState<{ text: string; mode: 'text' | 'voice' } | null>(null);
   const stopListeningRef = useRef<() => void>(() => undefined);
+  const listenRef = useRef<Listening | null>(null);
+  const hold = useRef<Hold | null>(null);
+  /** The click that follows a press we already handled. */
+  const pressed = useRef(false);
 
   const user = typeof window !== 'undefined' ? getUser() : null;
   const roles = [user?.role, ...((user as { roles?: string[] } | null)?.roles ?? [])].filter(
@@ -226,27 +246,13 @@ export function AssistantPanel() {
       return () => window.clearTimeout(t);
     }
     speaker.current?.stop();
-    listening?.cancel();
+    listenRef.current?.cancel();
+    listenRef.current = null;
+    hold.current = null;
     // Closing the panel ends any recording; nothing else owns this state.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setListening(null);
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Escape closes (unless the mic is live — then it cancels listening).
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      if (listening) {
-        listening.cancel();
-        setListening(null);
-        return;
-      }
-      setOpen(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, listening, setOpen]);
+  }, [open]);
 
   // Follow the conversation unless the person has scrolled up to read.
   useLayoutEffect(() => {
@@ -312,13 +318,13 @@ export function AssistantPanel() {
       if (!(err instanceof AssistantError) || err.code !== 'DEVICE_STT_FAILED') return false;
       if (!(caps?.voice.transcribe && !serverSttDown && canRecord())) return false;
       setDeviceSttDown(true);
-      setVoiceError('Switched to the assistant’s voice input. Tap the mic and say it again.');
+      setVoiceError('Switched to the assistant’s voice input. Hold the mic and say it again.');
       return true;
     },
     [caps, serverSttDown],
   );
 
-  const startMic = async () => {
+  const beginListening = async (): Promise<Listening | null> => {
     setVoiceError(null);
     speaker.current?.stop();
     try {
@@ -327,43 +333,127 @@ export function AssistantPanel() {
         maxSeconds: caps?.limits.maxAudioSeconds ?? 60,
         onAutoStop: () => stopListeningRef.current(),
       });
+      listenRef.current = l;
       setListenStart(performance.now());
       setElapsed(0);
       setListening(l);
+      return l;
     } catch (err) {
-      if (switchToServerStt(err)) return;
-      setVoiceError(err instanceof AssistantError ? err.message : "Couldn't start the microphone.");
+      if (!switchToServerStt(err)) {
+        setVoiceError(err instanceof AssistantError ? err.message : "Couldn't start the microphone.");
+      }
+      return null;
     }
   };
 
-  const stopMic = useCallback(async () => {
-    const l = listening;
-    if (!l) return;
-    setListening(null);
-    setTranscribing(true);
-    try {
-      const text = (await l.stop()).trim();
-      if (!text) {
-        setVoiceError("I didn't catch that. Try again, a little closer to the mic.");
+  /** Stops the mic; sends what was said, or throws it away. */
+  const endListening = useCallback(
+    async (send: boolean) => {
+      const l = listenRef.current;
+      if (!l) return;
+      listenRef.current = null;
+      hold.current = null;
+      setListening(null);
+      setHandsFree(false);
+      setArmedCancel(false);
+      if (!send) {
+        l.cancel();
         return;
       }
-      await submit(text, 'voice');
-    } catch (err) {
-      if (switchToServerStt(err)) return;
-      if (err instanceof AssistantError && err.code === 'VOICE_UNAVAILABLE' && canRecogniseOnDevice()) {
-        setServerSttDown(true);
-        setVoiceError('Switched to this device’s voice input. Tap the mic and say it again.');
-        return;
+      setTranscribing(true);
+      try {
+        const text = (await l.stop()).trim();
+        if (!text) {
+          setVoiceError("I didn't catch that. Hold the mic while you speak, a little closer to it.");
+          return;
+        }
+        await submit(text, 'voice');
+      } catch (err) {
+        if (switchToServerStt(err)) return;
+        if (err instanceof AssistantError && err.code === 'VOICE_UNAVAILABLE' && canRecogniseOnDevice()) {
+          setServerSttDown(true);
+          setVoiceError('Switched to this device’s voice input. Hold the mic and say it again.');
+          return;
+        }
+        setVoiceError(err instanceof AssistantError ? err.message : "Couldn't make out the audio. Try again.");
+      } finally {
+        setTranscribing(false);
       }
-      setVoiceError(err instanceof AssistantError ? err.message : "Couldn't make out the audio. Try again.");
-    } finally {
-      setTranscribing(false);
-    }
-  }, [listening, submit, switchToServerStt]);
+    },
+    [submit, switchToServerStt],
+  );
 
   useEffect(() => {
-    stopListeningRef.current = () => void stopMic();
-  }, [stopMic]);
+    stopListeningRef.current = () => void endListening(true);
+  }, [endListening]);
+
+  // Escape closes (unless the mic is live — then it cancels listening).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (listenRef.current) {
+        void endListening(false);
+        return;
+      }
+      setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, setOpen, endListening]);
+
+  /** The press ended: send, throw away, or (after a tap) keep listening until Done. */
+  const settleHold = (h: Hold) => {
+    hold.current = null;
+    if (h.cancel) void endListening(false);
+    else if (performance.now() - h.downAt < TAP_MS) setHandsFree(true);
+    else void endListening(true);
+  };
+
+  // Press and hold to talk; release to send; slide away to cancel.
+  const pressMic = async (x: number, y: number) => {
+    pressed.current = true;
+    if (listenRef.current || hold.current) return;
+    const h: Hold = { downAt: performance.now(), x, y, released: false, cancel: false };
+    hold.current = h;
+    setArmedCancel(false);
+    setHandsFree(false);
+    const l = await beginListening();
+    if (hold.current !== h) {
+      // Closed or discarded while the mic was starting.
+      if (l && listenRef.current === l) void endListening(false);
+      return;
+    }
+    if (!l) {
+      hold.current = null;
+      return;
+    }
+    if (h.released) {
+      // Let go before the mic was ready (e.g. while allowing it): nothing was
+      // said yet, so keep listening until Done.
+      hold.current = null;
+      if (h.cancel) void endListening(false);
+      else setHandsFree(true);
+    }
+  };
+
+  const moveMic = (x: number, y: number) => {
+    const h = hold.current;
+    if (!h || h.released) return;
+    const away = Math.hypot(x - h.x, y - h.y) > CANCEL_PX;
+    if (away !== h.cancel) {
+      h.cancel = away;
+      setArmedCancel(away);
+    }
+  };
+
+  const releaseMic = (cancel = false) => {
+    const h = hold.current;
+    if (!h || h.released) return;
+    h.released = true;
+    if (cancel) h.cancel = true;
+    if (listenRef.current) settleHold(h);
+  };
 
   if (!available) return null;
 
@@ -535,7 +625,7 @@ export function AssistantPanel() {
             </p>
           )}
 
-          {listening ? (
+          {listening && handsFree ? (
             <div className="flex items-center gap-3 rounded-lg border border-accent-ai-edge bg-accent-ai-tint px-3 py-2">
               <span className="assistant-listen flex items-center gap-[3px]" aria-hidden>
                 <span />
@@ -547,17 +637,10 @@ export function AssistantPanel() {
                 0:{String(elapsed).padStart(2, '0')}
               </span>
               <div className="ml-auto flex items-center gap-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    listening.cancel();
-                    setListening(null);
-                  }}
-                >
+                <Button size="sm" variant="ghost" onClick={() => void endListening(false)}>
                   Discard
                 </Button>
-                <Button size="sm" variant="primary" onClick={() => void stopMic()}>
+                <Button size="sm" variant="primary" onClick={() => void endListening(true)}>
                   <Square className="size-3.5 fill-current" aria-hidden />
                   Done
                 </Button>
@@ -571,53 +654,119 @@ export function AssistantPanel() {
                 onSend();
               }}
             >
-              <label htmlFor="assistant-input" className="sr-only">
-                Message the assistant
-              </label>
-              <textarea
-                id="assistant-input"
-                ref={input}
-                rows={1}
-                value={draftText}
-                maxLength={caps?.limits.maxMessageChars ?? 2000}
-                disabled={!!startError || outOfCredits}
-                onChange={(e) => {
-                  setDraftText(e.target.value);
-                  const el = e.target;
-                  el.style.height = 'auto';
-                  el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-                    e.preventDefault();
-                    onSend();
+              {listening ? (
+                <div
+                  className={`flex min-h-11 flex-1 items-center gap-3 rounded-lg border px-3 py-2 transition-colors ${
+                    armedCancel
+                      ? 'border-accent-danger-edge bg-accent-danger-tint'
+                      : 'border-accent-ai-edge bg-accent-ai-tint'
+                  }`}
+                  aria-live="polite"
+                >
+                  {!armedCancel && (
+                    <span className="assistant-listen flex items-center gap-[3px]" aria-hidden>
+                      <span />
+                      <span />
+                      <span />
+                    </span>
+                  )}
+                  <span
+                    className={`text-[13.5px] font-medium whitespace-nowrap ${armedCancel ? 'text-accent-danger-deep' : 'text-ink'}`}
+                  >
+                    {armedCancel ? 'Release to cancel' : 'Release to send'}
+                  </span>
+                  <span className="font-mono text-[12px] text-ink-muted tabular-nums">
+                    0:{String(elapsed).padStart(2, '0')}
+                  </span>
+                  {!armedCancel && (
+                    <span className="ml-auto truncate text-[12px] text-ink-muted">Slide to cancel</span>
+                  )}
+                </div>
+              ) : (
+                <>
+                <label htmlFor="assistant-input" className="sr-only">
+                  Message the assistant
+                </label>
+                <textarea
+                  id="assistant-input"
+                  ref={input}
+                  rows={1}
+                  value={draftText}
+                  maxLength={caps?.limits.maxMessageChars ?? 2000}
+                  disabled={!!startError || outOfCredits}
+                  onChange={(e) => {
+                    setDraftText(e.target.value);
+                    const el = e.target;
+                    el.style.height = 'auto';
+                    el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                      e.preventDefault();
+                      onSend();
+                    }
+                  }}
+                  placeholder={
+                    transcribing
+                      ? 'Writing down what you said…'
+                      : outOfCredits
+                        ? 'No assistant credits left this month'
+                        : 'Ask, or say what to do'
                   }
-                }}
-                placeholder={
-                  transcribing
-                    ? 'Writing down what you said…'
-                    : outOfCredits
-                      ? 'No assistant credits left this month'
-                      : 'Ask, or say what to do'
-                }
-                className="min-h-11 flex-1 resize-none rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-[14px] leading-snug text-ink placeholder:text-ink-faint focus:border-accent-ai focus:outline-none disabled:opacity-60"
-              />
-              {canListen && !draftText.trim() && !busy && (
+                  className="min-h-11 flex-1 resize-none rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-[14px] leading-snug text-ink placeholder:text-ink-faint focus:border-accent-ai focus:outline-none disabled:opacity-60"
+                />
+                </>
+              )}
+              {canListen && !draftText.trim() && (!busy || listening) && (
                 <button
                   type="button"
-                  onClick={() => void startMic()}
+                  title="Hold to talk"
+                  aria-pressed={!!listening}
+                  onPointerDown={(e) => {
+                    if (e.button !== 0) return;
+                    e.preventDefault();
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    void pressMic(e.clientX, e.clientY);
+                  }}
+                  onPointerMove={(e) => moveMic(e.clientX, e.clientY)}
+                  onPointerUp={() => releaseMic()}
+                  onPointerCancel={() => releaseMic(true)}
+                  onKeyDown={(e) => {
+                    if (e.key !== ' ' && e.key !== 'Enter') return;
+                    e.preventDefault();
+                    if (!e.repeat) void pressMic(0, 0);
+                  }}
+                  onKeyUp={(e) => {
+                    if (e.key === ' ' || e.key === 'Enter') releaseMic();
+                  }}
+                  onClick={() => {
+                    // Screen readers and switch access send a click with no press:
+                    // listen until Done.
+                    if (pressed.current) {
+                      pressed.current = false;
+                      return;
+                    }
+                    void beginListening().then((l) => l && setHandsFree(true));
+                  }}
+                  onContextMenu={(e) => e.preventDefault()}
                   disabled={transcribing || !caps || outOfCredits}
-                  className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-lg border border-accent-ai-edge bg-accent-ai-tint text-accent-ai transition-colors hover:border-accent-ai disabled:cursor-default disabled:opacity-50"
+                  className={`grid size-11 shrink-0 cursor-pointer touch-none place-items-center rounded-lg border transition-[transform,background-color,border-color] select-none [-webkit-touch-callout:none] disabled:cursor-default disabled:opacity-50 motion-reduce:transition-none ${
+                    listening
+                      ? armedCancel
+                        ? 'scale-110 border-accent-danger bg-accent-danger text-white'
+                        : 'scale-110 border-accent-ai bg-accent-ai text-white'
+                      : 'border-accent-ai-edge bg-accent-ai-tint text-accent-ai hover:border-accent-ai'
+                  }`}
                 >
                   {transcribing ? (
                     <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden />
                   ) : (
                     <Mic className="size-5" aria-hidden />
                   )}
-                  <span className="sr-only">Speak</span>
+                  <span className="sr-only">Hold to talk</span>
                 </button>
               )}
-              {busy ? (
+              {listening ? null : busy ? (
                 <Button type="button" size="icon-lg" variant="outline" onClick={stop}>
                   <Square className="size-4 fill-current" aria-hidden />
                   <span className="sr-only">Stop answering</span>
