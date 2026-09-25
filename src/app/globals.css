@@ -1545,6 +1545,61 @@
   }
 }
 
+/* ── Assistant ─────────────────────────────────────────────────────────────
+   A confirmed draft is "inked": the sage wash spreads once across the card
+   the moment it is saved. The only motion the assistant has of its own. */
+@keyframes assistant-ink {
+  from {
+    background-size: 0% 100%;
+  }
+  to {
+    background-size: 100% 100%;
+  }
+}
+
+.assistant-inked {
+  background-image: linear-gradient(var(--accent-success-tint), var(--accent-success-tint));
+  background-repeat: no-repeat;
+  animation: assistant-ink 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* The listening meter: three bars keeping time with the microphone. */
+@keyframes assistant-listen {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.assistant-listen > span {
+  display: block;
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--accent-ai);
+  transform-origin: center;
+  animation: assistant-listen 900ms ease-in-out infinite;
+}
+.assistant-listen > span:nth-child(2) {
+  animation-delay: 150ms;
+}
+.assistant-listen > span:nth-child(3) {
+  animation-delay: 300ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-inked,
+  .assistant-listen > span {
+    animation: none;
+  }
+  .assistant-inked {
+    background-size: 100% 100%;
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    SKELETONS
 

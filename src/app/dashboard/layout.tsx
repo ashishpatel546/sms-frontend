@@ -13,6 +13,8 @@ import { usePinnedActions } from "@/hooks/usePinnedActions";
 import { useQuickActionTiles } from "@/lib/quickActions";
 import { QuickActionPicker } from "@/components/dashboard/QuickActionPicker";
 import PullToRefresh from "@/components/ui/PullToRefresh";
+import { AssistantProvider } from "@/components/assistant/AssistantProvider";
+import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 
 /**
  * The "+" bottom-tab sheet: choose which quick actions sit on the dashboard.
@@ -160,6 +162,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
 
     return (
+        <AssistantProvider role={user.role} roles={user.roles}>
         <div className="theme-bg min-h-dvh text-ink">
 
             <a
@@ -202,7 +205,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 open={isQuickActionsOpen}
                 onClose={() => setIsQuickActionsOpen(false)}
             />
+
+            <AssistantPanel />
         </div>
+        </AssistantProvider>
     );
 }
 
