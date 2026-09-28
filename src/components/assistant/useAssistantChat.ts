@@ -40,6 +40,8 @@ export interface ChatMessage {
 export interface Credits {
   remaining: number;
   limit: number;
+  /** 'user': these are the person's own monthly credits, not the school's. */
+  limitedBy?: 'school' | 'user';
 }
 
 let seq = 0;
@@ -81,7 +83,11 @@ export function useAssistantChat(active: boolean) {
         await resetting.current;
         c = await getCapabilities();
         setCaps(c);
-        setCredits({ remaining: c.credits.remaining, limit: c.credits.limit });
+        setCredits({
+          remaining: c.credits.remaining,
+          limit: c.credits.limit,
+          limitedBy: c.credits.limitedBy,
+        });
         setStartError(null);
       } catch (err) {
         loaded.current = false;
@@ -194,7 +200,7 @@ export function useAssistantChat(active: boolean) {
             markDrafts(e.actionIds, outcomeState(e));
             break;
           case 'usage':
-            setCredits({ remaining: e.remaining, limit: e.limit });
+            setCredits({ remaining: e.remaining, limit: e.limit, limitedBy: e.limitedBy });
             break;
           case 'error':
             if (e.code === 'SESSION_ENDED' && !retried) {
