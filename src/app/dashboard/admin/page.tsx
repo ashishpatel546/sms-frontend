@@ -320,7 +320,7 @@ export default function AdminPanel() {
                 {([
                     ["users", "👥 Users & Roles"],
                     ["add-staff", "➕ Add Staff"],
-                    ...(assistantEnabled ? [["ai-assistant", "✨ AI Assistant"]] : []),
+                    ...(assistantEnabled && isSuperAdmin ? [["ai-assistant", "✨ AI Assistant"]] : []),
                     ...(isSuperAdmin ? [["school-setup", "🏫 School Setup"]] : []),
                 ] as [Tab, string][]).map(([tab, label]) => (
                     <button key={tab} onClick={() => setActiveTab(tab)}
@@ -330,7 +330,7 @@ export default function AdminPanel() {
                 ))}
             </div>
 
-            {activeTab === "ai-assistant" && assistantEnabled && <AiAssistantAccess />}
+            {activeTab === "ai-assistant" && assistantEnabled && isSuperAdmin && <AiAssistantAccess />}
 
             {/* ─── USERS TAB ─── */}
             {activeTab === "users" && (

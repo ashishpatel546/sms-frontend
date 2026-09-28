@@ -39,7 +39,7 @@ interface Person {
   roles: string[];
   designation: string | null;
   active: boolean;
-  tier: 'SUPER_ADMIN' | 'ADMIN' | 'STAFF';
+  tier: 'SUPER_ADMIN' | 'STAFF';
   access: AccessChoice;
   limitMode: LimitMode;
   monthlyCredits: number | null;
@@ -50,8 +50,8 @@ interface Person {
   calls: number;
   sessions: number;
   lastUsedAt: string | null;
-  canEditAccess: boolean;
-  canEditLimit: boolean;
+  /** False for yourself and for Super Admins (always full access). */
+  canEdit: boolean;
 }
 
 interface ListResponse {
@@ -112,7 +112,6 @@ function limitText(p: Person, schoolCap: number | null) {
   if (p.tier === 'SUPER_ADMIN') return 'No limit';
   if (p.limitMode === 'CUSTOM') return `${n(p.monthlyCredits ?? 0)} / month`;
   if (p.limitMode === 'NONE') return 'No limit';
-  if (p.tier === 'ADMIN') return 'No limit';
   return schoolCap === null ? 'No limit' : `${n(schoolCap)} / month (school)`;
 }
 
@@ -235,7 +234,7 @@ function SettingsPanel({
               onChange={() => setMode('SELECTED')}
               disabled={readOnly}
               title="Only people I choose"
-              hint="Turn it on person by person below. Admins always have access."
+              hint="Turn it on person by person below, admins included. Super Admins always have access."
             />
           </div>
         </div>
@@ -256,7 +255,7 @@ function SettingsPanel({
               onChange={() => setCapOn(true)}
               disabled={readOnly}
               title="Limit each person"
-              hint="Applies to staff without their own limit. Admins are not capped by this."
+              hint="Applies to everyone without their own limit, admins included."
             >
               {capOn && (
                 <span className="mt-2 flex items-center gap-2">
@@ -309,12 +308,9 @@ function EditDialog({
 }) {
   const one = people.length === 1 ? people[0] : null;
   // Several people at once: only the limit (access has its own bulk buttons).
-  const accessEditable = one?.canEditAccess ?? false;
+  const accessEditable = one?.canEdit ?? false;
   const [access, setAccess] = useState<AccessChoice>(one?.access ?? 'DEFAULT');
-  // The school's cap never applies to admins, so theirs is "none" unless set.
-  const [limitMode, setLimitMode] = useState<LimitMode>(
-    one?.tier === 'ADMIN' && one.limitMode === 'DEFAULT' ? 'NONE' : (one?.limitMode ?? 'DEFAULT'),
-  );
+  const [limitMode, setLimitMode] = useState<LimitMode>(one?.limitMode ?? 'DEFAULT');
   const [credits, setCredits] = useState(String(one?.monthlyCredits ?? schoolCap ?? 100));
   const [saving, setSaving] = useState(false);
   const [usage, setUsage] = useState<Usage | null>(null);
@@ -372,11 +368,11 @@ function EditDialog({
           {one && (
           <div>
             <p className="mb-2 font-mono text-[11px] uppercase tracking-wider text-ink-faint">Access</p>
-            {!one.canEditAccess ? (
+            {!one.canEdit ? (
               <Note pigment="neutral">
-                {one.tier === 'STAFF'
-                  ? 'You cannot change your own access.'
-                  : 'Admins always have access to the AI Assistant.'}
+                {one.tier === 'SUPER_ADMIN'
+                  ? 'Super Admins always have access to the AI Assistant.'
+                  : 'You cannot change your own access.'}
               </Note>
             ) : (
               <div className="space-y-2">
@@ -395,23 +391,19 @@ function EditDialog({
 
           <div>
             <p className="mb-2 font-mono text-[11px] uppercase tracking-wider text-ink-faint">Monthly limit</p>
-            {one && !one.canEditLimit ? (
+            {one && !one.canEdit ? (
               <Note pigment="neutral">
                 {one.tier === 'SUPER_ADMIN'
                   ? 'Super Admins have no limit.'
-                  : one.tier === 'ADMIN'
-                    ? 'Only a Super Admin can set an admin’s limit.'
-                    : 'You cannot change your own limit.'}
+                  : 'You cannot change your own limit.'}
               </Note>
             ) : (
               <div className="space-y-2">
-                {(!one || one.tier === 'STAFF') && (
-                  <Choice
-                    checked={limitMode === 'DEFAULT'}
-                    onChange={() => setLimitMode('DEFAULT')}
-                    title={schoolCap === null ? 'School setting (no limit)' : `School setting (${n(schoolCap)} a month)`}
-                  />
-                )}
+                <Choice
+                  checked={limitMode === 'DEFAULT'}
+                  onChange={() => setLimitMode('DEFAULT')}
+                  title={schoolCap === null ? 'School setting (no limit)' : `School setting (${n(schoolCap)} a month)`}
+                />
                 <Choice checked={limitMode === 'NONE'} onChange={() => setLimitMode('NONE')} title="No limit" />
                 <Choice
                   checked={limitMode === 'CUSTOM'}
@@ -466,7 +458,7 @@ function EditDialog({
           <Button
             size="sm"
             onClick={save}
-            disabled={saving || invalid || (one !== null && !one.canEditAccess && !one.canEditLimit)}
+            disabled={saving || invalid || (one !== null && !one.canEdit)}
           >
             {saving ? 'Saving…' : 'Save'}
           </Button>
@@ -507,7 +499,7 @@ export function AiAssistantAccess() {
     return (data?.users ?? []).filter((p) => !term || p.name.toLowerCase().includes(term));
   }, [data, q]);
 
-  const selectable = people.filter((p) => p.canEditAccess || p.canEditLimit);
+  const selectable = people.filter((p) => p.canEdit);
   const chosen = people.filter((p) => selected.has(p.id));
   const allChosen = selectable.length > 0 && selectable.every((p) => selected.has(p.id));
 
@@ -529,7 +521,7 @@ export function AiAssistantAccess() {
     if (!res.ok) return toast.error(await readMessage(res, 'Could not change access.'));
     const r = (await res.json()) as { updated: number[]; skipped: unknown[] };
     toast.success(
-      `Updated ${r.updated.length}${r.skipped.length ? `, skipped ${r.skipped.length} (admins or you)` : ''}`,
+      `Updated ${r.updated.length}${r.skipped.length ? `, skipped ${r.skipped.length} (Super Admins or you)` : ''}`,
     );
     setSelected(new Set());
     void load();
@@ -670,7 +662,7 @@ export function AiAssistantAccess() {
               </thead>
               <tbody className="divide-y divide-line">
                 {people.map((p) => {
-                  const canSelect = p.canEditAccess || p.canEditLimit;
+                  const canSelect = p.canEdit;
                   return (
                     <tr key={p.id} className={cn('hover:bg-surface-secondary/60', !p.active && 'opacity-60')}>
                       <td className="px-4 py-2.5">
@@ -697,7 +689,7 @@ export function AiAssistantAccess() {
                         </p>
                       </td>
                       <td className="px-3 py-2.5">
-                        {p.canEditAccess ? (
+                        {p.canEdit ? (
                           <button
                             type="button"
                             role="switch"
@@ -721,7 +713,7 @@ export function AiAssistantAccess() {
                         ) : (
                           <StatusChip
                             pigment={p.allowed ? 'success' : 'neutral'}
-                            label={p.tier === 'STAFF' ? (p.allowed ? 'Allowed' : 'Off') : 'Always'}
+                            label={p.tier === 'SUPER_ADMIN' ? 'Always' : p.allowed ? 'Allowed' : 'Off'}
                           />
                         )}
                       </td>
@@ -751,8 +743,8 @@ export function AiAssistantAccess() {
       </Panel>
 
       <p className="text-[12px] text-ink-faint">
-        Credits are shared by the whole school and reset on the 1st of each month. Admins always have access; only a
-        Super Admin can set an admin’s limit, and nobody can change their own.
+        Credits are shared by the whole school and reset on the 1st of each month. Only a Super Admin manages this
+        page; Super Admins always have full access, and nobody can change their own.
       </p>
 
       {editing && data && (
