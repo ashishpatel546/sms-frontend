@@ -198,7 +198,14 @@ export type AssistantEvent =
   | { type: 'token'; text: string }
   | { type: 'draft'; drafts: Draft[] }
   | ({ type: 'action' } & ActionResult)
-  | { type: 'usage'; credits: number; remaining: number; limit: number }
+  | {
+      type: 'usage';
+      credits: number;
+      remaining: number;
+      limit: number;
+      /** 'user': remaining/limit are the person's own monthly credits. */
+      limitedBy?: 'school' | 'user';
+    }
   | { type: 'done'; text: string }
   | { type: 'error'; code: string; message: string };
 
@@ -207,7 +214,7 @@ export interface Capabilities {
   /** This session's conversation; a different id than before means a fresh one. */
   conversationId: string;
   idleMinutes: number;
-  credits: { remaining: number; limit: number; month: string };
+  credits: { remaining: number; limit: number; month: string; limitedBy?: 'school' | 'user' };
   confirmMode: 'agent' | 'user';
   /**
    * input/output: what the school chose in the hub — no voice, the device's

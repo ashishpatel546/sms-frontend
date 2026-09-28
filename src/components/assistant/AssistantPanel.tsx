@@ -78,8 +78,10 @@ function CreditsLine({ credits }: { credits: Credits | null }) {
   return (
     <p className={`font-mono text-[11px] tabular-nums ${tone}`}>
       {credits.remaining <= 0
-        ? 'No credits left this month'
-        : `${credits.remaining.toLocaleString('en-IN')} of ${credits.limit.toLocaleString('en-IN')} credits left`}
+        ? credits.limitedBy === 'user'
+          ? 'Your credits for this month are used up'
+          : 'No credits left this month'
+        : `${credits.remaining.toLocaleString('en-IN')} of ${credits.limitedBy === 'user' ? 'your ' : ''}${credits.limit.toLocaleString('en-IN')} credits left`}
     </p>
   );
 }
@@ -111,7 +113,7 @@ function Markdown({ text }: { text: string }) {
 }
 
 const ERROR_HELP: Record<string, string> = {
-  CREDITS_EXHAUSTED: 'An administrator can add credits from the platform console.',
+  CREDITS_EXHAUSTED: '',
   OFFLINE: '',
   RATE_LIMITED: '',
 };

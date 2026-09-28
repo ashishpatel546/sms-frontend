@@ -9,6 +9,8 @@ import Link from "next/link";
 import AddStaffForm from "@/components/AddStaffForm";
 import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 import { useRbac } from "@/lib/rbac";
+import { useFeatureFlag } from "@/lib/useSchoolFeatures";
+import { AiAssistantAccess } from "./AiAssistantAccess";
 import {
     RoleChip,
     RoleManagerDialog,
@@ -16,7 +18,7 @@ import {
     type RoleManagerUser,
 } from "./RoleManagerDialog";
 
-type Tab = "users" | "add-staff" | "school-setup";
+type Tab = "users" | "add-staff" | "school-setup" | "ai-assistant";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -33,6 +35,7 @@ export default function AdminPanel() {
     const currentUser = getUser();
     const { canAccessAdminPanel } = useRbac();
     const readOnly = useReadOnlySession();
+    const { enabled: assistantEnabled } = useFeatureFlag("ai_agent");
     const [activeTab, setActiveTab] = useState<Tab>("users");
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -314,16 +317,20 @@ export default function AdminPanel() {
 
             {/* Tabs */}
             <div className="flex flex-wrap gap-1 bg-slate-100 rounded-xl p-1 mb-6 w-fit">
-                {(isSuperAdmin 
-                    ? [["users", "👥 Users & Roles"], ["add-staff", "➕ Add Staff"], ["school-setup", "🏫 School Setup"]] as const 
-                    : [["users", "👥 Users & Roles"], ["add-staff", "➕ Add Staff"]] as const
-                ).map(([tab, label]) => (
+                {([
+                    ["users", "👥 Users & Roles"],
+                    ["add-staff", "➕ Add Staff"],
+                    ...(assistantEnabled && isSuperAdmin ? [["ai-assistant", "✨ AI Assistant"]] : []),
+                    ...(isSuperAdmin ? [["school-setup", "🏫 School Setup"]] : []),
+                ] as [Tab, string][]).map(([tab, label]) => (
                     <button key={tab} onClick={() => setActiveTab(tab)}
                         className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === tab ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
                         {label}
                     </button>
                 ))}
             </div>
+
+            {activeTab === "ai-assistant" && assistantEnabled && isSuperAdmin && <AiAssistantAccess />}
 
             {/* ─── USERS TAB ─── */}
             {activeTab === "users" && (
