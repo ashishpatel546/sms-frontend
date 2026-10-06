@@ -44,6 +44,9 @@ export interface Credits {
   limitedBy?: 'school' | 'user';
 }
 
+/** How often the credits line is refreshed while the panel is open. */
+const CREDITS_REFRESH_MS = 2 * 60_000;
+
 let seq = 0;
 const nextId = () => `m${Date.now().toString(36)}${(seq++).toString(36)}`;
 
@@ -114,6 +117,39 @@ export function useAssistantChat(active: boolean) {
       );
     })();
   }, [active, attempt]);
+
+  /**
+   * Fetches the balance again: after Stop (the reply's own figure never
+   * arrives), after server speech, and now and then while the panel is open,
+   * since other staff spend the same school credits.
+   */
+  const refreshCredits = useCallback(async () => {
+    try {
+      const c = await getCapabilities();
+      setCredits({
+        remaining: c.credits.remaining,
+        limit: c.credits.limit,
+        limitedBy: c.credits.limitedBy,
+      });
+    } catch {
+      // Keep the last figure; the next reply brings a fresh one.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!active) return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refreshCredits();
+    };
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refreshCredits();
+    }, CREDITS_REFRESH_MS);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [active, refreshCredits]);
 
   const retryStart = useCallback(() => {
     loaded.current = false;
@@ -252,10 +288,11 @@ export function useAssistantChat(active: boolean) {
         }));
         abort.current = null;
         setBusy(false);
+        if (ctrl.signal.aborted) void refreshCredits();
       }
       return final;
     },
-    [busy, markDrafts, patch],
+    [busy, markDrafts, patch, refreshCredits],
   );
 
   const stop = useCallback(() => abort.current?.abort(), []);
@@ -276,7 +313,15 @@ export function useAssistantChat(active: boolean) {
             ? await confirmDrafts(convId, draft.action_ids, caps.confirmMode)
             : await cancelDrafts(convId, draft.action_ids);
         markDrafts(draft.action_ids, outcomeState(result));
-        if (result.credits) setCredits(result.credits);
+        if (result.credits) {
+          setCredits({
+            remaining: result.credits.remaining,
+            limit: result.credits.limit,
+            limitedBy: result.credits.limitedBy,
+          });
+        } else {
+          void refreshCredits();
+        }
         const note: ChatMessage = { id: nextId(), role: 'assistant', text: result.text };
         setMessages((ms) => [...ms, note]);
         return note;
@@ -299,7 +344,7 @@ export function useAssistantChat(active: boolean) {
         return note;
       }
     },
-    [caps, markDrafts, messages, patch],
+    [caps, markDrafts, messages, patch, refreshCredits],
   );
 
   /** Ends the conversation (and its assistant session); the next message starts fresh. */
@@ -326,5 +371,6 @@ export function useAssistantChat(active: boolean) {
     stop,
     decide,
     newChat,
+    refreshCredits,
   };
 }

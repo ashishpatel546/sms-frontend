@@ -7,7 +7,7 @@
  * shows and edits it.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import useSWR from 'swr';
 import { Pencil, Search, Sparkles, Users } from 'lucide-react';
@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Pagination } from '@/components/ui/FilterBar';
 import { Note, Panel } from '@/components/ui/Panel';
 import { StatGrid, StatTile } from '@/components/ui/StatTile';
 import { StatusChip } from '@/components/ui/StatusChip';
@@ -58,10 +59,21 @@ interface ListResponse {
   month: string;
   settings: { mode: AccessMode; defaultUserCredits: number | null };
   quota: { limit: number; used: number; remaining: number };
-  summary: { staff: number; withAccess: number; withLimit: number; usedByStaff: number };
+  summary: {
+    staff: number;
+    withAccess: number;
+    withLimit: number;
+    usedByStaff: number;
+    /** Deactivated or removed people; with usedByStaff it is the school's total. */
+    usedByOthers: number;
+  };
   total: number;
+  page: number;
+  limit: number;
   users: Person[];
 }
+
+const PAGE_SIZE = 50;
 
 interface Usage {
   byDay: { day: string; credits: number; events: number }[];
@@ -445,7 +457,7 @@ function EditDialog({
                 ))}
               </ul>
               <p className="mt-1.5 text-[12px] text-ink-faint">
-                Used on {usage.byDay.length} {usage.byDay.length === 1 ? 'day' : 'days'} this month.
+                Used on {usage.byDay.length} {usage.byDay.length === 1 ? 'day' : 'days'} in {monthLabel(month)}.
               </p>
             </div>
           )}
@@ -474,12 +486,16 @@ export function AiAssistantAccess() {
   const readOnly = useReadOnlySession();
   const [month, setMonth] = useState(thisMonth);
   const [q, setQ] = useState('');
+  const search = useDeferredValue(q.trim());
   const [filter, setFilter] = useState<'' | 'ALLOWED' | 'NOT_ALLOWED'>('');
+  const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [editing, setEditing] = useState<Person[] | null>(null);
 
-  const params = new URLSearchParams({ month, limit: '200' });
+  // Searched and paged by the server, so a school of any size lists everyone.
+  const params = new URLSearchParams({ month, page: String(page), limit: String(PAGE_SIZE) });
   if (filter) params.set('access', filter);
+  if (search) params.set('q', search);
   const {
     data,
     error: loadError,
@@ -494,10 +510,12 @@ export function AiAssistantAccess() {
     : null;
   const load = useCallback(() => void mutate(), [mutate]);
 
-  const people = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    return (data?.users ?? []).filter((p) => !term || p.name.toLowerCase().includes(term));
-  }, [data, q]);
+  const people = useMemo(() => data?.users ?? [], [data]);
+  /** A new search, filter or month starts again from the first page. */
+  const restart = () => {
+    setPage(1);
+    setSelected(new Set());
+  };
 
   const selectable = people.filter((p) => p.canEdit);
   const chosen = people.filter((p) => selected.has(p.id));
@@ -551,7 +569,11 @@ export function AiAssistantAccess() {
           <StatTile
             label="Used by staff"
             value={n(data.summary.usedByStaff)}
-            hint={`credits in ${monthLabel(data.month)}`}
+            hint={
+              data.summary.usedByOthers > 0
+                ? `credits in ${monthLabel(data.month)}, plus ${n(data.summary.usedByOthers)} by former or deactivated staff`
+                : `credits in ${monthLabel(data.month)}`
+            }
             pigment="info"
           />
           <StatTile
@@ -585,7 +607,10 @@ export function AiAssistantAccess() {
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-faint" aria-hidden />
             <input
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => {
+                setQ(e.target.value);
+                restart();
+              }}
               placeholder="Search staff by name"
               className="h-10 w-full rounded-md border border-line-strong bg-surface pr-3 pl-9 text-[13.5px] focus:border-brand focus:outline-none"
             />
@@ -593,7 +618,10 @@ export function AiAssistantAccess() {
           <div className="flex gap-2">
             <select
               value={filter}
-              onChange={(e) => setFilter(e.target.value as typeof filter)}
+              onChange={(e) => {
+                setFilter(e.target.value as typeof filter);
+                restart();
+              }}
               className="h-10 flex-1 rounded-md border border-line-strong bg-surface px-2 text-[13.5px] sm:flex-none"
               aria-label="Filter by access"
             >
@@ -605,7 +633,11 @@ export function AiAssistantAccess() {
               type="month"
               value={month}
               max={thisMonth()}
-              onChange={(e) => e.target.value && setMonth(e.target.value)}
+              onChange={(e) => {
+                if (!e.target.value) return;
+                setMonth(e.target.value);
+                restart();
+              }}
               className="h-10 flex-1 rounded-md border border-line-strong bg-surface px-2 text-[13.5px] sm:flex-none"
               aria-label="Month"
             />
@@ -653,7 +685,8 @@ export function AiAssistantAccess() {
                   </th>
                   <th className="px-3 py-2.5">Name</th>
                   <th className="px-3 py-2.5">Access</th>
-                  <th className="px-3 py-2.5">Monthly limit</th>
+                  {/* The setting as it is now; the bar shows the month's own limit. */}
+                  <th className="px-3 py-2.5">{isCurrentMonth ? 'Monthly limit' : 'Limit now'}</th>
                   <th className="px-3 py-2.5">Credits used</th>
                   <th className="px-3 py-2.5 text-right">Chats</th>
                   <th className="px-3 py-2.5">Last used</th>
@@ -719,7 +752,8 @@ export function AiAssistantAccess() {
                       </td>
                       <td className="px-3 py-2.5 whitespace-nowrap text-ink-muted">{limitText(p, schoolCap)}</td>
                       <td className="px-3 py-2.5">
-                        <UsageBar used={p.used} limit={isCurrentMonth ? p.limit : null} />
+                        {/* A past month shows the limit it ran under. */}
+                        <UsageBar used={p.used} limit={p.limit} />
                       </td>
                       <td className="px-3 py-2.5 text-right font-mono tabular-nums text-ink-muted">{n(p.sessions)}</td>
                       <td className="px-3 py-2.5 whitespace-nowrap text-ink-muted">{lastUsed(p.lastUsedAt)}</td>
@@ -739,6 +773,19 @@ export function AiAssistantAccess() {
               </tbody>
             </table>
           </div>
+        )}
+        {data && data.total > PAGE_SIZE && (
+          <Pagination
+            className="border-t border-line px-4 py-3"
+            page={page}
+            pageCount={Math.ceil(data.total / PAGE_SIZE)}
+            total={data.total}
+            pageSize={PAGE_SIZE}
+            onPageChange={(next) => {
+              setPage(next);
+              setSelected(new Set());
+            }}
+          />
         )}
       </Panel>
 
