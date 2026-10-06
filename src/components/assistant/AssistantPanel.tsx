@@ -67,8 +67,8 @@ function suggestionsFor(roles: string[]) {
 // ── Pieces ──────────────────────────────────────────────────────────────────
 
 function CreditsLine({ credits }: { credits: Credits | null }) {
-  if (!credits || credits.limit <= 0) return null;
-  const share = credits.remaining / credits.limit;
+  if (!credits) return null;
+  const share = credits.limit > 0 ? credits.remaining / credits.limit : 0;
   const tone =
     credits.remaining <= 0
       ? 'text-accent-danger-deep'
@@ -78,9 +78,13 @@ function CreditsLine({ credits }: { credits: Credits | null }) {
   return (
     <p className={`font-mono text-[11px] tabular-nums ${tone}`}>
       {credits.remaining <= 0
-        ? credits.limitedBy === 'user'
-          ? 'Your credits for this month are used up'
-          : 'No credits left this month'
+        ? credits.limit <= 0
+          ? credits.limitedBy === 'user'
+            ? 'You have no assistant credits this month'
+            : 'No assistant credits this month'
+          : credits.limitedBy === 'user'
+            ? 'Your credits for this month are used up'
+            : 'No credits left this month'
         : `${credits.remaining.toLocaleString('en-IN')} of ${credits.limitedBy === 'user' ? 'your ' : ''}${credits.limit.toLocaleString('en-IN')} credits left`}
     </p>
   );
@@ -184,7 +188,8 @@ function AssistantMessage({
 export function AssistantPanel() {
   const { open, setOpen, available } = useAssistant();
   const chat = useAssistantChat(open);
-  const { messages, busy, credits, caps, startError, send, stop, decide, newChat, retryStart } = chat;
+  const { messages, busy, credits, caps, startError, send, stop, decide, newChat, retryStart, refreshCredits } =
+    chat;
 
   const [draftText, setDraftText] = useState('');
   const [listening, setListening] = useState<Listening | null>(null);
@@ -223,7 +228,8 @@ export function AssistantPanel() {
   const roles = [user?.role, ...((user as { roles?: string[] } | null)?.roles ?? [])].filter(
     (r): r is string => !!r,
   );
-  const outOfCredits = credits !== null && credits.limit > 0 && credits.remaining <= 0;
+  // A limit of 0 means no credits at all, the same as having used them up.
+  const outOfCredits = credits !== null && credits.remaining <= 0;
   const voiceIn = caps?.voice.input ?? 'device';
   const voiceOut = caps?.voice.output ?? 'device';
   const serverSttReady = !!caps?.voice.transcribe && !serverSttDown && canRecord();
@@ -295,10 +301,11 @@ export function AssistantPanel() {
       setLastSent({ text, mode });
       const reply = await send(text, mode);
       if (reply && mode === 'voice' && readAloud && !reply.error && reply.text) {
-        void speaker.current?.say(reply.text);
+        // Server speech is charged once spoken; show the new balance.
+        void speaker.current?.say(reply.text).then(refreshCredits);
       }
     },
-    [busy, send, readAloud],
+    [busy, send, readAloud, refreshCredits],
   );
 
   const onSend = () => {
@@ -310,7 +317,7 @@ export function AssistantPanel() {
   const onDecide = async (messageId: string, index: number, decision: 'confirm' | 'cancel') => {
     const note = await decide(messageId, index, decision);
     if (note?.text && readAloud && lastSent?.mode === 'voice') {
-      void speaker.current?.say(note.text);
+      void speaker.current?.say(note.text).then(refreshCredits);
     }
   };
 

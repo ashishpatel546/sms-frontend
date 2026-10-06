@@ -189,7 +189,7 @@ export interface ActionResult {
   text: string;
   actionIds: string[];
   /** Balance after the change (Confirm / Cancel button answers only). */
-  credits?: { remaining: number; limit: number };
+  credits?: { remaining: number; limit: number; month?: string; limitedBy?: 'school' | 'user' };
 }
 
 export type AssistantEvent =
