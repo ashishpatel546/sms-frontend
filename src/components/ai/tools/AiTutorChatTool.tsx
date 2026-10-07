@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import ReactMarkdown from "react-markdown";
 import { Send, Square, Sparkles, Zap, Plus } from "lucide-react";
 import { streamAiResponse } from "@/lib/ai-stream";
@@ -20,6 +21,7 @@ interface AiTutorChatToolProps {
 }
 
 export function AiTutorChatTool({ defaultGrade, onUpgradeClick, heightClass }: AiTutorChatToolProps) {
+  const t = useTranslations("ai.tools");
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -66,12 +68,12 @@ export function AiTutorChatTool({ defaultGrade, onUpgradeClick, heightClass }: A
         language,
       },
       {
-        onToken: (t) => {
+        onToken: (tok) => {
           setMessages((prev) => {
             const updated = [...prev];
             const last = updated[updated.length - 1];
             if (last?.role === "assistant") {
-              updated[updated.length - 1] = { ...last, content: last.content + t };
+              updated[updated.length - 1] = { ...last, content: last.content + tok };
             }
             return updated;
           });
@@ -94,6 +96,11 @@ export function AiTutorChatTool({ defaultGrade, onUpgradeClick, heightClass }: A
           setStreaming(false);
         },
         signal: ctrl.signal,
+        errorMessages: {
+          noBody: t("shared.streamError.noBody"),
+          serviceError: t("shared.streamError.serviceError"),
+          unknown: t("shared.streamError.unknown"),
+        },
       },
     );
   };
@@ -115,19 +122,19 @@ export function AiTutorChatTool({ defaultGrade, onUpgradeClick, heightClass }: A
             <Sparkles className="w-4 h-4 text-violet-600 dark:text-violet-400" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-ink">AI Tutor Chat</h1>
-            <p className="text-xs text-ink-muted">Ask any question — I&apos;m here to help you learn</p>
+            <h1 className="text-base font-bold text-ink">{t("tutorChat.title")}</h1>
+            <p className="text-xs text-ink-muted">{t("tutorChat.subtitle")}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {totalCredits > 0 && (
             <span className="flex items-center gap-1 text-xs text-ink-muted">
               <Zap className="w-3 h-3 text-amber-500" />
-              {totalCredits} credits
+              {t("tutorChat.credits", { count: totalCredits })}
             </span>
           )}
           <button onClick={newSession} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-100 dark:bg-surface-secondary text-ink-muted hover:text-ink transition-colors">
-            <Plus className="w-3.5 h-3.5" /> New Chat
+            <Plus className="w-3.5 h-3.5" /> {t("tutorChat.newChat")}
           </button>
         </div>
       </div>
@@ -137,13 +144,13 @@ export function AiTutorChatTool({ defaultGrade, onUpgradeClick, heightClass }: A
         <input
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
-          placeholder="Subject (optional)"
+          placeholder={t("tutorChat.subjectPlaceholder")}
           className="flex-1 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-violet-500/40"
         />
         <input
           value={grade}
           onChange={(e) => setGrade(e.target.value)}
-          placeholder="Grade (optional)"
+          placeholder={t("tutorChat.gradePlaceholder")}
           className="w-28 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-violet-500/40"
         />
         <select
@@ -151,9 +158,9 @@ export function AiTutorChatTool({ defaultGrade, onUpgradeClick, heightClass }: A
           onChange={(e) => setLanguage(e.target.value)}
           className="w-24 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-2 py-2 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-violet-500/40"
         >
-          <option value="en">English</option>
-          <option value="hi">Hindi</option>
-          <option value="hinglish">Hinglish</option>
+          <option value="en">{t("shared.lang.en")}</option>
+          <option value="hi">{t("shared.lang.hi")}</option>
+          <option value="hinglish">{t("shared.lang.hinglish")}</option>
         </select>
       </div>
 
@@ -162,8 +169,8 @@ export function AiTutorChatTool({ defaultGrade, onUpgradeClick, heightClass }: A
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center gap-2 py-8">
             <Sparkles className="w-8 h-8 text-slate-300" />
-            <p className="text-sm font-medium text-ink-muted">Your AI tutor is ready!</p>
-            <p className="text-xs text-ink-muted">Ask about any topic, concept, or homework doubt</p>
+            <p className="text-sm font-medium text-ink-muted">{t("tutorChat.emptyTitle")}</p>
+            <p className="text-xs text-ink-muted">{t("tutorChat.emptyHint")}</p>
           </div>
         )}
         {messages.map((msg, i) => (
@@ -194,16 +201,16 @@ export function AiTutorChatTool({ defaultGrade, onUpgradeClick, heightClass }: A
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKey}
-          placeholder="Type your question… (Enter to send)"
+          placeholder={t("tutorChat.inputPlaceholder")}
           rows={2}
           className="flex-1 resize-none rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-violet-500/40"
         />
         {streaming ? (
-          <button onClick={() => abortRef.current?.abort()} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors self-end">
+          <button onClick={() => abortRef.current?.abort()} aria-label={t("tutorChat.stop")} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors self-end">
             <Square className="w-4 h-4" />
           </button>
         ) : (
-          <button onClick={send} disabled={!input.trim()} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors self-end">
+          <button onClick={send} disabled={!input.trim()} aria-label={t("tutorChat.send")} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors self-end">
             <Send className="w-4 h-4" />
           </button>
         )}

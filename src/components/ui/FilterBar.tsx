@@ -2,7 +2,9 @@
 
 import * as React from 'react';
 import { Search, X } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
+import { INTL_LOCALE, type Locale } from '@/i18n/config';
 
 /**
  * The strip of controls above a list: search, a few selects, maybe a date
@@ -39,13 +41,15 @@ export function FilterBar({
 export function SearchInput({
   value,
   onValueChange,
-  placeholder = 'Search…',
+  placeholder,
   className,
   ...props
 }: Omit<React.ComponentProps<'input'>, 'onChange' | 'value'> & {
   value: string;
   onValueChange: (value: string) => void;
 }) {
+  const t = useTranslations('ui');
+  const tc = useTranslations('common');
   return (
     <div className={cn('relative min-w-0 flex-1 sm:max-w-72', className)}>
       <Search
@@ -56,7 +60,7 @@ export function SearchInput({
         type="search"
         value={value}
         onChange={(e) => onValueChange(e.target.value)}
-        placeholder={placeholder}
+        placeholder={placeholder ?? tc('state.searchPlaceholder')}
         className="h-11 w-full rounded-md border border-line-strong bg-surface pr-9 pl-9 text-[14px] text-ink transition-colors placeholder:text-ink-faint focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none sm:h-10 [&::-webkit-search-cancel-button]:hidden"
         {...props}
       />
@@ -64,7 +68,7 @@ export function SearchInput({
         <button
           type="button"
           onClick={() => onValueChange('')}
-          aria-label="Clear search"
+          aria-label={t('filter.clearSearch')}
           className="absolute top-1/2 right-2.5 grid size-6 -translate-y-1/2 cursor-pointer place-items-center rounded text-ink-faint transition-colors hover:bg-surface-secondary hover:text-ink"
         >
           <X className="size-3.5" />
@@ -231,6 +235,9 @@ export function Pagination({
   pageSize?: number;
   className?: string;
 }) {
+  const t = useTranslations('ui');
+  const tc = useTranslations('common');
+  const locale = useLocale() as Locale;
   if (pageCount <= 1 && !total) return null;
 
   const from = pageSize ? (page - 1) * pageSize + 1 : undefined;
@@ -248,21 +255,24 @@ export function Pagination({
       {total !== undefined && (
         <span className="text-[12.5px] text-ink-muted">
           {from && to ? (
-            <>
-              Showing <span className="tabular text-ink">{from}–{to}</span> of{' '}
-              <span className="tabular text-ink">{total.toLocaleString('en-IN')}</span>
-            </>
+            t.rich('pagination.showing', {
+              range: `${from}–${to}`,
+              total: total.toLocaleString(INTL_LOCALE[locale]),
+              n: (c) => <span className="tabular text-ink">{c}</span>,
+            })
           ) : (
-            <>
-              <span className="tabular text-ink">{total.toLocaleString('en-IN')}</span> records
-            </>
+            t.rich('pagination.records', {
+              count: total,
+              total: total.toLocaleString(INTL_LOCALE[locale]),
+              n: (c) => <span className="tabular text-ink">{c}</span>,
+            })
           )}
         </span>
       )}
 
       {pageCount > 1 && (
-        <nav aria-label="Pagination" className="ml-auto flex items-center gap-1">
-          <PageButton onClick={() => onPageChange(page - 1)} disabled={page <= 1} label="Previous">
+        <nav aria-label={t('pagination.label')} className="ml-auto flex items-center gap-1">
+          <PageButton onClick={() => onPageChange(page - 1)} disabled={page <= 1} label={tc('action.previous')}>
             ‹
           </PageButton>
           {pages.map((p, i) =>
@@ -275,7 +285,7 @@ export function Pagination({
                 key={p}
                 onClick={() => onPageChange(p)}
                 active={p === page}
-                label={`Page ${p}`}
+                label={t('pagination.page', { page: p })}
               >
                 {p}
               </PageButton>
@@ -284,7 +294,7 @@ export function Pagination({
           <PageButton
             onClick={() => onPageChange(page + 1)}
             disabled={page >= pageCount}
-            label="Next"
+            label={tc('action.next')}
           >
             ›
           </PageButton>

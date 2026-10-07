@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { House } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
   SECTION_STYLE,
   QUICK_ACCESS_PRIMARY,
@@ -26,6 +27,7 @@ interface SectionRailProps {
 }
 
 export const SectionRail = ({ active, onSelect }: SectionRailProps) => {
+  const t = useTranslations('parent');
   const activeRef = React.useRef<HTMLButtonElement | null>(null);
 
   React.useEffect(() => {
@@ -35,7 +37,7 @@ export const SectionRail = ({ active, onSelect }: SectionRailProps) => {
   return (
     <div
       role="tablist"
-      aria-label="Student sections"
+      aria-label={t("sections.railLabel")}
       className="no-scrollbar sticky top-14 z-30 -mx-3 flex snap-x gap-2 overflow-x-auto border-b border-line bg-surface/95 px-3 py-2.5 backdrop-blur-sm sm:-mx-5 sm:px-5"
     >
       <button
@@ -43,7 +45,7 @@ export const SectionRail = ({ active, onSelect }: SectionRailProps) => {
         className="flex shrink-0 snap-start cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-[12px] font-semibold text-ink-soft transition-colors hover:border-brand-edge hover:text-brand focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
       >
         <House className="size-3.5" aria-hidden />
-        Today
+        {t("sections.today")}
       </button>
 
       {RAIL_ORDER.map((key) => {
@@ -75,7 +77,7 @@ export const SectionRail = ({ active, onSelect }: SectionRailProps) => {
                 <path fill="currentColor" d={style.path} />
               </svg>
             </span>
-            {style.label}
+            {t(`sections.${key}`)}
           </button>
         );
       })}

@@ -9,6 +9,8 @@ import toast from "react-hot-toast";
 import { getEnv, getSchoolSlug } from "@/lib/env";
 import type { ResultDataForPDF } from "@/lib/result-pdf-document";
 import { Settings2, Pencil } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 
 interface Props {
     studentId: number | null;
@@ -48,6 +50,9 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
     const [auditCard, setAuditCard] = useState<any | null>(null);
     const [isPrinting, setIsPrinting] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
+    const t = useTranslations("exams");
+    const tc = useTranslations("common");
+    const intlLocale = INTL_LOCALE[useLocale() as Locale];
 
     // Initialise selected categories whenever the category list or defaultCategoryId changes
     useEffect(() => {
@@ -146,12 +151,12 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
         if (!markRecord.id) return '';
         const parts: string[] = [];
         if (markRecord.createdByName) {
-            const date = markRecord.createdAt ? new Date(markRecord.createdAt).toLocaleDateString() : '';
-            parts.push(`Entered by: ${markRecord.createdByName}${date ? ` on ${date}` : ''}`);
+            const date = markRecord.createdAt ? new Date(markRecord.createdAt).toLocaleDateString(intlLocale) : '';
+            parts.push(date ? t('audit.enteredByNameOn', { name: markRecord.createdByName, date }) : t('audit.enteredByName', { name: markRecord.createdByName }));
         }
         if (markRecord.updatedByName) {
-            const date = markRecord.updatedAt ? new Date(markRecord.updatedAt).toLocaleDateString() : '';
-            parts.push(`Last modified by: ${markRecord.updatedByName}${date ? ` on ${date}` : ''}`);
+            const date = markRecord.updatedAt ? new Date(markRecord.updatedAt).toLocaleDateString(intlLocale) : '';
+            parts.push(date ? t('audit.modifiedByNameOn', { name: markRecord.updatedByName, date }) : t('audit.modifiedByName', { name: markRecord.updatedByName }));
         }
         return parts.join('\n');
     };
@@ -201,7 +206,7 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
             });
 
             if (invalidMark) {
-                toast.error("Obtained marks cannot exceed Total marks.");
+                toast.error(t("result.exceedsTotal"));
                 return;
             }
 
@@ -224,12 +229,12 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                     })
                 });
             }
-            toast.success("Marks saved successfully!");
+            toast.success(t("shared.marksSaved"));
             mutateMarks();
             onSave?.();
             onClose();
         } catch (_err) {
-            toast.error("Failed to save marks. You may not have permission to edit existing marks.");
+            toast.error(t("result.saveFailed"));
         }
     };
 
@@ -368,7 +373,7 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
             setTimeout(() => URL.revokeObjectURL(url), 60000);
         } catch (err) {
             console.error('[StudentResultModal] Print error:', err);
-            toast.error('Failed to prepare print. Please try again.');
+            toast.error(t('result.printFailed'));
         } finally {
             setIsPrinting(false);
         }
@@ -390,7 +395,7 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
             setTimeout(() => URL.revokeObjectURL(url), 10000);
         } catch (err) {
             console.error('[StudentResultModal] Download error:', err);
-            toast.error('Failed to generate PDF. Please try again.');
+            toast.error(t('shared.pdfFailed'));
         } finally {
             setIsDownloading(false);
         }
@@ -410,26 +415,26 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                 <div className="fixed inset-0 z-60 flex items-center justify-center p-4" onClick={() => setAuditCard(null)}>
                     <div className="bg-white rounded-xl shadow-2xl border border-gray-200 p-5 w-full max-w-xs" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-4">
-                            <h4 className="text-sm font-bold text-slate-800">Marks Audit Info</h4>
+                            <h4 className="text-sm font-bold text-slate-800">{t("audit.title")}</h4>
                             <button onClick={() => setAuditCard(null)} className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
                         {auditCard.createdByName && (
                             <div className="mb-3 p-3 bg-green-50 rounded-lg">
-                                <p className="text-[10px] font-semibold uppercase tracking-wider text-green-600 mb-1">Entered by</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-green-600 mb-1">{t("audit.enteredBy")}</p>
                                 <p className="text-sm font-semibold text-slate-800">{auditCard.createdByName}</p>
                                 {auditCard.createdAt && (
-                                    <p className="text-xs text-gray-400 mt-0.5">{new Date(auditCard.createdAt).toLocaleString()}</p>
+                                    <p className="text-xs text-gray-400 mt-0.5">{new Date(auditCard.createdAt).toLocaleString(intlLocale)}</p>
                                 )}
                             </div>
                         )}
                         {auditCard.updatedByName && (
                             <div className="p-3 bg-amber-50 rounded-lg">
-                                <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 mb-1">Last modified by</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 mb-1">{t("audit.lastModifiedBy")}</p>
                                 <p className="text-sm font-semibold text-slate-800">{auditCard.updatedByName}</p>
                                 {auditCard.updatedAt && (
-                                    <p className="text-xs text-gray-400 mt-0.5">{new Date(auditCard.updatedAt).toLocaleString()}</p>
+                                    <p className="text-xs text-gray-400 mt-0.5">{new Date(auditCard.updatedAt).toLocaleString(intlLocale)}</p>
                                 )}
                             </div>
                         )}
@@ -440,7 +445,7 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                 {/* Header */}
                 <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-slate-50 shrink-0">
                     <h3 className="text-base sm:text-xl font-bold text-slate-800">
-                        Exam Results{student ? ` — ${student.firstName} ${student.lastName}` : ''}
+                        {student ? t('result.titleWithName', { name: `${student.firstName} ${student.lastName}` }) : t('result.title')}
                     </h3>
                     <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                         {/* Category multi-select dropdown */}
@@ -450,7 +455,7 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                 onClick={() => setShowCategoryDropdown(prev => !prev)}
                                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-slate-600 min-h-9"
                             >
-                                <span>Categories ({selectedCategoryIds.size}/{categories.length})</span>
+                                <span>{t("result.categoriesCount", { selected: selectedCategoryIds.size, total: categories.length })}</span>
                                 <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                             </button>
                             {showCategoryDropdown && (
@@ -462,7 +467,7 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                             onChange={toggleAllCategories}
                                             className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-brand/40"
                                         />
-                                        <span className="font-medium text-slate-700">Show All Categories</span>
+                                        <span className="font-medium text-slate-700">{t("result.showAllCategories")}</span>
                                     </label>
                                     {categories.map((cat: any) => (
                                         <label key={cat.id} className="flex items-center gap-2 px-4 py-2 text-sm cursor-pointer hover:bg-gray-50">
@@ -483,7 +488,7 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                 onClick={handleSave}
                                 className="px-3 sm:px-4 py-1.5 sm:py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 min-h-9"
                             >
-                                Save Changes
+                                {t("result.saveChanges")}
                             </button>
                         )}
                         {/* Download PDF */}
@@ -492,7 +497,7 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                             disabled={isDownloading || isLoading}
                             className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 min-h-9 disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{ backgroundColor: '#047857', color: '#ffffff' }}
-                            title="Download result as PDF"
+                            title={t("result.downloadTitle")}
                         >
                             {isDownloading ? (
                                 <>
@@ -500,14 +505,14 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                                     </svg>
-                                    <span className="hidden sm:inline">Generating…</span>
+                                    <span className="hidden sm:inline">{t("result.generating")}</span>
                                 </>
                             ) : (
                                 <>
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                     </svg>
-                                    <span className="hidden sm:inline">Download PDF</span>
+                                    <span className="hidden sm:inline">{t("shared.downloadPdf")}</span>
                                 </>
                             )}
                         </button>
@@ -517,7 +522,7 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                             disabled={isPrinting || isLoading}
                             className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 min-h-9 disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{ backgroundColor: '#1e293b', color: '#ffffff' }}
-                            title="Print result card"
+                            title={t("result.printTitle")}
                         >
                             {isPrinting ? (
                                 <>
@@ -525,19 +530,19 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                                     </svg>
-                                    <span className="hidden sm:inline">Preparing…</span>
+                                    <span className="hidden sm:inline">{t("result.preparing")}</span>
                                 </>
                             ) : (
                                 <>
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                     </svg>
-                                    <span className="hidden sm:inline">Print</span>
+                                    <span className="hidden sm:inline">{tc("action.print")}</span>
                                 </>
                             )}
                         </button>
                         <button onClick={onClose} className="text-slate-500 hover:text-slate-800 p-1.5 rounded-lg hover:bg-slate-100">
-                            <span className="sr-only">Close</span>
+                            <span className="sr-only">{tc("action.close")}</span>
                             <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -549,10 +554,10 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                 {mode !== 'view' && (
                     <div className={`px-4 sm:px-6 py-2 text-xs font-medium shrink-0 flex items-center gap-1.5 ${mode === 'admin-edit' ? 'bg-amber-50 text-amber-700 border-b border-amber-200' : 'bg-blue-50 text-blue-700 border-b border-blue-200'}`}>
                         {mode === 'admin-edit'
-                            ? <><Settings2 className="w-3.5 h-3.5 shrink-0" aria-hidden /> Admin Edit Mode — all marks for the selected category are editable</>
-                            : <><Pencil className="w-3.5 h-3.5 shrink-0" aria-hidden /> Enter Marks Mode — only subjects without saved marks can be entered</>}
+                            ? <><Settings2 className="w-3.5 h-3.5 shrink-0" aria-hidden /> {t("result.adminEditMode")}</>
+                            : <><Pencil className="w-3.5 h-3.5 shrink-0" aria-hidden /> {t("result.enterMarksMode")}</>}
                         {defaultCategoryId && categories.find((c: any) => c.id === defaultCategoryId)
-                            ? ` · Category: ${categories.find((c: any) => c.id === defaultCategoryId).name}`
+                            ? ` ${t('result.categoryLabel', { name: categories.find((c: any) => c.id === defaultCategoryId).name })}`
                             : ''}
                     </div>
                 )}
@@ -560,29 +565,29 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                 {/* Body */}
                 <div className="p-3 sm:p-6 overflow-y-auto flex-1">
                     {isLoading ? (
-                        <div className="py-12"><Loader text="Loading result data..." /></div>
+                        <div className="py-12"><Loader text={t("result.loading")} /></div>
                     ) : (
                         <div className="relative overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
                             <table className="w-full text-sm text-left text-gray-500 min-w-125">
                                 <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                                     <tr>
-                                        <th className="px-4 py-3 bg-gray-100 sticky left-0 z-10 w-40 sm:w-48 align-bottom" rowSpan={2}>Subject</th>
+                                        <th className="px-4 py-3 bg-gray-100 sticky left-0 z-10 w-40 sm:w-48 align-bottom" rowSpan={2}>{tc("field.subject")}</th>
                                         {visibleCategories.map((cat: any) => (
                                             <th key={cat.id} className={`px-4 py-3 text-center border-l border-gray-300 ${isCatEditable(cat.id) ? 'bg-blue-50' : 'bg-gray-100'}`} colSpan={6}>
                                                 {cat.name}
-                                                {isCatEditable(cat.id) && <span className="ml-1 text-[9px] text-blue-500 normal-case">(editable)</span>}
+                                                {isCatEditable(cat.id) && <span className="ml-1 text-[9px] text-blue-500 normal-case">{t("result.editable")}</span>}
                                             </th>
                                         ))}
                                     </tr>
                                     <tr>
                                         {visibleCategories.map((cat: any) => (
                                             <React.Fragment key={`sub-${cat.id}`}>
-                                                <th className="px-2 py-2 text-center text-[10px] text-gray-500 border-l border-gray-300 bg-gray-50">Th. Marks</th>
-                                                <th className="px-2 py-2 text-center text-[10px] text-gray-500 border-l border-gray-200 bg-purple-50">Pr. Marks</th>
-                                                <th className="px-2 py-2 text-center text-[10px] text-gray-500 border-l border-gray-200 bg-gray-50">Total</th>
-                                                <th className="px-2 py-2 text-center text-[10px] text-gray-500 border-l border-gray-200 bg-gray-50">Obtained</th>
+                                                <th className="px-2 py-2 text-center text-[10px] text-gray-500 border-l border-gray-300 bg-gray-50">{t("result.thMarks")}</th>
+                                                <th className="px-2 py-2 text-center text-[10px] text-gray-500 border-l border-gray-200 bg-purple-50">{t("result.prMarks")}</th>
+                                                <th className="px-2 py-2 text-center text-[10px] text-gray-500 border-l border-gray-200 bg-gray-50">{tc("field.total")}</th>
+                                                <th className="px-2 py-2 text-center text-[10px] text-gray-500 border-l border-gray-200 bg-gray-50">{t("shared.obtained")}</th>
                                                 <th className="px-2 py-2 text-center text-[10px] text-blue-600 border-l border-gray-200 bg-blue-50/50">%</th>
-                                                <th className="px-2 py-2 text-center text-[10px] text-gray-500 border-l border-gray-200 bg-gray-50">Grade / Status</th>
+                                                <th className="px-2 py-2 text-center text-[10px] text-gray-500 border-l border-gray-200 bg-gray-50">{t("result.gradeStatus")}</th>
                                             </React.Fragment>
                                         ))}
                                     </tr>
@@ -620,16 +625,16 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                                                 {isSplit ? (
                                                                     canEdit ? (
                                                                         <div className="flex flex-col items-center gap-1">
-                                                                            <input type="number" min="0" placeholder="Tot"
+                                                                            <input type="number" min="0" placeholder={t("result.totShort")}
                                                                                 className="w-14 p-1 text-center border border-gray-300 rounded text-[10px] focus:ring-brand/40 focus:border-brand"
                                                                                 value={m.theoryTotalMarks ?? ''}
                                                                                 onChange={e => handleMarkChange(subject.id, cat.id, 'theoryTotalMarks', e.target.value)} />
-                                                                            <input type="number" min="0" placeholder="Obt"
+                                                                            <input type="number" min="0" placeholder={t("result.obtShort")}
                                                                                 className={`w-14 p-1 text-center border rounded text-[10px] ${isInvalidTh ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-300 focus:ring-brand/40 focus:border-brand'}`}
                                                                                 value={m.theoryObtainedMarks ?? ''}
                                                                                 onChange={e => handleMarkChange(subject.id, cat.id, 'theoryObtainedMarks', e.target.value)} />
                                                                         </div>
-                                                                    ) : (m.theoryTotalMarks ? <div className="text-[10px]">Obt: <span className="font-bold">{m.theoryObtainedMarks ?? '-'}</span><br />Tot: {m.theoryTotalMarks}</div> : '-')
+                                                                    ) : (m.theoryTotalMarks ? <div className="text-[10px]">{t("result.obtLabel")} <span className="font-bold">{m.theoryObtainedMarks ?? '-'}</span><br />{t("result.totLabel")} {m.theoryTotalMarks}</div> : '-')
                                                                 ) : <span className="text-gray-300">—</span>}
                                                             </td>
                                                             {/* Practical Marks */}
@@ -637,16 +642,16 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                                                 {isSplit ? (
                                                                     canEdit ? (
                                                                         <div className="flex flex-col items-center gap-1">
-                                                                            <input type="number" min="0" placeholder="Tot"
+                                                                            <input type="number" min="0" placeholder={t("result.totShort")}
                                                                                 className="w-14 p-1 text-center border border-gray-300 rounded text-[10px] focus:ring-purple-500 focus:border-purple-500"
                                                                                 value={m.practicalTotalMarks ?? ''}
                                                                                 onChange={e => handleMarkChange(subject.id, cat.id, 'practicalTotalMarks', e.target.value)} />
-                                                                            <input type="number" min="0" placeholder="Obt"
+                                                                            <input type="number" min="0" placeholder={t("result.obtShort")}
                                                                                 className={`w-14 p-1 text-center border rounded text-[10px] ${isInvalidPr ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-300 focus:ring-purple-500 focus:border-purple-500'}`}
                                                                                 value={m.practicalObtainedMarks ?? ''}
                                                                                 onChange={e => handleMarkChange(subject.id, cat.id, 'practicalObtainedMarks', e.target.value)} />
                                                                         </div>
-                                                                    ) : (m.practicalTotalMarks ? <div className="text-[10px] text-purple-900">Obt: <span className="font-bold">{m.practicalObtainedMarks ?? '-'}</span><br />Tot: {m.practicalTotalMarks}</div> : '-')
+                                                                    ) : (m.practicalTotalMarks ? <div className="text-[10px] text-purple-900">{t("result.obtLabel")} <span className="font-bold">{m.practicalObtainedMarks ?? '-'}</span><br />{t("result.totLabel")} {m.practicalTotalMarks}</div> : '-')
                                                                 ) : <span className="text-gray-300">—</span>}
                                                             </td>
                                                             {/* Total Marks */}
@@ -660,7 +665,7 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                                                             value={m.totalMarks ?? ''}
                                                                             onChange={e => handleMarkChange(subject.id, cat.id, 'totalMarks', e.target.value)} />
                                                                     ) : (isLockedEnter
-                                                                        ? <span className="text-gray-400 text-xs" title="Marks already saved">{m.totalMarks ?? '-'}</span>
+                                                                        ? <span className="text-gray-400 text-xs" title={t("result.marksAlreadySaved")}>{m.totalMarks ?? '-'}</span>
                                                                         : <span>{m.totalMarks ?? '-'}</span>
                                                                     )
                                                                 )}
@@ -672,7 +677,7 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                                                         type="button"
                                                                         onClick={() => openAuditCard(m)}
                                                                         className={`font-bold ${isInvalidTh || isInvalidPr ? 'text-red-600' : 'text-slate-800'} ${m.id && (m.createdByName || m.updatedByName) ? 'underline decoration-dotted decoration-blue-400 cursor-pointer' : 'cursor-default'}`}
-                                                                        title={m.id && (m.createdByName || m.updatedByName) ? 'Tap to see who entered this' : undefined}
+                                                                        title={m.id && (m.createdByName || m.updatedByName) ? t('shared.tapToSeeAudit') : undefined}
                                                                     >
                                                                         {calculatedTotal > 0 ? calculatedObtained : '-'}
                                                                     </button>
@@ -687,7 +692,7 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                                                             type="button"
                                                                             onClick={() => openAuditCard(m)}
                                                                             className={`${isInvalidBase ? 'text-red-600 font-bold' : ''} ${isLockedEnter ? 'text-gray-400 text-xs' : ''} ${m.id && (m.createdByName || m.updatedByName) ? 'underline decoration-dotted decoration-blue-400 cursor-pointer' : 'cursor-default'}`}
-                                                                            title={m.id && (m.createdByName || m.updatedByName) ? 'Tap to see who entered this' : undefined}
+                                                                            title={m.id && (m.createdByName || m.updatedByName) ? t('shared.tapToSeeAudit') : undefined}
                                                                         >
                                                                             {m.obtainedMarks ?? '-'}
                                                                         </button>
@@ -705,12 +710,12 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                                                 <div className="flex flex-col items-center gap-1">
                                                                     <span>{m.grade || '-'}</span>
                                                                     {m.isPass === true ? (
-                                                                        <span className="px-2 py-0.5 text-[9px] font-bold rounded uppercase bg-green-100 text-green-700">Pass</span>
+                                                                        <span className="px-2 py-0.5 text-[9px] font-bold rounded uppercase bg-green-100 text-green-700">{t("result.pass")}</span>
                                                                     ) : m.isPass === false ? (
-                                                                        <span className="px-2 py-0.5 text-[9px] font-bold rounded uppercase bg-red-100 text-red-700">Fail</span>
+                                                                        <span className="px-2 py-0.5 text-[9px] font-bold rounded uppercase bg-red-100 text-red-700">{t("result.fail")}</span>
                                                                     ) : null}
                                                                     {isLockedEnter && (
-                                                                        <span className="text-[9px] text-gray-400 font-normal">saved</span>
+                                                                        <span className="text-[9px] text-gray-400 font-normal">{tc("state.saved")}</span>
                                                                     )}
                                                                 </div>
                                                             </td>
@@ -723,14 +728,14 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                     {(!student?.studentSubjects || student.studentSubjects.length === 0) && (
                                         <tr>
                                             <td colSpan={visibleCategories.length * 6 + 1} className="p-6 text-center text-gray-500 italic">
-                                                No subjects enrolled for this student.
+                                                {t("result.noSubjects")}
                                             </td>
                                         </tr>
                                     )}
                                 </tbody>
                                 <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-300 shadow-inner">
                                     <tr>
-                                        <td className="px-4 py-4 sticky left-0 z-10 bg-slate-200 text-slate-800 uppercase tracking-wider text-xs">Overall / Total</td>
+                                        <td className="px-4 py-4 sticky left-0 z-10 bg-slate-200 text-slate-800 uppercase tracking-wider text-xs">{t("result.overallTotal")}</td>
                                         {visibleCategories.map((cat: any) => {
                                             let sumTotal = 0;
                                             let sumObtained = 0;
@@ -758,7 +763,7 @@ export default function StudentResultModal({ studentId, sessionId, mode = 'view'
                                                 }
                                                 if (assignedGrade) {
                                                     overallGrade = assignedGrade.gradeName;
-                                                    isPassText = assignedGrade.isFailGrade ? 'FAIL' : 'PASS';
+                                                    isPassText = assignedGrade.isFailGrade ? t('result.fail') : t('result.pass');
                                                     isPassColor = assignedGrade.isFailGrade ? 'text-red-800 bg-red-200' : 'text-green-800 bg-green-200';
                                                 }
                                             }

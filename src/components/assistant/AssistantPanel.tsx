@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   ArrowUp,
   CalendarCheck,
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getUser } from '@/lib/auth';
+import { INTL_LOCALE, type Locale } from '@/i18n/config';
 import { AssistantError } from '@/lib/assistant/client';
 import {
   canRecogniseOnDevice,
@@ -45,9 +47,9 @@ interface Hold {
   cancel: boolean;
 }
 
-function greeting(): string {
+function greeting(): 'morning' | 'afternoon' | 'evening' {
   const h = new Date().getHours();
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
 }
 
 const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'SUB_ADMIN', 'HR_ADMIN'];
@@ -55,18 +57,20 @@ const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'SUB_ADMIN', 'HR_ADMIN'];
 function suggestionsFor(roles: string[]) {
   const admin = roles.some((r) => ADMIN_ROLES.includes(r));
   return [
-    { icon: Sun, text: "What's happening today?" },
+    { icon: Sun, key: 'today' as const },
     admin
-      ? { icon: ClipboardList, text: "Which classes haven't taken attendance yet?" }
-      : { icon: ClipboardList, text: 'Mark attendance for my class' },
-    { icon: UserRoundCheck, text: 'Leave requests waiting for me' },
-    { icon: CalendarCheck, text: 'How many leaves do I have left?' },
+      ? { icon: ClipboardList, key: 'attendancePending' as const }
+      : { icon: ClipboardList, key: 'markAttendance' as const },
+    { icon: UserRoundCheck, key: 'leaveRequests' as const },
+    { icon: CalendarCheck, key: 'leavesLeft' as const },
   ];
 }
 
 // ── Pieces ──────────────────────────────────────────────────────────────────
 
 function CreditsLine({ credits }: { credits: Credits | null }) {
+  const t = useTranslations('assistant.credits');
+  const locale = useLocale() as Locale;
   if (!credits) return null;
   const share = credits.limit > 0 ? credits.remaining / credits.limit : 0;
   const tone =
@@ -80,12 +84,15 @@ function CreditsLine({ credits }: { credits: Credits | null }) {
       {credits.remaining <= 0
         ? credits.limit <= 0
           ? credits.limitedBy === 'user'
-            ? 'You have no assistant credits this month'
-            : 'No assistant credits this month'
+            ? t('noneUser')
+            : t('noneSchool')
           : credits.limitedBy === 'user'
-            ? 'Your credits for this month are used up'
-            : 'No credits left this month'
-        : `${credits.remaining.toLocaleString('en-IN')} of ${credits.limitedBy === 'user' ? 'your ' : ''}${credits.limit.toLocaleString('en-IN')} credits left`}
+            ? t('usedUpUser')
+            : t('usedUpSchool')
+        : t(credits.limitedBy === 'user' ? 'leftUser' : 'leftSchool', {
+            remaining: credits.remaining.toLocaleString(INTL_LOCALE[locale]),
+            limit: credits.limit.toLocaleString(INTL_LOCALE[locale]),
+          })}
     </p>
   );
 }
@@ -131,6 +138,8 @@ function AssistantMessage({
   onDecide: (index: number, decision: 'confirm' | 'cancel') => void;
   onRetry?: () => void;
 }) {
+  const t = useTranslations('assistant');
+  const tc = useTranslations('common');
   return (
     <div className="border-l-2 border-accent-ai-edge pl-3">
       {m.text && (
@@ -147,7 +156,7 @@ function AssistantMessage({
       {m.streaming && !m.text && (
         <p className="flex items-center gap-2 text-[12.5px] text-ink-muted" role="status">
           <Loader2 className="size-3.5 animate-spin text-accent-ai motion-reduce:animate-none" aria-hidden />
-          {m.status ?? 'Thinking'}
+          {m.status ?? t('message.thinking')}
         </p>
       )}
       {m.streaming && m.text && m.status && (
@@ -174,7 +183,7 @@ function AssistantMessage({
               className="mt-1.5 inline-flex cursor-pointer items-center gap-1 font-semibold text-accent-danger-deep underline-offset-2 hover:underline"
             >
               <RotateCcw className="size-3.5" aria-hidden />
-              Try again
+              {tc('action.retry')}
             </button>
           )}
         </div>
@@ -186,6 +195,9 @@ function AssistantMessage({
 // ── Panel ───────────────────────────────────────────────────────────────────
 
 export function AssistantPanel() {
+  const t = useTranslations('assistant');
+  const tc = useTranslations('common');
+  const speechLocale = useLocale();
   const { open, setOpen, available } = useAssistant();
   const chat = useAssistantChat(open);
   const { messages, busy, credits, caps, startError, send, stop, decide, newChat, retryStart, refreshCredits } =
@@ -327,10 +339,10 @@ export function AssistantPanel() {
       if (!(err instanceof AssistantError) || err.code !== 'DEVICE_STT_FAILED') return false;
       if (!(caps?.voice.transcribe && !serverSttDown && canRecord())) return false;
       setDeviceSttDown(true);
-      setVoiceError('Switched to the assistant’s voice input. Hold the mic and say it again.');
+      setVoiceError(t('voice.switchedToServer'));
       return true;
     },
-    [caps, serverSttDown],
+    [caps, serverSttDown, t],
   );
 
   const beginListening = async (): Promise<Listening | null> => {
@@ -340,6 +352,8 @@ export function AssistantPanel() {
       const l = await startListening({
         server: serverVoice,
         maxSeconds: caps?.limits.maxAudioSeconds ?? 60,
+        // The browser's own recogniser listens for one language: the reader's.
+        lang: `${speechLocale}-IN`,
         onAutoStop: () => stopListeningRef.current(),
       });
       listenRef.current = l;
@@ -349,7 +363,7 @@ export function AssistantPanel() {
       return l;
     } catch (err) {
       if (!switchToServerStt(err)) {
-        setVoiceError(err instanceof AssistantError ? err.message : "Couldn't start the microphone.");
+        setVoiceError(err instanceof AssistantError ? err.message : t('voice.micFailed'));
       }
       return null;
     }
@@ -373,7 +387,7 @@ export function AssistantPanel() {
       try {
         const text = (await l.stop()).trim();
         if (!text) {
-          setVoiceError("I didn't catch that. Hold the mic while you speak, a little closer to it.");
+          setVoiceError(t('voice.notCaught'));
           return;
         }
         await submit(text, 'voice');
@@ -381,15 +395,15 @@ export function AssistantPanel() {
         if (switchToServerStt(err)) return;
         if (err instanceof AssistantError && err.code === 'VOICE_UNAVAILABLE' && canRecogniseOnDevice()) {
           setServerSttDown(true);
-          setVoiceError('Switched to this device’s voice input. Hold the mic and say it again.');
+          setVoiceError(t('voice.switchedToDevice'));
           return;
         }
-        setVoiceError(err instanceof AssistantError ? err.message : "Couldn't make out the audio. Try again.");
+        setVoiceError(err instanceof AssistantError ? err.message : t('voice.audioFailed'));
       } finally {
         setTranscribing(false);
       }
     },
-    [submit, switchToServerStt],
+    [submit, switchToServerStt, t],
   );
 
   useEffect(() => {
@@ -483,7 +497,7 @@ export function AssistantPanel() {
         id="assistant-panel"
         role="dialog"
         aria-modal={false}
-        aria-label="Assistant"
+        aria-label={t('name')}
         aria-hidden={!open}
         inert={!open}
         className={[
@@ -499,7 +513,7 @@ export function AssistantPanel() {
         <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-line-strong md:hidden" aria-hidden />
         <header className="flex items-center gap-1 border-b border-line py-2 pr-2 pl-4 md:pt-[calc(env(safe-area-inset-top)+0.5rem)]">
           <div className="min-w-0 flex-1">
-            <h2 className="font-display text-[16px] font-semibold text-ink">Assistant</h2>
+            <h2 className="font-display text-[16px] font-semibold text-ink">{t('name')}</h2>
             <CreditsLine credits={credits} />
           </div>
           {voiceOut !== 'off' && (
@@ -507,11 +521,11 @@ export function AssistantPanel() {
               type="button"
               onClick={toggleSpeak}
               aria-pressed={speakReplies}
-              title={speakReplies ? 'Spoken questions get spoken answers' : 'Answers are not read aloud'}
+              title={speakReplies ? t('header.speakOnTitle') : t('header.speakOffTitle')}
               className="grid size-10 cursor-pointer place-items-center rounded-md text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink"
             >
               {speakReplies ? <Volume2 className="size-[18px]" aria-hidden /> : <VolumeX className="size-[18px]" aria-hidden />}
-              <span className="sr-only">{speakReplies ? 'Stop reading answers aloud' : 'Read answers aloud'}</span>
+              <span className="sr-only">{speakReplies ? t('header.stopReading') : t('header.readAloud')}</span>
             </button>
           )}
           <button
@@ -522,11 +536,11 @@ export function AssistantPanel() {
               input.current?.focus();
             }}
             disabled={busy || empty}
-            title="Start a new conversation"
+            title={t('header.newChatTitle')}
             className="flex h-10 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink disabled:cursor-default disabled:opacity-40"
           >
             <SquarePen className="size-4" aria-hidden />
-            New chat
+            {t('header.newChat')}
           </button>
           <button
             type="button"
@@ -534,7 +548,7 @@ export function AssistantPanel() {
             className="grid size-10 cursor-pointer place-items-center rounded-md text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink"
           >
             <X className="size-5" aria-hidden />
-            <span className="sr-only">Close the assistant</span>
+            <span className="sr-only">{t('header.close')}</span>
           </button>
         </header>
 
@@ -550,46 +564,48 @@ export function AssistantPanel() {
             <div className="mt-6 rounded-md border border-line bg-surface-secondary px-4 py-4">
               <p className="text-[14px] font-semibold text-ink">
                 {startError.code === 'FORBIDDEN'
-                  ? 'The assistant is not available to you'
-                  : "The assistant can't start right now"}
+                  ? t('start.forbidden')
+                  : t('start.failed')}
               </p>
               <p className="mt-1 text-[13px] text-ink-muted">{startError.message}</p>
               {startError.code !== 'FORBIDDEN' && (
                 <Button size="sm" variant="outline" className="mt-3" onClick={retryStart}>
                   <RotateCcw className="size-4" aria-hidden />
-                  Try again
+                  {tc('action.retry')}
                 </Button>
               )}
             </div>
           ) : empty ? (
             <div className="pt-2">
               <p className="font-display text-[20px] leading-snug font-semibold text-ink">
-                {greeting()}
-                {firstName ? `, ${firstName}` : ''}.
+                {firstName ? t(`greetingNamed.${greeting()}`, { name: firstName }) : t(`greeting.${greeting()}`)}
               </p>
               <p className="mt-1.5 max-w-[34ch] text-[13.5px] leading-relaxed text-ink-muted">
-                Ask about attendance, leaves, homework, fees or the day ahead, by typing or speaking. Nothing is
-                saved until you confirm it.
+                {t('intro')}
               </p>
               <ul className="mt-5 divide-y divide-line border-y border-line">
-                {suggestionsFor(roles).map(({ icon: Icon, text }) => (
-                  <li key={text}>
-                    <button
-                      type="button"
-                      disabled={!caps || busy || outOfCredits}
-                      onClick={() => void submit(text, 'text')}
-                      className="group flex min-h-11 w-full cursor-pointer items-center gap-3 border-l-2 border-transparent py-2.5 pr-2 pl-2 text-left text-[13.5px] text-ink-soft transition-colors hover:border-accent-ai hover:bg-accent-ai-tint hover:text-ink disabled:cursor-default disabled:opacity-50"
-                    >
-                      <Icon className="size-4 shrink-0 text-accent-ai" aria-hidden />
-                      {text}
-                    </button>
-                  </li>
-                ))}
+                {suggestionsFor(roles).map(({ icon: Icon, key }) => {
+                  // Sent as the person's own message, in their language.
+                  const text = t(`suggestion.${key}`);
+                  return (
+                    <li key={key}>
+                      <button
+                        type="button"
+                        disabled={!caps || busy || outOfCredits}
+                        onClick={() => void submit(text, 'text')}
+                        className="group flex min-h-11 w-full cursor-pointer items-center gap-3 border-l-2 border-transparent py-2.5 pr-2 pl-2 text-left text-[13.5px] text-ink-soft transition-colors hover:border-accent-ai hover:bg-accent-ai-tint hover:text-ink disabled:cursor-default disabled:opacity-50"
+                      >
+                        <Icon className="size-4 shrink-0 text-accent-ai" aria-hidden />
+                        {text}
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
               {!caps && (
                 <p className="mt-4 flex items-center gap-2 text-[12.5px] text-ink-muted" role="status">
                   <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden />
-                  Connecting
+                  {t('start.connecting')}
                 </p>
               )}
             </div>
@@ -629,7 +645,7 @@ export function AssistantPanel() {
                 onClick={() => setVoiceError(null)}
               >
                 <X className="size-3.5" aria-hidden />
-                <span className="sr-only">Dismiss</span>
+                <span className="sr-only">{t('voice.dismiss')}</span>
               </button>
             </p>
           )}
@@ -641,17 +657,17 @@ export function AssistantPanel() {
                 <span />
                 <span />
               </span>
-              <span className="text-[13.5px] font-medium text-ink">Listening</span>
+              <span className="text-[13.5px] font-medium text-ink">{t('voice.listening')}</span>
               <span className="font-mono text-[12px] text-ink-muted tabular-nums">
                 0:{String(elapsed).padStart(2, '0')}
               </span>
               <div className="ml-auto flex items-center gap-1">
                 <Button size="sm" variant="ghost" onClick={() => void endListening(false)}>
-                  Discard
+                  {t('voice.discard')}
                 </Button>
                 <Button size="sm" variant="primary" onClick={() => void endListening(true)}>
                   <Square className="size-3.5 fill-current" aria-hidden />
-                  Done
+                  {t('voice.done')}
                 </Button>
               </div>
             </div>
@@ -682,19 +698,19 @@ export function AssistantPanel() {
                   <span
                     className={`text-[13.5px] font-medium whitespace-nowrap ${armedCancel ? 'text-accent-danger-deep' : 'text-ink'}`}
                   >
-                    {armedCancel ? 'Release to cancel' : 'Release to send'}
+                    {armedCancel ? t('voice.releaseToCancel') : t('voice.releaseToSend')}
                   </span>
                   <span className="font-mono text-[12px] text-ink-muted tabular-nums">
                     0:{String(elapsed).padStart(2, '0')}
                   </span>
                   {!armedCancel && (
-                    <span className="ml-auto truncate text-[12px] text-ink-muted">Slide to cancel</span>
+                    <span className="ml-auto truncate text-[12px] text-ink-muted">{t('voice.slideToCancel')}</span>
                   )}
                 </div>
               ) : (
                 <>
                 <label htmlFor="assistant-input" className="sr-only">
-                  Message the assistant
+                  {t('composer.label')}
                 </label>
                 <textarea
                   id="assistant-input"
@@ -717,10 +733,10 @@ export function AssistantPanel() {
                   }}
                   placeholder={
                     transcribing
-                      ? 'Writing down what you said…'
+                      ? t('composer.transcribing')
                       : outOfCredits
-                        ? 'No assistant credits left this month'
-                        : 'Ask, or say what to do'
+                        ? t('composer.noCredits')
+                        : t('composer.placeholder')
                   }
                   className="min-h-11 flex-1 resize-none rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-[14px] leading-snug text-ink placeholder:text-ink-faint focus:border-accent-ai focus:outline-none disabled:opacity-60"
                 />
@@ -729,7 +745,7 @@ export function AssistantPanel() {
               {canListen && !draftText.trim() && (!busy || listening) && (
                 <button
                   type="button"
-                  title="Hold to talk"
+                  title={t('voice.holdToTalk')}
                   aria-pressed={!!listening}
                   onPointerDown={(e) => {
                     if (e.button !== 0) return;
@@ -772,26 +788,26 @@ export function AssistantPanel() {
                   ) : (
                     <Mic className="size-5" aria-hidden />
                   )}
-                  <span className="sr-only">Hold to talk</span>
+                  <span className="sr-only">{t('voice.holdToTalk')}</span>
                 </button>
               )}
               {listening ? null : busy ? (
                 <Button type="button" size="icon-lg" variant="outline" onClick={stop}>
                   <Square className="size-4 fill-current" aria-hidden />
-                  <span className="sr-only">Stop answering</span>
+                  <span className="sr-only">{t('composer.stop')}</span>
                 </Button>
               ) : (
                 (draftText.trim() || !canListen) && (
                   <Button type="submit" size="icon-lg" variant="primary" disabled={!draftText.trim() || !caps}>
                     <ArrowUp className="size-5" aria-hidden />
-                    <span className="sr-only">Send</span>
+                    <span className="sr-only">{tc('action.send')}</span>
                   </Button>
                 )
               )}
             </form>
           )}
           <p className="mt-1.5 px-1 text-[11px] text-ink-faint">
-            Answers come from your school&apos;s records and can still be wrong. Check before acting on them.
+            {t('composer.disclaimer')}
           </p>
         </div>
       </section>

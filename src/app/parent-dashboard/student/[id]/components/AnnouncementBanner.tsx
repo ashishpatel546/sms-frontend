@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Megaphone, ChevronRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 /* The most recent thing the school said, pulled out of the list so it is read
    rather than scrolled past. "View all" goes to the notifications page — the
@@ -12,7 +13,9 @@ interface AnnouncementBannerProps {
   message: string;
 }
 
-export const AnnouncementBanner = ({ title, message }: AnnouncementBannerProps) => (
+export const AnnouncementBanner = ({ title, message }: AnnouncementBannerProps) => {
+  const tc = useTranslations('common');
+  return (
   <div className="flex items-center gap-3 rounded-xl border border-accent-info-edge bg-accent-info-tint p-3">
     <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent-info/15 text-accent-info-deep">
       <Megaphone className="size-4.5" aria-hidden />
@@ -25,8 +28,9 @@ export const AnnouncementBanner = ({ title, message }: AnnouncementBannerProps) 
       href="/parent-dashboard/notifications"
       className="group/va flex shrink-0 items-center gap-0.5 text-[11.5px] font-semibold text-accent-info-deep hover:underline"
     >
-      View all
+      {tc('action.viewAll')}
       <ChevronRight className="size-3.5 transition-transform group-hover/va:translate-x-0.5" aria-hidden />
     </Link>
   </div>
-);
+  );
+};

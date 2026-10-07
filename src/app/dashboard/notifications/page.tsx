@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { authFetch } from "@/lib/auth";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 import { API_BASE_URL } from "@/lib/api";
 import { useRbac } from "@/lib/rbac";
 import Link from "next/link";
@@ -9,6 +11,7 @@ import FeeRemindersTab from "./FeeRemindersTab";
 import { Megaphone, Banknote } from "lucide-react";
 
 type NotificationAudience = "PARENT" | "STAFF" | "ALL" | "CUSTOM";
+const AUDIENCES: readonly NotificationAudience[] = ["PARENT", "STAFF", "ALL", "CUSTOM"];
 
 interface AppNotification {
   id: string;
@@ -19,6 +22,8 @@ interface AppNotification {
 }
 
 export default function NotificationsPage() {
+  const t = useTranslations("notifications");
+  const locale = useLocale() as Locale;
   const { isSubAdmin, isAdmin, isSuperAdmin, isTeacher } = useRbac();
   const canSendNotifications = isSubAdmin || isAdmin || isSuperAdmin;
   const canSendReminders = isTeacher || canSendNotifications;
@@ -52,7 +57,7 @@ export default function NotificationsPage() {
   if (!canSendNotifications && !canSendReminders) {
     return (
       <div className="p-4">
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg">You do not have permission to view or manage notifications.</div>
+        <div className="bg-red-50 text-red-600 p-4 rounded-lg">{t("list.noPermission")}</div>
       </div>
     );
   }
@@ -61,8 +66,8 @@ export default function NotificationsPage() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Notifications & Reminders</h1>
-          <p className="mt-1 text-sm text-slate-500">Manage broadcasts and send fee reminders.</p>
+          <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t("list.title")}</h1>
+          <p className="mt-1 text-sm text-slate-500">{t("list.subtitle")}</p>
         </div>
         {activeTab === 'BROADCASTS' && canSendNotifications && (
           <Link
@@ -72,7 +77,7 @@ export default function NotificationsPage() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Send Notification
+            {t("list.send")}
           </Link>
         )}
       </div>
@@ -88,7 +93,7 @@ export default function NotificationsPage() {
             }`}
           >
             <Megaphone className="w-4 h-4" />
-            General Broadcasts
+            {t("list.tabBroadcasts")}
           </button>
         )}
         {canSendReminders && (
@@ -101,7 +106,7 @@ export default function NotificationsPage() {
             }`}
           >
             <Banknote className="w-4 h-4" />
-            Fee Reminders
+            {t("list.tabFeeReminders")}
           </button>
         )}
       </div>
@@ -109,7 +114,7 @@ export default function NotificationsPage() {
       {activeTab === 'BROADCASTS' && canSendNotifications && (
         <div className="bg-white border text-card-foreground shadow-sm rounded-xl overflow-hidden">
           <div className="p-6">
-            <h3 className="text-lg font-semibold leading-none tracking-tight mb-4">Recent Notifications</h3>
+            <h3 className="text-lg font-semibold leading-none tracking-tight mb-4">{t("list.recent")}</h3>
           {loading ? (
             <div className="animate-pulse space-y-4">
               {[1, 2, 3].map((i) => (
@@ -117,7 +122,7 @@ export default function NotificationsPage() {
               ))}
             </div>
           ) : notifications.length === 0 ? (
-            <div className="text-center py-12 text-slate-500">No notifications sent yet.</div>
+            <div className="text-center py-12 text-slate-500">{t("list.empty")}</div>
           ) : (
             <div className="space-y-4">
               {notifications.map((notif) => (
@@ -133,10 +138,10 @@ export default function NotificationsPage() {
                       notif.targetAudience === 'CUSTOM' ? 'bg-amber-100 text-amber-700' :
                       'bg-emerald-100 text-emerald-700'
                     }`}>
-                      {notif.targetAudience}
+                      {AUDIENCES.includes(notif.targetAudience) ? t(`list.audience.${notif.targetAudience}`) : notif.targetAudience}
                     </span>
                     <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
-                      {new Date(notif.createdAt).toLocaleString(undefined, {
+                      {new Date(notif.createdAt).toLocaleString(INTL_LOCALE[locale], {
                          month: 'short', day: 'numeric', year: 'numeric',
                          hour: '2-digit', minute: '2-digit'
                       })}

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { hrApi, StaffLeaveBalance, StaffLeaveApplication, StaffLeavePolicy } from "@/lib/hr-api";
 import toast, { Toaster } from "react-hot-toast";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
+import { useTranslations } from "next-intl";
 
 const now = new Date();
 
@@ -15,6 +16,8 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export default function MyLeavesPage() {
+  const t = useTranslations("hr");
+  const tc = useTranslations("common");
   const [balances, setBalances] = useState<StaffLeaveBalance[]>([]);
   const [applications, setApplications] = useState<StaffLeaveApplication[]>([]);
   const [policies, setPolicies] = useState<StaffLeavePolicy[]>([]);
@@ -45,28 +48,28 @@ export default function MyLeavesPage() {
         const msg =
           (bal.reason as any)?.info?.message ??
           (bal.reason as any)?.message ??
-          "Failed to load leave balances";
-        setLoadError(typeof msg === "string" ? msg : "Failed to load leave balances");
+          t("myLeaves.balancesFailed");
+        setLoadError(typeof msg === "string" ? msg : t("myLeaves.balancesFailed"));
       }
       if (apps.status === "fulfilled") setApplications(apps.value);
       if (pols.status === "fulfilled") setPolicies(pols.value);
     } catch {
-      toast.error("Failed to load leave data");
+      toast.error(t("myLeaves.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { load(); }, [load]);
 
   const handleApply = async () => {
     if (!form.leavePolicyId || !form.fromDate || !form.toDate || !form.reason) {
-      toast.error("Please fill all required fields");
+      toast.error(t("myLeaves.fillRequired"));
       return;
     }
     const staffId = balances[0]?.staffId;
     if (!staffId) {
-      toast.error("No staff profile found for your account. Contact HR.");
+      toast.error(t("myLeaves.noStaffProfile"));
       return;
     }
     try {
@@ -78,22 +81,22 @@ export default function MyLeavesPage() {
         leaveDuration: form.leaveDuration,
         reason: form.reason,
       });
-      toast.success("Leave application submitted");
+      toast.success(t("myLeaves.submitted"));
       setShowApply(false);
       load();
     } catch (e: any) {
-      toast.error(e?.info?.message ?? "Failed");
+      toast.error(e?.info?.message ?? t("failed"));
     }
   };
 
   const handleCancel = async (id: number) => {
-    if (!confirm("Cancel this leave application?")) return;
+    if (!confirm(t("myLeaves.cancelConfirm"))) return;
     try {
       await hrApi.leaves.cancel(id);
-      toast.success("Cancelled");
+      toast.success(tc("status.cancelled"));
       load();
     } catch (e: any) {
-      toast.error(e?.info?.message ?? "Failed");
+      toast.error(e?.info?.message ?? t("failed"));
     }
   };
 
@@ -101,29 +104,28 @@ export default function MyLeavesPage() {
     <div className="p-3 sm:p-6 space-y-6">
       <Toaster />
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">My Leaves</h1>
+        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t("myLeaves.title")}</h1>
         <button
           onClick={() => setShowApply(true)}
           className="bg-blue-600 text-white px-3 py-2 sm:px-4 rounded-lg text-sm font-medium hover:bg-blue-700"
         >
-          + Apply Leave
+          {t("myLeaves.applyButton")}
         </button>
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-800">
-        Note: Leave balances and applications are available only for users with a staff profile.
-        If you don&apos;t see your leaves here, ask your HR admin to create a staff record for your account.
+        {t("myLeaves.note")}
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-500">Loading...</p>
+        <p className="text-sm text-gray-500">{tc("state.loading")}</p>
       ) : loadError ? (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
           {loadError}
         </div>
       ) : balances.length === 0 ? (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
-          No leave balances found. Your HR admin needs to set up leave policies and assign you a staff profile first.
+          {t("myLeaves.noBalances")}
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -133,14 +135,14 @@ export default function MyLeavesPage() {
             return (
               <div key={b.id} className="bg-white border border-gray-200 rounded-xl p-3 sm:p-4">
                 <div className="text-xs font-medium text-gray-600 mb-2 truncate">
-                  {b.leavePolicy?.name ?? `Policy #${b.leavePolicyId}`}
+                  {b.leavePolicy?.name ?? t("overview.policyNo", { id: b.leavePolicyId })}
                 </div>
                 <div className="text-2xl sm:text-3xl font-bold text-blue-700">{remaining}</div>
-                <div className="text-xs text-gray-500 mt-1">of {b.allocated} remaining</div>
+                <div className="text-xs text-gray-500 mt-1">{t("myLeaves.ofRemaining", { allocated: b.allocated })}</div>
                 <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                   <div className="h-full bg-blue-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
                 </div>
-                {b.lopDays > 0 && <div className="text-xs text-red-500 mt-1.5">LOP: {b.lopDays}d</div>}
+                {b.lopDays > 0 && <div className="text-xs text-red-500 mt-1.5">{t("myLeaves.lop", { count: b.lopDays })}</div>}
               </div>
             );
           })}
@@ -148,11 +150,11 @@ export default function MyLeavesPage() {
       )}
 
       <div>
-        <h2 className="font-semibold text-gray-800 mb-3 text-sm sm:text-base">My Applications</h2>
+        <h2 className="font-semibold text-gray-800 mb-3 text-sm sm:text-base">{t("myLeaves.applications")}</h2>
         {loading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
+          <p className="text-sm text-gray-500">{tc("state.loading")}</p>
         ) : applications.length === 0 ? (
-          <p className="text-sm text-gray-500">No leave applications yet.</p>
+          <p className="text-sm text-gray-500">{t("myLeaves.noApplications")}</p>
         ) : (
           <>
             <div className="sm:hidden space-y-3">
@@ -164,16 +166,16 @@ export default function MyLeavesPage() {
                         {a.leavePolicy?.name ?? `#${a.leavePolicyId}`}
                       </p>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        {a.fromDate} to {a.toDate} - {a.leaveDays}d
+                        {t("myLeaves.periodDays", { from: a.fromDate, to: a.toDate, count: a.leaveDays })}
                       </p>
                     </div>
                     <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLOR[a.status]}`}>
-                      {a.status}
+                      {t(`leaveStatus.${a.status}`)}
                     </span>
                   </div>
                   {["PENDING", "APPROVED"].includes(a.status) && (
                     <button onClick={() => handleCancel(a.id)} className="text-xs text-red-500 hover:underline">
-                      Cancel application
+                      {t("myLeaves.cancelApplication")}
                     </button>
                   )}
                 </div>
@@ -184,28 +186,28 @@ export default function MyLeavesPage() {
               <table className="min-w-full text-sm">
                 <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
                   <tr>
-                    <th className="px-4 py-3 text-left">Type</th>
-                    <th className="px-4 py-3 text-left">Period</th>
-                    <th className="px-4 py-3 text-left">Days</th>
-                    <th className="px-4 py-3 text-left">Status</th>
-                    <th className="px-4 py-3 text-left">Actions</th>
+                    <th className="px-4 py-3 text-left">{tc("field.type")}</th>
+                    <th className="px-4 py-3 text-left">{t("myLeaves.period")}</th>
+                    <th className="px-4 py-3 text-left">{t("myLeaves.days")}</th>
+                    <th className="px-4 py-3 text-left">{tc("field.status")}</th>
+                    <th className="px-4 py-3 text-left">{tc("action.actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {applications.map((a) => (
                     <tr key={a.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">{a.leavePolicy?.name ?? `#${a.leavePolicyId}`}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{a.fromDate} to {a.toDate}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{t("myLeaves.period2", { from: a.fromDate, to: a.toDate })}</td>
                       <td className="px-4 py-3">{a.leaveDays}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLOR[a.status]}`}>
-                          {a.status}
+                          {t(`leaveStatus.${a.status}`)}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         {["PENDING", "APPROVED"].includes(a.status) && (
                           <button onClick={() => handleCancel(a.id)} className="text-gray-500 hover:underline text-xs">
-                            Cancel
+                            {tc("action.cancel")}
                           </button>
                         )}
                       </td>
@@ -221,15 +223,15 @@ export default function MyLeavesPage() {
       {showApply && (
         <div className="fixed inset-0 bg-walnut-950/55 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 w-full sm:max-w-md space-y-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="font-semibold text-lg">Apply Leave</h2>
+            <h2 className="font-semibold text-lg">{t("myLeaves.applyTitle")}</h2>
             <div>
-              <label className="text-sm font-medium">Leave Type</label>
+              <label className="text-sm font-medium">{t("myLeaves.leaveType")}</label>
               <select
                 value={form.leavePolicyId}
                 onChange={(e) => setForm((f) => ({ ...f, leavePolicyId: e.target.value }))}
                 className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
               >
-                <option value="">Select...</option>
+                <option value="">{tc("state.selectPlaceholder")}</option>
                 {policies.map((p) => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
@@ -237,14 +239,14 @@ export default function MyLeavesPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm font-medium">From</label>
+                <label className="text-sm font-medium">{tc("field.from")}</label>
                 <AppDatePicker
                   value={form.fromDate}
                   onChange={(v) => setForm((f) => ({ ...f, fromDate: v }))}
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">To</label>
+                <label className="text-sm font-medium">{tc("field.to")}</label>
                 <AppDatePicker
                   value={form.toDate}
                   onChange={(v) => setForm((f) => ({ ...f, toDate: v }))}
@@ -252,18 +254,18 @@ export default function MyLeavesPage() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium">Duration</label>
+              <label className="text-sm font-medium">{t("myLeaves.duration")}</label>
               <select
                 value={form.leaveDuration}
                 onChange={(e) => setForm((f) => ({ ...f, leaveDuration: e.target.value as any }))}
                 className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
               >
-                <option value="FULL_DAY">Full Day</option>
-                <option value="HALF_DAY">Half Day</option>
+                <option value="FULL_DAY">{t("duration.FULL_DAY")}</option>
+                <option value="HALF_DAY">{t("duration.HALF_DAY")}</option>
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium">Reason</label>
+              <label className="text-sm font-medium">{t("myLeaves.reason")}</label>
               <textarea
                 value={form.reason}
                 onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
@@ -273,10 +275,10 @@ export default function MyLeavesPage() {
             </div>
             <div className="flex gap-2 justify-end pt-1">
               <button onClick={() => setShowApply(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">
-                Cancel
+                {tc("action.cancel")}
               </button>
               <button onClick={handleApply} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                Submit
+                {tc("action.submit")}
               </button>
             </div>
           </div>

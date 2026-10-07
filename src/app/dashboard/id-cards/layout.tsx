@@ -1,6 +1,7 @@
 'use client';
 
 import { IdCard } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import FeatureGate from '@/components/dashboard/FeatureGate';
 
 /**
@@ -10,12 +11,13 @@ import FeatureGate from '@/components/dashboard/FeatureGate';
  * between calling support and refreshing.
  */
 export default function IdCardsLayout({ children }: { children: React.ReactNode }) {
+  const t = useTranslations('idCards.layout');
   return (
     <FeatureGate
       flag="id_cards"
-      title="ID Cards"
+      title={t('title')}
       icon={<IdCard />}
-      description="Print CR80 identity cards for students and staff, with a QR the gate can verify."
+      description={t('description')}
     >
       {children}
     </FeatureGate>

@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import toast from 'react-hot-toast';
+import { useTranslations } from 'next-intl';
 import { Ban, Download, IdCard, ShieldCheck } from 'lucide-react';
 
 import FeatureNotAvailableNotice from '@/components/parent/FeatureNotAvailableNotice';
@@ -24,6 +25,7 @@ import { downloadSingleIdCardPdf } from '@/lib/id-card-pdf';
  * lost on a Tuesday and the office reprints on Friday.
  */
 export function IdCardSection({ studentId }: { studentId: string | number }) {
+  const t = useTranslations('parent.idCard');
   const [card, setCard] = React.useState<IdCardRow | null>(null);
   const [school, setSchool] = React.useState<IdCardBranding | null>(null);
   const [state, setState] = React.useState<'loading' | 'ready' | 'off' | 'error'>(
@@ -50,7 +52,7 @@ export function IdCardSection({ studentId }: { studentId: string | number }) {
           return;
         }
         setMessage(
-          e instanceof Error ? e.message : 'We could not load the ID card just now.',
+          e instanceof Error ? e.message : t('loadFailed'),
         );
         setState('error');
       });
@@ -58,7 +60,7 @@ export function IdCardSection({ studentId }: { studentId: string | number }) {
     return () => {
       cancelled = true;
     };
-  }, [studentId]);
+  }, [studentId, t]);
 
   const download = async () => {
     if (!card || !school) return;
@@ -68,15 +70,15 @@ export function IdCardSection({ studentId }: { studentId: string | number }) {
       // Say so out loud. On a phone the file lands in Downloads with no
       // visible sign, and a silent success is indistinguishable from a dead
       // button — which is exactly how this was reported.
-      toast.success('Saved — check your downloads for the PDF.');
+      toast.success(t('saved'));
       if (droppedImages) {
-        toast('The photo could not be included — the card saves with initials.', {
+        toast(t('photoDropped'), {
           icon: '⚠️',
           duration: 6000,
         });
       }
     } catch {
-      toast.error('Could not build the PDF. Please try again.');
+      toast.error(t('pdfFailed'));
     } finally {
       setSaving(false);
     }
@@ -85,8 +87,8 @@ export function IdCardSection({ studentId }: { studentId: string | number }) {
   if (state === 'off') {
     return (
       <FeatureNotAvailableNotice
-        title="School ID card"
-        description="You would be able to see and save your child's identity card here."
+        title={t("title")}
+        description={t("featureDescription")}
       />
     );
   }
@@ -103,10 +105,10 @@ export function IdCardSection({ studentId }: { studentId: string | number }) {
     return (
       <div className="rounded-xl border border-accent-danger-edge bg-accent-danger-tint p-4">
         <p className="text-[13.5px] font-medium text-accent-danger-deep">
-          {message || 'We could not load the ID card just now.'}
+          {message || t('loadFailed')}
         </p>
         <p className="mt-1 text-[12.5px] text-ink-muted">
-          Pull down to refresh, or try again in a moment.
+          {t('loadFailedHint')}
         </p>
       </div>
     );
@@ -115,7 +117,7 @@ export function IdCardSection({ studentId }: { studentId: string | number }) {
   return (
     <div className="space-y-4">
       <div className="diary-band">
-        <span className="eyebrow">School ID card</span>
+        <span className="eyebrow">{t("title")}</span>
       </div>
 
       <IdCardPreview row={card} school={school} />
@@ -132,15 +134,13 @@ export function IdCardSection({ studentId }: { studentId: string | number }) {
             />
             <div className="text-[12.5px] leading-relaxed text-ink-muted">
               <p className="text-[13.5px] font-semibold text-accent-danger-deep">
-                This card has been cancelled by the school
+                {t('revokedTitle')}
               </p>
               <p className="mt-1">
                 {card.revokedReason
-                  ? `Recorded reason: ${card.revokedReason}. `
+                  ? `${t('revokedReason', { reason: card.revokedReason })} `
                   : ''}
-                It will not be accepted at the gate, so it cannot be saved. The
-                office will issue a new card — this page updates on its own once
-                they do.
+                {t('revokedBody')}
               </p>
             </div>
           </div>
@@ -159,11 +159,10 @@ export function IdCardSection({ studentId }: { studentId: string | number }) {
           ) : (
             <Download className="size-4" aria-hidden />
           )}
-          Save as PDF
+          {t('savePdf')}
         </button>
         <span className="text-[12px] text-ink-muted">
-          Front and back side by side on one A4 page — cut both out and glue
-          them back to back.
+          {t('savePdfHint')}
         </span>
       </div>
 
@@ -171,11 +170,9 @@ export function IdCardSection({ studentId }: { studentId: string | number }) {
         <div className="flex gap-2.5">
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-accent-success" aria-hidden />
           <div className="text-[12.5px] leading-relaxed text-ink-muted">
-            <p className="font-semibold text-ink">The QR is checked live at the gate</p>
+            <p className="font-semibold text-ink">{t("qrTitle")}</p>
             <p className="mt-1">
-              It carries no personal details — the school looks your child up
-              when it is scanned. A lost card cannot be used by anyone else once
-              the office deactivates it, so tell them straight away.
+              {t('qrBody')}
             </p>
           </div>
         </div>
@@ -183,8 +180,7 @@ export function IdCardSection({ studentId }: { studentId: string | number }) {
 
       <p className="flex items-center gap-1.5 text-[12px] text-ink-faint">
         <IdCard className="size-3.5" aria-hidden />
-        The printed card comes from the school office. This copy is for your
-        records.
+        {t('printedNote')}
       </p>
     </div>
   );

@@ -7,6 +7,7 @@
  * built in parallel with other work on that file. Uses the exact same
  * token/slug plumbing (`authFetch`) as every other API client in this repo.
  */
+import type { HelperMessage } from '@/i18n/helper-message';
 import { authFetch } from './auth';
 import { getEnv } from './env';
 
@@ -84,6 +85,15 @@ export const attendanceSettingsApi = {
       `/hr/staff-attendance/today-summary${date ? `?date=${date}` : ''}`,
     ),
 };
+
+/** Translatable form of validateAttendanceSettings. */
+export function attendanceSettingsProblem(s: AttendanceSettings): HelperMessage | null {
+  if (s.minHalfDayHours >= s.minFullDayHours) {
+    return { key: 'settingsHalfDay', values: { half: s.minHalfDayHours, full: s.minFullDayHours } };
+  }
+  if (!HHMM_RE.test(s.lateCutoffTime)) return { key: 'settingsLateCutoff' };
+  return null;
+}
 
 /** Client-side mirror of the server's validation rule — check before PATCHing. */
 export function validateAttendanceSettings(s: AttendanceSettings): string | null {

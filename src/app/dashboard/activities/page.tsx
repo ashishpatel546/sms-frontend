@@ -26,6 +26,7 @@ import { StatusChip } from '@/components/ui/StatusChip';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useRbac } from '@/lib/rbac';
 import { READ_ONLY_TITLE, useReadOnlySession } from '@/lib/support-session';
+import { useTranslations } from 'next-intl';
 
 const PAGE_SIZE = 20;
 
@@ -33,6 +34,8 @@ export default function ActivitiesPage() {
   const router = useRouter();
   const rbac = useRbac();
   const readOnly = useReadOnlySession();
+  const t = useTranslations('activities');
+  const tc = useTranslations('common');
   const [status, setStatus] = React.useState<ActivityStatus | ''>('');
   const [category, setCategory] = React.useState<ActivityCategory | ''>('');
   const [search, setSearch] = React.useState('');
@@ -43,21 +46,21 @@ export default function ActivitiesPage() {
   const { data, isLoading, mutate } = useSWR(`/activities?${JSON.stringify(query)}`, () => fetchActivities(query));
 
   const columns: Column<Activity>[] = [
-    { key: 'title', header: 'Activity', accessor: (r) => r.title, card: 'title' },
-    { key: 'category', header: 'Category', accessor: (r) => ACTIVITY_CATEGORY_LABELS[r.category], card: 'meta' },
-    { key: 'date', header: 'Date', accessor: (r) => r.startDate, card: 'field' },
-    { key: 'participants', header: 'Participants', align: 'right', accessor: (r) => r.participantCount, card: 'field' },
-    { key: 'photos', header: 'Photos', align: 'right', accessor: (r) => r.photoCount, card: 'field' },
-    { key: 'status', header: 'Status', align: 'right', accessor: (r) => <StatusChip status={r.status} />, card: 'trailing' },
+    { key: 'title', header: t('list.colActivity'), accessor: (r) => r.title, card: 'title' },
+    { key: 'category', header: t('field.category'), accessor: (r) => (r.category in ACTIVITY_CATEGORY_LABELS ? t(`category.${r.category}`) : r.category), card: 'meta' },
+    { key: 'date', header: tc('field.date'), accessor: (r) => r.startDate, card: 'field' },
+    { key: 'participants', header: t('list.colParticipants'), align: 'right', accessor: (r) => r.participantCount, card: 'field' },
+    { key: 'photos', header: t('list.colPhotos'), align: 'right', accessor: (r) => r.photoCount, card: 'field' },
+    { key: 'status', header: tc('field.status'), align: 'right', accessor: (r) => <StatusChip status={r.status} label={t(`status.${r.status}`)} />, card: 'trailing' },
   ];
 
   return (
     <PageShell>
       <Toaster position="top-center" />
       <PageHeader
-        section="Campus"
-        title="Activities"
-        description="School events — publish to the whole school, track participants and winners, and share photos."
+        section={t('list.section')}
+        title={t('list.title')}
+        description={t('list.description')}
         actions={
           rbac.canManageActivities ? (
             <Button
@@ -65,7 +68,7 @@ export default function ActivitiesPage() {
               disabled={readOnly}
               title={readOnly ? READ_ONLY_TITLE : undefined}
             >
-              <Plus /> New activity
+              <Plus /> {t('list.new')}
             </Button>
           ) : undefined
         }
@@ -73,20 +76,20 @@ export default function ActivitiesPage() {
 
       <PageBody>
         <FilterBar>
-          <SearchInput value={search} onValueChange={(v) => { setSearch(v); setPage(1); }} placeholder="Search title or venue…" />
-          <FilterField label="Status" width="sm">
+          <SearchInput value={search} onValueChange={(v) => { setSearch(v); setPage(1); }} placeholder={t('list.searchPlaceholder')} />
+          <FilterField label={tc('field.status')} width="sm">
             <Select value={status} onChange={(e) => { setStatus(e.target.value as ActivityStatus | ''); setPage(1); }}>
-              <option value="">All</option>
-              <option value="DRAFT">Draft</option>
-              <option value="PUBLISHED">Published</option>
-              <option value="ARCHIVED">Archived</option>
+              <option value="">{tc('field.all')}</option>
+              <option value="DRAFT">{t('status.DRAFT')}</option>
+              <option value="PUBLISHED">{t('status.PUBLISHED')}</option>
+              <option value="ARCHIVED">{t('status.ARCHIVED')}</option>
             </Select>
           </FilterField>
-          <FilterField label="Category" width="sm">
+          <FilterField label={t('field.category')} width="sm">
             <Select value={category} onChange={(e) => { setCategory(e.target.value as ActivityCategory | ''); setPage(1); }}>
-              <option value="">All</option>
+              <option value="">{tc('field.all')}</option>
               {ACTIVITY_CATEGORIES.map((c) => (
-                <option key={c} value={c}>{ACTIVITY_CATEGORY_LABELS[c]}</option>
+                <option key={c} value={c}>{t(`category.${c}`)}</option>
               ))}
             </Select>
           </FilterField>
@@ -99,19 +102,19 @@ export default function ActivitiesPage() {
           loading={isLoading}
           rowKey={(r) => r.id}
           onRowClick={(r) => router.push(`/dashboard/activities/${r.id}`)}
-          emptyMessage="No activities yet"
+          emptyMessage={t('list.empty')}
           toolbar={
             <>
               <PartyPopper className="size-4 text-ink-faint" />
-              <span className="font-display text-[15px] font-semibold text-ink">Activities</span>
+              <span className="font-display text-[15px] font-semibold text-ink">{t('list.title')}</span>
               {data && <TableCount>{data.total}</TableCount>}
             </>
           }
         />
         {data && data.total > PAGE_SIZE && (
           <div className="mt-3 flex justify-end gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
-            <Button variant="outline" size="sm" disabled={page * PAGE_SIZE >= data.total} onClick={() => setPage((p) => p + 1)}>Next</Button>
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>{tc('action.previous')}</Button>
+            <Button variant="outline" size="sm" disabled={page * PAGE_SIZE >= data.total} onClick={() => setPage((p) => p + 1)}>{tc('action.next')}</Button>
           </div>
         )}
       </PageBody>
@@ -137,6 +140,8 @@ function CreateActivityDialog({
   onClose: () => void;
   onSaved: (activity: Activity) => void;
 }) {
+  const t = useTranslations('activities');
+  const tc = useTranslations('common');
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [category, setCategory] = React.useState<ActivityCategory>('OTHER');
@@ -148,7 +153,7 @@ function CreateActivityDialog({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim() || !startDate) {
-      toast.error('Title, description and start date are required');
+      toast.error(t('create.required'));
       return;
     }
     setSaving(true);
@@ -162,10 +167,10 @@ function CreateActivityDialog({
         venue: venue.trim() || undefined,
       };
       const activity = await createActivity(dto);
-      toast.success('Draft created');
+      toast.success(t('create.created'));
       onSaved(activity);
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not create the activity'));
+      toast.error(errorMessage(err, t('create.failed')));
     } finally {
       setSaving(false);
     }
@@ -175,41 +180,41 @@ function CreateActivityDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <form onSubmit={submit}>
-          <DialogHeader><DialogTitle>New activity</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('list.new')}</DialogTitle></DialogHeader>
           <div className="mt-3 space-y-3">
-            <Field label="Title" required>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Annual Sports Day" required />
+            <Field label={t('field.title')} required>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('create.titlePlaceholder')} required />
             </Field>
-            <Field label="Description" required>
+            <Field label={tc('field.description')} required>
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} required />
             </Field>
             <FieldGrid columns={2}>
-              <Field label="Category">
+              <Field label={t('field.category')}>
                 <Select value={category} onChange={(e) => setCategory(e.target.value as ActivityCategory)}>
                   {ACTIVITY_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{ACTIVITY_CATEGORY_LABELS[c]}</option>
+                    <option key={c} value={c}>{t(`category.${c}`)}</option>
                   ))}
                 </Select>
               </Field>
-              <Field label="Venue">
+              <Field label={t('field.venue')}>
                 <Input value={venue} onChange={(e) => setVenue(e.target.value)} />
               </Field>
             </FieldGrid>
             <FieldGrid columns={2}>
-              <Field label="Start date" required>
+              <Field label={tc('field.startDate')} required>
                 <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
               </Field>
-              <Field label="End date" hint="Optional">
+              <Field label={tc('field.endDate')} hint={tc('state.optional')}>
                 <Input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
               </Field>
             </FieldGrid>
             <p className="text-[12px] text-ink-muted">
-              Saved as a draft. Nothing is announced until you publish it from the activity page.
+              {t('create.draftHint')}
             </p>
           </div>
           <DialogFooter className="mt-4">
-            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Create draft'}</Button>
+            <Button type="button" variant="ghost" onClick={onClose}>{tc('action.cancel')}</Button>
+            <Button type="submit" disabled={saving}>{saving ? tc('action.saving') : t('create.submit')}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

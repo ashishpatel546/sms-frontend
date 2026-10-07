@@ -1,0 +1,127 @@
+{
+  "category": {
+    "SPORTS": "Sports",
+    "CULTURAL": "Cultural",
+    "ACADEMIC": "Academic",
+    "COMPETITION": "Competition",
+    "EXCURSION": "Excursion",
+    "CELEBRATION": "Celebration",
+    "SOCIAL_SERVICE": "Social Service",
+    "OTHER": "Other"
+  },
+  "status": {
+    "DRAFT": "Draft",
+    "PUBLISHED": "Published",
+    "ARCHIVED": "Archived"
+  },
+  "field": {
+    "title": "Title",
+    "category": "Category",
+    "venue": "Venue"
+  },
+  "list": {
+    "section": "Campus",
+    "title": "Activities",
+    "description": "School events — publish to the whole school, track participants and winners, and share photos.",
+    "new": "New activity",
+    "searchPlaceholder": "Search title or venue…",
+    "empty": "No activities yet",
+    "colActivity": "Activity",
+    "colParticipants": "Participants",
+    "colPhotos": "Photos"
+  },
+  "create": {
+    "required": "Title, description and start date are required",
+    "created": "Draft created",
+    "failed": "Could not create the activity",
+    "titlePlaceholder": "Annual Sports Day",
+    "draftHint": "Saved as a draft. Nothing is announced until you publish it from the activity page.",
+    "submit": "Create draft"
+  },
+  "detail": {
+    "title": "Activity",
+    "publish": "Publish",
+    "notifyAgain": "Notify again",
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "deleteConfirm": "Delete this draft activity? This cannot be undone.",
+    "deleted": "Draft deleted",
+    "deleteFailed": "Could not delete",
+    "run": {
+      "publish": {
+        "done": "Published",
+        "failed": "Could not publish"
+      },
+      "notify": {
+        "done": "Notified again",
+        "failed": "Could not notify again"
+      },
+      "archive": {
+        "done": "Archived",
+        "failed": "Could not archive"
+      },
+      "unarchive": {
+        "done": "Unarchived",
+        "failed": "Could not unarchive"
+      }
+    }
+  },
+  "details": {
+    "title": "Details",
+    "saveFailed": "Could not save",
+    "remarksHint": "Internal, staff-only",
+    "resultSummary": "Result summary",
+    "resultSummaryHint": "Shown to parents once the activity is published",
+    "venueLine": "Venue: {venue}",
+    "remarksLine": "Remarks: {remarks}",
+    "resultLine": "Result: {result}",
+    "saveChanges": "Save changes"
+  },
+  "participants": {
+    "title": "Participants & winners",
+    "summary": "{participants, plural, one {# participant} other {# participants}}, {winners, plural, one {# winner} other {# winners}}",
+    "unnamed": "Student #{id}",
+    "pickFirst": "Pick a class and section first",
+    "rosterFailed": "Could not load the roster",
+    "allAdded": "Everyone in that section is already added",
+    "added": "{count, plural, one {Added # student} other {Added # students}}",
+    "addClassFailed": "Could not add the class",
+    "saved": "Participants saved",
+    "saveFailed": "Could not save participants",
+    "exportFailed": "Could not export",
+    "exportCsv": "Export CSV",
+    "searchPlaceholder": "Search a student by name or admission no…",
+    "searching": "Searching…",
+    "noStudents": "No students found",
+    "selectClass": "Select class",
+    "selectSection": "Select section",
+    "addWholeClass": "Add whole class",
+    "none": "No participants added yet.",
+    "winner": "Winner",
+    "position": "Position",
+    "award": "Award",
+    "awardPlaceholder": "e.g. Gold medal",
+    "discard": "Discard changes",
+    "save": "Save participants"
+  },
+  "photos": {
+    "title": "Photos",
+    "count": "{count, plural, one {# photo} other {# photos}}",
+    "loadFailed": "Could not load photos",
+    "onlyImages": "Only image files are allowed",
+    "uploaded": "Photo uploaded",
+    "uploadFailed": "Could not upload the photo",
+    "deleteConfirm": "Delete this photo?",
+    "deleted": "Photo deleted",
+    "deleteFailed": "Could not delete the photo",
+    "reorderFailed": "Could not reorder photos",
+    "coverSet": "Cover photo set",
+    "coverFailed": "Could not set cover photo",
+    "uploading": "Uploading…",
+    "add": "Add photo",
+    "load": "Load photos ({count})",
+    "none": "No photos yet.",
+    "cover": "Cover",
+    "setCover": "Set as cover"
+  }
+}

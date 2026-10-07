@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
+import { useTranslations } from "next-intl";
 
 export interface ResolvedStaff {
     id: number;
@@ -26,6 +27,7 @@ interface Props {
  * Mirrors the same UX used on the kiosk and manual-mark flows.
  */
 export default function StaffLookupForm({ onResolved, onClear, selectedLabel, fields }: Props) {
+    const t = useTranslations("staff.lookup");
     const show = { employeeCode: true, id: true, mobile: true, ...(fields ?? {}) };
     const [empCode, setEmpCode] = useState("");
     const [staffId, setStaffId] = useState("");
@@ -37,17 +39,17 @@ export default function StaffLookupForm({ onResolved, onClear, selectedLabel, fi
 
     const handleLookup = async (kind: "employeeCode" | "id" | "mobile", value: string) => {
         const v = value.trim();
-        if (!v) { setError("Enter a value to search."); return; }
+        if (!v) { setError(t("enterValue")); return; }
         setLoading(true);
         setError(null);
         try {
             const res = await authFetch(`${API_BASE_URL}/staff?${kind}=${encodeURIComponent(v)}&limit=1`);
-            if (!res.ok) throw new Error("Lookup failed");
+            if (!res.ok) throw new Error(t("failed"));
             const data = await res.json();
             const list = data?.data ?? (Array.isArray(data) ? data : []);
             const row = list[0];
             if (!row) {
-                setError(`No staff found for ${kind === "employeeCode" ? "employee code" : kind === "id" ? "staff ID" : "mobile"} "${v}".`);
+                setError(kind === "employeeCode" ? t("notFoundEmployeeCode", { value: v }) : kind === "id" ? t("notFoundId", { value: v }) : t("notFoundMobile", { value: v }));
                 return;
             }
             const staff: ResolvedStaff = {
@@ -59,7 +61,7 @@ export default function StaffLookupForm({ onResolved, onClear, selectedLabel, fi
             };
             onResolved(staff);
         } catch (e: any) {
-            setError(e?.message ?? "Lookup failed");
+            setError(e?.message ?? t("failed"));
         } finally {
             setLoading(false);
         }
@@ -74,7 +76,7 @@ export default function StaffLookupForm({ onResolved, onClear, selectedLabel, fi
                     onClick={() => { reset(); onClear?.(); }}
                     className="text-blue-400 hover:text-blue-600 text-xs"
                 >
-                    Change
+                    {t("change")}
                 </button>
             </div>
         );
@@ -83,7 +85,7 @@ export default function StaffLookupForm({ onResolved, onClear, selectedLabel, fi
     return (
         <div className="space-y-2.5">
             <p className="text-xs text-gray-500">
-                Look up staff by exactly one of the fields below — the backend runs a direct indexed query for the value you enter.
+                {t("hint")}
             </p>
             {show.employeeCode && (
                 <div className="flex gap-2">
@@ -91,7 +93,7 @@ export default function StaffLookupForm({ onResolved, onClear, selectedLabel, fi
                         type="number"
                         value={empCode}
                         onChange={(e) => setEmpCode(e.target.value)}
-                        placeholder="Employee code (e.g. 1001)"
+                        placeholder={t("employeeCodePlaceholder")}
                         className="flex-1 border rounded-lg px-3 py-2 text-sm"
                     />
                     <button
@@ -100,7 +102,7 @@ export default function StaffLookupForm({ onResolved, onClear, selectedLabel, fi
                         disabled={loading || !empCode}
                         className="px-3 py-2 text-sm bg-gray-100 border rounded-lg hover:bg-gray-200 disabled:opacity-50"
                     >
-                        Find
+                        {t("find")}
                     </button>
                 </div>
             )}
@@ -110,7 +112,7 @@ export default function StaffLookupForm({ onResolved, onClear, selectedLabel, fi
                         type="number"
                         value={staffId}
                         onChange={(e) => setStaffId(e.target.value)}
-                        placeholder="Staff ID (internal row id)"
+                        placeholder={t("staffIdPlaceholder")}
                         className="flex-1 border rounded-lg px-3 py-2 text-sm"
                     />
                     <button
@@ -119,7 +121,7 @@ export default function StaffLookupForm({ onResolved, onClear, selectedLabel, fi
                         disabled={loading || !staffId}
                         className="px-3 py-2 text-sm bg-gray-100 border rounded-lg hover:bg-gray-200 disabled:opacity-50"
                     >
-                        Find
+                        {t("find")}
                     </button>
                 </div>
             )}
@@ -129,7 +131,7 @@ export default function StaffLookupForm({ onResolved, onClear, selectedLabel, fi
                         type="tel"
                         value={mobile}
                         onChange={(e) => setMobile(e.target.value)}
-                        placeholder="Mobile number"
+                        placeholder={t("mobilePlaceholder")}
                         className="flex-1 border rounded-lg px-3 py-2 text-sm"
                     />
                     <button
@@ -138,12 +140,12 @@ export default function StaffLookupForm({ onResolved, onClear, selectedLabel, fi
                         disabled={loading || !mobile}
                         className="px-3 py-2 text-sm bg-gray-100 border rounded-lg hover:bg-gray-200 disabled:opacity-50"
                     >
-                        Find
+                        {t("find")}
                     </button>
                 </div>
             )}
             {error && <p className="text-xs text-red-600">{error}</p>}
-            {loading && <p className="text-xs text-gray-500">Looking up…</p>}
+            {loading && <p className="text-xs text-gray-500">{t("lookingUp")}</p>}
         </div>
     );
 }

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import useSWR from "swr";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 import { authFetch, getUser, getToken } from "@/lib/auth";
 import { API_BASE_URL, fetcher } from "@/lib/api";
 import { getEnv } from "@/lib/env";
@@ -87,6 +89,8 @@ async function getLocalNotifications(loginTime: number | null): Promise<AppNotif
 }
 
 export function NotificationBell({ variant = 'light' }: { variant?: 'light' | 'dark' }) {
+  const t = useTranslations("notifications");
+  const locale = useLocale() as Locale;
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [mergedNotifications, setMergedNotifications] = useState<AppNotification[]>([]);
@@ -240,7 +244,8 @@ export function NotificationBell({ variant = 'light' }: { variant?: 'light' | 'd
       <button
         onClick={handleOpen}
         className={buttonClass}
-        title="Notifications"
+        title={t("bell.title")}
+        aria-label={t("bell.title")}
       >
         <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -257,10 +262,10 @@ export function NotificationBell({ variant = 'light' }: { variant?: 'light' | 'd
         <div className={`fixed right-4 left-4 top-16 sm:absolute sm:-right-2 sm:top-full sm:mt-2 sm:w-96 sm:left-auto rounded-2xl shadow-xl border overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 ${theme.container}`}>
           <div className={`px-4 py-3 border-b flex flex-col gap-2 ${theme.header}`}>
             <div className="flex justify-between items-center w-full">
-              <h3 className={`font-semibold ${theme.headerText}`}>Notifications</h3>
+              <h3 className={`font-semibold ${theme.headerText}`}>{t("bell.title")}</h3>
               {unreadCount > 0 && (
                 <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">
-                  {unreadCount} New
+                  {t("bell.newCount", { count: unreadCount })}
                 </span>
               )}
             </div>
@@ -270,7 +275,7 @@ export function NotificationBell({ variant = 'light' }: { variant?: 'light' | 'd
                 disabled={isSubscribing}
                 className="w-full text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 py-1.5 rounded-md transition-colors flex items-center justify-center gap-1.5"
               >
-                {isSubscribing ? 'Enabling...' : 'Enable Desktop Notifications'}
+                {isSubscribing ? t("bell.enabling") : t("bell.enableDesktop")}
               </button>
             )}
           </div>
@@ -288,14 +293,14 @@ export function NotificationBell({ variant = 'light' }: { variant?: 'light' | 'd
               </div>
             )}
             {mergedNotifications?.length === 0 && error && (
-               <div className={`p-8 text-center text-sm ${theme.emptyText}`}>Failed to load notifications</div>
+               <div className={`p-8 text-center text-sm ${theme.emptyText}`}>{t("bell.loadFailed")}</div>
             )}
             {notifications && mergedNotifications?.length === 0 && (
               <div className={`p-8 text-center text-sm flex flex-col items-center ${theme.emptyText}`}>
                 <svg className={`w-10 h-10 mb-2 ${theme.emptyIcon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
-                No notifications right now
+                {t("bell.empty")}
               </div>
             )}
             {mergedNotifications?.map((notif) => {
@@ -310,7 +315,10 @@ export function NotificationBell({ variant = 'light' }: { variant?: 'light' | 'd
                   <h4 className={`font-medium text-sm ${theme.title}`}>{notif.title}</h4>
                   <p className={`text-sm mt-1.5 leading-snug wrap-break-word whitespace-pre-wrap ${theme.message}`}>{notif.message}</p>
                   <span className={`text-xs font-medium mt-2.5 block ${theme.date}`}>
-                     {new Date(notif.createdAt).toLocaleDateString()} at {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                     {t("bell.dateAtTime", {
+                       date: new Date(notif.createdAt).toLocaleDateString(INTL_LOCALE[locale]),
+                       time: new Date(notif.createdAt).toLocaleTimeString(INTL_LOCALE[locale], { hour: '2-digit', minute: '2-digit' }),
+                     })}
                   </span>
                 </Row>
               );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import ReactMarkdown from "react-markdown";
 import { Sparkles, Square, Zap } from "lucide-react";
 import { streamAiResponse, SseUsage } from "@/lib/ai-stream";
@@ -8,7 +9,7 @@ import { FeatureGate } from "@/components/ai/FeatureGate";
 import NumberInput from "@/components/ui/NumberInput";
 
 const GRADES = ["1","2","3","4","5","6","7","8","9","10","11","12"];
-const DIFFICULTIES = ["Easy","Medium","Hard"];
+const DIFFICULTIES = ["Easy","Medium","Hard"] as const;
 
 interface PracticeQuizToolProps {
   defaultGrade?: string;
@@ -16,6 +17,7 @@ interface PracticeQuizToolProps {
 }
 
 export function PracticeQuizTool({ defaultGrade, onUpgradeClick }: PracticeQuizToolProps) {
+  const t = useTranslations("ai.tools");
   const abortRef = useRef<AbortController | null>(null);
 
   const [topic, setTopic] = useState("");
@@ -44,10 +46,15 @@ export function PracticeQuizTool({ defaultGrade, onUpgradeClick }: PracticeQuizT
       "/api/v1/student/practice-quiz",
       { topic: topic.trim(), grade, subject: subject.trim(), question_count: questionCount, difficulty, language },
       {
-        onToken: (t) => setOutput((p) => p + t),
+        onToken: (tok) => setOutput((p) => p + tok),
         onDone: (u) => { setUsage(u); setStreaming(false); },
         onError: (msg) => { setError(msg); setStreaming(false); },
         signal: ctrl.signal,
+        errorMessages: {
+          noBody: t("shared.streamError.noBody"),
+          serviceError: t("shared.streamError.serviceError"),
+          unknown: t("shared.streamError.unknown"),
+        },
       },
     );
   };
@@ -62,20 +69,20 @@ export function PracticeQuizTool({ defaultGrade, onUpgradeClick }: PracticeQuizT
           <Sparkles className="w-5 h-5 text-violet-600 dark:text-violet-400" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-ink">Practice Quiz</h1>
-          <p className="text-sm text-ink-muted">Test your understanding with AI-generated questions</p>
+          <h1 className="text-xl font-bold text-ink">{t("quiz.title")}</h1>
+          <p className="text-sm text-ink-muted">{t("quiz.subtitle")}</p>
         </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface p-5 space-y-4">
         <div>
           <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">
-            Topic <span className="text-red-500">*</span>
+            {t("quiz.topic")} <span className="text-red-500">*</span>
           </label>
           <input
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="e.g. The Mughal Empire"
+            placeholder={t("quiz.topicPlaceholder")}
             maxLength={300}
             className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-violet-500/40"
           />
@@ -83,29 +90,29 @@ export function PracticeQuizTool({ defaultGrade, onUpgradeClick }: PracticeQuizT
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">Subject *</label>
+            <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">{t("shared.subject")} *</label>
             <input
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="e.g. History"
+              placeholder={t("quiz.subjectPlaceholder")}
               className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-violet-500/40"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">Grade</label>
+            <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">{t("shared.grade")}</label>
             <select
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
               className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-violet-500/40"
             >
-              {GRADES.map((g) => <option key={g} value={g}>Grade {g}</option>)}
+              {GRADES.map((g) => <option key={g} value={g}>{t("shared.gradeOption", { grade: g })}</option>)}
             </select>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">No. of Questions</label>
+            <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">{t("quiz.questionCount")}</label>
             <NumberInput
               min={3}
               max={20}
@@ -116,7 +123,7 @@ export function PracticeQuizTool({ defaultGrade, onUpgradeClick }: PracticeQuizT
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-2">Difficulty</label>
+            <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-2">{t("quiz.difficulty")}</label>
             <div className="flex gap-1.5">
               {DIFFICULTIES.map((d) => (
                 <button
@@ -128,7 +135,7 @@ export function PracticeQuizTool({ defaultGrade, onUpgradeClick }: PracticeQuizT
                       : "bg-slate-100 dark:bg-surface-secondary text-ink-muted hover:text-ink"
                   }`}
                 >
-                  {d}
+                  {t(`quiz.level.${d}`)}
                 </button>
               ))}
             </div>
@@ -136,12 +143,12 @@ export function PracticeQuizTool({ defaultGrade, onUpgradeClick }: PracticeQuizT
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">Language</label>
+          <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">{t("shared.language")}</label>
           <div className="flex gap-2">
-            {["en", "hi", "hinglish"].map((l) => (
+            {(["en", "hi", "hinglish"] as const).map((l) => (
               <button key={l} onClick={() => setLanguage(l)}
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${language === l ? "bg-violet-600 text-white" : "bg-slate-100 dark:bg-surface-secondary text-ink-muted hover:text-ink"}`}>
-                {l === "en" ? "English" : l === "hi" ? "Hindi" : "Hinglish"}
+                {t(`shared.lang.${l}`)}
               </button>
             ))}
           </div>
@@ -150,11 +157,11 @@ export function PracticeQuizTool({ defaultGrade, onUpgradeClick }: PracticeQuizT
         <div className="pt-1">
           {streaming ? (
             <button onClick={stop} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors">
-              <Square className="w-4 h-4" /> Stop
+              <Square className="w-4 h-4" /> {t("shared.stop")}
             </button>
           ) : (
             <button onClick={generate} disabled={!canGenerate} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors">
-              <Sparkles className="w-4 h-4" /> Generate Quiz
+              <Sparkles className="w-4 h-4" /> {t("quiz.generate")}
             </button>
           )}
         </div>
@@ -167,9 +174,9 @@ export function PracticeQuizTool({ defaultGrade, onUpgradeClick }: PracticeQuizT
       {(output || streaming) && (
         <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface p-5">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold text-ink">Practice Quiz</span>
-            {streaming && <span className="flex items-center gap-1.5 text-xs text-violet-500"><span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />Generating...</span>}
-            {usage && <span className="flex items-center gap-1 text-xs text-ink-muted"><Zap className="w-3 h-3 text-amber-500" />{usage.credits_charged} credits · {usage.credits_remaining} remaining</span>}
+            <span className="text-sm font-semibold text-ink">{t("quiz.output")}</span>
+            {streaming && <span className="flex items-center gap-1.5 text-xs text-violet-500"><span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />{t("quiz.generating")}</span>}
+            {usage && <span className="flex items-center gap-1 text-xs text-ink-muted"><Zap className="w-3 h-3 text-amber-500" />{t("shared.usage", { charged: usage.credits_charged, remaining: usage.credits_remaining })}</span>}
           </div>
           <div className="prose prose-sm dark:prose-invert max-w-none">
             <ReactMarkdown>{output}</ReactMarkdown>

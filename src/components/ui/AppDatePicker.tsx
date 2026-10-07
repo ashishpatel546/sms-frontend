@@ -32,6 +32,11 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
+import "dayjs/locale/hi";
+import "dayjs/locale/bn";
+import { bnBD } from "@mui/x-date-pickers/locales";
+import { hiINPickers } from "@/i18n/mui-pickers-hi";
+import { useLocale, useTranslations } from "next-intl";
 
 // ── Colour, read from the app's own tokens ───────────────────────────────────
 
@@ -100,6 +105,24 @@ function useTokenPalette(): Palette {
 }
 
 // ── MUI theme factory ────────────────────────────────────────────────────────
+
+/**
+ * Month and weekday names in the reader's language (dayjs locales; digits
+ * stay Latin since the preParsePostFormat plugin is not loaded), plus button
+ * and label text: MUI's own Bengali, our Hindi (MUI ships none).
+ */
+function usePickerLocale() {
+  const locale = useLocale();
+  return {
+    adapterLocale: locale,
+    localeText:
+      locale === "bn"
+        ? bnBD.components.MuiLocalizationProvider.defaultProps.localeText
+        : locale === "hi"
+          ? hiINPickers
+          : undefined,
+  };
+}
 
 function buildMuiTheme(p: Palette) {
   return createTheme({
@@ -266,6 +289,7 @@ export function AppDatePicker({
   const palette = useTokenPalette();
   // Only rebuilds when a token actually changed
   const muiTheme = useMemo(() => buildMuiTheme(palette), [palette]);
+  const pickerLocale = usePickerLocale();
 
   const dayjsValue = value ? dayjs(value, "YYYY-MM-DD") : null;
   const minDate = min ? dayjs(min, "YYYY-MM-DD") : undefined;
@@ -276,7 +300,7 @@ export function AppDatePicker({
   };
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
+    <LocalizationProvider dateAdapter={AdapterDayjs} {...pickerLocale}>
       <ThemeProvider theme={muiTheme}>
         <div className={className} style={{ width: "100%" }}>
           <DatePicker
@@ -338,6 +362,8 @@ export function AppMonthPicker({
 }: AppMonthPickerProps) {
   const palette = useTokenPalette();
   const muiTheme = useMemo(() => buildMuiTheme(palette), [palette]);
+  const pickerLocale = usePickerLocale();
+  const t = useTranslations("common.picker");
 
   // Use day-01 internally so dayjs can parse it
   const dayjsValue = value ? dayjs(`${value}-01`, "YYYY-MM-DD") : null;
@@ -347,7 +373,7 @@ export function AppMonthPicker({
   };
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
+    <LocalizationProvider dateAdapter={AdapterDayjs} {...pickerLocale}>
       <ThemeProvider theme={muiTheme}>
         <div className={className} style={{ width: "100%" }}>
           <DatePicker
@@ -365,7 +391,7 @@ export function AppMonthPicker({
                 fullWidth: true,
                 sx: buildTextFieldSx(palette),
                 slotProps: {
-                  htmlInput: { placeholder: placeholder ?? "Select month" },
+                  htmlInput: { placeholder: placeholder ?? t("selectMonth") },
                 },
               },
               popper: { sx: popperSx(palette) },
@@ -410,6 +436,7 @@ export function AppTimePicker({
 }: AppTimePickerProps) {
   const palette = useTokenPalette();
   const muiTheme = useMemo(() => buildMuiTheme(palette), [palette]);
+  const pickerLocale = usePickerLocale();
 
   const dayjsValue = value ? dayjs(`2000-01-01T${value}`) : null;
 
@@ -418,7 +445,7 @@ export function AppTimePicker({
   };
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
+    <LocalizationProvider dateAdapter={AdapterDayjs} {...pickerLocale}>
       <ThemeProvider theme={muiTheme}>
         <div className={className} style={{ width: "100%" }}>
           <TimePicker

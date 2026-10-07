@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import Cropper, { type Area } from 'react-easy-crop';
+import { useTranslations } from 'next-intl';
 import { Loader2, RotateCcw, RotateCw, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -12,7 +13,9 @@ import {
   loadImageFromFile,
   preparePhoto,
   type PreparedPhoto,
+  PhotoError,
 } from './photo-pipeline';
+import { useHelperMessage } from '@/i18n/useHelperMessage';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    THE LIGHT TABLE
@@ -44,8 +47,11 @@ export function PhotoCropDialog({
   title,
   onCancel,
   onConfirm,
-  confirmLabel = 'Use this photo',
+  confirmLabel,
 }: PhotoCropDialogProps) {
+  const t = useTranslations('students.crop');
+  const helperText = useHelperMessage();
+  const tc = useTranslations('common');
   const [image, setImage] = React.useState<HTMLImageElement | null>(null);
   const [source, setSource] = React.useState<string | null>(null);
   const [loadError, setLoadError] = React.useState<string | null>(null);
@@ -74,7 +80,7 @@ export function PhotoCropDialog({
         setSource(objectUrl);
       })
       .catch((err: Error) => {
-        if (!cancelled) setLoadError(err.message);
+        if (!cancelled) setLoadError(err instanceof PhotoError ? helperText({ key: err.key }) : err.message);
       });
 
     return () => {
@@ -106,7 +112,9 @@ export function PhotoCropDialog({
       await onConfirm(prepared);
     } catch (err) {
       setSaveError(
-        err instanceof Error ? err.message : 'That photo could not be prepared.',
+        err instanceof PhotoError
+          ? helperText({ key: err.key })
+          : (err instanceof Error && err.message) || t('prepareFailed'),
       );
       setSaving(false);
     }
@@ -120,7 +128,7 @@ export function PhotoCropDialog({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={`Crop ${title.toLowerCase()}`}
+      aria-label={t('dialogLabel', { title: title.toLowerCase() })}
       className="fixed inset-0 z-70 flex items-stretch justify-center bg-walnut-950/70 backdrop-blur-sm sm:items-center sm:p-4"
     >
       <div
@@ -136,14 +144,14 @@ export function PhotoCropDialog({
               {title}
             </h2>
             <p className="mt-0.5 text-[11.5px] text-white/55">
-              Drag to position · pinch or use the slider to zoom
+              {t('instructions')}
             </p>
           </div>
           <button
             type="button"
             onClick={onCancel}
             disabled={saving}
-            aria-label="Close without saving"
+            aria-label={t('closeWithoutSaving')}
             className="ml-auto grid size-9 shrink-0 cursor-pointer place-items-center rounded-md text-white/60 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
           >
             <X className="size-4" />
@@ -179,7 +187,7 @@ export function PhotoCropDialog({
                 onCropComplete={(_, pixels) => setArea(pixels)}
               />
               <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-walnut-950/80 px-2.5 py-1 font-mono text-[10px] tracking-widest text-white/60 uppercase">
-                3:4 · ID card ratio
+                {t('ratio')}
               </span>
             </>
           )}
@@ -196,7 +204,7 @@ export function PhotoCropDialog({
               step={0.01}
               value={zoom}
               onChange={(e) => setZoom(Number(e.target.value))}
-              aria-label="Zoom"
+              aria-label={t('zoom')}
               disabled={!source || saving}
               className="h-11 min-w-0 flex-1 cursor-pointer accent-brass-300 disabled:opacity-40"
             />
@@ -206,8 +214,8 @@ export function PhotoCropDialog({
                 type="button"
                 onClick={() => setRotation((r) => (r - 90 + 360) % 360)}
                 disabled={!source || saving}
-                aria-label="Rotate left"
-                title="Rotate left"
+                aria-label={t('rotateLeft')}
+                title={t('rotateLeft')}
                 className="grid size-11 cursor-pointer place-items-center rounded-md border border-white/12 bg-white/8 text-white/80 transition-colors hover:bg-white/16 hover:text-white disabled:opacity-40"
               >
                 <RotateCcw className="size-4" />
@@ -216,8 +224,8 @@ export function PhotoCropDialog({
                 type="button"
                 onClick={() => setRotation((r) => (r + 90) % 360)}
                 disabled={!source || saving}
-                aria-label="Rotate right"
-                title="Rotate right"
+                aria-label={t('rotateRight')}
+                title={t('rotateRight')}
                 className="grid size-11 cursor-pointer place-items-center rounded-md border border-white/12 bg-white/8 text-white/80 transition-colors hover:bg-white/16 hover:text-white disabled:opacity-40"
               >
                 <RotateCw className="size-4" />
@@ -226,8 +234,7 @@ export function PhotoCropDialog({
           </div>
 
           <p className="text-[11.5px] text-white/45">
-            Saved at 1200px in WebP, with a matching thumbnail. Original:{' '}
-            {formatBytes(file.size)}.
+            {t('savedAs', { size: formatBytes(file.size) })}
           </p>
 
           {saveError && (
@@ -245,7 +252,7 @@ export function PhotoCropDialog({
               onClick={onCancel}
               disabled={saving}
             >
-              Cancel
+              {tc('action.cancel')}
             </Button>
             <Button
               type="button"
@@ -255,7 +262,7 @@ export function PhotoCropDialog({
               disabled={!area || saving || !!loadError}
             >
               {saving && <Loader2 className="animate-spin" />}
-              {saving ? 'Saving…' : confirmLabel}
+              {saving ? tc('action.saving') : (confirmLabel ?? t('confirm'))}
             </Button>
           </div>
         </div>

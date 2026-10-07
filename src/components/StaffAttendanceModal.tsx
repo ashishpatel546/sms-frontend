@@ -6,8 +6,10 @@ import { ATTENDANCE_TONE, attendanceCellClass } from "@/lib/attendanceColors";
 import { CHART_TOOLTIP } from "@/lib/chartTokens";
 import { hrApi, StaffAttendanceRecord } from "@/lib/hr-api";
 import { AppMonthPicker } from "@/components/ui/AppDatePicker";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 
-const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const WEEKDAYS = ["su", "mo", "tu", "we", "th", "fr", "sa"] as const;
 
 interface Props {
     staffId: number | null;
@@ -54,6 +56,9 @@ function getCellStyle(status: string | null | undefined, record: StaffAttendance
 }
 
 export default function StaffAttendanceModal({ staffId, staffLabel, onClose }: Props) {
+    const t = useTranslations("hr");
+    const tc = useTranslations("common");
+    const locale = useLocale() as Locale;
     const now = new Date();
     const [yyMm, setYyMm] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
     const year = parseInt(yyMm.split("-")[0]);
@@ -111,20 +116,20 @@ export default function StaffAttendanceModal({ staffId, staffLabel, onClose }: P
     const pct = workingMarked > 0 ? Math.round((presentish / workingMarked) * 100) : 0;
 
     const pieData = [
-        { name: "Present", value: counts.PRESENT, fill: STATUS_HEX.PRESENT },
-        { name: "Half Day", value: counts.HALF_DAY, fill: STATUS_HEX.HALF_DAY },
-        { name: "Leave", value: counts.ON_LEAVE, fill: STATUS_HEX.ON_LEAVE },
-        { name: "Absent", value: counts.ABSENT, fill: STATUS_HEX.ABSENT },
-        { name: "Holiday", value: counts.HOLIDAY, fill: STATUS_HEX.HOLIDAY },
+        { name: t("attendanceStatus.PRESENT"), value: counts.PRESENT, fill: STATUS_HEX.PRESENT },
+        { name: t("attendanceStatus.HALF_DAY"), value: counts.HALF_DAY, fill: STATUS_HEX.HALF_DAY },
+        { name: t("calendar.leave"), value: counts.ON_LEAVE, fill: STATUS_HEX.ON_LEAVE },
+        { name: t("attendanceStatus.ABSENT"), value: counts.ABSENT, fill: STATUS_HEX.ABSENT },
+        { name: t("attendanceStatus.HOLIDAY"), value: counts.HOLIDAY, fill: STATUS_HEX.HOLIDAY },
     ].filter((d) => d.value > 0);
 
     const tiles = [
-        { label: "Present", value: counts.PRESENT, color: "text-green-600", bg: "bg-green-50 border-green-100" },
-        { label: "Late arrivals", value: lateArrivals, color: "text-yellow-600", bg: "bg-yellow-50 border-yellow-100" },
-        { label: "Half Day", value: counts.HALF_DAY, color: "text-purple-600", bg: "bg-purple-50 border-purple-100" },
-        { label: "Leave", value: counts.ON_LEAVE, color: "text-blue-600", bg: "bg-blue-50 border-blue-100" },
-        { label: "Absent", value: counts.ABSENT, color: "text-red-600", bg: "bg-red-50 border-red-100" },
-        { label: "Holiday", value: counts.HOLIDAY, color: "text-sky-600", bg: "bg-sky-50 border-sky-100" },
+        { label: t("attendanceStatus.PRESENT"), value: counts.PRESENT, color: "text-green-600", bg: "bg-green-50 border-green-100" },
+        { label: t("calendar.lateArrivals"), value: lateArrivals, color: "text-yellow-600", bg: "bg-yellow-50 border-yellow-100" },
+        { label: t("attendanceStatus.HALF_DAY"), value: counts.HALF_DAY, color: "text-purple-600", bg: "bg-purple-50 border-purple-100" },
+        { label: t("calendar.leave"), value: counts.ON_LEAVE, color: "text-blue-600", bg: "bg-blue-50 border-blue-100" },
+        { label: t("attendanceStatus.ABSENT"), value: counts.ABSENT, color: "text-red-600", bg: "bg-red-50 border-red-100" },
+        { label: t("attendanceStatus.HOLIDAY"), value: counts.HOLIDAY, color: "text-sky-600", bg: "bg-sky-50 border-sky-100" },
     ];
 
     return (
@@ -133,9 +138,9 @@ export default function StaffAttendanceModal({ staffId, staffLabel, onClose }: P
                 <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
                     <div>
                         <h2 className="text-lg font-bold text-slate-800">{staffLabel}</h2>
-                        <p className="text-xs text-slate-500">Monthly Attendance</p>
+                        <p className="text-xs text-slate-500">{t("calendar.monthly")}</p>
                     </div>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 bg-white p-2 rounded-full shadow-sm" aria-label="Close">
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 bg-white p-2 rounded-full shadow-sm" aria-label={tc("action.close")}>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -144,7 +149,7 @@ export default function StaffAttendanceModal({ staffId, staffLabel, onClose }: P
 
                 <div className="p-6 overflow-y-auto flex-1">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-                        <h3 className="font-bold text-slate-800">{MONTH_NAMES[month - 1]} {year}</h3>
+                        <h3 className="font-bold text-slate-800">{new Date(year, month - 1, 1).toLocaleDateString(INTL_LOCALE[locale], { month: "long", year: "numeric" })}</h3>
                         <AppMonthPicker
                             value={yyMm}
                             onChange={(v) => setYyMm(v)}
@@ -152,13 +157,13 @@ export default function StaffAttendanceModal({ staffId, staffLabel, onClose }: P
                     </div>
 
                     {loading ? (
-                        <p className="text-sm text-slate-500 py-10 text-center">Loading…</p>
+                        <p className="text-sm text-slate-500 py-10 text-center">{tc("state.loading")}</p>
                     ) : (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-2 bg-slate-50 rounded-xl p-4 border border-slate-200">
                                 <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                                    {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
-                                        <div key={d} className="text-slate-500 text-[10px] font-bold py-1 uppercase">{d}</div>
+                                    {WEEKDAYS.map((d) => (
+                                        <div key={d} className="text-slate-500 text-[10px] font-bold py-1 uppercase">{t(`weekdays.${d}`)}</div>
                                     ))}
                                 </div>
                                 <div className="grid grid-cols-7 gap-1.5">
@@ -168,7 +173,7 @@ export default function StaffAttendanceModal({ staffId, staffLabel, onClose }: P
                                         return (
                                             <div
                                                 key={i}
-                                                title={c.day ? (c.record ? `${c.date}: ${c.record.status}${late ? " (late)" : ""} (${c.record.method})` : c.status === "SUNDAY" ? `${c.date}: Sunday` : c.date ?? "") : ""}
+                                                title={c.day ? (c.record ? t(late ? "calendar.cellTitleLate" : "calendar.cellTitle", { date: c.date ?? "", status: t(`attendanceStatus.${c.record.status}`), method: t(`method.${c.record.method}`) }) : c.status === "SUNDAY" ? t("calendar.sundayTitle", { date: c.date ?? "" }) : c.date ?? "") : ""}
                                                 style={style}
                                                 className={`aspect-square flex items-center justify-center rounded-lg text-xs font-bold border ${className}`}
                                             >
@@ -178,13 +183,13 @@ export default function StaffAttendanceModal({ staffId, staffLabel, onClose }: P
                                     })}
                                 </div>
                                 <div className="flex flex-wrap justify-center gap-2 mt-4 text-[10px] font-medium text-slate-600">
-                                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500" /> Present</span>
-                                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-yellow-400" /> Late</span>
-                                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-purple-500" /> Half</span>
-                                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Leave</span>
-                                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Absent</span>
-                                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-sky-500" /> Holiday</span>
-                                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full" style={{ background: `linear-gradient(135deg, ${ATTENDANCE_TONE.PRESENT.fill} 50%, ${ATTENDANCE_TONE.LATE.fill} 50%)` }} /> Present + Late</span>
+                                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500" /> {t("attendanceStatus.PRESENT")}</span>
+                                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-yellow-400" /> {t("attendanceStatus.LATE")}</span>
+                                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-purple-500" /> {t("calendar.half")}</span>
+                                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> {t("calendar.leave")}</span>
+                                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> {t("attendanceStatus.ABSENT")}</span>
+                                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-sky-500" /> {t("attendanceStatus.HOLIDAY")}</span>
+                                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full" style={{ background: `linear-gradient(135deg, ${ATTENDANCE_TONE.PRESENT.fill} 50%, ${ATTENDANCE_TONE.LATE.fill} 50%)` }} /> {t("calendar.presentLate")}</span>
                                 </div>
                             </div>
 
@@ -198,7 +203,7 @@ export default function StaffAttendanceModal({ staffId, staffLabel, onClose }: P
                                                         {/* minAngle keeps a single-day slice from vanishing behind paddingAngle */}
                                                         <Pie data={pieData} cx="50%" cy="50%" innerRadius={58} outerRadius={82} paddingAngle={3} minAngle={6} dataKey="value" />
                                                         <Tooltip
-                                                            formatter={(val: any, name: any) => [`${val} days`, name]}
+                                                            formatter={(val: any, name: any) => [t("calendar.daysCount", { count: Number(val) }), name]}
                                                             wrapperStyle={{ zIndex: 10 }}
                                                             contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
                                                         />
@@ -206,31 +211,31 @@ export default function StaffAttendanceModal({ staffId, staffLabel, onClose }: P
                                                 </ResponsiveContainer>
                                                 <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
                                                     <span className="text-slate-800 text-3xl font-black">{pct}%</span>
-                                                    <span className="text-slate-500 text-[10px] mt-0.5 uppercase tracking-widest font-bold">Present rate</span>
+                                                    <span className="text-slate-500 text-[10px] mt-0.5 uppercase tracking-widest font-bold">{t("calendar.presentRate")}</span>
                                                 </div>
                                             </div>
                                             {lateArrivals > 0 && (
                                                 <p className="text-[10px] text-slate-500 text-center mt-2 leading-snug">
-                                                    Includes {lateArrivals} late arrival{lateArrivals === 1 ? "" : "s"} — late days still count as present.
+                                                    {t("calendar.includesLate", { count: lateArrivals })}
                                                 </p>
                                             )}
                                         </>
                                     ) : (
-                                        <p className="text-sm text-slate-500 text-center py-12">No attendance marked this month.</p>
+                                        <p className="text-sm text-slate-500 text-center py-12">{t("calendar.noneThisMonth")}</p>
                                     )}
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-2">
-                                    {tiles.map((t) => (
-                                        <div key={t.label} className={`border rounded-lg p-2 text-center shadow-sm ${t.bg}`}>
-                                            <div className={`text-lg font-bold ${t.color}`}>{t.value}</div>
-                                            <div className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">{t.label}</div>
+                                    {tiles.map((tile) => (
+                                        <div key={tile.label} className={`border rounded-lg p-2 text-center shadow-sm ${tile.bg}`}>
+                                            <div className={`text-lg font-bold ${tile.color}`}>{tile.value}</div>
+                                            <div className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">{tile.label}</div>
                                         </div>
                                     ))}
                                 </div>
 
                                 <div className="bg-slate-800 rounded-xl px-4 py-3 flex items-center justify-between text-white shadow-md">
-                                    <div className="font-medium text-[11px] text-slate-300 uppercase tracking-wider">Working days marked</div>
+                                    <div className="font-medium text-[11px] text-slate-300 uppercase tracking-wider">{t("calendar.workingMarked")}</div>
                                     <div className="text-xl font-bold">{workingMarked}</div>
                                 </div>
                             </div>

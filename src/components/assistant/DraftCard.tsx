@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { CircleCheck, CircleX, Loader2, PencilLine, Undo2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import type { DraftItem } from './useAssistantChat';
 
@@ -24,6 +25,8 @@ export function DraftCard({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const t = useTranslations('assistant.draft');
+  const tc = useTranslations('common');
   const [now, setNow] = useState(() => Date.now());
   const pending = draft.state === 'pending';
 
@@ -46,11 +49,11 @@ export function DraftCard({
   }[state];
 
   const heading = {
-    pending: { icon: PencilLine, text: 'Draft, not saved yet', tone: 'text-accent-ai' },
-    expired: { icon: PencilLine, text: 'Draft expired. Ask again to prepare it.', tone: 'text-ink-muted' },
-    done: { icon: CircleCheck, text: 'Saved', tone: 'text-accent-success-deep' },
-    cancelled: { icon: Undo2, text: 'Cancelled, nothing was changed', tone: 'text-ink-muted' },
-    failed: { icon: CircleX, text: 'Not saved', tone: 'text-accent-danger-deep' },
+    pending: { icon: PencilLine, text: t('pending'), tone: 'text-accent-ai' },
+    expired: { icon: PencilLine, text: t('expired'), tone: 'text-ink-muted' },
+    done: { icon: CircleCheck, text: t('done'), tone: 'text-accent-success-deep' },
+    cancelled: { icon: Undo2, text: t('cancelled'), tone: 'text-ink-muted' },
+    failed: { icon: CircleX, text: t('failed'), tone: 'text-accent-danger-deep' },
   }[state];
   const Icon = heading.icon;
 
@@ -86,7 +89,7 @@ export function DraftCard({
             ) : (
               <CircleCheck className="size-4" aria-hidden />
             )}
-            Confirm and save
+            {t('confirm')}
           </Button>
           <Button
             size="sm"
@@ -96,11 +99,11 @@ export function DraftCard({
             className="min-h-10"
           >
             {draft.working === 'cancel' && <Loader2 className="size-4 animate-spin" aria-hidden />}
-            Cancel
+            {tc('action.cancel')}
           </Button>
           {left !== null && (
             <span className="ml-auto font-mono text-[11px] text-ink-faint tabular-nums">
-              {left <= 1 ? 'Expires in a minute' : `Expires in ${left} min`}
+              {left <= 1 ? t('expiresSoon') : t('expiresIn', { count: left })}
             </span>
           )}
         </div>

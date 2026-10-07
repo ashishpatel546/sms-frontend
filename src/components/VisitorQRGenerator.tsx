@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import QRCode from "react-qr-code";
+import { useTranslations } from "next-intl";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch, getUser } from "@/lib/auth";
 import NumberInput from "@/components/ui/NumberInput";
@@ -11,13 +12,13 @@ import {
 
 const PURPOSES = ["ADMISSION", "OFFICIAL", "INQUIRY", "PTM", "OTHERS"] as const;
 const ID_PROOFS = [
-    { value: "", label: "None" },
-    { value: "AADHAAR", label: "Aadhaar" },
-    { value: "DL", label: "Driving License" },
-    { value: "VOTER_ID", label: "Voter ID" },
+    { value: "", label: "none" },
+    { value: "AADHAAR", label: "AADHAAR" },
+    { value: "DL", label: "DL" },
+    { value: "VOTER_ID", label: "VOTER_ID" },
     { value: "PAN", label: "PAN" },
-    { value: "OTHER", label: "Other" },
-];
+    { value: "OTHER", label: "OTHER" },
+] as const;
 
 interface QrResult {
     token: string;
@@ -33,6 +34,8 @@ interface QrResult {
  * Name and mobile are auto-filled from the logged-in account.
  */
 export default function VisitorQRGenerator() {
+    const t = useTranslations("visitors");
+    const tc = useTranslations("common");
     const user = getUser();
     const [form, setForm] = useState({
         visitorName: user ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() : "",
@@ -86,10 +89,10 @@ export default function VisitorQRGenerator() {
                 }),
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(Array.isArray(data.message) ? data.message[0] : data.message || "Failed to generate visiting QR");
+            if (!res.ok) throw new Error(Array.isArray(data.message) ? data.message[0] : data.message || t("generator.failed"));
             setQr(data);
         } catch (err: any) {
-            setError(err.message || "Failed to generate visiting QR");
+            setError(err.message || t("generator.failed"));
         } finally {
             setSubmitting(false);
         }
@@ -103,7 +106,7 @@ export default function VisitorQRGenerator() {
         return (
             <div className="bg-surface border border-slate-200 dark:border-white/10 rounded-2xl p-5 sm:p-6 space-y-5">
                 <div className="flex flex-col items-center text-center">
-                    <p className="text-ink font-semibold mb-3">Show this QR at the school gate</p>
+                    <p className="text-ink font-semibold mb-3">{t("generator.showAtGate")}</p>
                     <div className="bg-white p-4 rounded-2xl border border-slate-200 max-w-full">
                         <QRCode
                             value={`V1:${qr.token}`}
@@ -114,18 +117,18 @@ export default function VisitorQRGenerator() {
                     <div className={`mt-3 flex items-center gap-1.5 text-sm ${remaining > 0 ? "text-ink-muted" : "text-red-500"}`}>
                         <Clock className="w-4 h-4" />
                         {remaining > 0
-                            ? <>Valid for entry: <span className="font-mono font-semibold text-ink">{fmtRemaining}</span></>
-                            : <>Expired — generate a new QR</>}
+                            ? <>{t.rich("generator.validFor", { time: fmtRemaining, b: (c) => <span className="font-mono font-semibold text-ink">{c}</span> })}</>
+                            : <>{t("generator.expired")}</>}
                     </div>
                 </div>
 
                 <div className="border border-slate-200 dark:border-white/10 rounded-xl divide-y divide-slate-100 dark:divide-white/5 text-sm">
                     {[
-                        ["Name", form.visitorName],
-                        ["Mobile", form.mobile],
-                        ["Purpose", form.purpose],
-                        ["Persons", String(form.personsCount)],
-                        ...(form.toMeet ? [["To Meet", form.toMeet]] : []),
+                        [t("generator.name"), form.visitorName],
+                        [t("generator.mobile"), form.mobile],
+                        [t("generator.purpose"), (PURPOSES as readonly string[]).includes(form.purpose) ? t(`purpose.${form.purpose as (typeof PURPOSES)[number]}`) : form.purpose],
+                        [t("generator.persons"), String(form.personsCount)],
+                        ...(form.toMeet ? [[t("generator.toMeet"), form.toMeet]] : []),
                     ].map(([k, v]) => (
                         <div key={k} className="flex justify-between px-4 py-2">
                             <span className="text-ink-muted">{k}</span>
@@ -136,12 +139,12 @@ export default function VisitorQRGenerator() {
 
                 <div className="flex items-start gap-2 text-xs text-ink-muted bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-3">
                     <Info className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>This QR is not saved anywhere — no history is kept. Your visit is recorded only when the gate staff scans and allows it. Each QR works once.</span>
+                    <span>{t("generator.notSaved")}</span>
                 </div>
 
                 <button onClick={() => setQr(null)}
                     className="w-full py-2.5 rounded-xl font-semibold text-ink border border-slate-300 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 transition-all flex items-center justify-center gap-2">
-                    <RefreshCw className="w-4 h-4" /> Generate Another QR
+                    <RefreshCw className="w-4 h-4" /> {t("generator.another")}
                 </button>
             </div>
         );
@@ -151,52 +154,52 @@ export default function VisitorQRGenerator() {
         <form onSubmit={handleSubmit} className="bg-surface border border-slate-200 dark:border-white/10 rounded-2xl p-5 sm:p-6 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                    <label className={labelCls}><UserRound className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />Visitor Name *</label>
+                    <label className={labelCls}><UserRound className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />{t("generator.visitorNameLabel")}</label>
                     <input type="text" value={form.visitorName} onChange={e => setForm(p => ({ ...p, visitorName: e.target.value }))} maxLength={150} className={inputCls} required />
                 </div>
                 <div>
-                    <label className={labelCls}>Mobile *</label>
+                    <label className={labelCls}>{t("generator.mobileLabel")}</label>
                     <input type="tel" value={form.mobile} onChange={e => setForm(p => ({ ...p, mobile: e.target.value.replace(/\D/g, "").slice(0, 10) }))} maxLength={10} className={inputCls} required />
                 </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
                 <div>
-                    <label className={labelCls}>Purpose *</label>
+                    <label className={labelCls}>{t("generator.purposeLabel")}</label>
                     <select value={form.purpose} onChange={e => setForm(p => ({ ...p, purpose: e.target.value }))} className={inputCls} required>
-                        <option value="" disabled>Select…</option>
-                        {PURPOSES.map(p => <option key={p} value={p}>{p.charAt(0) + p.slice(1).toLowerCase()}</option>)}
+                        <option value="" disabled>{tc("state.selectPlaceholder")}</option>
+                        {PURPOSES.map(p => <option key={p} value={p}>{t(`purpose.${p}`)}</option>)}
                     </select>
                 </div>
                 <div>
-                    <label className={labelCls}><Users className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />No. of Persons *</label>
+                    <label className={labelCls}><Users className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />{t("generator.personsLabel")}</label>
                     <NumberInput min={1} max={50} value={form.personsCount} emptyValue={1} onChange={v => setForm(p => ({ ...p, personsCount: v ?? 1 }))} className={inputCls} required />
                 </div>
             </div>
 
             <div>
-                <label className={labelCls}>Whom to Meet (optional)</label>
-                <input type="text" value={form.toMeet} onChange={e => setForm(p => ({ ...p, toMeet: e.target.value }))} maxLength={150} placeholder="e.g. Principal, Class Teacher of 5-A" className={inputCls} />
+                <label className={labelCls}>{t("generator.toMeetLabel")}</label>
+                <input type="text" value={form.toMeet} onChange={e => setForm(p => ({ ...p, toMeet: e.target.value }))} maxLength={150} placeholder={t("generator.toMeetPlaceholder")} className={inputCls} />
             </div>
 
             <div>
-                <label className={labelCls}>Description (optional)</label>
-                <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} maxLength={500} rows={2} placeholder="Briefly describe the purpose of your visit" className={inputCls} />
+                <label className={labelCls}>{t("generator.descriptionLabel")}</label>
+                <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} maxLength={500} rows={2} placeholder={t("generator.descriptionPlaceholder")} className={inputCls} />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                    <label className={labelCls}><Car className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />Vehicle No. (optional)</label>
+                    <label className={labelCls}><Car className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />{t("generator.vehicleLabel")}</label>
                     <input type="text" value={form.vehicleNumber} onChange={e => setForm(p => ({ ...p, vehicleNumber: e.target.value }))} maxLength={20} placeholder="GJ01AB1234" className={inputCls} />
                 </div>
                 <div>
-                    <label className={labelCls}><IdCard className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />ID Proof (optional)</label>
+                    <label className={labelCls}><IdCard className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />{t("generator.idProofLabel")}</label>
                     <select value={form.idProofType} onChange={e => setForm(p => ({ ...p, idProofType: e.target.value }))} className={inputCls}>
-                        {ID_PROOFS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                        {ID_PROOFS.map(p => <option key={p.value} value={p.value}>{t(`idProof.${p.label}`)}</option>)}
                     </select>
                 </div>
                 <div>
-                    <label className={labelCls}>ID Number</label>
+                    <label className={labelCls}>{t("generator.idNumberLabel")}</label>
                     <input type="text" value={form.idProofNumber} onChange={e => setForm(p => ({ ...p, idProofNumber: e.target.value }))} maxLength={30} className={inputCls} disabled={!form.idProofType} />
                 </div>
             </div>
@@ -210,11 +213,11 @@ export default function VisitorQRGenerator() {
 
             <button type="submit" disabled={!valid || submitting}
                 className="w-full py-3 rounded-xl font-semibold text-white bg-teal-600 hover:bg-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2">
-                {submitting ? <><RefreshCw className="w-4 h-4 animate-spin" /> Generating…</> : <><QrCode className="w-4 h-4" /> Get Visiting QR</>}
+                {submitting ? <><RefreshCw className="w-4 h-4 animate-spin" /> {t("generator.generating")}</> : <><QrCode className="w-4 h-4" /> {t("generator.submit")}</>}
             </button>
 
             <p className="text-ink-muted text-xs text-center">
-                Nothing is saved until the gate staff scans and allows your entry — so there is no visiting history.
+                {t("generator.footer")}
             </p>
         </form>
     );

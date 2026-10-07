@@ -1,0 +1,93 @@
+{
+  "session": {
+    "readOnlyStrip": "Read-only support session — you can view everything, but changes are disabled.",
+    "notAllowed": "Not allowed:"
+  },
+  "page": {
+    "title": "Help & Support",
+    "subtitle": "Find answers in our FAQs or connect directly with our support team."
+  },
+  "tabs": {
+    "faqs": "Frequently Asked Questions",
+    "contact": "Contact Support",
+    "install": "Install Guide"
+  },
+  "faqs": {
+    "title": "Common Questions",
+    "loading": "Loading FAQs...",
+    "stillNeedHelp": "Still need help?",
+    "stillNeedHelpBody": "If you couldn’t find the answer you were looking for, our team is ready to assist you.",
+    "contactUs": "Contact Us"
+  },
+  "contact": {
+    "title": "Get in Touch",
+    "emailUs": "Email Us",
+    "scanToConnect": "Scan to Connect",
+    "yourDetails": "Your Details",
+    "name": "Name:",
+    "mobile": "Mobile:",
+    "role": "Role:",
+    "school": "School:",
+    "notAvailable": "N/A",
+    "howCanWeHelp": "How can we help you?",
+    "issuePlaceholder": "Describe the issue you are facing or the question you have...",
+    "sendWhatsApp": "Send via WhatsApp",
+    "sendHint": "Clicking this button will open WhatsApp with a pre-filled message including your details and issue description."
+  },
+  "install": {
+    "title": "Get the app on your phone",
+    "subtitle": "A one-page, printable handout with a QR code and home-screen install steps — hand it to a parent at the office, or attach it to a WhatsApp or email.",
+    "print": "Print / Save as PDF",
+    "includeLogo": "Include logo",
+    "noneUploaded": "(none uploaded)",
+    "includeContact": "Include office contact",
+    "noneOnFile": "(none on file)",
+    "previewTitle": "Install guide preview",
+    "preparing": "Preparing preview…",
+    "printTip": "In the print dialog, set <b>Margins: None</b> and switch off <b>Headers and footers</b> — the sheet carries its own margins."
+  },
+  "installGuide": {
+    "theSchool": "the school",
+    "contactOffice": "Contact the school office.",
+    "docTitle": "{name} — install guide",
+    "eyebrow": "School app · Setup guide",
+    "title": "Install the <school>{name}</school> app on your phone",
+    "lede": "No app store, no download — the portal installs straight from your browser in about a minute.",
+    "startHere": "Start here — open the portal",
+    "eitherWay": "Either way works",
+    "optionA": "Option A",
+    "optionB": "Option B",
+    "qrAlt": "QR code for {url}",
+    "scanTitle": "Scan the code",
+    "scanBody": "Open the camera app on your phone, point it at the code, and tap the link that pops up.",
+    "typeTitle": "Or type the address",
+    "typeBody": "Open Chrome or Safari on your phone and enter this address exactly as written:",
+    "thenAdd": "Then add it to your home screen",
+    "followColumn": "Follow your phone’s column",
+    "tapAdd": "Tap Add",
+    "android": {
+      "step1Title": "Open the link in Chrome",
+      "step1Body": "Scan the code or type the address into Google Chrome.",
+      "step2Title": "Tap Install",
+      "step2Body": "A banner slides up from the bottom of the screen once the portal loads.",
+      "installChip": "Install app",
+      "step3Title": "No banner? Use the menu",
+      "step3Body": "Tap the three dots <strong>⋮</strong> in the top-right corner and choose <strong>Add to Home screen</strong>.",
+      "step4Body": "The app icon appears on your home screen, ready to open."
+    },
+    "ios": {
+      "sub": "Use Safari · Chrome also works",
+      "step1Title": "Open the link in Safari",
+      "step1Body": "Scan the code or type the address into Safari on your iPhone or iPad.",
+      "step2Title": "Tap Share",
+      "step2Body": "The share button sits in the bar at the bottom of the screen.",
+      "shareChip": "Share",
+      "step3Title": "Choose Add to Home Screen",
+      "step3Body": "Scroll down the list of options until you find it.",
+      "addChip": "Add to Home Screen",
+      "step4Body": "It’s in the top-right corner. The app icon appears on your home screen."
+    },
+    "footer": "Once installed, the app opens full-screen, keeps you signed in, and can send you notices from the school.",
+    "help": "Trouble installing? {help}"
+  }
+}

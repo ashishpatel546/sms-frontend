@@ -1,0 +1,74 @@
+{
+  "error": {
+    "didNotLoad": "That didn’t load"
+  },
+  "table": {
+    "empty": "Nothing here yet",
+    "noData": "No data found"
+  },
+  "filter": {
+    "clearSearch": "Clear search"
+  },
+  "pagination": {
+    "label": "Pagination",
+    "showing": "Showing <n>{range}</n> of <n>{total}</n>",
+    "records": "{count, plural, one {<n>{total}</n> record} other {<n>{total}</n> records}}",
+    "page": "Page {page}"
+  },
+  "stamp": {
+    "notMarked": "Not marked",
+    "todayAria": "Attendance today: {status}",
+    "markedAt": "Marked at {time}"
+  },
+  "skeleton": {
+    "children": "Loading your children",
+    "childrenLong": "Loading your children…",
+    "studentRecord": "Loading student record",
+    "studentRecordLong": "Loading student record…",
+    "section": "Loading section"
+  },
+  "pullToRefresh": {
+    "pulling": "Pull to refresh",
+    "armed": "Release to refresh",
+    "refreshing": "Refreshing…",
+    "settling": "Up to date"
+  },
+  "theme": {
+    "title": "Theme",
+    "appearance": "Appearance",
+    "palette": "Palette",
+    "mode": {
+      "light": "Light",
+      "dark": "Dark",
+      "auto": "Auto"
+    },
+    "paletteName": {
+      "ink": "Register & Ink",
+      "assembly": "Assembly"
+    },
+    "paletteHint": {
+      "ink": "Walnut rail, brass brand",
+      "assembly": "White ground, flag pigments"
+    }
+  },
+  "serviceUnavailable": {
+    "title": "Service Temporarily Unavailable",
+    "body": "We’re unable to connect to the server right now. Please contact your school administrator for assistance."
+  },
+  "pwa": {
+    "fallbackName": "School Management System",
+    "installName": "Install {name}",
+    "iosHint": "Tap <share></share> then “Add to Home Screen”",
+    "menuHint": "Tap <b>⋯</b> menu → “Add to phone” to install",
+    "benefit": "Install app for quick access, offline support",
+    "install": "Install",
+    "dismissAria": "Dismiss install banner"
+  },
+  "manifest": {
+    "description": "A comprehensive school management system powered by Colegios.",
+    "dashboard": "Dashboard",
+    "dashboardHint": "Go to the admin dashboard",
+    "parentPortal": "Parent Portal",
+    "parentPortalHint": "Go to the parent portal"
+  }
+}

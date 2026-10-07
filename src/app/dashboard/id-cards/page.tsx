@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import useSWR from 'swr';
 import toast, { Toaster } from 'react-hot-toast';
+import { useTranslations } from 'next-intl';
 import {
   Ban,
   Download,
@@ -95,26 +96,13 @@ interface SelectedCard {
  */
 const PRINT_LAYOUTS: {
   value: IdCardPrintLayout;
-  label: string;
-  description: string;
-}[] = [
-  {
-    value: 'sideBySide',
-    label: 'Side by side',
-    description:
-      'Front and back on the same row. Any printer — cut and glue back to back.',
-  },
-  {
-    value: 'duplex',
-    label: 'Double-sided',
-    description:
-      'Ten a sheet, fronts and backs on separate pages. Needs a duplex printer.',
-  },
-];
+}[] = [{ value: 'sideBySide' }, { value: 'duplex' }];
 
 export default function IdCardsPage() {
   const router = useRouter();
   const rbac = useRbac();
+  const t = useTranslations('idCards');
+  const tc = useTranslations('common');
 
   /* Everyone starts where they have something to see. For an office user that
      is the student register; for a teacher or guard, "My Card" is the only tab
@@ -242,7 +230,7 @@ export default function IdCardsPage() {
     batchError && !featureOff
       ? batchError instanceof Error
         ? batchError.message
-        : 'Could not load ID cards'
+        : t('page.loadFailed')
       : null;
 
   /* ── A clock, only precise enough to age a 15-minute link ────────────── */
@@ -347,22 +335,18 @@ export default function IdCardsPage() {
         },
       );
       toast.success(
-        `${cards.length} card${cards.length === 1 ? '' : 's'} on ${sheets} sheet${
-          sheets === 1 ? '' : 's'
-        } — ${
-          layout === 'duplex'
-            ? 'fronts and backs, print two-sided'
-            : 'front and back side by side'
-        }`,
+        layout === 'duplex'
+          ? t('toast.batchDuplex', { cards: cards.length, sheets })
+          : t('toast.batchSideBySide', { cards: cards.length, sheets }),
       );
       if (droppedImages) {
         toast(
-          'Photos could not be embedded, so the cards print with initials. The PDF is otherwise complete.',
+          t('toast.photosDropped'),
           { icon: '⚠️', duration: 6000 },
         );
       }
     } catch {
-      toast.error('Could not build the PDF. Try a smaller batch.');
+      toast.error(t('toast.batchFailed'));
     } finally {
       setProgress(null);
     }
@@ -375,15 +359,15 @@ export default function IdCardsPage() {
     setProgress({ done: 0, total: 1 });
     try {
       const { droppedImages } = await downloadSingleIdCardPdf(row, school);
-      toast.success(`${row.name} — front and back on one sheet`);
+      toast.success(t('toast.oneDone', { name: row.name }));
       if (droppedImages) {
-        toast('The photo could not be embedded — this card prints with initials.', {
+        toast(t('toast.onePhotoDropped'), {
           icon: '⚠️',
           duration: 6000,
         });
       }
     } catch {
-      toast.error('Could not build the PDF. Please try again.');
+      toast.error(t('shared.buildFailed'));
     } finally {
       setProgress(null);
     }
@@ -420,8 +404,8 @@ export default function IdCardsPage() {
         disabled={isIdCardRevoked(row)}
         aria-label={
           isIdCardRevoked(row)
-            ? `${row.name}'s card is revoked and cannot be printed`
-            : `Include ${row.name} in the print list`
+            ? t('table.ariaRevoked', { name: row.name })
+            : t('table.ariaInclude', { name: row.name })
         }
         className={
           isIdCardRevoked(row)
@@ -434,7 +418,7 @@ export default function IdCardsPage() {
 
   const nameColumn: Column<IdCardRow> = {
     key: 'name',
-    header: 'Name',
+    header: tc('field.name'),
     sortable: true,
     card: 'title',
     sortValue: (row) => row.name,
@@ -445,14 +429,14 @@ export default function IdCardsPage() {
         {/* A revoked holder is still on the roll, so they still appear here.
             Without this chip the register would look no different from anyone
             else's — and their card is dead. */}
-        {isIdCardRevoked(row) && <StatusChip status="Revoked" pigment="danger" />}
+        {isIdCardRevoked(row) && <StatusChip status="Revoked" label={t('chip.revoked')} pigment="danger" />}
       </div>
     ),
   };
 
   const roleColumn: Column<IdCardRow> = {
     key: 'role',
-    header: tab === 'students' ? 'Class' : 'Designation',
+    header: tab === 'students' ? tc('field.class') : t('column.designation'),
     card: 'meta',
     sortable: true,
     sortValue: (row) => idCardRoleLine(row),
@@ -461,7 +445,7 @@ export default function IdCardsPage() {
 
   const bloodColumn: Column<IdCardRow> = {
     key: 'blood',
-    header: 'Blood',
+    header: t('column.blood'),
     align: 'center',
     hideBelow: 'lg',
     render: (row) =>
@@ -476,13 +460,13 @@ export default function IdCardsPage() {
 
   const photoColumn: Column<IdCardRow> = {
     key: 'photo',
-    header: 'Photo',
+    header: tc('field.photo'),
     align: 'center',
     render: (row) =>
       row.photoUrl ? (
-        <StatusChip status="On file" pigment="success" />
+        <StatusChip status="On file" label={t('chip.onFile')} pigment="success" />
       ) : (
-        <StatusChip status="Missing" pigment="attn" />
+        <StatusChip status="Missing" label={t('chip.missing')} pigment="attn" />
       ),
   };
 
@@ -494,7 +478,7 @@ export default function IdCardsPage() {
           roleColumn,
           {
             key: 'roll',
-            header: 'Roll',
+            header: t('column.roll'),
             align: 'right',
             hideBelow: 'md',
             sortable: true,
@@ -503,7 +487,7 @@ export default function IdCardsPage() {
           },
           {
             key: 'guardian',
-            header: 'Guardian',
+            header: t('column.guardian'),
             hideBelow: 'xl',
             accessor: (row) => row.fathersName ?? row.guardianName ?? '—',
           },
@@ -516,7 +500,7 @@ export default function IdCardsPage() {
           roleColumn,
           {
             key: 'department',
-            header: 'Department',
+            header: t('column.department'),
             hideBelow: 'md',
             sortable: true,
             sortValue: (row) => row.department ?? '',
@@ -524,7 +508,7 @@ export default function IdCardsPage() {
           },
           {
             key: 'code',
-            header: 'Emp code',
+            header: t('column.empCode'),
             align: 'right',
             hideBelow: 'lg',
             sortable: true,
@@ -541,14 +525,14 @@ export default function IdCardsPage() {
   if (featureOff) {
     return (
       <PageShell>
-        <PageHeader section="Identity" title="ID cards" />
+        <PageHeader section={t('page.section')} title={t('page.title')} />
         <PageBody>
           <Panel>
             <PanelBody>
               <EmptyState
                 icon={<Lock />}
-                title="ID cards are switched off for your school"
-                description="The module exists but nobody has enabled it yet. Your super admin can turn it on from Billing, or write to support@appme.in and we will do it."
+                title={t('page.offTitle')}
+                description={t('page.offDescription')}
               />
             </PanelBody>
           </Panel>
@@ -562,12 +546,12 @@ export default function IdCardsPage() {
       <Toaster position="top-center" />
 
       <PageHeader
-        section="Identity"
-        title="ID cards"
+        section={t('page.section')}
+        title={t('page.title')}
         description={
           tab === 'me'
-            ? 'Your own card, as it prints.'
-            : 'Pick who needs a card, check the artwork, print the sheet.'
+            ? t('page.descriptionMe')
+            : t('page.descriptionRegister')
         }
         actions={
           <>
@@ -575,7 +559,7 @@ export default function IdCardsPage() {
                 how a card gets checked at the gate. */}
             <Button variant="outline" size="md" render={<Link href="/dashboard/pickup/scan" />}>
               <ScanLine className="size-4" aria-hidden />
-              Verify a card
+              {t('page.verify')}
             </Button>
             <Button
               variant="primary"
@@ -592,7 +576,7 @@ export default function IdCardsPage() {
               ) : (
                 <>
                   <Download className="size-4" aria-hidden />
-                  Download PDF
+                  {t('shared.downloadPdf')}
                 </>
               )}
             </Button>
@@ -602,13 +586,13 @@ export default function IdCardsPage() {
           tab === 'me' ? null : (
           <>
             <span className="eyebrow">
-              {selectedCount > 0 ? `${selectedCount} on the print list` : `${rows.length} on this page`}
+              {selectedCount > 0 ? t('page.onPrintList', { count: selectedCount }) : t('page.onThisPage', { count: rows.length })}
             </span>
             {printList.length > 0 && (
               <span className="tabular rounded-full border border-line bg-surface px-2 py-0.5 text-[11.5px] text-ink-muted">
                 {layout === 'duplex'
-                  ? `${sheetCount} A4 sheet${sheetCount === 1 ? '' : 's'} · ${sheetCount * 2} sides`
-                  : `${sheetCount} A4 sheet${sheetCount === 1 ? '' : 's'} · one side`}
+                  ? t('page.sheetsDuplex', { count: sheetCount, sides: sheetCount * 2 })
+                  : t('page.sheetsOneSide', { count: sheetCount })}
               </span>
             )}
             {selectedCount > 0 && (
@@ -618,7 +602,7 @@ export default function IdCardsPage() {
                 className="inline-flex cursor-pointer items-center gap-1 text-[12px] font-medium text-ink-muted underline-offset-4 hover:text-brand hover:underline"
               >
                 <X className="size-3" aria-hidden />
-                Clear selection
+                {t('page.clearSelection')}
               </button>
             )}
           </>
@@ -629,15 +613,15 @@ export default function IdCardsPage() {
             value={tab}
             onValueChange={changeTab}
             options={[
-              { value: 'me', label: 'My card', icon: <IdCardIcon /> },
+              { value: 'me', label: t('tabs.me'), icon: <IdCardIcon /> },
               ...(canManage
                 ? ([
                     {
                       value: 'students' as const,
-                      label: 'Students',
+                      label: t('tabs.students'),
                       icon: <GraduationCap />,
                     },
-                    { value: 'staff' as const, label: 'Staff', icon: <Users /> },
+                    { value: 'staff' as const, label: t('tabs.staff'), icon: <Users /> },
                   ])
                 : []),
             ]}
@@ -657,7 +641,7 @@ export default function IdCardsPage() {
         <FilterBar>
           {tab === 'students' ? (
             <>
-              <FilterField label="Class" width="md">
+              <FilterField label={tc('field.class')} width="md">
                 <Select
                   value={classId ?? ''}
                   onChange={(e) => {
@@ -666,7 +650,7 @@ export default function IdCardsPage() {
                     setPage(1);
                   }}
                 >
-                  <option value="">All classes</option>
+                  <option value="">{t('filter.allClasses')}</option>
                   {(classes ?? []).map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -674,7 +658,7 @@ export default function IdCardsPage() {
                   ))}
                 </Select>
               </FilterField>
-              <FilterField label="Section" width="sm">
+              <FilterField label={tc('field.section')} width="sm">
                 <Select
                   value={sectionId ?? ''}
                   disabled={!classId}
@@ -683,7 +667,7 @@ export default function IdCardsPage() {
                     setPage(1);
                   }}
                 >
-                  <option value="">All</option>
+                  <option value="">{tc('field.all')}</option>
                   {(sections ?? []).map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
@@ -693,12 +677,12 @@ export default function IdCardsPage() {
               </FilterField>
             </>
           ) : (
-            <FilterField label="Department" width="lg">
+            <FilterField label={t('filter.department')} width="lg">
               <input
                 type="text"
                 value={departmentInput}
                 onChange={(e) => setDepartmentInput(e.target.value)}
-                placeholder="Any department"
+                placeholder={t('filter.anyDepartment')}
                 list="id-card-departments"
                 className="h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors placeholder:text-ink-faint focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none sm:h-10"
               />
@@ -719,7 +703,7 @@ export default function IdCardsPage() {
             </FilterField>
           )}
 
-          <FilterField label="Rows per page" width="sm">
+          <FilterField label={t('filter.rowsPerPage')} width="sm">
             <Select
               value={limit}
               onChange={(e) => {
@@ -735,11 +719,11 @@ export default function IdCardsPage() {
             </Select>
           </FilterField>
 
-          <FilterField label="Search by name" width="lg">
+          <FilterField label={t('filter.searchByName')} width="lg">
             <SearchInput
               value={nameFilter}
               onValueChange={setNameFilter}
-              placeholder="Name…"
+              placeholder={t('filter.namePlaceholder')}
               className="sm:max-w-none"
             />
           </FilterField>
@@ -749,15 +733,13 @@ export default function IdCardsPage() {
             link. Saying so beats letting somebody wonder why it stops there. */}
         {limit === 100 && (
           <Note pigment="info">
-            100 cards a page is the maximum — each one needs a fresh, signed
-            photo link. Select across pages to build a longer run.
+            {t('note.maxRows')}
           </Note>
         )}
 
         {linksMayHaveLapsed && (
-          <Note pigment="attn" title="Some photo links may have expired">
-            Photo links last about fifteen minutes. Reload the page and select
-            again if you want portraits rather than initials.
+          <Note pigment="attn" title={t('note.linksExpiredTitle')}>
+            {t('note.linksExpiredBody')}
           </Note>
         )}
 
@@ -774,8 +756,8 @@ export default function IdCardsPage() {
               isRowFlagged={(row) => !row.photoUrl}
               emptyMessage={
                 tab === 'students'
-                  ? 'No students match these filters'
-                  : 'No staff match these filters'
+                  ? t('table.emptyStudents')
+                  : t('table.emptyStaff')
               }
               toolbar={
                 <>
@@ -787,13 +769,13 @@ export default function IdCardsPage() {
                       disabled={printableRows.length === 0}
                       className="size-4 cursor-pointer"
                     />
-                    Select this page
+                    {t('table.selectPage')}
                   </label>
                   <TableCount>{rows.length}</TableCount>
                   {withoutPhoto > 0 && (
                     <span className="inline-flex items-center gap-1.5 text-[12px] text-accent-warn-deep">
                       <ImageOff className="size-3.5" aria-hidden />
-                      {withoutPhoto} without a photo — these print with initials
+                      {t('table.withoutPhoto', { count: withoutPhoto })}
                     </span>
                   )}
                   {/* Said out loud, because "Select this page" quietly leaving
@@ -801,7 +783,7 @@ export default function IdCardsPage() {
                   {revokedOnPage > 0 && (
                     <span className="inline-flex items-center gap-1.5 text-[12px] text-accent-danger-deep">
                       <Ban className="size-3.5" aria-hidden />
-                      {revokedOnPage} revoked — left out of any print run
+                      {t('table.revokedOnPage', { count: revokedOnPage })}
                     </span>
                   )}
                 </>
@@ -822,11 +804,11 @@ export default function IdCardsPage() {
           <aside ref={previewRef} className="min-w-0 lg:sticky lg:top-4 lg:self-start">
             <Panel>
               <PanelHeader
-                title="Card preview"
+                title={t('preview.title')}
                 description={
                   previewRow
-                    ? 'Exactly what gets printed, at actual size.'
-                    : 'Choose someone from the register.'
+                    ? t('preview.descriptionReady')
+                    : t('preview.descriptionEmpty')
                 }
               />
               <PanelBody className="space-y-3">
@@ -838,13 +820,15 @@ export default function IdCardsPage() {
                       school={school}
                     />
                     {isIdCardRevoked(previewRow) && (
-                      <Note title="This card is revoked" pigment="danger">
+                      <Note title={t('shared.revokedTitle')} pigment="danger">
                         {previewRow.revokedReason
-                          ? `“${previewRow.revokedReason}” — it`
-                          : 'It'}{' '}
-                        is refused at the gate and cannot be printed. Issue a
-                        new card to give {previewRow.name.split(' ')[0]} a
-                        working one.
+                          ? t('preview.revokedWithReason', {
+                              reason: previewRow.revokedReason,
+                              firstName: previewRow.name.split(' ')[0],
+                            })
+                          : t('preview.revokedNoReason', {
+                              firstName: previewRow.name.split(' ')[0],
+                            })}
                       </Note>
                     )}
                     <div className="flex flex-wrap gap-2 border-t border-line pt-3">
@@ -859,8 +843,8 @@ export default function IdCardsPage() {
                         disabled={isIdCardRevoked(previewRow)}
                       >
                         {selected[idCardKey(previewRow)]
-                          ? 'Remove from print list'
-                          : 'Add to print list'}
+                          ? t('preview.removeFromList')
+                          : t('preview.addToList')}
                       </Button>
                       <Button
                         variant="secondary"
@@ -869,7 +853,7 @@ export default function IdCardsPage() {
                         disabled={progress !== null || isIdCardRevoked(previewRow)}
                       >
                         <Printer className="size-3.5" aria-hidden />
-                        Just this one
+                        {t('preview.justThisOne')}
                       </Button>
                       {/* Lost or damaged. Kills the old card and mints the
                           next issue — the dialog spells that out first. */}
@@ -880,8 +864,8 @@ export default function IdCardsPage() {
                       >
                         <RotateCcw className="size-3.5" aria-hidden />
                         {isIdCardRevoked(previewRow)
-                          ? 'Issue new card'
-                          : 'Replace card'}
+                          ? t('preview.issueNew')
+                          : t('preview.replace')}
                       </Button>
                       {/* Sits beside Replace because the desk reaches for them
                           in the same breath — but it is the opposite action:
@@ -893,23 +877,25 @@ export default function IdCardsPage() {
                           onClick={() => openCardDialog(previewRow, 'revoke')}
                         >
                           <Ban className="size-3.5" aria-hidden />
-                          Revoke
+                          {t('preview.revoke')}
                         </Button>
                       )}
                     </div>
                     <p className="text-ink-faint mt-2 text-[11.5px]">
-                      Issue {previewRow.issueVersion}
                       {previewRow.validUntil
-                        ? ` · valid until ${formatIdCardDate(previewRow.validUntil)}`
-                        : ''}
+                        ? t('preview.issueValid', {
+                            version: previewRow.issueVersion,
+                            date: formatIdCardDate(previewRow.validUntil),
+                          })
+                        : t('preview.issue', { version: previewRow.issueVersion })}
                     </p>
                   </>
                 ) : (
                   <div className="py-8">
                     <EmptyState
                       icon={<IdCardIcon />}
-                      title="Nothing to preview"
-                      description="Pick a class, then tap anyone in the list."
+                      title={t('preview.emptyTitle')}
+                      description={t('preview.emptyDescription')}
                     />
                   </div>
                 )}
@@ -925,8 +911,8 @@ export default function IdCardsPage() {
 
             <Panel className="mt-4">
               <PanelHeader
-                title="How it prints"
-                description="Pick what your printer can actually do."
+                title={t('print.title')}
+                description={t('print.description')}
               />
               <PanelBody className="space-y-3">
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -951,10 +937,10 @@ export default function IdCardsPage() {
                             active ? 'text-brand-deep' : 'text-ink',
                           )}
                         >
-                          {option.label}
+                          {t(`print.layout.${option.value}.label`)}
                         </span>
                         <span className="mt-1 block text-[11.5px] leading-relaxed text-ink-muted">
-                          {option.description}
+                          {t(`print.layout.${option.value}.description`)}
                         </span>
                       </button>
                     );
@@ -966,34 +952,30 @@ export default function IdCardsPage() {
                     <>
                       <li className="flex gap-2">
                         <span className="mt-1.5 size-1 shrink-0 rounded-full bg-brand" />
-                        Ten cards to an A4 sheet, butted edge to edge — one cut
-                        serves the two cards either side of it.
+                        {t('print.duplexTip1')}
                       </li>
                       <li className="flex gap-2">
                         <span className="mt-1.5 size-1 shrink-0 rounded-full bg-brand" />
-                        Fronts and backs alternate as whole pages. Print double
-                        sided, flipping on the{' '}
-                        <strong className="text-ink">long edge</strong>.
+                        {t.rich('print.duplexTip2', {
+                          strong: (c) => <strong className="text-ink">{c}</strong>,
+                        })}
                       </li>
                     </>
                   ) : (
                     <>
                       <li className="flex gap-2">
                         <span className="mt-1.5 size-1 shrink-0 rounded-full bg-brand" />
-                        Four cards to an A4 sheet, each one&apos;s front and back
-                        on the same row.
+                        {t('print.sideTip1')}
                       </li>
                       <li className="flex gap-2">
                         <span className="mt-1.5 size-1 shrink-0 rounded-full bg-brand" />
-                        Cut around both faces, then glue them back to back. No
-                        two-sided printing anywhere.
+                        {t('print.sideTip2')}
                       </li>
                     </>
                   )}
                   <li className="flex gap-2">
                     <span className="mt-1.5 size-1 shrink-0 rounded-full bg-brand" />
-                    Set scaling to 100%. &quot;Fit to page&quot; shrinks the cards
-                    out of standard size.
+                    {t('print.scalingTip')}
                   </li>
                 </ul>
               </PanelBody>

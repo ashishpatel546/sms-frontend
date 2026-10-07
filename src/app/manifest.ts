@@ -1,11 +1,13 @@
 import { MetadataRoute } from 'next';
+import { getLocale, getTranslations } from 'next-intl/server';
 
-export default function manifest(): MetadataRoute.Manifest {
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const t = await getTranslations('ui');
+  const locale = await getLocale();
   return {
     name: 'Colegios',
     short_name: 'Colegios',
-    description:
-      'A comprehensive school management system powered by Colegios.',
+    description: t('manifest.description'),
     start_url: '/',
     display: 'standalone',
     // The walnut rail and the paper canvas behind it. These were a navy that
@@ -19,7 +21,7 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#362b1f',
     orientation: 'portrait-primary',
     scope: '/',
-    lang: 'en',
+    lang: locale,
     categories: ['education', 'productivity'],
     // Prevents browsers from deferring to a native app store listing instead of the PWA.
     // This is required for Edge on Android to reliably fire beforeinstallprompt.
@@ -40,15 +42,15 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       {
-        name: 'Dashboard',
+        name: t('manifest.dashboard'),
         url: '/dashboard',
-        description: 'Go to the admin dashboard',
+        description: t('manifest.dashboardHint'),
         icons: [{ src: '/colegios/pwa-logo.png', sizes: '192x192' }],
       },
       {
-        name: 'Parent Portal',
+        name: t('manifest.parentPortal'),
         url: '/parent-dashboard',
-        description: 'Go to the parent portal',
+        description: t('manifest.parentPortalHint'),
         icons: [{ src: '/colegios/pwa-logo.png', sizes: '192x192' }],
       },
     ],

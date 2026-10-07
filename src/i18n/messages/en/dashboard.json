@@ -1,0 +1,111 @@
+{
+  "home": {
+    "metaTitle": "Dashboard",
+    "section": "Overview",
+    "title": "Today at a glance",
+    "descriptionToday": "Roll call, collections and activity for today.",
+    "descriptionDate": "Roll call, collections and activity for {date}."
+  },
+  "layout": {
+    "skipToContent": "Skip to main content"
+  },
+  "greeting": {
+    "morning": "Good morning, {name}",
+    "afternoon": "Good afternoon, {name}",
+    "evening": "Good evening, {name}",
+    "there": "there",
+    "live": "Live"
+  },
+  "stats": {
+    "totalStudents": "Total students",
+    "enrolled": "Enrolled",
+    "presentToday": "Present today",
+    "studentsPresent": "Students present",
+    "staff": "Staff",
+    "teachersAdmins": "Teachers & admins",
+    "classes": "Classes",
+    "activeSections": "Active sections",
+    "feesThisMonth": "Fees this month",
+    "collected": "Collected",
+    "attendanceRate": "Attendance rate"
+  },
+  "staffAttendance": {
+    "lockedTitle": "Attendance insights",
+    "planCheckFailed": "We couldn’t check your plan. Refresh to try again.",
+    "higherPlan": "Available on a higher plan.",
+    "askSuperAdmin": "Ask your super admin to add it.",
+    "title": "Staff attendance today",
+    "expected": "{count, plural, one {{formatted} staff expected} other {{formatted} staff expected}}",
+    "loadFailed": "Couldn’t load today’s attendance."
+  },
+  "birthdays": {
+    "students": "Student birthdays",
+    "staff": "Staff birthdays",
+    "upcoming": "(upcoming)",
+    "empty": "No birthdays coming up."
+  },
+  "guard": {
+    "title": "Gate Overview",
+    "subtitle": "Today’s presence at a glance.",
+    "students": "Students",
+    "staff": "Staff",
+    "visitorsToday": "Visitors Today",
+    "presentToday": "{count} present today",
+    "currentlyInside": "{count} currently inside",
+    "scanHint": "Visitor or pickup",
+    "visitorsHint": "List & mark exits",
+    "attendanceHint": "Check in / out"
+  },
+  "quickActions": {
+    "title": "Quick actions",
+    "customize": "Customize",
+    "empty": "No actions pinned yet — choose the ones you use most.",
+    "customizeAria": "Customize dashboard actions",
+    "dialogTitle": "Dashboard shortcuts",
+    "dialogBody": "Pick the actions you use most. They appear as tiles on your dashboard.",
+    "removeAria": "Remove {label} from the dashboard",
+    "addAria": "Add {label} to the dashboard",
+    "tile": {
+      "scanQr": "Scan QR",
+      "visitors": "Visitors",
+      "myAttendance": "My attendance",
+      "notifications": "Notifications",
+      "takeAttendance": "Take attendance",
+      "homework": "Homework",
+      "students": "Students",
+      "addStudent": "Add student",
+      "collectFee": "Collect fee",
+      "addStaff": "Add staff",
+      "reports": "Reports"
+    }
+  },
+  "activity": {
+    "title": "Recent activity",
+    "show": "Show",
+    "showAria": "Number of entries to show",
+    "lastN": "Last {count}",
+    "emptyTitle": "Nothing logged yet",
+    "emptyBody": "Approvals, edits and gate events will appear here as staff work through the day.",
+    "justNow": "just now",
+    "minutesAgo": "{count}m ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago"
+  },
+  "featureGate": {
+    "checkFailed": "We couldn’t check which modules your school has. Refresh to try again.",
+    "notInPlan": "{title} isn’t part of your plan",
+    "higherPlans": "{title} is available on our higher plans.",
+    "gladToEnable": "We would be glad to switch it on for you.",
+    "seePlans": "See plans and upgrade",
+    "orWrite": "Or write to <link>{email}</link> and we will sort it out.",
+    "askSuperAdmin": "Ask your school’s super admin to add it — they can do it from the Billing section."
+  },
+  "billing": {
+    "overdueTitle": "Payment overdue — {amount} due",
+    "dueTitle": "Payment due — {amount}",
+    "payBefore": "Please pay before {date} to avoid any interruption to your school’s access.",
+    "dueBy": "Due by {date}. Paying on time keeps everything running smoothly.",
+    "settle": "Please settle your outstanding invoice to avoid any inconvenience.",
+    "payNow": "Pay now"
+  }
+}

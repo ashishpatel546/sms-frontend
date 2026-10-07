@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import toast from 'react-hot-toast';
+import { useTranslations } from 'next-intl';
 import {
   AlertTriangle,
   Ban,
@@ -72,6 +73,8 @@ export function ReissueCardDialog({
   /** Which tab to land on — the register's Revoke button opens on 'revoke'. */
   initialMode?: Mode;
 }) {
+  const t = useTranslations('idCards.reissue');
+  const tc = useTranslations('common');
   const [mode, setMode] = React.useState<Mode>(initialMode);
   const [reason, setReason] = React.useState('');
   const [validUntil, setValidUntil] = React.useState('');
@@ -121,15 +124,11 @@ export function ReissueCardDialog({
       if (mode === 'reissue') {
         const next = await reissueIdCard(subject, subjectId, reason.trim());
         setHistory(next);
-        toast.success(
-          `New card issued (issue ${next.currentVersion}). The previous card no longer works.`,
-        );
+        toast.success(t('toastReissued', { version: next.currentVersion }));
       } else if (mode === 'revoke') {
         const next = await revokeIdCard(subject, subjectId, reason.trim());
         setHistory(next);
-        toast.success(
-          `Card revoked. It is refused at the gate from now on — no replacement has been printed.`,
-        );
+        toast.success(t('toastRevoked'));
       } else {
         const next = await extendIdCardValidity(
           subject,
@@ -139,14 +138,14 @@ export function ReissueCardDialog({
         );
         setHistory(next);
         toast.success(
-          `Valid until ${formatIdCardDate(next.validUntil)} — the same card keeps working.`,
+          t('toastExtended', { date: formatIdCardDate(next.validUntil) }),
         );
       }
       onChanged();
       onOpenChange(false);
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : 'Could not update the card.',
+        e instanceof Error ? e.message : t('toastFailed'),
       );
     } finally {
       setBusy(false);
@@ -163,11 +162,12 @@ export function ReissueCardDialog({
           {row.name}
         </DialogTitle>
         <DialogDescription className="text-ink-muted mt-0.5 text-[12.5px]">
-          Currently on issue {row.issueVersion}
           {row.validUntil
-            ? `, valid until ${formatIdCardDate(row.validUntil)}`
-            : ''}
-          .
+            ? t('currentValid', {
+                version: row.issueVersion,
+                date: formatIdCardDate(row.validUntil),
+              })
+            : t('current', { version: row.issueVersion })}
         </DialogDescription>
 
         {revoked && (
@@ -178,14 +178,15 @@ export function ReissueCardDialog({
             />
             <div className="text-[12.5px] leading-relaxed">
               <p className="text-accent-danger-deep font-semibold">
-                This card is revoked
+                {t('revokedTitle')}
               </p>
               <p className="text-ink-muted mt-1">
                 {row.revokedReason
-                  ? `“${row.revokedReason}” — i`
-                  : 'I'}
-                t is refused at the gate. Issue {row.issueVersion + 1} to give
-                them a working card again.
+                  ? t('revokedWithReason', {
+                      reason: row.revokedReason,
+                      next: row.issueVersion + 1,
+                    })
+                  : t('revokedNoReason', { next: row.issueVersion + 1 })}
               </p>
             </div>
           </div>
@@ -196,13 +197,13 @@ export function ReissueCardDialog({
             active={mode === 'reissue'}
             onClick={() => setMode('reissue')}
             icon={<RotateCcw className="size-3.5" aria-hidden />}
-            label={revoked ? 'Issue new card' : 'Replace card'}
+            label={revoked ? t('tabIssueNew') : t('tabReplace')}
           />
           <ModeTab
             active={mode === 'revoke'}
             onClick={() => setMode('revoke')}
             icon={<Ban className="size-3.5" aria-hidden />}
-            label="Revoke"
+            label={t('tabRevoke')}
             // Nothing left to revoke; the tab would only produce a 400.
             disabled={revoked}
           />
@@ -210,7 +211,7 @@ export function ReissueCardDialog({
             active={mode === 'extend'}
             onClick={() => setMode('extend')}
             icon={<CalendarClock className="size-3.5" aria-hidden />}
-            label="Extend"
+            label={t('tabExtend')}
             // Moving the expiry of a dead card changes nothing at the gate.
             disabled={revoked}
           />
@@ -225,36 +226,36 @@ export function ReissueCardDialog({
               />
               <div className="text-[12.5px] leading-relaxed">
                 <p className="text-accent-danger-deep font-semibold">
-                  The card stops working and nothing replaces it
+                  {t('revokeWarnTitle')}
                 </p>
                 <p className="text-ink-muted mt-1">
-                  Issue {row.issueVersion} is refused at the gate from the
-                  moment you confirm, and {row.name.split(' ')[0]} will have no
-                  working card until you issue one. The card disappears from
-                  the parent portal and cannot be printed from here.
+                  {t('revokeWarnBody', {
+                    version: row.issueVersion,
+                    firstName: row.name.split(' ')[0],
+                  })}
                 </p>
                 <p className="text-ink-muted mt-1.5">
-                  Use <span className="font-medium">Replace card</span> instead
-                  if they need a new one straight away.
+                  {t.rich('revokeUseReplace', {
+                    b: (c) => <span className="font-medium">{c}</span>,
+                  })}
                 </p>
               </div>
             </div>
 
             <label className="mt-3 block">
               <span className="text-ink text-[13px] font-medium">
-                Why is it being revoked?
+                {t('revokeReasonLabel')}
               </span>
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={2}
                 maxLength={500}
-                placeholder="Reported stolen — police complaint filed"
+                placeholder={t('revokePlaceholder')}
                 className="border-line bg-surface text-ink placeholder:text-ink-faint focus:border-brand mt-1 w-full rounded-md border px-3 py-2 text-[13.5px] outline-none"
               />
               <span className="text-ink-faint text-[11.5px]">
-                With no replacement card to explain itself, this reason is the
-                only record of what happened.
+                {t('revokeReasonHint')}
               </span>
             </label>
           </>
@@ -268,55 +269,48 @@ export function ReissueCardDialog({
               <div className="text-[12.5px] leading-relaxed">
                 <p className="text-accent-danger-deep font-semibold">
                   {revoked
-                    ? 'A working card is issued in place of the revoked one'
-                    : 'The card they are holding will stop working immediately'}
+                    ? t('reissueWarnRevoked')
+                    : t('reissueWarnActive')}
                 </p>
                 <p className="text-ink-muted mt-1">
-                  {revoked ? (
-                    <>
-                      Issue {row.issueVersion} stays revoked and keeps its
-                      reason. Issue {row.issueVersion + 1} appears on the parent
-                      portal and here straight away — print it and hand it over.
-                    </>
-                  ) : (
-                    <>
-                      Issue {row.issueVersion} is refused at the gate from the
-                      moment you confirm. Issue {row.issueVersion + 1} appears
-                      on the parent portal and here straight away — print it and
-                      hand it over.
-                    </>
-                  )}
+                  {revoked
+                    ? t('reissueBodyRevoked', {
+                        version: row.issueVersion,
+                        next: row.issueVersion + 1,
+                      })
+                    : t('reissueBodyActive', {
+                        version: row.issueVersion,
+                        next: row.issueVersion + 1,
+                      })}
                 </p>
               </div>
             </div>
 
             <label className="mt-3 block">
               <span className="text-ink text-[13px] font-medium">
-                Why is it being replaced?
+                {t('replaceReasonLabel')}
               </span>
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={2}
                 maxLength={500}
-                placeholder="Lost on the school bus"
+                placeholder={t('replacePlaceholder')}
                 className="border-line bg-surface text-ink placeholder:text-ink-faint focus:border-brand mt-1 w-full rounded-md border px-3 py-2 text-[13.5px] outline-none"
               />
               <span className="text-ink-faint text-[11.5px]">
-                Kept against the old card, so this is answerable later.
+                {t('replaceHint')}
               </span>
             </label>
           </>
         ) : (
           <>
             <p className="text-ink-muted mt-3 text-[12.5px] leading-relaxed">
-              Keeps the current card working past its session. Nothing is
-              reprinted and the QR does not change — the same plastic simply
-              stays valid.
+              {t('extendBody')}
             </p>
             <label className="mt-3 block">
               <span className="text-ink text-[13px] font-medium">
-                Valid until
+                {t('validUntil')}
               </span>
               <input
                 type="date"
@@ -327,13 +321,15 @@ export function ReissueCardDialog({
             </label>
             <label className="mt-2 block">
               <span className="text-ink text-[13px] font-medium">
-                Note <span className="text-ink-faint">(optional)</span>
+                {t.rich('noteLabel', {
+                  muted: (c) => <span className="text-ink-faint">{c}</span>,
+                })}
               </span>
               <input
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 maxLength={500}
-                placeholder="Session extended by a term"
+                placeholder={t('extendPlaceholder')}
                 className="border-line bg-surface text-ink placeholder:text-ink-faint focus:border-brand mt-1 w-full rounded-md border px-3 py-2 text-[13.5px] outline-none"
               />
             </label>
@@ -344,29 +340,31 @@ export function ReissueCardDialog({
           <div className="border-line mt-4 rounded-xl border p-3">
             <p className="text-ink flex items-center gap-1.5 text-[12.5px] font-semibold">
               <History className="size-3.5" aria-hidden />
-              Card history
+              {t('historyTitle')}
             </p>
             <ul className="mt-2 space-y-2">
               {history.issues.map((issue) => (
                 <li key={issue.version} className="text-[12px] leading-relaxed">
                   <span className="text-ink font-medium">
-                    Issue {issue.version}
+                    {t('historyIssue', { version: issue.version })}
                   </span>
                   {/* A revoked CURRENT issue was cancelled outright; a revoked
                       older one was superseded. Same column, different story. */}
                   {issue.revokedAt ? (
                     <span className="text-accent-danger-deep">
                       {issue.version === history.currentVersion
-                        ? ' · revoked'
-                        : ' · replaced'}
+                        ? ` ${t('historyRevoked')}`
+                        : ` ${t('historyReplaced')}`}
                     </span>
                   ) : (
-                    <span className="text-accent-success"> · current</span>
+                    <span className="text-accent-success"> {t('historyCurrent')}</span>
                   )}
                   {issue.validUntil && !issue.revokedAt && (
                     <span className="text-ink-muted">
                       {' '}
-                      · until {formatIdCardDate(issue.validUntil)}
+                      {t('historyUntil', {
+                        date: formatIdCardDate(issue.validUntil),
+                      })}
                     </span>
                   )}
                   {issue.revokedReason && (
@@ -388,7 +386,7 @@ export function ReissueCardDialog({
             onClick={() => onOpenChange(false)}
             disabled={busy}
           >
-            Cancel
+            {tc('action.cancel')}
           </Button>
           <Button
             variant={mode === 'extend' ? 'primary' : 'destructive'}
@@ -397,12 +395,14 @@ export function ReissueCardDialog({
             disabled={busy || !canSubmit}
           >
             {busy
-              ? 'Working…'
+              ? t('working')
               : mode === 'reissue'
-                ? `${revoked ? 'Issue' : 'Replace —'} issue ${row.issueVersion + 1}`
+                ? revoked
+                  ? t('submitIssue', { next: row.issueVersion + 1 })
+                  : t('submitReplace', { next: row.issueVersion + 1 })
                 : mode === 'revoke'
-                  ? `Revoke issue ${row.issueVersion}`
-                  : 'Extend validity'}
+                  ? t('submitRevoke', { version: row.issueVersion })
+                  : t('submitExtend')}
           </Button>
         </DialogFooter>
       </DialogContent>

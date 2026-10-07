@@ -3,6 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { useTranslations } from 'next-intl';
 import {
   ExternalLink,
   FileText,
@@ -19,10 +20,8 @@ import { StatusChip } from '@/components/ui/StatusChip';
 import { cn } from '@/lib/utils';
 import {
   ACCEPTED_DOCUMENT_TYPES,
-  DOCUMENT_STATUS_LABEL,
   DOCUMENT_TYPES,
   MAX_DOCUMENT_FILE_BYTES,
-  OWNER_LABEL,
   attachPersonDocumentFile,
   deletePersonDocumentFile,
   getPersonDocumentFileUrl,
@@ -97,6 +96,8 @@ export function PersonDocumentsSection({
   disabledReason,
   showTraceLink = false,
 }: PersonDocumentsSectionProps) {
+  const t = useTranslations('students.checklist');
+  const td = useTranslations('students.doc');
   const staging = userId === null || userId === undefined;
 
   const [rows, setRows] = React.useState<PersonDocument[]>([]);
@@ -119,7 +120,7 @@ export function PersonDocumentsSection({
         if (!cancelled) setRows(data);
       })
       .catch(() => {
-        if (!cancelled) toast.error('The document checklist did not load.');
+        if (!cancelled) toast.error(t('loadFailed'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -127,7 +128,7 @@ export function PersonDocumentsSection({
     return () => {
       cancelled = true;
     };
-  }, [staging, userId]);
+  }, [staging, userId, t]);
 
   /* ── Reading the current state of one row ───────────────────────────── */
 
@@ -191,7 +192,7 @@ export function PersonDocumentsSection({
 
     const existing = liveRow(docType);
     if (existing?.s3Key) {
-      toast.error('Remove the attached file before changing this status.');
+      toast.error(t('removeFileFirst'));
       return;
     }
 
@@ -205,7 +206,7 @@ export function PersonDocumentsSection({
       });
       replaceRow(saved);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'That change did not save.');
+      toast.error((err instanceof Error && err.message) || t('changeFailed'));
     } finally {
       setPendingKey(null);
     }
@@ -228,7 +229,7 @@ export function PersonDocumentsSection({
       const saved = await upsertPersonDocument({ userId, owner, docType, notes: value });
       replaceRow(saved);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'That note did not save.');
+      toast.error((err instanceof Error && err.message) || t('noteFailed'));
     } finally {
       setPendingKey(null);
     }
@@ -254,9 +255,9 @@ export function PersonDocumentsSection({
         );
       }
       setRows((prev) => [...prev, ...saved]);
-      toast.success(`${missing.length} documents now listed as pending.`);
+      toast.success(t('listedPending', { count: missing.length }));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Those rows did not save.');
+      toast.error((err instanceof Error && err.message) || t('rowsFailed'));
     } finally {
       setBulkBusy(false);
     }
@@ -275,9 +276,7 @@ export function PersonDocumentsSection({
     if (!file || !docType || userId === null) return;
 
     if (file.size > MAX_DOCUMENT_FILE_BYTES) {
-      toast.error(
-        `That file is ${formatBytes(file.size)}. Scans must be 5 MB or smaller.`,
-      );
+      toast.error(t('fileTooLarge', { size: formatBytes(file.size) }));
       return;
     }
 
@@ -291,9 +290,9 @@ export function PersonDocumentsSection({
       }
       const saved = await attachPersonDocumentFile(row.id, file);
       replaceRow(saved);
-      toast.success('Scan attached.');
+      toast.success(t('scanAttached'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'That file did not upload.');
+      toast.error((err instanceof Error && err.message) || t('uploadFailed'));
     } finally {
       setPendingKey(null);
     }
@@ -307,7 +306,7 @@ export function PersonDocumentsSection({
       const { url } = await getPersonDocumentFileUrl(row.id);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch {
-      toast.error('That file could not be opened.');
+      toast.error(t('openFailed'));
     } finally {
       setPendingKey(null);
     }
@@ -320,9 +319,9 @@ export function PersonDocumentsSection({
     try {
       const saved = await deletePersonDocumentFile(row.id);
       replaceRow(saved);
-      toast.success('Scan removed. The document is still marked collected.');
+      toast.success(t('scanRemoved'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'That file was not removed.');
+      toast.error((err instanceof Error && err.message) || t('removeFailed'));
     } finally {
       setPendingKey(null);
     }
@@ -340,13 +339,13 @@ export function PersonDocumentsSection({
         title={
           <span className="inline-flex items-center gap-2">
             <ListChecks aria-hidden className="size-4 text-ink-faint" />
-            Documents
+            {t('title')}
           </span>
         }
         description={
           staging
-            ? 'Tick what the family has already handed over. Saved with the record; scans can be attached afterwards.'
-            : 'Tick what the school holds. A tick works on its own — attach a scan only when there is one.'
+            ? t('descriptionStaging')
+            : t('descriptionLive')
         }
         action={
           showTraceLink && (
@@ -355,7 +354,7 @@ export function PersonDocumentsSection({
               size="sm"
               render={<Link href="/dashboard/documents" />}
             >
-              Open the trace
+              {t('openTrace')}
               <ExternalLink />
             </Button>
           )
@@ -375,7 +374,7 @@ export function PersonDocumentsSection({
                 value: o,
                 label: (
                   <span className="inline-flex items-center gap-1.5">
-                    {o === 'SELF' ? (selfLabel ?? 'Own') : OWNER_LABEL[o]}
+                    {o === 'SELF' ? (selfLabel ?? td('owner.SELF')) : td(`owner.${o}`)}
                     {count > 0 && (
                       <span className="tabular rounded-full bg-accent-warn-tint px-1.5 py-px text-[10px] font-semibold text-accent-warn-deep">
                         {count}
@@ -393,7 +392,7 @@ export function PersonDocumentsSection({
         <PanelBody>
           <div className="flex items-center gap-2 py-6 text-[13.5px] text-ink-muted">
             <Loader2 className="size-4 animate-spin" />
-            Loading the checklist…
+            {t('loading')}
           </div>
         </PanelBody>
       ) : (
@@ -407,6 +406,7 @@ export function PersonDocumentsSection({
               const hasFile = Boolean(row?.s3Key);
               const checked = status === 'COLLECTED' || status === 'UPLOADED';
               const inputId = `doc-${owner}-${doc.value}`;
+              const docLabel = td(`type.${doc.value}`);
 
               return (
                 <li key={doc.value} className="px-4 py-3">
@@ -418,7 +418,7 @@ export function PersonDocumentsSection({
                       disabled={disabled || busy || hasFile}
                       title={
                         hasFile
-                          ? 'A scan is attached. Remove it to change this.'
+                          ? t('scanLocked')
                           : disabled
                             ? disabledReason
                             : undefined
@@ -433,15 +433,15 @@ export function PersonDocumentsSection({
                           htmlFor={inputId}
                           className="cursor-pointer text-[13.5px] font-semibold text-ink"
                         >
-                          {doc.label}
+                          {docLabel}
                         </label>
                         {status ? (
                           <StatusChip
                             status={status}
-                            label={DOCUMENT_STATUS_LABEL[status]}
+                            label={td(`status.${status}`)}
                           />
                         ) : (
-                          <StatusChip pigment="neutral" label="Not tracked" />
+                          <StatusChip pigment="neutral" label={t('notTracked')} />
                         )}
                         {busy && (
                           <Loader2 className="size-3.5 animate-spin text-ink-faint" />
@@ -462,7 +462,7 @@ export function PersonDocumentsSection({
                           value={noteDraft}
                           onChange={(e) => setNoteDraft(e.target.value)}
                           onBlur={() => void saveNote(doc.value, noteDraft.trim())}
-                          placeholder="e.g. original returned to the parent on 12 Aug"
+                          placeholder={t('notePlaceholder')}
                           maxLength={2000}
                           className="mt-2 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-[13px] text-ink placeholder:text-ink-faint focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none"
                         />
@@ -481,8 +481,8 @@ export function PersonDocumentsSection({
                           setOpenNote(openNote === doc.value ? null : doc.value);
                         }}
                         disabled={disabled || busy}
-                        aria-label={notes ? 'Edit note' : 'Add a note'}
-                        title={notes ? 'Edit note' : 'Add a note'}
+                        aria-label={notes ? t('editNote') : t('addNote')}
+                        title={notes ? t('editNote') : t('addNote')}
                         className={cn(
                           'grid size-9 cursor-pointer place-items-center rounded-md border transition-colors disabled:cursor-not-allowed disabled:opacity-50',
                           notes
@@ -499,8 +499,8 @@ export function PersonDocumentsSection({
                             type="button"
                             onClick={() => void openFile(doc.value)}
                             disabled={busy}
-                            aria-label={`Open the ${doc.label.toLowerCase()} scan`}
-                            title="Open the scan"
+                            aria-label={t('openScanFor', { doc: docLabel.toLowerCase() })}
+                            title={t('openScan')}
                             className="grid size-9 cursor-pointer place-items-center rounded-md border border-line-strong bg-surface text-ink-muted transition-colors hover:border-brand hover:text-brand disabled:opacity-50"
                           >
                             <ExternalLink className="size-3.5" />
@@ -509,8 +509,8 @@ export function PersonDocumentsSection({
                             type="button"
                             onClick={() => void removeFile(doc.value)}
                             disabled={disabled || busy}
-                            aria-label={`Remove the ${doc.label.toLowerCase()} scan`}
-                            title="Remove the scan"
+                            aria-label={t('removeScanFor', { doc: docLabel.toLowerCase() })}
+                            title={t('removeScan')}
                             className="grid size-9 cursor-pointer place-items-center rounded-md border border-accent-danger-edge bg-accent-danger-tint text-accent-danger-deep transition-colors hover:border-accent-danger hover:bg-accent-danger hover:text-white disabled:opacity-50"
                           >
                             <Trash2 className="size-3.5" />
@@ -521,8 +521,8 @@ export function PersonDocumentsSection({
                           type="button"
                           onClick={() => startAttach(doc.value)}
                           disabled={disabled || busy}
-                          aria-label={`Attach a ${doc.label.toLowerCase()} scan`}
-                          title="Attach a scan (PDF or image, up to 5 MB)"
+                          aria-label={t('attachScanFor', { doc: docLabel.toLowerCase() })}
+                          title={t('attachScan')}
                           className="grid size-9 cursor-pointer place-items-center rounded-md border border-line-strong bg-surface text-ink-muted transition-colors hover:border-brand hover:text-brand disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <Paperclip className="size-3.5" />
@@ -538,8 +538,7 @@ export function PersonDocumentsSection({
           {!staging && untracked > 0 && (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line bg-surface-secondary px-4 py-3">
               <p className="min-w-0 flex-1 text-[12.5px] text-ink-muted">
-                {untracked} of these are not tracked yet, so they stay off the
-                school-wide trace.
+                {t('untracked', { count: untracked })}
               </p>
               <Button
                 type="button"
@@ -550,7 +549,7 @@ export function PersonDocumentsSection({
                 title={disabled ? disabledReason : undefined}
               >
                 {bulkBusy && <Loader2 className="animate-spin" />}
-                List the rest as pending
+                {t('listRest')}
               </Button>
             </div>
           )}

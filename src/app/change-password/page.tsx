@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { API_BASE_URL } from "@/lib/api";
 import { getToken, setToken, setTokens, getUser, removeToken, authFetch } from "@/lib/auth";
 
@@ -18,16 +19,18 @@ function EyeIcon({ open }: { open: boolean }) {
     );
 }
 
-function strengthLabel(score: number): { label: string; color: string; bars: number } {
-    if (score <= 1) return { label: "Weak",   color: "bg-red-500",    bars: 1 };
-    if (score <= 2) return { label: "Fair",   color: "bg-amber-500",  bars: 2 };
-    if (score <= 3) return { label: "Good",   color: "bg-yellow-400", bars: 3 };
-    if (score <= 4) return { label: "Strong", color: "bg-emerald-500",bars: 4 };
-    return              { label: "Very Strong", color: "bg-emerald-400", bars: 5 };
+/** `label` is a key under `publicPages.changePassword.strength`. */
+function strengthLabel(score: number): { label: "weak" | "fair" | "good" | "strong" | "veryStrong"; color: string; bars: number } {
+    if (score <= 1) return { label: "weak",   color: "bg-red-500",    bars: 1 };
+    if (score <= 2) return { label: "fair",   color: "bg-amber-500",  bars: 2 };
+    if (score <= 3) return { label: "good",   color: "bg-yellow-400", bars: 3 };
+    if (score <= 4) return { label: "strong", color: "bg-emerald-500",bars: 4 };
+    return              { label: "veryStrong", color: "bg-emerald-400", bars: 5 };
 }
 
 export default function ChangePasswordPage() {
     const router = useRouter();
+    const t = useTranslations("publicPages.changePassword");
     const [form, setForm] = useState({ current: "", newPw: "", confirm: "" });
     const [show, setShow] = useState({ current: false, newPw: false, confirm: false });
     const [isLoading, setIsLoading] = useState(false);
@@ -73,9 +76,9 @@ export default function ChangePasswordPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
-        if (form.newPw !== form.confirm) { setError("New passwords do not match"); return; }
-        if (form.newPw.length < 6) { setError("Password must be at least 6 characters"); return; }
-        if (form.newPw === form.current) { setError("New password must differ from current password"); return; }
+        if (form.newPw !== form.confirm) { setError(t("mismatch")); return; }
+        if (form.newPw.length < 6) { setError(t("tooShort")); return; }
+        if (form.newPw === form.current) { setError(t("sameAsOld")); return; }
 
         setIsLoading(true);
         try {
@@ -85,7 +88,7 @@ export default function ChangePasswordPage() {
                 body: JSON.stringify({ currentPassword: form.current, newPassword: form.newPw }),
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.message || "Failed to change password");
+            if (!res.ok) throw new Error(data.message || t("failed"));
             // Clear fields before navigation to prevent browser password-save prompt
             setForm({ current: "", newPw: "", confirm: "" });
             if (data.refresh_token) setTokens(data.access_token, data.refresh_token);
@@ -93,7 +96,7 @@ export default function ChangePasswordPage() {
             const updated = getUser();
             router.push(updated?.role === "PARENT" ? "/parent-dashboard" : "/dashboard");
         } catch (err: any) {
-            setError(err.message || "Failed to change password");
+            setError(err.message || t("failed"));
         } finally {
             setIsLoading(false);
         }
@@ -114,9 +117,9 @@ export default function ChangePasswordPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                         </svg>
                     </div>
-                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-white">Create your password</h1>
+                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-white">{t("title")}</h1>
                     <p className="text-brass-100/70 text-sm mt-2">
-                        Welcome, <span className="text-marigold-300 font-semibold">{user.firstName}</span>. Set a new password to get started.
+                        {t.rich("welcome", { name: user.firstName, b: (c) => <span className="text-marigold-300 font-semibold">{c}</span> })}
                     </p>
                 </div>
 
@@ -127,7 +130,7 @@ export default function ChangePasswordPage() {
 
                         {/* Current password */}
                         <div>
-                            <label className="block text-xs font-semibold text-brass-100/70 uppercase tracking-wider mb-2">Current Password</label>
+                            <label className="block text-xs font-semibold text-brass-100/70 uppercase tracking-wider mb-2">{t("current")}</label>
                             <div className="relative">
                                 <input
                                     type={show.current ? "text" : "password"}
@@ -137,7 +140,7 @@ export default function ChangePasswordPage() {
                                     autoComplete="off"
                                     data-lpignore="true"
                                     data-form-type="other"
-                                    placeholder="Enter your current password"
+                                    placeholder={t("currentPlaceholder")}
                                     className="w-full bg-walnut-800/80 border border-white/12 rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-brass-100/40 focus:outline-none focus:ring-2 focus:ring-brand/40/70 focus:border-brand/50 transition-all"
                                 />
                                 <button type="button" onClick={() => toggleShow("current")}
@@ -152,7 +155,7 @@ export default function ChangePasswordPage() {
 
                         {/* New password */}
                         <div>
-                            <label className="block text-xs font-semibold text-brass-100/70 uppercase tracking-wider mb-2">New Password</label>
+                            <label className="block text-xs font-semibold text-brass-100/70 uppercase tracking-wider mb-2">{t("new")}</label>
                             <div className="relative">
                                 <input
                                     type={show.newPw ? "text" : "password"}
@@ -162,7 +165,7 @@ export default function ChangePasswordPage() {
                                     autoComplete="off"
                                     data-lpignore="true"
                                     data-form-type="other"
-                                    placeholder="Create a strong password"
+                                    placeholder={t("newPlaceholder")}
                                     className="w-full bg-walnut-800/80 border border-white/12 rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-brass-100/40 focus:outline-none focus:ring-2 focus:ring-brand/40/70 focus:border-brand/50 transition-all"
                                 />
                                 <button type="button" onClick={() => toggleShow("newPw")}
@@ -179,7 +182,7 @@ export default function ChangePasswordPage() {
                                         ))}
                                     </div>
                                     <p className={`text-xs font-medium ${str.bars >= 4 ? "text-emerald-400" : str.bars >= 3 ? "text-yellow-400" : str.bars >= 2 ? "text-amber-400" : "text-red-400"}`}>
-                                        {str.label}
+                                        {t(`strength.${str.label}`)}
                                     </p>
                                 </div>
                             )}
@@ -187,7 +190,7 @@ export default function ChangePasswordPage() {
 
                         {/* Confirm password */}
                         <div>
-                            <label className="block text-xs font-semibold text-brass-100/70 uppercase tracking-wider mb-2">Confirm New Password</label>
+                            <label className="block text-xs font-semibold text-brass-100/70 uppercase tracking-wider mb-2">{t("confirm")}</label>
                             <div className="relative">
                                 <input
                                     type={show.confirm ? "text" : "password"}
@@ -197,7 +200,7 @@ export default function ChangePasswordPage() {
                                     autoComplete="off"
                                     data-lpignore="true"
                                     data-form-type="other"
-                                    placeholder="Re-enter your new password"
+                                    placeholder={t("confirmPlaceholder")}
                                     className={`w-full bg-walnut-800/80 border rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-brass-100/40 focus:outline-none focus:ring-2 transition-all ${
                                         confirmMatch    ? "border-emerald-500/60 focus:ring-emerald-500/40" :
                                         confirmMismatch ? "border-red-500/60 focus:ring-red-500/40" :
@@ -221,7 +224,7 @@ export default function ChangePasswordPage() {
                                     <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
-                                    Passwords don&apos;t match
+                                    {t("noMatch")}
                                 </p>
                             )}
                         </div>
@@ -248,14 +251,14 @@ export default function ChangePasswordPage() {
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                                     </svg>
-                                    Saving…
+                                    {t("saving")}
                                 </>
                             ) : (
                                 <>
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                                     </svg>
-                                    Set Password &amp; Continue
+                                    {t("submit")}
                                 </>
                             )}
                         </button>
@@ -270,7 +273,7 @@ export default function ChangePasswordPage() {
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                         </svg>
-                        Back to Login
+                        {t("back")}
                     </button>
                 </p>
             </div>

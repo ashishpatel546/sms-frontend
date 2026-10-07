@@ -3,6 +3,8 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Download, IndianRupee, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useLocale, useTranslations } from 'next-intl';
+import { INTL_LOCALE, type Locale } from '@/i18n/config';
 import { API_BASE_URL } from '@/lib/api';
 import { authFetch } from '@/lib/auth';
 import { useRbac } from '@/lib/rbac';
@@ -67,32 +69,32 @@ const STATUS_STYLES: Record<InvoiceRow['status'], string> = {
   VOID: 'bg-gray-100 text-gray-500',
 };
 
-const STATUS_LABELS: Record<InvoiceRow['status'], string> = {
-  PAID: 'Paid',
-  PARTIALLY_PAID: 'Part paid',
-  PENDING: 'Due',
-  OVERDUE: 'Overdue',
-  VOID: 'Cancelled',
-};
+const STATUS_LABELS = {
+  PAID: 'paid',
+  PARTIALLY_PAID: 'partiallyPaid',
+  PENDING: 'pending',
+  OVERDUE: 'overdue',
+  VOID: 'void',
+} as const satisfies Record<InvoiceRow['status'], string>;
 
-const FREQUENCY_LABELS: Record<string, string> = {
-  MONTHLY: 'every month',
-  QUARTERLY: 'every quarter',
-  HALF_YEARLY: 'every six months',
-  ANNUAL: 'every year',
-};
+const FREQUENCY_LABELS = {
+  MONTHLY: 'monthly',
+  QUARTERLY: 'quarterly',
+  HALF_YEARLY: 'halfYearly',
+  ANNUAL: 'annual',
+} as const;
 
-function rupees(paise: number): string {
-  return (paise / 100).toLocaleString('en-IN', {
+function formatRupees(paise: number, intl: string): string {
+  return (paise / 100).toLocaleString(intl, {
     style: 'currency',
     currency: 'INR',
     maximumFractionDigits: 2,
   });
 }
 
-function formatDate(value: string | null): string {
+function formatDateIn(value: string | null, intl: string): string {
   if (!value) return '—';
-  return new Date(value).toLocaleDateString('en-IN', {
+  return new Date(value).toLocaleDateString(intl, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -112,6 +114,11 @@ function loadRazorpay(): Promise<boolean> {
 }
 
 export default function BillingPage() {
+  const t = useTranslations('fees.billing');
+  const tc = useTranslations('common');
+  const intl = INTL_LOCALE[useLocale() as Locale];
+  const rupees = (paise: number) => formatRupees(paise, intl);
+  const formatDate = (value: string | null) => formatDateIn(value, intl);
   const rbac = useRbac();
   const [summary, setSummary] = useState<BillingSummary | null>(null);
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
@@ -134,11 +141,11 @@ export default function BillingPage() {
       if (summaryRes.ok) setSummary(await summaryRes.json());
       if (invoicesRes.ok) setInvoices(await invoicesRes.json());
     } catch {
-      toast.error('Could not load your billing details');
+      toast.error(t('toast.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (rbac.isAdmin) void load();
@@ -157,19 +164,19 @@ export default function BillingPage() {
         body: JSON.stringify({ invoiceId: invoice.id, code }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body?.message ?? 'That coupon is not valid.');
+      if (!res.ok) throw new Error(body?.message ?? t('toast.couponInvalid'));
       setAppliedCoupon((current) => ({
         ...current,
         [invoice.id]: { code, discountPaise: body.discountPaise },
       }));
-      toast.success(`Coupon applied — you save ${rupees(body.discountPaise)}`);
+      toast.success(t('toast.couponApplied', { amount: rupees(body.discountPaise) }));
     } catch (e: unknown) {
       setAppliedCoupon((current) => {
         const next = { ...current };
         delete next[invoice.id];
         return next;
       });
-      toast.error(e instanceof Error ? e.message : 'That coupon is not valid.');
+      toast.error(e instanceof Error ? e.message : t('toast.couponInvalid'));
     } finally {
       setCheckingCoupon(null);
     }
@@ -180,7 +187,7 @@ export default function BillingPage() {
     setPayingId(invoice.id);
     try {
       const loaded = await loadRazorpay();
-      if (!loaded) throw new Error('Could not load the payment gateway.');
+      if (!loaded) throw new Error(t('toast.gatewayLoadFailed'));
 
       const orderRes = await authFetch(`${API_BASE_URL}/billing/create-order`, {
         method: 'POST',
@@ -196,7 +203,7 @@ export default function BillingPage() {
         // settled elsewhere, or the coupon covered it entirely and the backend
         // closed it on the spot. Both are outcomes to show, not errors.
         if (orderRes.status === 409) {
-          toast.success(body?.message ?? 'This invoice is already settled.');
+          toast.success(body?.message ?? t('toast.alreadySettled'));
           setAppliedCoupon((current) => {
             const next = { ...current };
             delete next[invoice.id];
@@ -205,7 +212,7 @@ export default function BillingPage() {
           await load();
           return;
         }
-        throw new Error(body?.message ?? 'Could not start the payment.');
+        throw new Error(body?.message ?? t('toast.startFailed'));
       }
       const order = await orderRes.json();
 
@@ -216,8 +223,8 @@ export default function BillingPage() {
           key: order.razorpay_key_id,
           amount: order.amount_paise,
           currency: order.currency ?? 'INR',
-          name: 'School Subscription',
-          description: `Invoice ${order.invoice_number}`,
+          name: t('checkout.name'),
+          description: t('checkout.description', { number: order.invoice_number }),
           order_id: order.razorpay_order_id,
           theme: { color: '#059669' },
           modal: { ondismiss: () => reject(new Error('Payment cancelled.')) },
@@ -239,7 +246,7 @@ export default function BillingPage() {
                 const body = await verifyRes.json().catch(() => ({}));
                 throw new Error(
                   body?.message ??
-                    'We could not confirm the payment. If money was debited it will be reconciled automatically.',
+                    t('toast.confirmFailed'),
                 );
               }
               resolve();
@@ -251,7 +258,7 @@ export default function BillingPage() {
         rzp.open();
       });
 
-      toast.success('Payment received — thank you!');
+      toast.success(t('toast.paymentReceived'));
       setAppliedCoupon((current) => {
         const next = { ...current };
         delete next[invoice.id];
@@ -260,7 +267,7 @@ export default function BillingPage() {
       setCouponInput((current) => ({ ...current, [invoice.id]: '' }));
       await load();
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Payment failed.';
+      const message = e instanceof Error ? e.message : t('toast.paymentFailed');
       if (message !== 'Payment cancelled.') toast.error(message);
     } finally {
       setPayingId(null);
@@ -277,7 +284,7 @@ export default function BillingPage() {
       const detail = (await res.json()) as InvoiceDetail;
       await downloadInvoicePdf(detail);
     } catch {
-      toast.error('Could not prepare the invoice PDF');
+      toast.error(t('toast.pdfFailed'));
     } finally {
       setDownloadingId(null);
     }
@@ -287,7 +294,7 @@ export default function BillingPage() {
     return (
       <div className="p-8 text-center">
         <p className="text-sm text-gray-500">
-          Billing is visible to the school’s admin and super admin only.
+          {t('adminOnly')}
         </p>
       </div>
     );
@@ -310,9 +317,9 @@ export default function BillingPage() {
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-5xl">
       <div>
-        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Billing</h1>
+        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t('title')}</h1>
         <p className="text-sm text-gray-500 mt-0.5">
-          Your subscription, invoices and payments
+          {t('subtitle')}
         </p>
       </div>
 
@@ -321,11 +328,10 @@ export default function BillingPage() {
           <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold text-red-900">
-              Your school is suspended for non-payment
+              {t('suspended.title')}
             </p>
             <p className="text-xs text-red-700 mt-1">
-              Staff and parents cannot use the portal until the outstanding
-              amount is settled. Paying below restores access within a minute.
+              {t('suspended.body')}
             </p>
           </div>
         </div>
@@ -336,11 +342,10 @@ export default function BillingPage() {
           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold text-amber-900">
-              You have an overdue invoice
+              {t('overdue.title')}
             </p>
             <p className="text-xs text-amber-800 mt-1">
-              Settle it before {formatDate(summary.suspendOn)} to keep the
-              portal available to your staff and parents.
+              {t('overdue.body', { date: formatDate(summary.suspendOn) })}
             </p>
           </div>
         </div>
@@ -356,7 +361,7 @@ export default function BillingPage() {
                 </h2>
                 {summary.subscription?.isTrial && (
                   <span className="px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 text-[10px] font-semibold">
-                    TRIAL
+                    {t('plan.trial')}
                   </span>
                 )}
               </div>
@@ -366,22 +371,24 @@ export default function BillingPage() {
                 </p>
               )}
               <p className="text-xs text-gray-500 mt-2">
-                {rupees(summary.plan.pricePerStudentPaise)} per student per
-                month, billed{' '}
-                {FREQUENCY_LABELS[summary.subscription?.frequency ?? ''] ??
-                  'periodically'}
-                .
+                {t('plan.pricing', {
+                  price: rupees(summary.plan.pricePerStudentPaise),
+                  frequency:
+                    summary.subscription?.frequency &&
+                    summary.subscription.frequency in FREQUENCY_LABELS
+                      ? t(`frequency.${FREQUENCY_LABELS[summary.subscription.frequency as keyof typeof FREQUENCY_LABELS]}`)
+                      : t('frequency.periodic'),
+                })}
               </p>
               {summary.subscription?.isTrial &&
                 summary.subscription.trialEndsAt && (
                   <p className="text-xs text-violet-700 mt-1">
-                    Trial pricing applies until{' '}
-                    {formatDate(summary.subscription.trialEndsAt)}.
+                    {t('plan.trialUntil', { date: formatDate(summary.subscription.trialEndsAt) })}
                   </p>
                 )}
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-400">Outstanding</p>
+              <p className="text-xs text-gray-400">{t('plan.outstanding')}</p>
               <p
                 className={`text-2xl font-bold ${
                   (summary.outstandingPaise ?? 0) > 0
@@ -393,12 +400,12 @@ export default function BillingPage() {
               </p>
               {summary.nextDueDate && summary.outstandingPaise > 0 && (
                 <p className="text-xs text-gray-400 mt-0.5">
-                  Due {formatDate(summary.nextDueDate)}
+                  {t('plan.due', { date: formatDate(summary.nextDueDate) })}
                 </p>
               )}
               {(summary.creditBalancePaise ?? 0) > 0 && (
                 <p className="text-xs font-medium text-emerald-600 mt-1">
-                  {rupees(summary.creditBalancePaise)} credit on your account
+                  {t('plan.credit', { amount: rupees(summary.creditBalancePaise) })}
                 </p>
               )}
             </div>
@@ -406,33 +413,31 @@ export default function BillingPage() {
 
           {(summary.creditBalancePaise ?? 0) > 0 && (
             <p className="mt-4 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2 text-xs text-emerald-800">
-              We are holding {rupees(summary.creditBalancePaise)} for you. It
-              comes off your next invoice automatically — there is nothing you
-              need to do.
+              {t('plan.creditNote', { amount: rupees(summary.creditBalancePaise) })}
             </p>
           )}
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5 pt-4 border-t border-gray-100">
             <div>
-              <p className="text-xs text-gray-400">Students today</p>
+              <p className="text-xs text-gray-400">{t('plan.studentsToday')}</p>
               <p className="text-base font-semibold text-gray-800">
                 {summary.billableStudents}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-400">Billed for</p>
+              <p className="text-xs text-gray-400">{t('plan.billedFor')}</p>
               <p className="text-base font-semibold text-gray-800">
                 {summary.subscription?.baselineStudentCount ?? '—'}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-400">Current period ends</p>
+              <p className="text-xs text-gray-400">{t('plan.periodEnds')}</p>
               <p className="text-base font-semibold text-gray-800">
                 {formatDate(summary.subscription?.currentPeriodEnd ?? null)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-400">Unpaid invoices</p>
+              <p className="text-xs text-gray-400">{t('plan.unpaidInvoices')}</p>
               <p className="text-base font-semibold text-gray-800">
                 {summary.outstandingCount}
               </p>
@@ -441,9 +446,7 @@ export default function BillingPage() {
 
           {extraStudents > 0 && (
             <p className="mt-4 text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
-              {extraStudents} student{extraStudents === 1 ? '' : 's'} joined
-              since your last bill. They are charged at the end of the month, so
-              you only ever pay for the months they were actually enrolled.
+              {t('plan.extraStudents', { count: extraStudents })}
             </p>
           )}
         </div>
@@ -451,30 +454,30 @@ export default function BillingPage() {
         <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
           <IndianRupee className="w-8 h-8 text-gray-300 mx-auto mb-2" />
           <p className="text-sm text-gray-500">
-            No subscription is set up for your school yet.
+            {t('noSubscription')}
           </p>
         </div>
       )}
 
       <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100">
-          <h2 className="text-sm font-bold text-gray-900">Invoices</h2>
+          <h2 className="text-sm font-bold text-gray-900">{t('invoices.title')}</h2>
         </div>
 
         {invoices.length === 0 ? (
           <p className="px-5 py-8 text-sm text-gray-400 text-center">
-            No invoices yet.
+            {t('invoices.empty')}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
-                  <th className="px-5 py-2">Invoice</th>
-                  <th className="px-3 py-2">Period</th>
-                  <th className="px-3 py-2">Amount</th>
-                  <th className="px-3 py-2">Due</th>
-                  <th className="px-3 py-2">Status</th>
+                  <th className="px-5 py-2">{t('invoices.invoice')}</th>
+                  <th className="px-3 py-2">{t('invoices.period')}</th>
+                  <th className="px-3 py-2">{tc('field.amount')}</th>
+                  <th className="px-3 py-2">{t('invoices.due')}</th>
+                  <th className="px-3 py-2">{tc('field.status')}</th>
                   <th className="px-5 py-2" />
                 </tr>
               </thead>
@@ -489,9 +492,9 @@ export default function BillingPage() {
                       {invoice.type === 'TRUEUP' && (
                         <span
                           className="ml-1 text-[10px] text-violet-600 font-semibold"
-                          title="Students admitted above your billed count"
+                          title={t('invoices.addOnHint')}
                         >
-                          ADD-ON
+                          {t('invoices.addOn')}
                         </span>
                       )}
                     </td>
@@ -504,21 +507,21 @@ export default function BillingPage() {
                       {invoice.balancePaise > 0 &&
                         invoice.settledPaise > 0 && (
                           <p className="text-[11px] font-normal text-amber-700">
-                            {rupees(invoice.balancePaise)} still due
+                            {t('invoices.stillDue', { amount: rupees(invoice.balancePaise) })}
                           </p>
                         )}
                       {invoice.balancePaise <= 0 &&
                         invoice.settlement &&
                         invoice.settlement.couponDiscountPaise > 0 && (
                           <p className="text-[11px] font-normal text-emerald-700">
-                            paid {rupees(invoice.settlement.amountPaidPaise)}
+                            {t('invoices.paidAmount', { amount: rupees(invoice.settlement.amountPaidPaise) })}
                             {invoice.settlement.couponCode &&
                               ` · ${invoice.settlement.couponCode}`}
                           </p>
                         )}
                       {invoice.amountRefundedPaise > 0 && (
                         <p className="text-[11px] font-normal text-gray-500">
-                          {rupees(invoice.amountRefundedPaise)} refunded to you
+                          {t('invoices.refunded', { amount: rupees(invoice.amountRefundedPaise) })}
                         </p>
                       )}
                     </td>
@@ -529,7 +532,7 @@ export default function BillingPage() {
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${STATUS_STYLES[invoice.status]}`}
                       >
-                        {STATUS_LABELS[invoice.status]}
+                        {t(`status.${STATUS_LABELS[invoice.status]}`)}
                       </span>
                     </td>
                     <td className="px-5 py-3 text-right whitespace-nowrap">
@@ -552,7 +555,7 @@ export default function BillingPage() {
                             disabled={payingId !== null}
                             className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-300"
                           >
-                            {payingId === invoice.id ? 'Opening…' : 'Pay now'}
+                            {payingId === invoice.id ? t('invoices.opening') : t('invoices.payNow')}
                           </button>
                         )}
                     </td>
@@ -572,7 +575,7 @@ export default function BillingPage() {
                             onKeyDown={(e) =>
                               e.key === 'Enter' && void applyCoupon(invoice)
                             }
-                            placeholder="Have a coupon code?"
+                            placeholder={t('coupon.placeholder')}
                             className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-mono uppercase w-48 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                           />
                           <button
@@ -584,19 +587,20 @@ export default function BillingPage() {
                             className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40"
                           >
                             {checkingCoupon === invoice.id
-                              ? 'Checking…'
-                              : 'Apply'}
+                              ? t('coupon.checking')
+                              : tc('action.apply')}
                           </button>
                           {appliedCoupon[invoice.id] && (
                             <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-2 py-1">
-                              {appliedCoupon[invoice.id].code} applied — you pay{' '}
-                              <strong>
-                                {rupees(
+                              {t.rich('coupon.applied', {
+                                code: appliedCoupon[invoice.id].code,
+                                amount: rupees(
                                   invoice.totalPaise -
                                     appliedCoupon[invoice.id].discountPaise,
-                                )}
-                              </strong>{' '}
-                              instead of {rupees(invoice.totalPaise)}
+                                ),
+                                total: rupees(invoice.totalPaise),
+                                b: (chunks) => <strong>{chunks}</strong>,
+                              })}
                             </span>
                           )}
                         </div>

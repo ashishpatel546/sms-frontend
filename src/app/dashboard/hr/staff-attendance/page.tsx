@@ -16,12 +16,15 @@ import { AppTimePicker, AppDatePicker } from "@/components/ui/AppDatePicker";
 import { MapPin, Fingerprint, ShieldAlert, PenLine, UserCog, TriangleAlert, Settings2, Clock3 } from "lucide-react";
 import {
   attendanceSettingsApi,
-  validateAttendanceSettings,
+  attendanceSettingsProblem,
   DEFAULT_ATTENDANCE_SETTINGS,
   type AttendanceSettings,
 } from "@/lib/attendance-settings-api";
+import { useHelperMessage } from "@/i18n/useHelperMessage";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 dayjs.extend(duration);
 
 /**
@@ -89,12 +92,18 @@ function clock(iso?: string | null): string | null {
   return d.isValid() ? d.format("HH:mm:ss") : null;
 }
 
+type StaffAttT = ReturnType<typeof useTranslations<"hr.staffAtt">>;
+
+/** Keys under `hr.staffAtt.methodLabel` — the label is translated where it is rendered. */
+const METHOD_LABEL_KEYS = ["GEOFENCE", "WEBAUTHN", "BYPASS", "MANUAL", "UNKNOWN"] as const;
+type MethodLabelKey = (typeof METHOD_LABEL_KEYS)[number];
+
 /** How a check-in / check-out was proven: the word, the glyph, the ink. */
 const METHOD_META: Record<AttendanceMethod, { label: string; Icon: typeof MapPin; tint: string }> = {
-  GEOFENCE: { label: "Self (geo)", Icon: MapPin, tint: "text-emerald-600" },
-  WEBAUTHN: { label: "Biometric", Icon: Fingerprint, tint: "text-indigo-600" },
-  BYPASS: { label: "Bypass", Icon: ShieldAlert, tint: "text-amber-600" },
-  MANUAL: { label: "Manual", Icon: PenLine, tint: "text-slate-500" },
+  GEOFENCE: { label: "GEOFENCE", Icon: MapPin, tint: "text-emerald-600" },
+  WEBAUTHN: { label: "WEBAUTHN", Icon: Fingerprint, tint: "text-indigo-600" },
+  BYPASS: { label: "BYPASS", Icon: ShieldAlert, tint: "text-amber-600" },
+  MANUAL: { label: "MANUAL", Icon: PenLine, tint: "text-slate-500" },
 };
 
 /**
@@ -141,7 +150,7 @@ function describeSource(
   staffName: string,
 ): Provenance {
   const meta = method ? METHOD_META[method] : undefined;
-  const base = meta ?? { label: method ?? "Unknown", Icon: PenLine, tint: "text-gray-400" };
+  const base = meta ?? { label: method ?? "UNKNOWN", Icon: PenLine, tint: "text-gray-400" };
   if (!actor) return { ...base, actorName: null };
   const actorName = `${actor.firstName} ${actor.lastName}`.trim();
   const isSelf = staffUserId != null ? actor.id === staffUserId : actorName === staffName;
@@ -156,20 +165,16 @@ const checkOutSource = (r: AttendanceRow): Provenance | null =>
   r.checkOutTime ? describeSource(r.checkOutMethod, r.checkOutBy, r.staff?.user?.id, staffNameOf(r)) : null;
 
 /** `475` minutes → `7h 55m`. Used for the "that's how long they worked" preview. */
-function formatSpan(minutes: number): string {
+function formatSpan(minutes: number, t: StaffAttT): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  if (h <= 0) return `${m}m`;
-  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+  if (h <= 0) return t("spanM", { m });
+  return m === 0 ? t("spanH", { h }) : t("spanHM", { h, m });
 }
 
 /** Same wording as the backend's 400, so client and server feedback match. */
-function checkOutOrderingMessage(checkIn: dayjs.Dayjs, checkOut: dayjs.Dayjs, date: string): string {
-  return (
-    `Check-out time (${checkOut.format("hh:mm A")}) cannot be earlier than ` +
-    `check-in time (${checkIn.format("hh:mm A")}) on ${date}. ` +
-    `Please choose a time after check-in.`
-  );
+function checkOutOrderingMessage(checkIn: dayjs.Dayjs, checkOut: dayjs.Dayjs, date: string, t: StaffAttT): string {
+  return t("orderingError", { checkOut: checkOut.format("hh:mm A"), checkIn: checkIn.format("hh:mm A"), date });
 }
 
 const DURATION_TEXT: Record<string, string> = {
@@ -190,17 +195,21 @@ const DURATION_TEXT: Record<string, string> = {
  * twice (the shared DataTable does exactly that to every cell).
  */
 function SourceStamp({ source }: { source: Provenance }) {
+  const t = useTranslations("hr.staffAtt");
   const { Icon } = source;
+  const label = (METHOD_LABEL_KEYS as readonly string[]).includes(source.label)
+    ? t(`methodLabel.${source.label as MethodLabelKey}`)
+    : source.label;
   return (
     <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] leading-tight">
       <span className="inline-flex items-center gap-1 text-gray-500">
         <Icon aria-hidden className={`h-3 w-3 shrink-0 ${source.tint}`} />
-        {source.label}
+        {label}
       </span>
       {source.actorName && (
         <span className="inline-flex items-center gap-1 font-medium text-amber-700">
           <UserCog aria-hidden className="h-3 w-3 shrink-0" />
-          by {source.actorName}
+          {t("byActor", { name: source.actorName })}
         </span>
       )}
     </span>
@@ -231,6 +240,7 @@ function EventCell({
   late?: boolean;
   emptyLabel: string;
 }) {
+  const t = useTranslations("hr.staffAtt");
   if (!time) {
     return <span className="text-xs text-gray-400">{emptyLabel}</span>;
   }
@@ -239,15 +249,15 @@ function EventCell({
       <span className="flex items-center gap-1.5">
         <span className="tabular-nums text-gray-900">{time}</span>
         {nextDay && (
-          <span className="rounded bg-amber-100 px-1 py-px text-[10px] font-semibold text-amber-700">+1d</span>
+          <span className="rounded bg-amber-100 px-1 py-px text-[10px] font-semibold text-amber-700">{t("nextDay")}</span>
         )}
         {late && (
           <span
-            title="Checked in after the school's late cutoff time"
+            title={t("lateTitle")}
             className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-px text-[10px] font-semibold text-amber-700"
           >
             <Clock3 aria-hidden className="h-2.5 w-2.5" />
-            Late
+            {t("late")}
           </span>
         )}
       </span>
@@ -283,10 +293,11 @@ function TallyStrip({
   active: StatusFilter;
   onChange: (next: StatusFilter) => void;
 }) {
+  const t = useTranslations("hr.staffAtt");
   return (
     <div
       role="group"
-      aria-label="Filter the register by status"
+      aria-label={t("filterAria")}
       /* `overflow-x-auto` forces overflow-y to `auto` too (CSS resolves a
          `visible` axis to `auto` when the other axis is not visible), so any
          emphasis painted OUTSIDE a button box — a box-shadow ring, an outline —
@@ -325,8 +336,15 @@ function TallyStrip({
 }
 
 export default function StaffAttendancePage() {
+  const helperText = useHelperMessage();
   const rbac = useRbac();
+  const t = useTranslations("hr");
+  const ts = useTranslations("hr.staffAtt");
+  const tc = useTranslations("common");
+  const locale = useLocale() as Locale;
   const today = todayLocalDate();
+  const nameOf = (r: AttendanceRow) =>
+    r.staff?.user ? `${r.staff.user.firstName} ${r.staff.user.lastName}` : t("overview.staffNo", { id: r.staffId });
 
   const [date, setDate] = useState(today);
   const [records, setRecords] = useState<AttendanceRow[]>([]);
@@ -443,9 +461,9 @@ export default function StaffAttendancePage() {
         setTotalStaff(recs.value.totalStaff ?? recs.value.total);
       }
       if (bp.status === "fulfilled") setBypass(bp.value);
-    } catch { toast.error("Failed to load attendance"); }
+    } catch { toast.error(t("myAttendance.loadFailed")); }
     finally { setLoading(false); }
-  }, [date, queryArgs]);
+  }, [date, queryArgs, t]);
 
   useEffect(() => { loadRecords(); }, [loadRecords]);
 
@@ -471,9 +489,9 @@ export default function StaffAttendancePage() {
       setCurrentPage(next);
       setTotalPages(res.totalPages);
       setTotalRecords(res.total);
-    } catch { toast.error("Failed to load more staff"); }
+    } catch { toast.error(ts("loadMoreFailed")); }
     finally { setLoadingMore(false); }
-  }, [date, queryArgs, currentPage, totalPages, loading, loadingMore]);
+  }, [date, queryArgs, currentPage, totalPages, loading, loadingMore, ts]);
 
   /**
    * Auto-loads when the sentinel nears the viewport. The Load more button
@@ -501,16 +519,16 @@ export default function StaffAttendancePage() {
   const markCheckOut = markForm.checkOutTime ? dayjs(`${markDate}T${markForm.checkOutTime}`) : null;
   const markError =
     markCheckIn?.isValid() && markCheckOut?.isValid() && !markCheckOut.isAfter(markCheckIn)
-      ? checkOutOrderingMessage(markCheckIn, markCheckOut, markDate)
+      ? checkOutOrderingMessage(markCheckIn, markCheckOut, markDate, ts)
       : null;
   const markPreview =
     !markError && markCheckIn?.isValid() && markCheckOut?.isValid()
-      ? formatSpan(markCheckOut.diff(markCheckIn, "minute"))
+      ? formatSpan(markCheckOut.diff(markCheckIn, "minute"), ts)
       : null;
 
   const handleMark = async () => {
-    if (!markStaffId) { toast.error("Please select a staff member"); return; }
-    if (!markDate) { toast.error("Please select a date"); return; }
+    if (!markStaffId) { toast.error(ts("selectStaff")); return; }
+    if (!markDate) { toast.error(ts("selectDate")); return; }
     if (markError) { toast.error(markError); return; }
     try {
       const checkInIso = markForm.checkInTime ? dayjs(`${markDate}T${markForm.checkInTime}`).toISOString() : undefined;
@@ -525,31 +543,31 @@ export default function StaffAttendancePage() {
         checkOutTime: checkOutIso,
         overrideReason: markForm.overrideReason || undefined,
       });
-      toast.success("Attendance marked");
+      toast.success(ts("marked"));
       setShowMark(false);
       // If the marked date matches the page's currently-viewed date, refresh the daily list.
       if (markDate === date) {
         loadRecords();
       }
-    } catch (e: any) { toast.error(e?.info?.message ?? "Failed"); }
+    } catch (e: any) { toast.error(e?.info?.message ?? t("failed")); }
   };
 
   const handleBypass = async () => {
     try {
       const bp = await hrApi.attendance.bypass.create({ ...bypassForm, durationHours: Math.min(Math.max(Number(bypassForm.durationHours) || 1, 1), 24) });
       setBypass(bp);
-      toast.success("Bypass window created");
+      toast.success(ts("bypassCreated"));
       setShowBypass(false);
-    } catch (e: any) { toast.error(e?.info?.message ?? "Failed"); }
+    } catch (e: any) { toast.error(e?.info?.message ?? t("failed")); }
   };
 
   const handleCloseBypass = async () => {
-    if (!confirm("Close the active bypass window? Geofence enforcement will resume immediately.")) return;
+    if (!confirm(ts("closeBypassConfirm"))) return;
     try {
       await hrApi.attendance.bypass.close();
       setBypass(null);
-      toast.success("Bypass window closed");
-    } catch (e: any) { toast.error(e?.info?.message ?? "Failed to close bypass window"); }
+      toast.success(ts("bypassClosed"));
+    } catch (e: any) { toast.error(e?.info?.message ?? ts("closeBypassFailed")); }
   };
 
   const loadBiometrics = useCallback(async () => {
@@ -561,35 +579,35 @@ export default function StaffAttendancePage() {
       ]);
       setAllCredentials(creds);
       setPermits(perms);
-    } catch { toast.error("Failed to load biometric data"); }
+    } catch { toast.error(ts("bioLoadFailed")); }
     finally { setBioLoading(false); }
-  }, []);
+  }, [ts]);
 
   const handleGrantPermit = async () => {
-    if (!permitTargetId) { toast.error("Select a staff member"); return; }
+    if (!permitTargetId) { toast.error(ts("selectStaff")); return; }
     try {
       await hrApi.attendance.webauthn.grantPermit(permitTargetId);
-      toast.success("Registration permission granted (48 hours)");
+      toast.success(ts("permitGranted"));
       setPermitTargetId(null);
       loadBiometrics();
-    } catch (e: any) { toast.error(e?.info?.message ?? "Failed"); }
+    } catch (e: any) { toast.error(e?.info?.message ?? t("failed")); }
   };
 
   const handleRevokePermit = async (staffId: number) => {
     try {
       await hrApi.attendance.webauthn.revokePermitByStaff(staffId);
-      toast.success("Permission revoked");
+      toast.success(ts("permitRevoked"));
       loadBiometrics();
-    } catch { toast.error("Failed to revoke"); }
+    } catch { toast.error(ts("revokeFailed")); }
   };
 
   const handleDeleteCredential = async (id: number) => {
-    if (!confirm("Delete this biometric credential? The staff member will need to re-register.")) return;
+    if (!confirm(ts("deleteCredConfirm"))) return;
     try {
       await hrApi.attendance.webauthn.deleteCredential(id);
-      toast.success("Credential deleted");
+      toast.success(ts("credDeleted"));
       loadBiometrics();
-    } catch { toast.error("Failed to delete"); }
+    } catch { toast.error(ts("deleteFailed")); }
   };
 
   const loadPendingCheckouts = useCallback(async () => {
@@ -622,11 +640,11 @@ export default function StaffAttendancePage() {
   /** Client-side echo of the backend's ordering rule, so the error lands before the request does. */
   const resolveError =
     resolveTarget && resolveCheckIn && resolveCheckOut?.isValid() && !resolveCheckOut.isAfter(resolveCheckIn)
-      ? checkOutOrderingMessage(resolveCheckIn, resolveCheckOut, resolveTarget.date)
+      ? checkOutOrderingMessage(resolveCheckIn, resolveCheckOut, resolveTarget.date, ts)
       : null;
   const resolvePreview =
     !resolveError && resolveCheckIn && resolveCheckOut?.isValid()
-      ? formatSpan(resolveCheckOut.diff(resolveCheckIn, "minute"))
+      ? formatSpan(resolveCheckOut.diff(resolveCheckIn, "minute"), ts)
       : null;
 
   const handleHrResolve = async () => {
@@ -645,12 +663,12 @@ export default function StaffAttendancePage() {
         hrNote: resolveForm.hrNote || undefined,
         status: resolveForm.status as any,
       });
-      toast.success(`Checkout closed for ${resolveTarget.name}`);
+      toast.success(ts("checkoutClosed", { name: resolveTarget.name }));
       setResolveTarget(null);
       loadPendingCheckouts();
       if (resolveTarget.date === date) loadRecords();
     } catch (e: any) {
-      toast.error(e?.info?.message ?? "Failed to resolve checkout");
+      toast.error(e?.info?.message ?? ts("resolveFailed"));
     } finally { setResolving(false); }
   };
 
@@ -660,12 +678,13 @@ export default function StaffAttendancePage() {
     attendanceSettingsApi
       .get()
       .then((s) => setSettingsForm(s))
-      .catch(() => toast.error("Failed to load attendance settings"))
+      .catch(() => toast.error(ts("settingsLoadFailed")))
       .finally(() => setSettingsLoading(false));
   };
 
   /** Mirrors the server's rule (half-day threshold < full-day threshold) so the error lands before the request does. */
-  const settingsError = validateAttendanceSettings(settingsForm);
+  const settingsProblem = attendanceSettingsProblem(settingsForm);
+  const settingsError = settingsProblem ? helperText(settingsProblem) : null;
 
   const handleSaveSettings = async () => {
     if (settingsError) { toast.error(settingsError); return; }
@@ -673,11 +692,11 @@ export default function StaffAttendancePage() {
     try {
       const updated = await attendanceSettingsApi.update(settingsForm);
       setSettingsForm(updated);
-      toast.success("Attendance settings updated");
+      toast.success(ts("settingsUpdated"));
       setShowSettings(false);
     } catch (e) {
       const info = (e as { info?: { message?: string } } | undefined)?.info;
-      toast.error(info?.message ?? "Failed to update attendance settings");
+      toast.error(info?.message ?? ts("settingsUpdateFailed"));
     } finally {
       setSettingsSaving(false);
     }
@@ -704,15 +723,15 @@ export default function StaffAttendancePage() {
 
   /** Null when the form is valid, else the reason to show the user. */
   const reportError = (): string | null => {
-    if (!reportSummary && !reportDetail) return "Pick at least one section to include";
+    if (!reportSummary && !reportDetail) return ts("pickSection");
     // Cleared month input: guard before dayjs turns it into "Invalid Date" and
     // the range checks below silently pass on NaN.
-    if (reportMode === "month" && !reportMonth) return "Select a month";
+    if (reportMode === "month" && !reportMonth) return ts("selectMonth");
     const { from, to } = reportRange();
-    if (!from || !to) return "Select both dates";
-    if (from > to) return "'From' must be on or before 'To'";
+    if (!from || !to) return ts("selectBothDates");
+    if (from > to) return ts("fromBeforeTo");
     if (dayjs(to).diff(dayjs(from), "day") + 1 > REPORT_MAX_DAYS) {
-      return `Date range too large — maximum ${REPORT_MAX_DAYS} days (one month)`;
+      return ts("rangeTooLarge", { max: REPORT_MAX_DAYS });
     }
     return null;
   };
@@ -731,9 +750,9 @@ export default function StaffAttendancePage() {
         staffId: reportForm.staffId ?? undefined,
         include: reportInclude(),
       });
-      toast.success("Report downloaded");
+      toast.success(ts("reportDownloaded"));
     } catch (e: any) {
-      toast.error(e?.info?.message ?? "Failed to download report");
+      toast.error(e?.info?.message ?? ts("reportFailed"));
     } finally {
       setReportBusy(null);
     }
@@ -751,9 +770,9 @@ export default function StaffAttendancePage() {
       });
       const { buildAttendanceReportPdf } = await import("@/lib/attendance-report-pdf");
       buildAttendanceReportPdf(report);
-      toast.success("Report downloaded");
+      toast.success(ts("reportDownloaded"));
     } catch (e: any) {
-      toast.error(e?.info?.message ?? "Failed to download report");
+      toast.error(e?.info?.message ?? ts("reportFailed"));
     } finally {
       setReportBusy(null);
     }
@@ -774,21 +793,21 @@ export default function StaffAttendancePage() {
   const rosterTotal = totalStaff;
 
   const tallies: Tally[] = [
-    { key: null, label: "All", count: rosterTotal },
-    { key: "NOT_MARKED", label: "Not marked", count: notMarked },
-    { key: "PRESENT", label: "Present", count: present },
-    { key: "LATE", label: "Late", count: lateArrivals },
-    { key: "HALF_DAY", label: "Half day", count: summary.HALF_DAY },
-    { key: "ON_LEAVE", label: "On leave", count: summary.ON_LEAVE },
-    { key: "ABSENT", label: "Absent", count: summary.ABSENT },
+    { key: null, label: ts("tally.all"), count: rosterTotal },
+    { key: "NOT_MARKED", label: ts("tally.notMarked"), count: notMarked },
+    { key: "PRESENT", label: ts("tally.present"), count: present },
+    { key: "LATE", label: ts("tally.late"), count: lateArrivals },
+    { key: "HALF_DAY", label: ts("tally.halfDay"), count: summary.HALF_DAY },
+    { key: "ON_LEAVE", label: ts("tally.onLeave"), count: summary.ON_LEAVE },
+    { key: "ABSENT", label: ts("tally.absent"), count: summary.ABSENT },
     // Holidays are rare and a zero here says nothing — the button appears on
     // the days it means something, rather than sitting at 0 all year.
     ...(summary.HOLIDAY > 0 || statusFilter === "HOLIDAY"
-      ? [{ key: "HOLIDAY" as StatusFilter, label: "Holiday", count: summary.HOLIDAY }]
+      ? [{ key: "HOLIDAY" as StatusFilter, label: ts("tally.holiday"), count: summary.HOLIDAY }]
       : []),
   ];
 
-  const activeTallyLabel = tallies.find((t) => t.key === statusFilter)?.label ?? "";
+  const activeTallyLabel = tallies.find((tally) => tally.key === statusFilter)?.label ?? "";
 
   /** Changing the filter re-runs page 1 via `loadRecords`; no reset needed here. */
   const chooseStatus = (next: StatusFilter) => setStatusFilter(next);
@@ -811,7 +830,7 @@ export default function StaffAttendancePage() {
   const applySearch = () => {
     const next = { ...draftSearch };
     if (!next.name && !next.mobile && !next.employeeCode && !next.staffId) {
-      toast("Enter at least one search field.");
+      toast(ts("enterSearchField"));
       return;
     }
     setActiveSearch(next);
@@ -827,16 +846,16 @@ export default function StaffAttendancePage() {
     <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
       <div className="space-y-2 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
-        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Staff Attendance</h1>
+        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{ts("title")}</h1>
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
           <Link href="/dashboard/hr/staff-attendance/kiosk" className="bg-slate-700 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 text-center">
-            Kiosk Mode
+            {ts("kioskMode")}
           </Link>
           <Link href="/dashboard/hr/staff-attendance/zones" className="bg-teal-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 text-center">
-            Geo-Zones
+            {ts("geoZones")}
           </Link>
           <Link href="/dashboard/hr/staff-attendance/devices" className="bg-violet-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-violet-700 text-center">
-            Device Registrations
+            {t("devices.title")}
           </Link>
           {rbac.canManageHR && (
             <>
@@ -845,13 +864,13 @@ export default function StaffAttendancePage() {
                 className="inline-flex items-center justify-center gap-1.5 bg-slate-800 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-900"
               >
                 <Settings2 aria-hidden className="h-4 w-4" />
-                Settings
+                {ts("settings")}
               </button>
               <button
                 onClick={() => { setShowBiometrics((v) => !v); if (!showBiometrics) loadBiometrics(); }}
                 className="bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
               >
-                Biometrics
+                {ts("biometrics")}
               </button>
               <button
                 onClick={() => setShowPendingCheckouts((v) => !v)}
@@ -861,7 +880,7 @@ export default function StaffAttendancePage() {
                     : "bg-orange-500 hover:bg-orange-600"
                 }`}
               >
-                Pending Checkouts
+                {ts("pendingCheckouts")}
                 {pendingCheckoutsList.length > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 bg-white text-red-600 text-[10px] font-bold leading-none rounded-full w-5 h-5 flex items-center justify-center border border-red-200">
                     {pendingCheckoutsList.length}
@@ -869,18 +888,18 @@ export default function StaffAttendancePage() {
                 )}
               </button>
               <button onClick={() => setShowReport(true)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700">
-                Download Report
+                {ts("downloadReport")}
               </button>
               <button onClick={() => setShowBypass(true)} className="bg-amber-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-amber-600">
-                {bypass ? "Bypass Active — New" : "Open Bypass Window"}
+                {bypass ? ts("bypassActiveNew") : ts("openBypass")}
               </button>
               {bypass && (
                 <button onClick={handleCloseBypass} className="bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-700">
-                  Close Bypass Window
+                  {ts("closeBypass")}
                 </button>
               )}
               <button onClick={() => { setMarkDate(today); setShowMark(true); }} className="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 col-span-2 sm:col-auto">
-                + Mark Manually
+                {ts("markManuallyButton")}
               </button>
             </>
           )}
@@ -888,24 +907,14 @@ export default function StaffAttendancePage() {
       </div>
 
       {/* Info Banner */}
-      <InfoBanner title="About Staff Attendance">
-        View daily attendance records for all staff. Staff can mark attendance via the <strong>WebAuthn Kiosk</strong> (fingerprint/face at main entrance) or through <strong>Geo-Fence check-in</strong> from their mobile.
-        Use <strong>Mark Manually</strong> to record or override attendance (e.g., for a field visit).
-        Open a <strong>Bypass Window</strong> to temporarily allow PIN-based marking when biometric devices are offline.
-        Configure the allowed campus geo-zones via <strong>Geo-Zones</strong>.
-        The tallies under the date are also the filter: tap <strong>Not marked</strong> to list the staff who have no
-        record for the day yet and mark them from there, or any other tally to see just those people.
-        The <strong>Check-in</strong> and <strong>Check-out</strong> columns each show how that half was recorded, and name the
-        admin when someone other than the staff member recorded it. A small <strong>Late</strong> badge on a check-in means
-        that staff member arrived after the late cutoff — it is tracked separately from Status, which is now decided purely
-        by hours worked (PRESENT / HALF_DAY / ABSENT). Use <strong>Settings</strong> to change the full/half-day hour
-        thresholds and the late cutoff time.
+      <InfoBanner title={ts("aboutTitle")}>
+        {t.rich("staffAtt.aboutBody", { strong: (c) => <strong>{c}</strong> })}
       </InfoBanner>
 
       {/* Bypass info */}
       {bypass && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
-          Bypass window active — expires {new Date(bypass.expiresAt).toLocaleString()}. Staff can mark attendance without biometrics.
+          {ts("bypassActiveBanner", { date: new Date(bypass.expiresAt).toLocaleString(INTL_LOCALE[locale]) })}
         </div>
       )}
 
@@ -913,22 +922,22 @@ export default function StaffAttendancePage() {
       {showBiometrics && rbac.canManageHR && (
         <div className="border border-indigo-200 rounded-xl overflow-hidden">
           <div className="bg-indigo-50 px-5 py-3 flex items-center justify-between">
-            <p className="text-sm font-semibold text-indigo-900">Biometric Device Management</p>
-            <button onClick={() => setShowBiometrics(false)} className="text-indigo-400 hover:text-indigo-700 text-xs">Close ✕</button>
+            <p className="text-sm font-semibold text-indigo-900">{ts("bioTitle")}</p>
+            <button onClick={() => setShowBiometrics(false)} className="text-indigo-400 hover:text-indigo-700 text-xs">{tc("action.close")} ✕</button>
           </div>
           <div className="p-5 space-y-5 bg-white">
-            {bioLoading ? <p className="text-sm text-gray-500">Loading…</p> : (
+            {bioLoading ? <p className="text-sm text-gray-500">{tc("state.loading")}</p> : (
               <>
                 {/* Grant registration permission */}
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Allow Device Registration</p>
-                  <p className="text-xs text-gray-500">Select a staff member to allow them to register their device for 48 hours. Once they register, the permission is consumed automatically.</p>
+                  <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">{ts("allowReg")}</p>
+                  <p className="text-xs text-gray-500">{ts("allowRegHint")}</p>
                   <div className="flex gap-2 items-end">
                     <div className="flex-1">
-                      <StaffPicker label="Staff Member" value={permitTargetId} onChange={(id) => setPermitTargetId(id)} />
+                      <StaffPicker label={t("leaves.staffMember")} value={permitTargetId} onChange={(id) => setPermitTargetId(id)} />
                     </div>
                     <button onClick={handleGrantPermit} className="bg-indigo-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-indigo-700 whitespace-nowrap">
-                      Grant Permission
+                      {ts("grantPermission")}
                     </button>
                   </div>
                 </div>
@@ -936,17 +945,17 @@ export default function StaffAttendancePage() {
                 {/* Active permits */}
                 {permits.filter((p) => !p.usedAt && new Date(p.expiresAt) > new Date()).length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Active Permissions</p>
+                    <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">{ts("activePermissions")}</p>
                     <div className="space-y-1.5">
                       {permits
                         .filter((p) => !p.usedAt && new Date(p.expiresAt) > new Date())
                         .map((p) => (
                           <div key={p.id} className="flex items-center justify-between bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
                             <div>
-                              <p className="text-xs font-medium text-amber-800">Staff ID #{p.staffId}</p>
-                              <p className="text-xs text-amber-600">Expires {new Date(p.expiresAt).toLocaleString()}</p>
+                              <p className="text-xs font-medium text-amber-800">{ts("staffIdNo", { id: p.staffId })}</p>
+                              <p className="text-xs text-amber-600">{ts("expires", { date: new Date(p.expiresAt).toLocaleString(INTL_LOCALE[locale]) })}</p>
                             </div>
-                            <button onClick={() => handleRevokePermit(p.staffId)} className="text-red-500 hover:text-red-700 text-xs">Revoke</button>
+                            <button onClick={() => handleRevokePermit(p.staffId)} className="text-red-500 hover:text-red-700 text-xs">{ts("revoke")}</button>
                           </div>
                         ))}
                     </div>
@@ -956,10 +965,10 @@ export default function StaffAttendancePage() {
                 {/* Registered credentials */}
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                    Registered Devices ({allCredentials.length})
+                    {ts("registeredDevices", { count: allCredentials.length })}
                   </p>
                   {allCredentials.length === 0 ? (
-                    <p className="text-xs text-gray-400">No devices registered yet. Grant permission to a staff member so they can register from My Attendance.</p>
+                    <p className="text-xs text-gray-400">{ts("noDevices")}</p>
                   ) : (
                     <div className="space-y-1.5">
                       {allCredentials.map((c) => (
@@ -968,13 +977,13 @@ export default function StaffAttendancePage() {
                             <p className="text-sm font-medium text-gray-800">
                               {c.staff?.user
                                 ? `${c.staff.user.firstName} ${c.staff.user.lastName} (#${c.staff.employeeCode})`
-                                : `Staff #${c.staffId}`}
+                                : t("overview.staffNo", { id: String(c.staffId) })}
                             </p>
                             <p className="text-xs text-gray-400">
-                              {c.deviceName || "Unnamed"} — registered {new Date(c.registeredAt).toLocaleDateString()}
+                              {ts("deviceRegistered", { name: c.deviceName || ts("unnamed"), date: new Date(c.registeredAt).toLocaleDateString(INTL_LOCALE[locale]) })}
                             </p>
                           </div>
-                          <button onClick={() => handleDeleteCredential(c.id)} className="text-red-500 hover:text-red-700 text-xs ml-4">Delete</button>
+                          <button onClick={() => handleDeleteCredential(c.id)} className="text-red-500 hover:text-red-700 text-xs ml-4">{tc("action.delete")}</button>
                         </div>
                       ))}
                     </div>
@@ -990,30 +999,30 @@ export default function StaffAttendancePage() {
         <div className="border border-orange-200 rounded-xl overflow-hidden">
           <div className="bg-orange-50 px-5 py-3 flex items-center justify-between">
             <p className="text-sm font-semibold text-orange-900">
-              Pending Checkouts{pendingCheckoutsList.length > 0 ? ` (${pendingCheckoutsList.length})` : ""}
+              {ts("pendingCheckouts")}{pendingCheckoutsList.length > 0 ? ` (${pendingCheckoutsList.length})` : ""}
             </p>
-            <button onClick={() => setShowPendingCheckouts(false)} className="text-orange-400 hover:text-orange-700 text-xs">Close ✕</button>
+            <button onClick={() => setShowPendingCheckouts(false)} className="text-orange-400 hover:text-orange-700 text-xs">{tc("action.close")} ✕</button>
           </div>
           <div className="p-5 bg-white">
             {pendingCheckoutsLoading ? (
-              <p className="text-sm text-gray-500">Loading…</p>
+              <p className="text-sm text-gray-500">{tc("state.loading")}</p>
             ) : pendingCheckoutsList.length === 0 ? (
-              <p className="text-sm text-gray-500">No pending checkouts — all staff check-ins are resolved.</p>
+              <p className="text-sm text-gray-500">{ts("noPending")}</p>
             ) : (
               <div className="space-y-4">
                 <p className="text-xs text-gray-500">
-                  {pendingCheckoutsList.length} staff member{pendingCheckoutsList.length !== 1 ? "s" : ""} have an open check-in with no checkout recorded.
+                  {ts("pendingCount", { count: pendingCheckoutsList.length })}
                 </p>
                 {/* Desktop table */}
                 <div className="hidden sm:block overflow-x-auto rounded-lg border border-gray-200">
                   <table className="min-w-full text-sm">
                     <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
                       <tr>
-                        <th className="px-4 py-2.5 text-left">Staff</th>
-                        <th className="px-4 py-2.5 text-left">Date</th>
-                        <th className="px-4 py-2.5 text-left">Checked In At</th>
-                        <th className="px-4 py-2.5 text-left">Days Open</th>
-                        <th className="px-4 py-2.5 text-left">Action</th>
+                        <th className="px-4 py-2.5 text-left">{t("leaves.staff")}</th>
+                        <th className="px-4 py-2.5 text-left">{tc("field.date")}</th>
+                        <th className="px-4 py-2.5 text-left">{ts("checkedInAt")}</th>
+                        <th className="px-4 py-2.5 text-left">{ts("daysOpen")}</th>
+                        <th className="px-4 py-2.5 text-left">{t("mySalary.action")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -1027,7 +1036,7 @@ export default function StaffAttendancePage() {
                           <td className="px-4 py-3 tabular-nums text-gray-700">{dayjs(item.checkInTime).format('HH:mm:ss')}</td>
                           <td className="px-4 py-3">
                             <span className={`text-xs font-semibold ${item.daysAgo > 1 ? "text-red-600" : "text-amber-600"}`}>
-                              {item.daysAgo}d
+                              {t("overview.daysShort", { count: item.daysAgo })}
                             </span>
                           </td>
                           <td className="px-4 py-3">
@@ -1035,7 +1044,7 @@ export default function StaffAttendancePage() {
                               onClick={() => openResolve(item)}
                               className="text-xs bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded-lg font-medium"
                             >
-                              Close Checkout
+                              {ts("closeCheckout")}
                             </button>
                           </td>
                         </tr>
@@ -1052,14 +1061,14 @@ export default function StaffAttendancePage() {
                           <p className="font-medium text-gray-900 text-sm">{item.name}</p>
                           {item.employeeCode && <p className="text-xs text-gray-500">EMP-{item.employeeCode}</p>}
                         </div>
-                        <span className={`text-xs font-semibold shrink-0 ${item.daysAgo > 1 ? "text-red-600" : "text-amber-600"}`}>{item.daysAgo}d ago</span>
+                        <span className={`text-xs font-semibold shrink-0 ${item.daysAgo > 1 ? "text-red-600" : "text-amber-600"}`}>{ts("daysAgo", { count: item.daysAgo })}</span>
                       </div>
-                      <p className="text-xs text-gray-600">{item.date} · checked in {dayjs(item.checkInTime).format('HH:mm:ss')}</p>
+                      <p className="text-xs text-gray-600">{ts("dateCheckedIn", { date: item.date, time: dayjs(item.checkInTime).format('HH:mm:ss') })}</p>
                       <button
                         onClick={() => openResolve(item)}
                         className="text-xs bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded-lg font-medium"
                       >
-                        Close Checkout
+                        {ts("closeCheckout")}
                       </button>
                     </div>
                   ))}
@@ -1073,7 +1082,7 @@ export default function StaffAttendancePage() {
       <div className="bg-surface border-line space-y-3 rounded-xl border p-3 sm:p-4">
         <div className="flex flex-wrap items-center gap-3">
           <label htmlFor="register-date" className="text-ink-soft text-sm font-medium">
-            Register for
+            {ts("registerFor")}
           </label>
           <input
             id="register-date"
@@ -1084,7 +1093,7 @@ export default function StaffAttendancePage() {
           />
           {hasActiveSearch && (
             <span className="bg-accent-info-tint text-accent-info-deep border-accent-info-edge rounded-full border px-2.5 py-1 text-xs">
-              {totalRecords} result{totalRecords === 1 ? "" : "s"} for your search
+              {ts("searchResults", { count: totalRecords })}
             </span>
           )}
         </div>
@@ -1092,13 +1101,11 @@ export default function StaffAttendancePage() {
         <TallyStrip tallies={tallies} active={statusFilter} onChange={chooseStatus} />
 
         <p className="text-ink-muted text-xs">
-          <strong className="text-ink-soft font-semibold">All</strong> lists every one of the{" "}
-          {rosterTotal} staff on the register for this date, marked or not.{" "}
+          {t.rich("staffAtt.allExplainer", { strong: (c) => <strong className="text-ink-soft font-semibold">{c}</strong>, total: rosterTotal })}{" "}
           {notMarked > 0
-            ? `${notMarked} ${notMarked === 1 ? "has" : "have"} no record yet.`
-            : "Everyone has a record."}{" "}
-          A late arrival still counts under Present or Half day: Late counts check-in
-          time, not the day&apos;s outcome.
+            ? ts("noRecordYet", { count: notMarked })
+            : ts("everyoneHasRecord")}{" "}
+          {ts("lateExplainer")}
         </p>
       </div>
 
@@ -1109,42 +1116,42 @@ export default function StaffAttendancePage() {
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Name</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{tc("field.name")}</label>
             <input
               type="text"
               value={draftSearch.name}
               onChange={(e) => setDraftSearch({ ...draftSearch, name: e.target.value })}
-              placeholder="e.g. Rahul"
+              placeholder={t("devices.namePlaceholder")}
               className="w-full border rounded-lg px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Mobile Number</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{t("devices.mobileNumber")}</label>
             <input
               type="tel"
               value={draftSearch.mobile}
               onChange={(e) => setDraftSearch({ ...draftSearch, mobile: e.target.value })}
-              placeholder="e.g. 9876543210"
+              placeholder={t("devices.mobilePlaceholder")}
               className="w-full border rounded-lg px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Employee Code</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{t("devices.employeeCode")}</label>
             <input
               type="number"
               value={draftSearch.employeeCode}
               onChange={(e) => setDraftSearch({ ...draftSearch, employeeCode: e.target.value })}
-              placeholder="e.g. 1024"
+              placeholder={t("devices.codePlaceholder")}
               className="w-full border rounded-lg px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Staff ID</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{t("devices.staffId")}</label>
             <input
               type="number"
               value={draftSearch.staffId}
               onChange={(e) => setDraftSearch({ ...draftSearch, staffId: e.target.value })}
-              placeholder="e.g. 17"
+              placeholder={t("devices.staffIdPlaceholder")}
               className="w-full border rounded-lg px-3 py-2 text-sm"
             />
           </div>
@@ -1154,31 +1161,31 @@ export default function StaffAttendancePage() {
             type="submit"
             className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
           >
-            Search
+            {tc("action.search")}
           </button>
           <button
             type="button"
             onClick={clearSearch}
             className="border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg"
           >
-            Clear
+            {tc("action.clear")}
           </button>
-          <span className="text-xs text-gray-500">Fill any combination of fields and click Search.</span>
+          <span className="text-xs text-gray-500">{ts("searchHint")}</span>
         </div>
       </form>
 
       {/* Records table */}
       {loading ? (
-        <p className="text-sm text-gray-500">Loading…</p>
+        <p className="text-sm text-gray-500">{tc("state.loading")}</p>
       ) : records.length === 0 ? (
         <p className="text-ink-muted text-sm">
           {hasActiveSearch
-            ? "No staff match your search."
+            ? ts("noMatch")
             : statusFilter === "NOT_MARKED"
-              ? "Everyone on the roster has a record for this date."
+              ? ts("everyoneOnRoster")
               : statusFilter
-                ? `Nobody is ${activeTallyLabel.toLowerCase()} on this date.`
-                : "No attendance records for this date."}
+                ? ts("nobodyIs", { label: activeTallyLabel.toLowerCase() })
+                : ts("noRecordsDate")}
         </p>
       ) : (
         <>
@@ -1194,9 +1201,9 @@ export default function StaffAttendancePage() {
                 <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-900 text-sm truncate">{staffNameOf(r)}</p>
+                      <p className="font-medium text-gray-900 text-sm truncate">{nameOf(r)}</p>
                       <p className="text-[11px] text-gray-500">
-                        {r.staff?.employeeCode ? `EMP-${r.staff.employeeCode}` : `Staff #${r.staffId}`}
+                        {r.staff?.employeeCode ? `EMP-${r.staff.employeeCode}` : t("overview.staffNo", { id: r.staffId })}
                         {r.staff?.user?.mobile ? ` · ${r.staff.user.mobile}` : ""}
                       </p>
                     </div>
@@ -1207,16 +1214,16 @@ export default function StaffAttendancePage() {
                       even on the narrowest phone. */}
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div className="space-y-1">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Check-in</p>
-                      <EventCell time={inTime} source={inTime ? checkInSource(r) : null} late={r.isLate} emptyLabel={unmarked ? "—" : "Not checked in"} />
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{ts("checkIn")}</p>
+                      <EventCell time={inTime} source={inTime ? checkInSource(r) : null} late={r.isLate} emptyLabel={unmarked ? "—" : ts("notCheckedIn")} />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Check-out</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{ts("checkOut")}</p>
                       <EventCell
                         time={outTime}
                         source={outSource}
                         nextDay={Boolean(r.checkOutTime) && dayjs(r.checkOutTime).format("YYYY-MM-DD") !== r.date}
-                        emptyLabel={unmarked ? "—" : "Still open"}
+                        emptyLabel={unmarked ? "—" : ts("stillOpen")}
                       />
                     </div>
                   </div>
@@ -1225,25 +1232,25 @@ export default function StaffAttendancePage() {
                       <span className={`text-xs tabular-nums ${DURATION_TEXT[r.status] ?? "text-gray-600"}`}>⏱ {dur.text}</span>
                     ) : dur.invalid ? (
                       <span className="inline-flex items-center gap-1 text-xs text-red-600">
-                        <TriangleAlert aria-hidden className="h-3.5 w-3.5" /> Check-out is before check-in
+                        <TriangleAlert aria-hidden className="h-3.5 w-3.5" /> {ts("outBeforeIn")}
                       </span>
                     ) : (
-                      <span className="text-xs text-gray-400">{unmarked ? "Nothing recorded" : "No duration yet"}</span>
+                      <span className="text-xs text-gray-400">{unmarked ? ts("nothingRecorded") : ts("noDurationYet")}</span>
                     )}
                     <div className="flex items-center gap-3">
                       {unmarked && rbac.canManageHR && (
                         <button
-                          onClick={() => openMarkFor(r.staffId, staffNameOf(r))}
+                          onClick={() => openMarkFor(r.staffId, nameOf(r))}
                           className="text-accent-warn-deep hover:underline text-xs font-semibold"
                         >
-                          Mark attendance
+                          {ts("markAttendance")}
                         </button>
                       )}
                       <button
-                        onClick={() => setViewStaff({ id: r.staffId, label: staffNameOf(r) })}
+                        onClick={() => setViewStaff({ id: r.staffId, label: nameOf(r) })}
                         className="text-blue-600 hover:underline text-xs font-medium"
                       >
-                        View month →
+                        {ts("viewMonth")}
                       </button>
                     </div>
                   </div>
@@ -1260,12 +1267,12 @@ export default function StaffAttendancePage() {
             <table className="min-w-180 w-full text-sm">
               <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
                 <tr>
-                  <th className="px-4 py-3 text-left">Staff</th>
-                  <th className="px-4 py-3 text-left">Status</th>
-                  <th className="px-4 py-3 text-left">Check-in</th>
-                  <th className="px-4 py-3 text-left">Check-out</th>
-                  <th className="px-4 py-3 text-left">Duration</th>
-                  <th className="px-4 py-3 text-left">View</th>
+                  <th className="px-4 py-3 text-left">{t("leaves.staff")}</th>
+                  <th className="px-4 py-3 text-left">{tc("field.status")}</th>
+                  <th className="px-4 py-3 text-left">{ts("checkIn")}</th>
+                  <th className="px-4 py-3 text-left">{ts("checkOut")}</th>
+                  <th className="px-4 py-3 text-left">{t("myAttendance.duration")}</th>
+                  <th className="px-4 py-3 text-left">{tc("action.view")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -1277,9 +1284,9 @@ export default function StaffAttendancePage() {
                   return (
                     <tr key={r.id} className="hover:bg-gray-50 align-top">
                       <td className="px-4 py-3">
-                        <div className="font-medium text-gray-900">{staffNameOf(r)}</div>
+                        <div className="font-medium text-gray-900">{nameOf(r)}</div>
                         <div className="text-[11px] text-gray-500">
-                          {r.staff?.employeeCode ? `EMP-${r.staff.employeeCode}` : `Staff #${r.staffId}`}
+                          {r.staff?.employeeCode ? `EMP-${r.staff.employeeCode}` : t("overview.staffNo", { id: r.staffId })}
                           {r.staff?.user?.mobile ? ` · ${r.staff.user.mobile}` : ""}
                         </div>
                       </td>
@@ -1287,14 +1294,14 @@ export default function StaffAttendancePage() {
                         <StatusChip status={r.status} />
                       </td>
                       <td className="px-4 py-3">
-                        <EventCell time={inTime} source={inTime ? checkInSource(r) : null} late={r.isLate} emptyLabel={unmarked ? "—" : "Not checked in"} />
+                        <EventCell time={inTime} source={inTime ? checkInSource(r) : null} late={r.isLate} emptyLabel={unmarked ? "—" : ts("notCheckedIn")} />
                       </td>
                       <td className="px-4 py-3">
                         <EventCell
                           time={outTime}
                           source={checkOutSource(r)}
                           nextDay={Boolean(r.checkOutTime) && dayjs(r.checkOutTime).format("YYYY-MM-DD") !== r.date}
-                          emptyLabel={unmarked ? "—" : "Still open"}
+                          emptyLabel={unmarked ? "—" : ts("stillOpen")}
                         />
                       </td>
                       <td className="px-4 py-3">
@@ -1303,9 +1310,9 @@ export default function StaffAttendancePage() {
                         ) : dur.invalid ? (
                           <span
                             className="inline-flex items-center gap-1 text-xs text-red-600"
-                            title="The stored check-out is not after the check-in, so no duration can be computed. Re-mark this record to correct it."
+                            title={ts("outOfOrderTitle")}
                           >
-                            <TriangleAlert aria-hidden className="h-3.5 w-3.5 shrink-0" /> Times out of order
+                            <TriangleAlert aria-hidden className="h-3.5 w-3.5 shrink-0" /> {ts("outOfOrder")}
                           </span>
                         ) : (
                           <span className="text-gray-400">—</span>
@@ -1314,17 +1321,17 @@ export default function StaffAttendancePage() {
                       <td className="px-4 py-3">
                         <div className="flex flex-col items-start gap-1">
                           <button
-                            onClick={() => setViewStaff({ id: r.staffId, label: staffNameOf(r) })}
+                            onClick={() => setViewStaff({ id: r.staffId, label: nameOf(r) })}
                             className="text-blue-600 hover:underline text-xs font-medium"
                           >
-                            View
+                            {tc("action.view")}
                           </button>
                           {unmarked && rbac.canManageHR && (
                             <button
-                              onClick={() => openMarkFor(r.staffId, staffNameOf(r))}
+                              onClick={() => openMarkFor(r.staffId, nameOf(r))}
                               className="text-accent-warn-deep hover:underline text-xs font-semibold"
                             >
-                              Mark
+                              {ts("mark")}
                             </button>
                           )}
                         </div>
@@ -1342,8 +1349,9 @@ export default function StaffAttendancePage() {
           <div ref={loadMoreRef} aria-hidden className="h-px" />
           <div className="flex flex-col items-center gap-2 pt-1" aria-live="polite">
             <p className="text-ink-muted text-xs">
-              Showing {records.length} of {totalRecords}
-              {statusFilter ? ` ${activeTallyLabel.toLowerCase()}` : ""} staff
+              {statusFilter
+                ? ts("showingFiltered", { shown: records.length, total: totalRecords, label: activeTallyLabel.toLowerCase() })
+                : ts("showing", { shown: records.length, total: totalRecords })}
             </p>
             {hasMore && (
               <button
@@ -1351,7 +1359,7 @@ export default function StaffAttendancePage() {
                 disabled={loadingMore}
                 className="border-line text-ink-soft hover:bg-surface-secondary hover:border-line-strong min-h-11 rounded-full border px-5 text-sm font-medium disabled:opacity-60"
               >
-                {loadingMore ? "Loading…" : `Load ${Math.min(PAGE_SIZE, totalRecords - records.length)} more`}
+                {loadingMore ? tc("state.loading") : ts("loadMore", { count: Math.min(PAGE_SIZE, totalRecords - records.length) })}
               </button>
             )}
           </div>
@@ -1371,25 +1379,26 @@ export default function StaffAttendancePage() {
       {resolveTarget && (
         <div className="fixed inset-0 bg-walnut-950/55 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm space-y-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="font-semibold text-lg">Close Pending Checkout</h2>
+            <h2 className="font-semibold text-lg">{ts("closePendingTitle")}</h2>
             <div className="bg-orange-50 border border-orange-100 rounded-lg p-3">
               <p className="text-sm font-medium text-orange-900">{resolveTarget.name}</p>
               <p className="text-xs text-orange-700 mt-0.5">
-                Open since {resolveTarget.date}
-                {resolveTarget.daysAgo > 0 ? ` (${resolveTarget.daysAgo} day${resolveTarget.daysAgo !== 1 ? "s" : ""} ago)` : ""} — never checked out.
+                {resolveTarget.daysAgo > 0
+                  ? ts("openSinceAgo", { date: resolveTarget.date, count: resolveTarget.daysAgo })
+                  : ts("openSince", { date: resolveTarget.date })}
               </p>
               {/* The check-in stays on screen while the checkout is chosen: the
                   time being typed is only correct relative to this one. */}
               <div className="mt-2.5 flex items-center gap-3 border-t border-orange-100 pt-2.5">
                 <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-orange-500">Checked in</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-orange-500">{ts("checkedIn")}</p>
                   <p className="text-sm font-semibold tabular-nums text-orange-900">
                     {dayjs(resolveTarget.checkInTime).format("HH:mm:ss")}
                   </p>
                 </div>
                 <span aria-hidden className="text-orange-300">→</span>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-orange-500">Checking out</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-orange-500">{ts("checkingOut")}</p>
                   <p className={`text-sm font-semibold tabular-nums ${resolveError ? "text-red-600" : "text-orange-900"}`}>
                     {resolveCheckOut?.isValid() ? resolveCheckOut.format("HH:mm") : "—"}
                     {resolveCheckOut?.isValid() && resolveForm.checkOutDate !== resolveTarget.date && (
@@ -1403,13 +1412,13 @@ export default function StaffAttendancePage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">Checkout Date</label>
+                <label className="text-sm font-medium">{ts("checkoutDate")}</label>
                 <div className="mt-1">
                   <AppDatePicker value={resolveForm.checkOutDate} onChange={(v) => setResolveForm((f) => ({ ...f, checkOutDate: v }))} />
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium">Checkout Time</label>
+                <label className="text-sm font-medium">{ts("checkoutTime")}</label>
                 <div className="mt-1">
                   <AppTimePicker value={resolveForm.checkOutTime} onChange={(v) => setResolveForm((f) => ({ ...f, checkOutTime: v }))} />
                 </div>
@@ -1422,53 +1431,53 @@ export default function StaffAttendancePage() {
               </p>
             ) : (
               <p className="text-[11px] text-gray-500">
-                Defaults to 5:00 PM, or an hour after check-in when that is later.
-                {resolvePreview ? ` Records ${resolvePreview} of work.` : " Adjust if you know the actual departure time."}
+                {ts("defaultsTo")}{" "}
+                {resolvePreview ? ts("recordsWork", { span: resolvePreview }) : ts("adjustHint")}
               </p>
             )}
             <div>
-              <label className="text-sm font-medium">Reason</label>
+              <label className="text-sm font-medium">{t("myLeaves.reason")}</label>
               <select
                 value={resolveForm.reason}
                 onChange={(e) => setResolveForm((f) => ({ ...f, reason: e.target.value }))}
                 className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
               >
-                <option value="FORGOT">Forgot to check out</option>
-                <option value="REGULAR">Regular checkout</option>
-                <option value="EARLY_LEAVE">Early leave</option>
-                <option value="OVERTIME">Overtime</option>
+                <option value="FORGOT">{t("checkoutReason.FORGOT")}</option>
+                <option value="REGULAR">{t("checkoutReason.REGULAR")}</option>
+                <option value="EARLY_LEAVE">{t("checkoutReason.EARLY_LEAVE")}</option>
+                <option value="OVERTIME">{t("checkoutReason.OVERTIME")}</option>
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium">HR Note <span className="text-gray-400 font-normal">(optional)</span></label>
+              <label className="text-sm font-medium">{ts("hrNote")} <span className="text-gray-400 font-normal">({tc("state.optional")})</span></label>
               <input
                 value={resolveForm.hrNote}
                 onChange={(e) => setResolveForm((f) => ({ ...f, hrNote: e.target.value }))}
-                placeholder="e.g. Staff reported leaving early due to illness"
+                placeholder={ts("hrNotePlaceholder")}
                 className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Attendance Status</label>
+              <label className="text-sm font-medium">{ts("attendanceStatus")}</label>
               <select
                 value={resolveForm.status}
                 onChange={(e) => setResolveForm((f) => ({ ...f, status: e.target.value }))}
                 className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
               >
-                <option value="PRESENT">Present</option>
-                <option value="HALF_DAY">Half Day</option>
-                <option value="LATE">Late</option>
-                <option value="ABSENT">Absent</option>
+                <option value="PRESENT">{t("attendanceStatus.PRESENT")}</option>
+                <option value="HALF_DAY">{t("attendanceStatus.HALF_DAY")}</option>
+                <option value="LATE">{t("attendanceStatus.LATE")}</option>
+                <option value="ABSENT">{t("attendanceStatus.ABSENT")}</option>
               </select>
             </div>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setResolveTarget(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={() => setResolveTarget(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">{tc("action.cancel")}</button>
               <button
                 onClick={handleHrResolve}
                 disabled={resolving || Boolean(resolveError)}
                 className="px-4 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-60"
               >
-                {resolving ? "Closing…" : "Close Checkout"}
+                {resolving ? ts("closing") : ts("closeCheckout")}
               </button>
             </div>
           </div>
@@ -1479,7 +1488,7 @@ export default function StaffAttendancePage() {
       {showMark && (
         <div className="fixed inset-0 bg-walnut-950/55 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm space-y-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="font-semibold text-lg">Mark Attendance Manually</h2>
+            <h2 className="font-semibold text-lg">{ts("markManuallyTitle")}</h2>
 
             {/* Search mode toggle */}
             <div className="flex gap-1 bg-gray-100 rounded-lg p-1 text-xs">
@@ -1488,20 +1497,20 @@ export default function StaffAttendancePage() {
                 onClick={() => setMarkSearchMode("quick")}
                 className={`flex-1 py-1.5 rounded-md font-medium ${markSearchMode === "quick" ? "bg-white shadow text-gray-900" : "text-gray-500"}`}
               >
-                Quick search
+                {ts("quickSearch")}
               </button>
               <button
                 type="button"
                 onClick={() => setMarkSearchMode("explicit")}
                 className={`flex-1 py-1.5 rounded-md font-medium ${markSearchMode === "explicit" ? "bg-white shadow text-gray-900" : "text-gray-500"}`}
               >
-                By code / ID / mobile
+                {ts("byCode")}
               </button>
             </div>
 
             {markSearchMode === "quick" ? (
               <StaffPicker
-                label="Staff Member"
+                label={t("leaves.staffMember")}
                 value={markStaffId}
                 onChange={(id, staff) => {
                   setMarkStaffId(id);
@@ -1521,7 +1530,7 @@ export default function StaffAttendancePage() {
             )}
 
             <div>
-              <label className="text-sm font-medium">Date</label>
+              <label className="text-sm font-medium">{tc("field.date")}</label>
               <input
                 type="date"
                 value={markDate}
@@ -1529,23 +1538,23 @@ export default function StaffAttendancePage() {
                 onChange={(e) => setMarkDate(e.target.value)}
                 className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
               />
-              <p className="text-[11px] text-gray-500 mt-1">Defaults to today. Pick another date to back-date attendance.</p>
+              <p className="text-[11px] text-gray-500 mt-1">{ts("defaultsToday")}</p>
             </div>
             <div>
-              <label className="text-sm font-medium">Status</label>
+              <label className="text-sm font-medium">{tc("field.status")}</label>
               <select value={markForm.status} onChange={(e) => setMarkForm((f) => ({ ...f, status: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1">
-                {["PRESENT","ABSENT","LATE","HALF_DAY","ON_LEAVE"].map((s) => <option key={s}>{s}</option>)}
+                {(["PRESENT","ABSENT","LATE","HALF_DAY","ON_LEAVE"] as const).map((s) => <option key={s} value={s}>{t(`attendanceStatus.${s}`)}</option>)}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm font-medium">Check-In</label>
+                <label className="text-sm font-medium">{t("myAttendance.checkIn")}</label>
                 <div className="mt-1">
                   <AppTimePicker value={markForm.checkInTime} onChange={(v) => setMarkForm((f) => ({ ...f, checkInTime: v }))} />
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium">Check-Out</label>
+                <label className="text-sm font-medium">{t("myAttendance.checkOut")}</label>
                 <div className="mt-1">
                   <AppTimePicker value={markForm.checkOutTime} onChange={(v) => setMarkForm((f) => ({ ...f, checkOutTime: v }))} />
                 </div>
@@ -1557,20 +1566,20 @@ export default function StaffAttendancePage() {
                 {markError}
               </p>
             ) : markPreview ? (
-              <p className="text-[11px] text-gray-500">Records {markPreview} of work on {markDate}.</p>
+              <p className="text-[11px] text-gray-500">{ts("recordsWorkOn", { span: markPreview, date: markDate })}</p>
             ) : null}
             <div>
-              <label className="text-sm font-medium">Override Reason (optional)</label>
+              <label className="text-sm font-medium">{ts("overrideReason")}</label>
               <input value={markForm.overrideReason} onChange={(e) => setMarkForm((f) => ({ ...f, overrideReason: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
             </div>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowMark(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={() => setShowMark(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">{tc("action.cancel")}</button>
               <button
                 onClick={handleMark}
                 disabled={Boolean(markError)}
                 className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
               >
-                Mark
+                {ts("mark")}
               </button>
             </div>
           </div>
@@ -1581,9 +1590,9 @@ export default function StaffAttendancePage() {
       {showReport && (
         <div className="fixed inset-0 bg-walnut-950/55 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm space-y-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="font-semibold text-lg">Download Attendance Report</h2>
+            <h2 className="font-semibold text-lg">{ts("reportTitle")}</h2>
             <p className="text-sm text-gray-600">
-              Working-hours report for one staff member or everyone. One month at a time (max {REPORT_MAX_DAYS} days).
+              {ts("reportHint", { max: REPORT_MAX_DAYS })}
             </p>
 
             <div className="flex gap-1 bg-gray-100 rounded-lg p-1 text-xs">
@@ -1592,20 +1601,20 @@ export default function StaffAttendancePage() {
                 onClick={() => setReportMode("month")}
                 className={`flex-1 py-1.5 rounded-md font-medium ${reportMode === "month" ? "bg-white shadow text-gray-900" : "text-gray-500"}`}
               >
-                By month
+                {ts("byMonth")}
               </button>
               <button
                 type="button"
                 onClick={() => setReportMode("custom")}
                 className={`flex-1 py-1.5 rounded-md font-medium ${reportMode === "custom" ? "bg-white shadow text-gray-900" : "text-gray-500"}`}
               >
-                Custom range
+                {ts("customRange")}
               </button>
             </div>
 
             {reportMode === "month" ? (
               <div>
-                <label className="text-sm font-medium" htmlFor="report-month">Month</label>
+                <label className="text-sm font-medium" htmlFor="report-month">{t("payroll.month")}</label>
                 <input
                   id="report-month"
                   type="month"
@@ -1617,20 +1626,20 @@ export default function StaffAttendancePage() {
                 <p className="text-[11px] text-gray-500 mt-1">
                   {(() => {
                     const { from, to } = reportRange();
-                    return `Covers ${from} to ${to} — the whole month, ending today for the current month.`;
+                    return ts("covers", { from, to });
                   })()}
                 </p>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium">From</label>
+                  <label className="text-sm font-medium">{tc("field.from")}</label>
                   <div className="mt-1">
                     <AppDatePicker value={reportForm.from} max={today} onChange={(v) => setReportForm((f) => ({ ...f, from: v }))} />
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">To</label>
+                  <label className="text-sm font-medium">{tc("field.to")}</label>
                   <div className="mt-1">
                     <AppDatePicker value={reportForm.to} max={today} onChange={(v) => setReportForm((f) => ({ ...f, to: v }))} />
                   </div>
@@ -1639,14 +1648,14 @@ export default function StaffAttendancePage() {
             )}
 
             <StaffPicker
-              label="Staff Member (leave empty for all staff)"
+              label={ts("reportStaff")}
               value={reportForm.staffId}
               onChange={(id) => setReportForm((f) => ({ ...f, staffId: id }))}
             />
 
             {/* Sections: leaving Detail off keeps a whole-school download small. */}
             <fieldset className="space-y-2">
-              <legend className="text-sm font-medium">Include</legend>
+              <legend className="text-sm font-medium">{ts("include")}</legend>
               <label className="flex items-start gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -1655,9 +1664,9 @@ export default function StaffAttendancePage() {
                   className="mt-1"
                 />
                 <span>
-                  Summary
+                  {ts("summary")}
                   <span className="block text-[11px] text-gray-500">
-                    One row per staff member — present/absent/not-marked days and worked hours.
+                    {ts("summaryHint")}
                   </span>
                 </span>
               </label>
@@ -1669,9 +1678,9 @@ export default function StaffAttendancePage() {
                   className="mt-1"
                 />
                 <span>
-                  Day-by-day detail
+                  {ts("detail")}
                   <span className="block text-[11px] text-gray-500">
-                    Every marked day with check-in/out times and who recorded them. Large for all staff.
+                    {ts("detailHint")}
                   </span>
                 </span>
               </label>
@@ -1685,20 +1694,20 @@ export default function StaffAttendancePage() {
             ) : null}
 
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowReport(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Close</button>
+              <button onClick={() => setShowReport(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">{tc("action.close")}</button>
               <button
                 onClick={handleReportCsv}
                 disabled={reportBusy !== null || reportError() !== null}
                 className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-60"
               >
-                {reportBusy === "csv" ? "Preparing…" : "Download CSV"}
+                {reportBusy === "csv" ? ts("preparing") : ts("downloadCsv")}
               </button>
               <button
                 onClick={handleReportPdf}
                 disabled={reportBusy !== null || reportError() !== null}
                 className="px-4 py-2 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-60"
               >
-                {reportBusy === "pdf" ? "Preparing…" : "Download PDF"}
+                {reportBusy === "pdf" ? ts("preparing") : t("mySalary.downloadPdf")}
               </button>
             </div>
           </div>
@@ -1709,10 +1718,10 @@ export default function StaffAttendancePage() {
       {showBypass && (
         <div className="fixed inset-0 bg-walnut-950/55 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm space-y-4">
-            <h2 className="font-semibold text-lg">Open Bypass Window</h2>
-            <p className="text-sm text-gray-600">During a bypass window, staff can mark attendance without biometrics (e.g., device maintenance).</p>
+            <h2 className="font-semibold text-lg">{ts("openBypass")}</h2>
+            <p className="text-sm text-gray-600">{ts("bypassHint")}</p>
             <div>
-              <label className="text-sm font-medium">Duration (hours)</label>
+              <label className="text-sm font-medium">{ts("durationHours")}</label>
               <input
                 type="number"
                 min={1}
@@ -1735,12 +1744,12 @@ export default function StaffAttendancePage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Reason (optional)</label>
+              <label className="text-sm font-medium">{ts("reasonOptional")}</label>
               <input value={bypassForm.reason} onChange={(e) => setBypassForm((f) => ({ ...f, reason: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
             </div>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowBypass(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleBypass} className="px-4 py-2 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700">Activate</button>
+              <button onClick={() => setShowBypass(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">{tc("action.cancel")}</button>
+              <button onClick={handleBypass} className="px-4 py-2 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700">{ts("activate")}</button>
             </div>
           </div>
         </div>
@@ -1754,17 +1763,13 @@ export default function StaffAttendancePage() {
               <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-700">
                 <Settings2 aria-hidden className="h-4 w-4" />
               </span>
-              <h2 className="font-semibold text-lg">Attendance Settings</h2>
+              <h2 className="font-semibold text-lg">{ts("settingsTitle")}</h2>
             </div>
             <p className="text-xs text-gray-500">
-              These thresholds decide the day&apos;s status on every checkout: <strong>PRESENT</strong> at or above the
-              full-day hours, <strong>HALF_DAY</strong> at or above the half-day hours, otherwise <strong>ABSENT</strong>{" "}
-              (staff marked ON_LEAVE or HOLIDAY are never touched). The late cutoff only sets the <strong>Late</strong>{" "}
-              badge on check-in — it never changes the day&apos;s status. Changes apply to future check-ins/checkouts only;
-              existing records are not recomputed.
+              {t.rich("staffAtt.settingsBody", { strong: (c) => <strong>{c}</strong> })}
             </p>
             {settingsLoading ? (
-              <p className="text-sm text-gray-500 py-4 text-center">Loading…</p>
+              <p className="text-sm text-gray-500 py-4 text-center">{tc("state.loading")}</p>
             ) : (
               <>
                 {/* The two thresholds are read against each other, so they stay
@@ -1778,7 +1783,7 @@ export default function StaffAttendancePage() {
                 <div className="grid grid-cols-2 items-end gap-3">
                   <div>
                     <label htmlFor="min-full-day" className="block text-sm font-medium">
-                      Full day (hrs)
+                      {ts("fullDayHrs")}
                     </label>
                     <input
                       id="min-full-day"
@@ -1794,7 +1799,7 @@ export default function StaffAttendancePage() {
                   </div>
                   <div>
                     <label htmlFor="min-half-day" className="block text-sm font-medium">
-                      Half day (hrs)
+                      {ts("halfDayHrs")}
                     </label>
                     <input
                       id="min-half-day"
@@ -1810,17 +1815,17 @@ export default function StaffAttendancePage() {
                   </div>
                 </div>
                 <p className="text-ink-muted -mt-2 text-[11px]">
-                  Minimum hours worked for a day to count as full or half.
+                  {ts("minHoursHint")}
                 </p>
                 <div>
-                  <label className="text-sm font-medium">Late cutoff time</label>
+                  <label className="text-sm font-medium">{ts("lateCutoff")}</label>
                   <div className="mt-1">
                     <AppTimePicker
                       value={settingsForm.lateCutoffTime}
                       onChange={(v) => setSettingsForm((f) => ({ ...f, lateCutoffTime: v }))}
                     />
                   </div>
-                  <p className="text-[11px] text-gray-500 mt-1">Check-ins after this time are flagged Late.</p>
+                  <p className="text-[11px] text-gray-500 mt-1">{ts("lateCutoffHint")}</p>
                 </div>
                 {settingsError && (
                   <p role="alert" className="flex items-start gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-[11px] text-red-700">
@@ -1829,13 +1834,13 @@ export default function StaffAttendancePage() {
                   </p>
                 )}
                 <div className="flex gap-2 justify-end pt-1">
-                  <button onClick={() => setShowSettings(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
+                  <button onClick={() => setShowSettings(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">{tc("action.cancel")}</button>
                   <button
                     onClick={handleSaveSettings}
                     disabled={settingsSaving || Boolean(settingsError)}
                     className="px-4 py-2 text-sm bg-slate-800 text-white rounded-lg hover:bg-slate-900 disabled:opacity-60"
                   >
-                    {settingsSaving ? "Saving…" : "Save Settings"}
+                    {settingsSaving ? tc("action.saving") : ts("saveSettings")}
                   </button>
                 </div>
               </>

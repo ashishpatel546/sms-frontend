@@ -47,7 +47,7 @@ export function ProfileShell({
   subtitle,
   status,
   backHref,
-  backLabel = 'Back',
+  backLabel,
   actions,
   children,
 }: ProfileShellProps) {

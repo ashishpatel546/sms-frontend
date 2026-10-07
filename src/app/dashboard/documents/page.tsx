@@ -4,6 +4,8 @@ import * as React from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import Papa from 'papaparse';
+import { useLocale, useTranslations } from 'next-intl';
+import { INTL_LOCALE, type Locale } from '@/i18n/config';
 import { Download, FileSearch, RotateCcw } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import { authFetch } from '@/lib/auth';
@@ -17,10 +19,8 @@ import { PageBody, PageHeader, PageShell } from '@/components/ui/PageHeader';
 import { StatTile } from '@/components/ui/StatTile';
 import { StatusChip } from '@/components/ui/StatusChip';
 import {
-  DOCUMENT_STATUS_LABEL,
+  DOCUMENT_OWNERS,
   DOCUMENT_TYPES,
-  DOCUMENT_TYPE_LABEL,
-  OWNER_LABEL,
   getPersonDocumentReport,
   type PersonDocumentOwner,
   type PersonDocumentReportRow,
@@ -41,16 +41,16 @@ import {
 const PAGE_SIZE = 25;
 
 const ROLE_OPTIONS = [
-  { value: 'STUDENT', label: 'Students' },
-  { value: 'TEACHER', label: 'Teachers' },
-  { value: 'SUB_ADMIN', label: 'Sub admins' },
-  { value: 'ADMIN', label: 'Admins' },
-  { value: 'HR_ADMIN', label: 'HR admins' },
-  { value: 'LIBRARIAN', label: 'Librarians' },
-  { value: 'GUARD', label: 'Guards' },
-];
+  'STUDENT',
+  'TEACHER',
+  'SUB_ADMIN',
+  'ADMIN',
+  'HR_ADMIN',
+  'LIBRARIAN',
+  'GUARD',
+] as const;
 
-const OWNER_OPTIONS: PersonDocumentOwner[] = ['SELF', 'FATHER', 'MOTHER', 'GUARDIAN'];
+const OWNER_OPTIONS: PersonDocumentOwner[] = DOCUMENT_OWNERS;
 
 interface ClassOption {
   id: number;
@@ -58,6 +58,30 @@ interface ClassOption {
 }
 
 export default function DocumentTracePage() {
+  const t = useTranslations('students.trace');
+  const td = useTranslations('students.doc');
+  const tc = useTranslations('common');
+  const tr = useTranslations('nav.role');
+  const locale = useLocale() as Locale;
+  const intl = INTL_LOCALE[locale];
+  const docLabel = (v: PersonDocumentType) => td(`type.${v}`);
+  const ownerLabel = (v: PersonDocumentOwner) => td(`owner.${v}`);
+  const statusLabel = (v: PersonDocumentStatus) => td(`status.${v}`);
+  const humanRole = (role: string | null): string => {
+    if (!role) return '—';
+    const key = role as Parameters<typeof tr>[0];
+    if (tr.has(key)) return tr(key);
+    const spaced = role.replace(/_/g, ' ').toLowerCase();
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  };
+  const className = (list: ClassOption[], classId: number | null): string => {
+    if (!classId) return '';
+    return list.find((c) => c.id === classId)?.name ?? t('classFallback', { id: classId });
+  };
+  const personName = (row: PersonDocumentReportRow): string => {
+    const name = [row.firstName, row.lastName].filter(Boolean).join(' ').trim();
+    return name || t('userFallback', { id: row.userId });
+  };
   const [status, setStatus] = React.useState<PersonDocumentStatus | ''>('PENDING');
   const [docType, setDocType] = React.useState<PersonDocumentType | ''>('');
   const [owner, setOwner] = React.useState<PersonDocumentOwner | ''>('');
@@ -124,7 +148,7 @@ export default function DocumentTracePage() {
         if (cancelled) return;
         setRows([]);
         setTotal(0);
-        setError(err.message || 'The trace did not load.');
+        setError(err.message || t('loadFailed'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -133,7 +157,7 @@ export default function DocumentTracePage() {
     return () => {
       cancelled = true;
     };
-  }, [page, scope, status]);
+  }, [page, scope, status, t]);
 
   /**
    * The tally asks for one row per status purely to read `total` back — three
@@ -172,15 +196,15 @@ export default function DocumentTracePage() {
     if (rows.length === 0) return;
     const csv = Papa.unparse(
       rows.map((row) => ({
-        Person: personName(row),
-        Role: humanRole(row.role),
-        Class: className(classes, row.classId),
-        Document: DOCUMENT_TYPE_LABEL[row.docType] ?? row.docType,
-        Belongs_to: OWNER_LABEL[row.owner] ?? row.owner,
-        Status: DOCUMENT_STATUS_LABEL[row.status] ?? row.status,
-        File: row.fileName ?? '',
-        Note: row.notes ?? '',
-        Updated: new Date(row.updatedAt).toLocaleDateString('en-IN'),
+        [t('col.person')]: personName(row),
+        [t('col.role')]: humanRole(row.role),
+        [tc('field.class')]: className(classes, row.classId),
+        [t('col.document')]: docLabel(row.docType),
+        [t('col.belongsTo')]: ownerLabel(row.owner),
+        [tc('field.status')]: statusLabel(row.status),
+        [t('col.file')]: row.fileName ?? '',
+        [t('col.note')]: row.notes ?? '',
+        [t('col.updated')]: new Date(row.updatedAt).toLocaleDateString(intl),
       })),
     );
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -190,13 +214,13 @@ export default function DocumentTracePage() {
     link.download = `document-trace-page-${page}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-    toast.success(`${rows.length} rows exported.`);
+    toast.success(t('exported', { count: rows.length }));
   };
 
   const columns: Column<PersonDocumentReportRow>[] = [
     {
       key: 'person',
-      header: 'Person',
+      header: t('col.person'),
       card: 'title',
       sortable: true,
       sortValue: (row) => personName(row),
@@ -214,43 +238,43 @@ export default function DocumentTracePage() {
     },
     {
       key: 'role',
-      header: 'Role',
+      header: t('col.role'),
       card: 'meta',
       hideBelow: 'lg',
       accessor: (row) => humanRole(row.role),
     },
     {
       key: 'class',
-      header: 'Class',
+      header: tc('field.class'),
       card: 'meta',
       hideBelow: 'lg',
       accessor: (row) => className(classes, row.classId) || '—',
     },
     {
       key: 'docType',
-      header: 'Document',
+      header: t('col.document'),
       card: 'field',
       sortable: true,
-      sortValue: (row) => DOCUMENT_TYPE_LABEL[row.docType] ?? row.docType,
-      accessor: (row) => DOCUMENT_TYPE_LABEL[row.docType] ?? row.docType,
+      sortValue: (row) => docLabel(row.docType),
+      accessor: (row) => docLabel(row.docType),
     },
     {
       key: 'owner',
-      header: 'Belongs to',
+      header: t('col.belongsTo'),
       card: 'field',
-      accessor: (row) => OWNER_LABEL[row.owner] ?? row.owner,
+      accessor: (row) => ownerLabel(row.owner),
     },
     {
       key: 'status',
-      header: 'Status',
+      header: tc('field.status'),
       card: 'trailing',
       render: (row) => (
-        <StatusChip status={row.status} label={DOCUMENT_STATUS_LABEL[row.status]} />
+        <StatusChip status={row.status} label={statusLabel(row.status)} />
       ),
     },
     {
       key: 'notes',
-      header: 'Note',
+      header: t('col.note'),
       card: 'field',
       hideBelow: 'xl',
       render: (row) =>
@@ -264,12 +288,12 @@ export default function DocumentTracePage() {
     },
     {
       key: 'updatedAt',
-      header: 'Updated',
+      header: t('col.updated'),
       card: 'field',
       align: 'right',
       sortable: true,
       sortValue: (row) => row.updatedAt,
-      accessor: (row) => new Date(row.updatedAt).toLocaleDateString('en-IN'),
+      accessor: (row) => new Date(row.updatedAt).toLocaleDateString(intl),
     },
   ];
 
@@ -278,13 +302,13 @@ export default function DocumentTracePage() {
   return (
     <PageShell>
       <PageHeader
-        section="Records · Documents"
-        title="Document trace"
-        description="Every document the school has asked for, and whether it has arrived."
+        section={t('section')}
+        title={t('title')}
+        description={t('description')}
         actions={
           <Button variant="outline" onClick={exportPage} disabled={rows.length === 0}>
             <Download />
-            Export this page
+            {t('exportPage')}
           </Button>
         }
       />
@@ -293,23 +317,23 @@ export default function DocumentTracePage() {
         {/* ── The three figures worth reading before the list ── */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <StatTile
-            label="Still to collect"
-            value={tally ? tally.PENDING.toLocaleString('en-IN') : '—'}
-            hint="Listed as pending"
+            label={t('tile.pending')}
+            value={tally ? tally.PENDING.toLocaleString(intl) : '—'}
+            hint={t('tile.pendingHint')}
             pigment="attn"
             onClick={() => setStatus('PENDING')}
           />
           <StatTile
-            label="Held on paper"
-            value={tally ? tally.COLLECTED.toLocaleString('en-IN') : '—'}
-            hint="Collected, no scan stored"
+            label={t('tile.collected')}
+            value={tally ? tally.COLLECTED.toLocaleString(intl) : '—'}
+            hint={t('tile.collectedHint')}
             pigment="success"
             onClick={() => setStatus('COLLECTED')}
           />
           <StatTile
-            label="Scanned"
-            value={tally ? tally.UPLOADED.toLocaleString('en-IN') : '—'}
-            hint="A file is on file"
+            label={t('tile.uploaded')}
+            value={tally ? tally.UPLOADED.toLocaleString(intl) : '—'}
+            hint={t('tile.uploadedHint')}
             pigment="info"
             onClick={() => setStatus('UPLOADED')}
           />
@@ -319,75 +343,75 @@ export default function DocumentTracePage() {
           actions={
             <Button variant="ghost" size="sm" onClick={resetFilters}>
               <RotateCcw />
-              Reset
+              {tc('action.reset')}
             </Button>
           }
         >
-          <FilterField label="Status" width="md">
+          <FilterField label={tc('field.status')} width="md">
             <Select
               value={status}
               onChange={(e) => setStatus(e.target.value as PersonDocumentStatus | '')}
-              aria-label="Status"
+              aria-label={tc('field.status')}
             >
-              <option value="">Any status</option>
-              <option value="PENDING">Pending</option>
-              <option value="COLLECTED">Collected</option>
-              <option value="UPLOADED">On file</option>
+              <option value="">{t('filter.anyStatus')}</option>
+              <option value="PENDING">{statusLabel('PENDING')}</option>
+              <option value="COLLECTED">{statusLabel('COLLECTED')}</option>
+              <option value="UPLOADED">{statusLabel('UPLOADED')}</option>
             </Select>
           </FilterField>
 
-          <FilterField label="Document" width="lg">
+          <FilterField label={t('col.document')} width="lg">
             <Select
               value={docType}
               onChange={(e) => setDocType(e.target.value as PersonDocumentType | '')}
-              aria-label="Document type"
+              aria-label={t('filter.documentType')}
             >
-              <option value="">Any document</option>
+              <option value="">{t('filter.anyDocument')}</option>
               {DOCUMENT_TYPES.map((d) => (
                 <option key={d.value} value={d.value}>
-                  {d.label}
+                  {docLabel(d.value)}
                 </option>
               ))}
             </Select>
           </FilterField>
 
-          <FilterField label="Belongs to" width="md">
+          <FilterField label={t('col.belongsTo')} width="md">
             <Select
               value={owner}
               onChange={(e) => setOwner(e.target.value as PersonDocumentOwner | '')}
-              aria-label="Belongs to"
+              aria-label={t('col.belongsTo')}
             >
-              <option value="">Anyone</option>
+              <option value="">{t('filter.anyone')}</option>
               {OWNER_OPTIONS.map((o) => (
                 <option key={o} value={o}>
-                  {OWNER_LABEL[o]}
+                  {ownerLabel(o)}
                 </option>
               ))}
             </Select>
           </FilterField>
 
-          <FilterField label="Role" width="md">
+          <FilterField label={t('col.role')} width="md">
             <Select
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              aria-label="Role"
+              aria-label={t('col.role')}
             >
-              <option value="">Everyone</option>
+              <option value="">{t('filter.everyone')}</option>
               {ROLE_OPTIONS.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
+                <option key={r} value={r}>
+                  {t(`roleOption.${r}`)}
                 </option>
               ))}
             </Select>
           </FilterField>
 
-          <FilterField label="Class" width="md">
+          <FilterField label={tc('field.class')} width="md">
             <Select
               value={classId}
               onChange={(e) => setClassId(e.target.value)}
-              aria-label="Class"
+              aria-label={tc('field.class')}
             >
-              <option value="">All classes</option>
+              <option value="">{t('filter.allClasses')}</option>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -405,22 +429,22 @@ export default function DocumentTracePage() {
           rowKey={(row) => row.id}
           toolbar={
             <>
-              <TableTitle>Documents</TableTitle>
-              <TableCount>{total.toLocaleString('en-IN')}</TableCount>
+              <TableTitle>{t('tableTitle')}</TableTitle>
+              <TableCount>{total.toLocaleString(intl)}</TableCount>
             </>
           }
           empty={
             <EmptyState
               icon={<FileSearch />}
-              title="Nothing outstanding here"
+              title={t('empty.title')}
               description={
                 status === 'PENDING'
-                  ? 'No documents are listed as pending for these filters. Documents appear here once someone lists them on a student or staff record.'
-                  : 'No documents match these filters.'
+                  ? t('empty.pending')
+                  : t('empty.filtered')
               }
               action={
                 <Button variant="outline" onClick={resetFilters}>
-                  Reset filters
+                  {t('empty.reset')}
                 </Button>
               }
             />
@@ -440,22 +464,4 @@ export default function DocumentTracePage() {
       </PageBody>
     </PageShell>
   );
-}
-
-/* ── Cell helpers ───────────────────────────────────────────────────────── */
-
-function personName(row: PersonDocumentReportRow): string {
-  const name = [row.firstName, row.lastName].filter(Boolean).join(' ').trim();
-  return name || `User ${row.userId}`;
-}
-
-function humanRole(role: string | null): string {
-  if (!role) return '—';
-  const spaced = role.replace(/_/g, ' ').toLowerCase();
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-}
-
-function className(classes: ClassOption[], classId: number | null): string {
-  if (!classId) return '';
-  return classes.find((c) => c.id === classId)?.name ?? `Class ${classId}`;
 }

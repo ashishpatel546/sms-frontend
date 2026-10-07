@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
 import { ATTENDANCE_TONE, attendanceCellClass } from "@/lib/attendanceColors";
 import { CHART_TOOLTIP } from "@/lib/chartTokens";
@@ -8,7 +10,17 @@ import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { AppMonthPicker } from "@/components/ui/AppDatePicker";
 
-const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const WEEKDAYS = ["0", "1", "2", "3", "4", "5", "6"] as const;
+
+/** Attendance status codes that already have a word in common.status. */
+const STATUS_KEY = {
+    PRESENT: "present",
+    ABSENT: "absent",
+    LATE: "late",
+    HALF_DAY: "halfDay",
+    LEAVE: "onLeave",
+    HOLIDAY: "holiday",
+} as const;
 
 interface Props {
     studentId: number | null;
@@ -17,6 +29,9 @@ interface Props {
 }
 
 export default function StudentAttendanceModal({ studentId, studentName, onClose }: Props) {
+    const t = useTranslations("students.attendanceModal");
+    const tc = useTranslations("common");
+    const locale = useLocale() as Locale;
     const now = new Date();
     const [attendanceMonth, setAttendanceMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
     const currentYear = parseInt(attendanceMonth.split('-')[0]);
@@ -51,13 +66,17 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
 
     if (!studentId) return null;
 
+    const monthLabel = new Date(currentYear, currentMonth - 1, 1).toLocaleDateString(INTL_LOCALE[locale], { month: "long", year: "numeric" });
+    const statusLabel = (status: string) =>
+        status in STATUS_KEY ? tc(`status.${STATUS_KEY[status as keyof typeof STATUS_KEY]}`) : status;
+
     const pieData = attendance ? [
-        { name: "Present", value: attendance.present || 0, color: ATTENDANCE_TONE.PRESENT.fill, fill: ATTENDANCE_TONE.PRESENT.fill },
-        { name: "Late", value: attendance.late || 0, color: ATTENDANCE_TONE.LATE.fill, fill: ATTENDANCE_TONE.LATE.fill },
-        { name: "Half Day", value: attendance.halfDay || 0, color: ATTENDANCE_TONE.HALF_DAY.fill, fill: ATTENDANCE_TONE.HALF_DAY.fill },
-        { name: "Leave", value: attendance.leave || 0, color: ATTENDANCE_TONE.LEAVE.fill, fill: ATTENDANCE_TONE.LEAVE.fill },
-        { name: "Absent", value: attendance.absent || 0, color: ATTENDANCE_TONE.ABSENT.fill, fill: ATTENDANCE_TONE.ABSENT.fill },
-        { name: "Holiday", value: attendance.holiday || 0, color: ATTENDANCE_TONE.HOLIDAY.fill, fill: ATTENDANCE_TONE.HOLIDAY.fill },
+        { name: tc("status.present"), value: attendance.present || 0, color: ATTENDANCE_TONE.PRESENT.fill, fill: ATTENDANCE_TONE.PRESENT.fill },
+        { name: tc("status.late"), value: attendance.late || 0, color: ATTENDANCE_TONE.LATE.fill, fill: ATTENDANCE_TONE.LATE.fill },
+        { name: tc("status.halfDay"), value: attendance.halfDay || 0, color: ATTENDANCE_TONE.HALF_DAY.fill, fill: ATTENDANCE_TONE.HALF_DAY.fill },
+        { name: t("leave"), value: attendance.leave || 0, color: ATTENDANCE_TONE.LEAVE.fill, fill: ATTENDANCE_TONE.LEAVE.fill },
+        { name: tc("status.absent"), value: attendance.absent || 0, color: ATTENDANCE_TONE.ABSENT.fill, fill: ATTENDANCE_TONE.ABSENT.fill },
+        { name: tc("status.holiday"), value: attendance.holiday || 0, color: ATTENDANCE_TONE.HOLIDAY.fill, fill: ATTENDANCE_TONE.HOLIDAY.fill },
     ].filter(d => d.value > 0) : [];
 
     // Calendar logic
@@ -114,10 +133,10 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-slate-800">{studentName}</h2>
-                            <p className="text-xs text-slate-500">Monthly Attendance Report</p>
+                            <p className="text-xs text-slate-500">{t("subtitle")}</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition bg-white p-2 rounded-full shadow-sm">
+                    <button onClick={onClose} aria-label={tc("action.close")} className="text-slate-400 hover:text-slate-600 transition bg-white p-2 rounded-full shadow-sm">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
@@ -129,7 +148,7 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
                         <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
                             <span className="text-xl">📅</span>
-                            Attendance Data
+                            {t("heading")}
                         </h3>
                         <div className="flex gap-2">
                             <AppMonthPicker
@@ -142,17 +161,17 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
                     {loading ? (
                         <div className="py-24 flex flex-col items-center justify-center gap-4">
                             <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-                            <p className="text-slate-500 font-medium">Loading attendance data...</p>
+                            <p className="text-slate-500 font-medium">{t("loading")}</p>
                         </div>
                     ) : attendance && attendance.total > 0 ? (
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                             
                             {/* Calendar */}
                             <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 shadow-sm">
-                                <h4 className="text-slate-800 font-bold text-center mb-5">{MONTH_NAMES[currentMonth - 1]} {currentYear}</h4>
+                                <h4 className="text-slate-800 font-bold text-center mb-5">{monthLabel}</h4>
                                 <div className="grid grid-cols-7 gap-1 text-center mb-3">
-                                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
-                                        <div key={day} className="text-slate-500 text-xs font-bold py-1 uppercase">{day}</div>
+                                    {WEEKDAYS.map(day => (
+                                        <div key={day} className="text-slate-500 text-xs font-bold py-1 uppercase">{t(`weekday.${day}`)}</div>
                                     ))}
                                 </div>
                                 <div className="grid grid-cols-7 gap-2">
@@ -167,7 +186,7 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
                                             const { className, style } = d.day ? getCellStyle(d.status) : { className: 'bg-transparent border-transparent', style: undefined };
                                             return (
                                                 <div key={`${wIndex}-${i}`}
-                                                    title={d.day ? (d.status === 'SUNDAY' ? `${d.date}: Sunday (Weekly Holiday)` : d.status ? `${d.date}: ${d.status}` : d.date) : ''}
+                                                    title={d.day ? (d.status === 'SUNDAY' ? t("sundayTitle", { date: d.date }) : d.status ? t("statusTitle", { date: d.date, status: statusLabel(d.status) }) : d.date) : ''}
                                                     style={style}
                                                     className={`aspect-square flex items-center justify-center rounded-xl text-sm font-bold border ${className} transition-all hover:scale-105 cursor-default`}>
                                                     {d.day || ''}
@@ -178,13 +197,13 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
                                 </div>
                                 
                                 <div className="flex flex-wrap justify-center gap-3 mt-8 text-[11px] font-medium text-slate-600">
-                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-green-500 shadow-sm"></span> Present</div>
-                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full shadow-sm" style={{ background: `linear-gradient(135deg, ${ATTENDANCE_TONE.PRESENT.fill} 50%, ${ATTENDANCE_TONE.LATE.fill} 50%)` }}></span> Present + Late</div>
-                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full shadow-sm" style={{ background: `linear-gradient(135deg, ${ATTENDANCE_TONE.PRESENT.fill} 50%, ${ATTENDANCE_TONE.HALF_DAY.fill} 50%)` }}></span> Present + Half Day</div>
-                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-blue-500 shadow-sm"></span> Leave</div>
-                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500 shadow-sm"></span> Absent</div>
-                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-sky-500 shadow-sm"></span> Holiday</div>
-                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-orange-100 border border-orange-200"></span> Sunday</div>
+                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-green-500 shadow-sm"></span> {tc("status.present")}</div>
+                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full shadow-sm" style={{ background: `linear-gradient(135deg, ${ATTENDANCE_TONE.PRESENT.fill} 50%, ${ATTENDANCE_TONE.LATE.fill} 50%)` }}></span> {t("presentLate")}</div>
+                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full shadow-sm" style={{ background: `linear-gradient(135deg, ${ATTENDANCE_TONE.PRESENT.fill} 50%, ${ATTENDANCE_TONE.HALF_DAY.fill} 50%)` }}></span> {t("presentHalfDay")}</div>
+                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-blue-500 shadow-sm"></span> {t("leave")}</div>
+                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500 shadow-sm"></span> {tc("status.absent")}</div>
+                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-sky-500 shadow-sm"></span> {tc("status.holiday")}</div>
+                                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-orange-100 border border-orange-200"></span> {t("sunday")}</div>
                                 </div>
                             </div>
 
@@ -195,26 +214,26 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
                                         <ResponsiveContainer width={240} height={240}>
                                             <PieChart>
                                                 <Pie data={pieData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={3} dataKey="value" />
-                                                <Tooltip {...CHART_TOOLTIP} formatter={(val: any, name: any) => [`${val} days`, name]} wrapperStyle={{ zIndex: 10 }} />
+                                                <Tooltip {...CHART_TOOLTIP} formatter={(val: any, name: any) => [t("days", { count: Number(val) }), name]} wrapperStyle={{ zIndex: 10 }} />
                                             </PieChart>
                                         </ResponsiveContainer>
                                         <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
                                             <span className="text-slate-800 text-4xl font-black">{attendance.percentage}%</span>
-                                            <span className="text-slate-500 text-xs mt-1 uppercase tracking-widest font-bold">Present</span>
+                                            <span className="text-slate-500 text-xs mt-1 uppercase tracking-widest font-bold">{tc("status.present")}</span>
                                         </div>
                                     </div>
                                 </div>
                                 
                                 <div className="grid grid-cols-3 gap-3">
                                     {[
-                                        { label: "Present", value: attendance.present, color: "text-green-600", bg: "bg-green-50 border-green-100" },
-                                        { label: "Late", value: attendance.late || 0, color: "text-yellow-600", bg: "bg-yellow-50 border-yellow-100" },
-                                        { label: "Half Day", value: attendance.halfDay || 0, color: "text-purple-600", bg: "bg-purple-50 border-purple-100" },
-                                        { label: "Leave", value: attendance.leave || 0, color: "text-blue-600", bg: "bg-blue-50 border-blue-100" },
-                                        { label: "Absent", value: attendance.absent, color: "text-red-600", bg: "bg-red-50 border-red-100" },
-                                        { label: "Holiday", value: attendance.holiday || 0, color: "text-sky-600", bg: "bg-sky-50 border-sky-100" },
+                                        { key: "present", label: tc("status.present"), value: attendance.present, color: "text-green-600", bg: "bg-green-50 border-green-100" },
+                                        { key: "late", label: tc("status.late"), value: attendance.late || 0, color: "text-yellow-600", bg: "bg-yellow-50 border-yellow-100" },
+                                        { key: "halfDay", label: tc("status.halfDay"), value: attendance.halfDay || 0, color: "text-purple-600", bg: "bg-purple-50 border-purple-100" },
+                                        { key: "leave", label: t("leave"), value: attendance.leave || 0, color: "text-blue-600", bg: "bg-blue-50 border-blue-100" },
+                                        { key: "absent", label: tc("status.absent"), value: attendance.absent, color: "text-red-600", bg: "bg-red-50 border-red-100" },
+                                        { key: "holiday", label: tc("status.holiday"), value: attendance.holiday || 0, color: "text-sky-600", bg: "bg-sky-50 border-sky-100" },
                                     ].map(item => (
-                                        <div key={item.label} className={`border rounded-xl p-3 text-center shadow-sm transition-transform hover:-translate-y-1 ${item.bg}`}>
+                                        <div key={item.key} className={`border rounded-xl p-3 text-center shadow-sm transition-transform hover:-translate-y-1 ${item.bg}`}>
                                             <div className={`text-2xl font-black ${item.color} mb-1`}>{item.value}</div>
                                             <div className="text-slate-500 font-bold text-[10px] uppercase tracking-wider">{item.label}</div>
                                         </div>
@@ -222,7 +241,7 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
                                 </div>
                                 
                                 <div className="bg-slate-800 rounded-xl p-4 flex items-center justify-between text-white shadow-md">
-                                    <div className="font-medium text-sm text-slate-300 uppercase tracking-wider">Total Working Days</div>
+                                    <div className="font-medium text-sm text-slate-300 uppercase tracking-wider">{t("workingDays")}</div>
                                     <div className="text-2xl font-bold">{attendance.workingDaysCount ?? (attendance.total - (attendance.holiday || 0))}</div>
                                 </div>
                             </div>
@@ -230,8 +249,8 @@ export default function StudentAttendanceModal({ studentId, studentName, onClose
                     ) : (
                         <div className="py-24 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
                             <div className="text-5xl mb-4 opacity-50">📅</div>
-                            <p className="text-slate-700 font-bold text-lg">No attendance data for {MONTH_NAMES[currentMonth - 1]} {currentYear}</p>
-                            <p className="text-slate-500 text-sm mt-2">There are no records found for this student in the selected month.</p>
+                            <p className="text-slate-700 font-bold text-lg">{t("emptyTitle", { month: monthLabel })}</p>
+                            <p className="text-slate-500 text-sm mt-2">{t("emptyBody")}</p>
                         </div>
                     )}
                 </div>

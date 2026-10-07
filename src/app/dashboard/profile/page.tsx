@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { getUser, getToken, getRefreshToken, setTokens, removeToken, authFetch } from "@/lib/auth";
+import { useLocale, useTranslations } from "next-intl";
 import { API_BASE_URL } from "@/lib/api";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
+import { useRoleLabel } from "@/i18n/useRoleLabel";
 import { useSchoolFeatures } from "@/lib/useSchoolFeatures";
 import MyIdCardPanel from "@/components/id-cards/MyIdCardPanel";
 
@@ -16,7 +19,10 @@ type Session = {
 };
 
 export default function ProfilePage() {
+    const t = useTranslations("profile");
+    const locale = useLocale() as Locale;
     const [user, setUser] = useState<any>(null);
+    const roleLabel = useRoleLabel(user?.role);
     const [activeTab, setActiveTab] = useState<"general" | "security" | "idcard">("general");
 
     /* Your own ID card lives here because this is where people look for their
@@ -85,15 +91,15 @@ export default function ProfilePage() {
         setPwSuccess("");
 
         if (newPassword !== confirmPassword) {
-            setPwError("New passwords do not match");
+            setPwError(t("password.mismatch"));
             return;
         }
         if (newPassword.length < 6) {
-            setPwError("Password must be at least 6 characters");
+            setPwError(t("password.tooShort"));
             return;
         }
         if (newPassword === currentPassword) {
-            setPwError("New password must be different from current password");
+            setPwError(t("password.sameAsCurrent"));
             return;
         }
 
@@ -104,18 +110,18 @@ export default function ProfilePage() {
                 body: JSON.stringify({ currentPassword, newPassword }),
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.message || "Failed to change password");
+            if (!res.ok) throw new Error(data.message || t("password.failed"));
 
             if (data.refresh_token) {
                 setTokens(data.access_token, data.refresh_token);
             }
 
-            setPwSuccess("Password changed successfully!");
+            setPwSuccess(t("password.success"));
             setCurrentPassword("");
             setNewPassword("");
             setConfirmPassword("");
         } catch (err: any) {
-            setPwError(err.message || "Failed to change password");
+            setPwError(err.message || t("password.failed"));
         } finally {
             setPwLoading(false);
         }
@@ -154,7 +160,7 @@ export default function ProfilePage() {
 
     return (
         <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">My Profile</h1>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t("title")}</h1>
 
             {/* Tabs. On a phone the three full labels are wider than the screen,
                 so each tab is allowed to shrink (min-w-0) and drops to a short
@@ -170,8 +176,8 @@ export default function ProfilePage() {
                     <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                    <span className="truncate sm:hidden">General</span>
-                    <span className="truncate hidden sm:inline">General Information</span>
+                    <span className="truncate sm:hidden">{t("tabs.generalShort")}</span>
+                    <span className="truncate hidden sm:inline">{t("tabs.general")}</span>
                 </button>
                 <button
                     onClick={() => setActiveTab("security")}
@@ -183,8 +189,8 @@ export default function ProfilePage() {
                     <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
-                    <span className="truncate sm:hidden">Security</span>
-                    <span className="truncate hidden sm:inline">Security &amp; Login</span>
+                    <span className="truncate sm:hidden">{t("tabs.securityShort")}</span>
+                    <span className="truncate hidden sm:inline">{t("tabs.security")}</span>
                 </button>
                 {hasIdCards && (
                     <button
@@ -198,8 +204,8 @@ export default function ProfilePage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 11a2 2 0 100-4 2 2 0 000 4zm-2.5 5a2.5 2.5 0 015 0M15 9h3M15 13h3" />
                         </svg>
-                        <span className="truncate sm:hidden">ID Card</span>
-                        <span className="truncate hidden sm:inline">My ID Card</span>
+                        <span className="truncate sm:hidden">{t("tabs.idCardShort")}</span>
+                        <span className="truncate hidden sm:inline">{t("tabs.idCard")}</span>
                     </button>
                 )}
             </div>
@@ -220,26 +226,26 @@ export default function ProfilePage() {
                         </div>
                         <div>
                             <h2 className="text-2xl font-bold text-slate-900">{user.firstName} {user.lastName}</h2>
-                            <p className="text-slate-500 font-medium">{user.role?.replace("_", " ")}</p>
+                            <p className="text-slate-500 font-medium">{roleLabel}</p>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-sm font-medium text-slate-500 mb-1">First Name</label>
+                            <label className="block text-sm font-medium text-slate-500 mb-1">{t("general.firstName")}</label>
                             <div className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 min-h-11">
                                 {user.firstName || '\u00A0'}
                             </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-500 mb-1">Last Name</label>
+                            <label className="block text-sm font-medium text-slate-500 mb-1">{t("general.lastName")}</label>
                             <div className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 min-h-11">
                                 {user.lastName || '\u00A0'}
                             </div>
                         </div>
                         {user.email && (
                             <div className="sm:col-span-2">
-                                <label className="block text-sm font-medium text-slate-500 mb-1">Email Address</label>
+                                <label className="block text-sm font-medium text-slate-500 mb-1">{t("general.email")}</label>
                                 <div className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900">
                                     {user.email}
                                 </div>
@@ -247,7 +253,7 @@ export default function ProfilePage() {
                         )}
                         {user.mobile && (
                             <div className="sm:col-span-2">
-                                <label className="block text-sm font-medium text-slate-500 mb-1">Mobile Number</label>
+                                <label className="block text-sm font-medium text-slate-500 mb-1">{t("general.mobile")}</label>
                                 <div className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900">
                                     +91 {user.mobile}
                                 </div>
@@ -262,12 +268,12 @@ export default function ProfilePage() {
                 <div className="space-y-6">
                     {/* Change Password Block */}
                     <div className="bg-white shadow rounded-xl p-6 border border-slate-100">
-                        <h3 className="text-lg font-bold text-slate-900 mb-1">Change Password</h3>
-                        <p className="text-sm text-slate-500 mb-6">Update your account password to stay secure.</p>
+                        <h3 className="text-lg font-bold text-slate-900 mb-1">{t("password.title")}</h3>
+                        <p className="text-sm text-slate-500 mb-6">{t("password.subtitle")}</p>
 
                         <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Current Password</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t("password.current")}</label>
                                 <div className="relative">
                                     <input
                                         type={showCurrent ? "text" : "password"}
@@ -283,7 +289,7 @@ export default function ProfilePage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1.5">New Password</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t("password.new")}</label>
                                 <div className="relative">
                                     <input
                                         type={showNew ? "text" : "password"}
@@ -299,7 +305,7 @@ export default function ProfilePage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Confirm Password</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t("password.confirm")}</label>
                                 <input
                                     type="password"
                                     value={confirmPassword}
@@ -317,7 +323,7 @@ export default function ProfilePage() {
                                 disabled={pwLoading}
                                 className="px-5 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                             >
-                                {pwLoading ? "Updating..." : "Update Password"}
+                                {pwLoading ? t("password.updating") : t("password.update")}
                             </button>
                         </form>
                     </div>
@@ -325,12 +331,12 @@ export default function ProfilePage() {
                     {/* Active Sessions Block */}
                     <div className="bg-white shadow rounded-xl border border-slate-100 overflow-hidden">
                         <div className="p-6 border-b border-slate-100">
-                            <h3 className="text-lg font-bold text-slate-900 mb-1">Active Sessions</h3>
-                            <p className="text-sm text-slate-500">You're currently logged in on these devices. If you don't recognize a device, log out of it immediately.</p>
+                            <h3 className="text-lg font-bold text-slate-900 mb-1">{t("sessions.title")}</h3>
+                            <p className="text-sm text-slate-500">{t("sessions.subtitle")}</p>
                         </div>
 
                         {loadingSessions ? (
-                            <div className="p-6 text-center text-slate-500">Loading sessions...</div>
+                            <div className="p-6 text-center text-slate-500">{t("sessions.loading")}</div>
                         ) : (
                             <ul className="divide-y divide-slate-100">
                                 {sessions.map((session) => {
@@ -343,12 +349,12 @@ export default function ProfilePage() {
                                                 </div>
                                                 <div>
                                                     <p className="font-semibold text-slate-900 flex items-center gap-2">
-                                                        {session.deviceInfo || "Unknown Device"}
-                                                        {isCurrent && <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 uppercase tracking-wide">Current</span>}
+                                                        {session.deviceInfo || t("sessions.unknownDevice")}
+                                                        {isCurrent && <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 uppercase tracking-wide">{t("sessions.current")}</span>}
                                                     </p>
                                                     <div className="text-sm text-slate-500 mt-1 space-y-0.5">
-                                                        <p>IP: {session.ipAddress || "Unknown"}</p>
-                                                        <p>Last active: {new Date(session.lastActive).toLocaleString()}</p>
+                                                        <p>{t("sessions.ip", { ip: session.ipAddress || t("sessions.unknown") })}</p>
+                                                        <p>{t("sessions.lastActive", { time: new Date(session.lastActive).toLocaleString(INTL_LOCALE[locale]) })}</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -357,7 +363,7 @@ export default function ProfilePage() {
                                                     onClick={() => handleLogoutDevice(session.id)}
                                                     className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors whitespace-nowrap self-start sm:self-center"
                                                 >
-                                                    Log Out
+                                                    {t("sessions.logOut")}
                                                 </button>
                                             )}
                                         </li>
@@ -367,15 +373,15 @@ export default function ProfilePage() {
                         )}
 
                         <div className="p-6 bg-red-50/50 border-t border-red-100">
-                            <h4 className="text-red-800 font-semibold mb-2">Logout capability</h4>
+                            <h4 className="text-red-800 font-semibold mb-2">{t("sessions.logoutAllTitle")}</h4>
                             <p className="text-sm text-red-600/80 mb-4">
-                                If you lost your device or notice suspicious activity, you can log out of all devices immediately. You will need to log back in on this device.
+                                {t("sessions.logoutAllBody")}
                             </p>
                             <button
                                 onClick={handleLogoutAll}
                                 className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors shadow-sm"
                             >
-                                Log out of all devices
+                                {t("sessions.logoutAll")}
                             </button>
                         </div>
                     </div>

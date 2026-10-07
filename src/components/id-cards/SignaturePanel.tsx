@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import toast from 'react-hot-toast';
+import { useTranslations } from 'next-intl';
 import { PenLine, RefreshCw, Trash2, Upload } from 'lucide-react';
 
 import { Panel, PanelBody, PanelHeader } from '@/components/ui/Panel';
@@ -45,6 +46,8 @@ export function SignaturePanel({
   /** Re-fetch the batch so `signatureUpdatedAt` (the cache key) is current. */
   onChanged: () => void;
 }) {
+  const t = useTranslations('idCards.signature');
+  const tc = useTranslations('common');
   const [busy, setBusy] = React.useState<'upload' | 'remove' | 'refresh' | null>(
     null,
   );
@@ -81,17 +84,17 @@ export function SignaturePanel({
   const onPick = async (file: File | undefined) => {
     if (!file) return;
     if (file.size > MAX_BYTES) {
-      toast.error('Signature must be 1 MB or smaller.');
+      toast.error(t('tooLarge'));
       return;
     }
     setBusy('upload');
     try {
       await uploadSchoolSignature(file);
-      toast.success('Signature saved — it will print on every card.');
+      toast.success(t('saved'));
       onChanged();
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : 'Could not upload the signature.',
+        e instanceof Error ? e.message : t('uploadFailed'),
       );
     } finally {
       setBusy(null);
@@ -105,10 +108,10 @@ export function SignaturePanel({
       await removeSchoolSignature();
       // No need to clear `preview` — `onChanged()` refetches branding with a
       // null timestamp, and the derived preview follows.
-      toast.success('Signature removed. Cards will print a blank rule.');
+      toast.success(t('removed'));
       onChanged();
     } catch {
-      toast.error('Could not remove the signature.');
+      toast.error(t('removeFailed'));
     } finally {
       setBusy(null);
     }
@@ -125,8 +128,8 @@ export function SignaturePanel({
   return (
     <Panel className="mt-4">
       <PanelHeader
-        title="Authorised signatory"
-        description="Printed on the back of every card."
+        title={t('title')}
+        description={t('description')}
       />
       <PanelBody className="space-y-3">
         <div className="border-line bg-surface-inset flex h-20 items-end justify-center rounded-lg border px-4 pb-2">
@@ -134,13 +137,13 @@ export function SignaturePanel({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={preview}
-              alt="Authorised signatory signature"
+              alt={t('alt')}
               className="max-h-14 max-w-full object-contain"
             />
           ) : (
             <span className="text-ink-faint flex items-center gap-1.5 pb-3 text-[12px]">
               <PenLine className="size-3.5" aria-hidden />
-              No signature — cards print a blank rule to sign by hand
+              {t('none')}
             </span>
           )}
         </div>
@@ -161,20 +164,20 @@ export function SignaturePanel({
             disabled={busy !== null}
           >
             <Upload className="size-3.5" aria-hidden />
-            {preview ? 'Replace' : 'Upload signature'}
+            {preview ? t('replace') : t('upload')}
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={onRefresh}
             disabled={busy !== null}
-            title="Fetch the signature again — use this if another admin has just changed it"
+            title={t('refreshTitle')}
           >
             <RefreshCw
               className={busy === 'refresh' ? 'size-3.5 animate-spin' : 'size-3.5'}
               aria-hidden
             />
-            Refresh
+            {tc('action.refresh')}
           </Button>
           {preview && (
             <Button
@@ -185,15 +188,13 @@ export function SignaturePanel({
               className="text-accent-danger-deep"
             >
               <Trash2 className="size-3.5" aria-hidden />
-              Remove
+              {tc('action.remove')}
             </Button>
           )}
         </div>
 
         <p className="text-ink-muted text-[11.5px] leading-relaxed">
-          A PNG with a transparent background prints best. Up to 1 MB. The
-          image is fetched once and reused for the whole print run, so a
-          hundred cards cost one download.
+          {t('hint')}
         </p>
       </PanelBody>
     </Panel>

@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/Field';
 import { useRbac } from '@/lib/rbac';
+import { useTranslations } from 'next-intl';
 
 /** Long enough that a phone keyboard isn't firing a request per keystroke. */
 const SEARCH_DEBOUNCE_MS = 300;
@@ -29,10 +30,11 @@ const SEARCH_DEBOUNCE_MS = 300;
 const EVERYTHING = 'EVERYTHING';
 type AudienceFilter = typeof EVERYTHING | 'PARENT' | 'STAFF';
 
-const AUDIENCE_FILTERS: { value: AudienceFilter; label: string }[] = [
-  { value: EVERYTHING, label: 'All' },
-  { value: 'PARENT', label: 'To parents' },
-  { value: 'STAFF', label: 'To staff' },
+/** `key` is the label's key in `circulars.feed.filter`. */
+const AUDIENCE_FILTERS: { value: AudienceFilter; key: 'all' | 'parents' | 'staff' }[] = [
+  { value: EVERYTHING, key: 'all' },
+  { value: 'PARENT', key: 'parents' },
+  { value: 'STAFF', key: 'staff' },
 ];
 
 /**
@@ -44,7 +46,7 @@ const AUDIENCE_FILTERS: { value: AudienceFilter; label: string }[] = [
  * page's business, and the empty-state copy, which is a prop.
  */
 export function CircularFeed({
-  emptyTitle = 'No circulars yet',
+  emptyTitle,
   emptyDescription,
   emptyAction,
 }: {
@@ -52,6 +54,7 @@ export function CircularFeed({
   emptyDescription: string;
   emptyAction?: React.ReactNode;
 }) {
+  const t = useTranslations('circulars');
   const rbac = useRbac();
   const [searchInput, setSearchInput] = React.useState('');
   const [search, setSearch] = React.useState('');
@@ -64,11 +67,11 @@ export function CircularFeed({
   // page 1 whenever it changes — page 4 of the old result set means nothing
   // against the new one.
   React.useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setSearch(searchInput);
       setPage(1);
     }, SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [searchInput]);
 
   const query = {
@@ -99,21 +102,21 @@ export function CircularFeed({
         <SearchInput
           value={searchInput}
           onValueChange={setSearchInput}
-          placeholder="Search title or description…"
-          aria-label="Search circulars"
+          placeholder={t('feed.searchPlaceholder')}
+          aria-label={t('feed.searchAria')}
         />
         {/* Staff read every circular whatever its audience, so the filter is
             the only way to answer "what did parents get?". A parent is pinned
             to their own stream by the API and has nothing to filter. */}
         {rbac.seesAllCirculars && (
-          <FilterField label="Audience">
+          <FilterField label={t('feed.audience')}>
             <SegmentedControl
               value={audience}
               onValueChange={(v) => {
                 setAudience(v);
                 setPage(1);
               }}
-              options={AUDIENCE_FILTERS}
+              options={AUDIENCE_FILTERS.map((f) => ({ value: f.value, label: t(`feed.filter.${f.key}`) }))}
               size="sm"
             />
           </FilterField>
@@ -128,12 +131,12 @@ export function CircularFeed({
               setIncludeArchived(e.target.checked);
               setPage(1);
             }}
-            label="Show archived"
+            label={t('feed.showArchived')}
           />
         )}
         {data && (
           <span className="ml-auto self-center font-mono text-[11px] tracking-[0.1em] text-ink-faint uppercase">
-            {total === 0 ? 'No results' : `${from}–${to} of ${total}`}
+            {total === 0 ? t('feed.noResults') : t('feed.range', { from, to, total })}
           </span>
         )}
       </FilterBar>
@@ -145,38 +148,38 @@ export function CircularFeed({
           ))
         ) : error ? (
           <ErrorState
-            description="The circulars could not be loaded."
+            description={t('feed.loadFailed')}
             onRetry={() => void mutate()}
           />
         ) : !data || data.data.length === 0 ? (
           searching ? (
             <EmptyState
               icon={<SearchX />}
-              title="Nothing matches that"
-              description={`No circular has “${search}” in its title or description.`}
+              title={t('feed.noMatchTitle')}
+              description={t('feed.noMatchBody', { search })}
               action={
                 <Button variant="outline" onClick={() => setSearchInput('')}>
-                  Clear the search
+                  {t('feed.clearSearch')}
                 </Button>
               }
             />
           ) : filtered ? (
             <EmptyState
               icon={<SearchX />}
-              title="Nothing for that audience"
-              description={`No circular has been issued to ${
-                audience === 'PARENT' ? 'parents' : 'staff'
-              } yet.`}
+              title={t('feed.noAudienceTitle')}
+              description={
+                audience === 'PARENT' ? t('feed.noAudienceParents') : t('feed.noAudienceStaff')
+              }
               action={
                 <Button variant="outline" onClick={() => setAudience(EVERYTHING)}>
-                  Show all circulars
+                  {t('feed.showAll')}
                 </Button>
               }
             />
           ) : (
             <EmptyState
               icon={<ScrollText />}
-              title={emptyTitle}
+              title={emptyTitle ?? t('feed.emptyTitle')}
               description={emptyDescription}
               action={emptyAction}
             />
@@ -195,7 +198,7 @@ export function CircularFeed({
 
       {totalPages > 1 && (
         <nav
-          aria-label="Circular pages"
+          aria-label={t('feed.pagesAria')}
           className="mt-4 flex items-center justify-between gap-3"
         >
           <Button
@@ -204,10 +207,10 @@ export function CircularFeed({
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
-            <ChevronLeft /> Newer
+            <ChevronLeft /> {t('feed.newer')}
           </Button>
           <span className="font-mono text-[11.5px] text-ink-muted tabular">
-            Page {page} of {totalPages}
+            {t('feed.pageOf', { page, totalPages })}
           </span>
           <Button
             variant="outline"
@@ -215,7 +218,7 @@ export function CircularFeed({
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
           >
-            Older <ChevronRight />
+            {t('feed.older')} <ChevronRight />
           </Button>
         </nav>
       )}

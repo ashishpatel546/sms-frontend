@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { X, Download, Share } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useSchoolInfo } from "@/lib/useSchoolInfo";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -10,6 +11,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function PWAInstallBanner() {
+    const t = useTranslations('ui');
     const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [showBanner, setShowBanner] = useState(false);
     const [showMiniButton, setShowMiniButton] = useState(false);
@@ -19,7 +21,7 @@ export default function PWAInstallBanner() {
 
     // What the user is installing is *their school's* app, so the name comes
     // from the resolved tenant rather than a build-time env var.
-    const schoolName = useSchoolInfo()?.name || 'School Management System';
+    const schoolName = useSchoolInfo()?.name || t('pwa.fallbackName');
 
     // Ref so async callbacks always see the live "prompt received" state without stale closures
     const installPromptReceived = useRef(false);
@@ -130,7 +132,7 @@ export default function PWAInstallBanner() {
         return (
             <button
                 onClick={handleInstallClick}
-                title={`Install ${schoolName}`}
+                title={t('pwa.installName', { name: schoolName })}
                 style={{
                     position: 'fixed',
                     bottom: '1.25rem',
@@ -148,7 +150,7 @@ export default function PWAInstallBanner() {
                     boxShadow: '0 4px 16px rgba(30, 58, 95, 0.45)',
                     color: 'white',
                 }}
-                aria-label={`Install ${schoolName}`}
+                aria-label={t('pwa.installName', { name: schoolName })}
             >
                 <Download size={20} />
             </button>
@@ -195,19 +197,23 @@ export default function PWAInstallBanner() {
             {/* Text */}
             <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: 0, fontWeight: 700, fontSize: '14px', lineHeight: 1.3 }}>
-                    Install {schoolName}
+                    {t('pwa.installName', { name: schoolName })}
                 </p>
                 {isIOS ? (
                     <p style={{ margin: '4px 0 0', fontSize: '12px', opacity: 0.85, lineHeight: 1.4 }}>
-                        Tap <Share size={12} style={{ display: 'inline', verticalAlign: 'middle' }} /> then &ldquo;Add to Home Screen&rdquo;
+                        {t.rich('pwa.iosHint', {
+                            share: () => <Share size={12} style={{ display: 'inline', verticalAlign: 'middle' }} />,
+                        })}
                     </p>
                 ) : isEdgeFallback ? (
                     <p style={{ margin: '4px 0 0', fontSize: '12px', opacity: 0.85, lineHeight: 1.4 }}>
-                        Tap <span style={{ fontWeight: 700 }}>⋯</span> menu &rarr; &ldquo;Add to phone&rdquo; to install
+                        {t.rich('pwa.menuHint', {
+                            b: (c) => <span style={{ fontWeight: 700 }}>{c}</span>,
+                        })}
                     </p>
                 ) : (
                     <p style={{ margin: '4px 0 0', fontSize: '12px', opacity: 0.85 }}>
-                        Install app for quick access, offline support
+                        {t('pwa.benefit')}
                     </p>
                 )}
             </div>
@@ -233,7 +239,7 @@ export default function PWAInstallBanner() {
                     }}
                 >
                     <Download size={14} />
-                    Install
+                    {t('pwa.install')}
                 </button>
             )}
 
@@ -250,7 +256,7 @@ export default function PWAInstallBanner() {
                     display: 'flex',
                     flexShrink: 0,
                 }}
-                aria-label="Dismiss install banner"
+                aria-label={t('pwa.dismissAria')}
             >
                 <X size={16} />
             </button>

@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { ArrowDown, ArrowUp, ChevronsUpDown, Inbox } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { naturalCompare } from '@/lib/utils';
 import { Skeleton } from './skeleton';
@@ -136,7 +137,7 @@ export function DataTable<T>({
   loading = false,
   error = null,
   empty,
-  emptyMessage = 'Nothing here yet',
+  emptyMessage,
   defaultSort,
   onRowClick,
   isRowFlagged,
@@ -154,6 +155,7 @@ export function DataTable<T>({
   page,
   onPageChange,
 }: DataTableProps<T>) {
+  const t = useTranslations('ui');
   const [sort, setSort] = React.useState<{ key: string; direction: 'asc' | 'desc' } | null>(
     defaultSort ? { key: defaultSort.key, direction: defaultSort.direction ?? 'asc' } : null,
   );
@@ -266,7 +268,7 @@ export function DataTable<T>({
       <div className="mx-auto mb-3 grid size-10 place-items-center rounded-lg bg-accent-danger-tint text-accent-danger-deep">
         <Inbox className="size-5" />
       </div>
-      <p className="font-display font-semibold text-ink">That didn&apos;t load</p>
+      <p className="font-display font-semibold text-ink">{t('error.didNotLoad')}</p>
       <p className="mt-1 text-sm text-ink-muted">{error}</p>
     </div>,
   );
@@ -278,7 +280,7 @@ export function DataTable<T>({
         <div className="mx-auto mb-3 grid size-10 place-items-center rounded-lg bg-surface-secondary text-ink-faint">
           <Inbox className="size-5" />
         </div>
-        <p className="font-display font-semibold text-ink">{emptyMessage}</p>
+        <p className="font-display font-semibold text-ink">{emptyMessage ?? t('table.empty')}</p>
       </div>,
     );
 

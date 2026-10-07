@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { useTranslations } from "next-intl";
 import { Send, Square, Sparkles, Zap, Plus } from "lucide-react";
 import { streamAiResponse } from "@/lib/ai-stream";
 import { FeatureGate } from "@/components/ai/FeatureGate";
@@ -13,6 +14,7 @@ interface Message {
 }
 
 export default function TeacherChatPage() {
+  const t = useTranslations("ai");
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -99,6 +101,11 @@ export default function TeacherChatPage() {
           setStreaming(false);
         },
         signal: ctrl.signal,
+        errorMessages: {
+          noBody: t("stream.noBody"),
+          serviceError: t("stream.serviceError"),
+          unknown: t("stream.unknown"),
+        },
       },
     );
 
@@ -122,19 +129,19 @@ export default function TeacherChatPage() {
             <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
-            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Teacher Chat</h1>
-            <p className="text-xs text-ink-muted">Ask curriculum, pedagogy, or subject questions</p>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t("teacherChat.title")}</h1>
+            <p className="text-xs text-ink-muted">{t("teacherChat.subtitle")}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {totalCredits > 0 && (
             <span className="flex items-center gap-1 text-xs text-ink-muted">
               <Zap className="w-3 h-3 text-amber-500" />
-              {totalCredits} credits
+              {t("teacherChat.credits", { count: totalCredits })}
             </span>
           )}
           <button onClick={newSession} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-100 dark:bg-surface-secondary text-ink-muted hover:text-ink transition-colors">
-            <Plus className="w-3.5 h-3.5" /> New Chat
+            <Plus className="w-3.5 h-3.5" /> {t("teacherChat.newChat")}
           </button>
         </div>
       </div>
@@ -144,13 +151,13 @@ export default function TeacherChatPage() {
         <input
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
-          placeholder="Subject (optional)"
+          placeholder={t("teacherChat.subjectPlaceholder")}
           className="flex-1 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-brand/40/40"
         />
         <input
           value={grade}
           onChange={(e) => setGrade(e.target.value)}
-          placeholder="Grade (optional)"
+          placeholder={t("teacherChat.gradePlaceholder")}
           className="w-28 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-brand/40/40"
         />
         <select
@@ -158,16 +165,16 @@ export default function TeacherChatPage() {
           onChange={(e) => setBoard(e.target.value)}
           className="w-28 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-2 py-2 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-brand/40/40"
         >
-          {["CBSE","ICSE","State Board","IB"].map((b) => <option key={b}>{b}</option>)}
+          {["CBSE","ICSE","State Board","IB"].map((b) => <option key={b} value={b}>{b === "State Board" ? t("options.board.State Board") : b}</option>)}
         </select>
         <select
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
           className="w-24 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-2 py-2 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-brand/40/40"
         >
-          <option value="en">English</option>
-          <option value="hi">Hindi</option>
-          <option value="hinglish">Hinglish</option>
+          <option value="en">{t("options.language.en")}</option>
+          <option value="hi">{t("options.language.hi")}</option>
+          <option value="hinglish">{t("options.language.hinglish")}</option>
         </select>
       </div>
 
@@ -176,8 +183,8 @@ export default function TeacherChatPage() {
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center gap-2 py-8">
             <Sparkles className="w-8 h-8 text-slate-300" />
-            <p className="text-sm font-medium text-ink-muted">Ask me anything about teaching</p>
-            <p className="text-xs text-ink-muted">Lesson ideas, pedagogy, subject doubts, curriculum guidance...</p>
+            <p className="text-sm font-medium text-ink-muted">{t("teacherChat.emptyTitle")}</p>
+            <p className="text-xs text-ink-muted">{t("teacherChat.emptyBody")}</p>
           </div>
         )}
         {messages.map((msg, i) => (
@@ -209,16 +216,16 @@ export default function TeacherChatPage() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKey}
-          placeholder="Type your question… (Enter to send, Shift+Enter for new line)"
+          placeholder={t("teacherChat.inputPlaceholder")}
           rows={2}
           className="flex-1 resize-none rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-brand/40/40"
         />
         {streaming ? (
-          <button onClick={() => abortRef.current?.abort()} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors self-end">
+          <button onClick={() => abortRef.current?.abort()} aria-label={t("teacherChat.stop")} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors self-end">
             <Square className="w-4 h-4" />
           </button>
         ) : (
-          <button onClick={send} disabled={!input.trim()} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors self-end">
+          <button onClick={send} disabled={!input.trim()} aria-label={t("teacherChat.send")} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors self-end">
             <Send className="w-4 h-4" />
           </button>
         )}

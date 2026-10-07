@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 import { API_BASE_URL } from '@/lib/api';
 import { authFetch } from '@/lib/auth';
 
@@ -37,9 +38,12 @@ interface Props {
 export default function AuthorizerPicker({
   value,
   onChange,
-  placeholder = 'Search staff by name…',
+  placeholder,
   className = '',
 }: Props) {
+  const t = useTranslations('inventory.authorizer');
+  const tc = useTranslations('common');
+  const tr = useTranslations('nav.role');
   const [query, setQuery] = React.useState('');
   const [results, setResults] = React.useState<AuthorizerResult[]>([]);
   const [selected, setSelected] = React.useState<AuthorizerResult | null>(null);
@@ -117,7 +121,9 @@ export default function AuthorizerPicker({
   };
 
   const roleLabel = (u: AuthorizerResult) =>
-    u.designation?.title ?? u.role?.replace(/_/g, ' ').toLowerCase() ?? '';
+    u.designation?.title ??
+    (u.role && tr.has(u.role as Parameters<typeof tr>[0]) ? tr(u.role as Parameters<typeof tr>[0]) : u.role?.replace(/_/g, ' ').toLowerCase()) ??
+    '';
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
@@ -132,7 +138,7 @@ export default function AuthorizerPicker({
           <button
             type="button"
             onClick={clear}
-            aria-label="Clear"
+            aria-label={tc('action.clear')}
             className="shrink-0 text-ink-faint hover:text-ink"
           >
             ✕
@@ -144,7 +150,7 @@ export default function AuthorizerPicker({
             type="text"
             value={query}
             onChange={handleInput}
-            placeholder={placeholder}
+            placeholder={placeholder ?? t('placeholder')}
             className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 pr-8 text-[14px] text-ink placeholder:text-ink-faint focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none"
           />
           {loading && (

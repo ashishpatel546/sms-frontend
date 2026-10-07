@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Toaster } from 'react-hot-toast';
 import { useSWRConfig } from 'swr';
 import { Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 import { PageBody, PageHeader, PageShell } from '@/components/ui/PageHeader';
 import { CircularFeed } from '@/components/circulars/CircularFeed';
@@ -20,6 +21,7 @@ import { READ_ONLY_TITLE, useReadOnlySession } from '@/lib/support-session';
  * a column of prose.
  */
 export default function CircularsPage() {
+  const t = useTranslations('circulars');
   const rbac = useRbac();
   const readOnly = useReadOnlySession();
   const { mutate } = useSWRConfig();
@@ -34,9 +36,9 @@ export default function CircularsPage() {
     <PageShell measure="reading">
       <Toaster position="top-center" />
       <PageHeader
-        section="Communication"
-        title="Circulars"
-        description="School-wide notices, newest first. Every circular is final once issued."
+        section={t('page.section')}
+        title={t('page.title')}
+        description={t('page.description')}
         actions={
           canIssue ? (
             <Button
@@ -44,7 +46,7 @@ export default function CircularsPage() {
               disabled={readOnly}
               title={readOnly ? READ_ONLY_TITLE : undefined}
             >
-              <Plus /> Issue circular
+              <Plus /> {t('page.issue')}
             </Button>
           ) : undefined
         }
@@ -54,8 +56,8 @@ export default function CircularsPage() {
         <CircularFeed
           emptyDescription={
             canIssue
-              ? 'Nothing has been issued yet. A circular goes out to every parent and staff member the moment you publish it.'
-              : 'Nothing has been issued yet. Notices from the school office will appear here.'
+              ? t('page.emptyStaff')
+              : t('page.emptyReader')
           }
           emptyAction={
             canIssue ? (
@@ -64,7 +66,7 @@ export default function CircularsPage() {
                 disabled={readOnly}
                 title={readOnly ? READ_ONLY_TITLE : undefined}
               >
-                <Plus /> Issue the first circular
+                <Plus /> {t('page.issueFirst')}
               </Button>
             ) : undefined
           }

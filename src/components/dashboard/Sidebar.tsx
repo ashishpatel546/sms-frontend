@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useRoleLabel } from "@/i18n/useRoleLabel";
 import { ChevronDown, ChevronRight, Lock, LogOut, User, X } from "lucide-react";
 import { NAV_CONFIG, isNavItemUnlocked } from "@/lib/navConfig";
 import { useRbac } from "@/lib/rbac";
@@ -48,6 +50,9 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
     // Prefer the S3 URL for fast loading; the data-url is only for PDF generation.
     const logoSrc = school?.logoUrl || school?.logoDataUrl || null;
     const user = getUser();
+    const t = useTranslations("nav");
+    const tc = useTranslations("common");
+    const roleLabel = useRoleLabel(user?.role);
 
     // ── Accordion state ─────────────────────────────────────────────────────
     // Keyed by group label; unlabeled group (Dashboard/Notifications) always visible.
@@ -111,7 +116,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
 
             {/* ── The rail ─────────────────────────────────────────────── */}
             <aside
-                aria-label="Sidebar navigation"
+                aria-label={t("chrome.sidebarNav")}
                 className={[
                     'fixed top-0 left-0 z-40 flex h-dvh flex-col',
                     // Ink ground with the lapis bloom — see .rail-surface in globals.css
@@ -137,7 +142,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                         href="/dashboard"
                         onClick={onMobileClose}
                         className="flex min-w-0 items-center gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-brand-light"
-                        title={school?.name || 'Dashboard'}
+                        title={school?.name || t('item.dashboard')}
                     >
                         <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-linear-to-br from-tile-from to-tile-to font-display text-[15px] font-bold text-tile-ink">
                             {logoSrc ? (
@@ -159,10 +164,10 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                         {!collapsed && (
                             <span className="min-w-0">
                                 <span className="block truncate font-display text-[14px] leading-tight font-semibold text-rail-ink">
-                                    {school?.name || 'School'}
+                                    {school?.name || t('chrome.school')}
                                 </span>
                                 <span className="block truncate font-mono text-[9px] tracking-[0.12em] text-rail-ink-muted uppercase">
-                                    Management portal
+                                    {t('chrome.portal')}
                                 </span>
                             </span>
                         )}
@@ -172,14 +177,14 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                     <button
                         onClick={onMobileClose}
                         className="ml-auto cursor-pointer rounded-md p-1.5 text-rail-ink-muted transition-colors hover:bg-rail-hover hover:text-rail-ink md:hidden"
-                        aria-label="Close menu"
+                        aria-label={t("chrome.closeMenu")}
                     >
                         <X className="size-4" />
                     </button>
                 </div>
 
                 {/* ── Scrollable nav area ────────────────────────────── */}
-                <nav className="no-scrollbar flex-1 overflow-y-auto px-2 py-2" aria-label="Main navigation">
+                <nav className="no-scrollbar flex-1 overflow-y-auto px-2 py-2" aria-label={t("chrome.mainNav")}>
                     {NAV_CONFIG.map((group, gi) => {
                         const visibleItems = group.items.filter(item => {
                             // GUARD is deny-by-default: only explicitly flagged items appear
@@ -220,7 +225,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                                 href={item.href}
                                                 onClick={onMobileClose}
                                                 aria-current={active ? 'page' : undefined}
-                                                title={locked ? `${item.label} — not in your plan` : collapsed ? item.label : undefined}
+                                                title={locked ? t('chrome.itemNotInPlan', { item: t(`item.${item.id}`) }) : collapsed ? t(`item.${item.id}`) : undefined}
                                                 className={[
                                                     'group relative flex items-center gap-2.5 rounded-md text-[13.5px] font-medium',
                                                     'outline-none transition-colors duration-150',
@@ -252,10 +257,10 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                                 {!collapsed && (
                                                     <>
                                                         <span className={['truncate', locked && 'opacity-50'].filter(Boolean).join(' ')}>
-                                                            {item.label}
+                                                            {t(`item.${item.id}`)}
                                                         </span>
                                                         {locked && (
-                                                            <Lock aria-label="Not in your plan" className="ml-auto size-3 shrink-0 opacity-50" />
+                                                            <Lock aria-label={t("chrome.notInPlan")} className="ml-auto size-3 shrink-0 opacity-50" />
                                                         )}
                                                     </>
                                                 )}
@@ -267,7 +272,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                         );
 
                         // ── Unlabeled group (Dashboard + Notifications) — always visible ──
-                        if (!group.label) {
+                        if (!group.id || !group.label) {
                             return (
                                 <div key={gi} className={gi > 0 ? 'mt-1 border-t border-rail-line pt-2' : ''}>
                                     {renderItems(visibleItems)}
@@ -294,7 +299,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                             subordinate — the size and tracking carry the
                                             hierarchy, not a dimmer ink. */}
                                         <span className="font-mono text-[10.5px] font-semibold tracking-[0.11em] text-rail-ink-soft uppercase transition-colors select-none group-hover:text-rail-ink">
-                                            {group.label}
+                                            {t(`group.${group.id}`)}
                                         </span>
                                         {isOpen
                                             ? <ChevronDown className="size-3 text-rail-ink-soft" />
@@ -329,7 +334,7 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                         {user?.firstName} {user?.lastName}
                                     </p>
                                     <p className="truncate font-mono text-[9.5px] leading-tight tracking-widest text-rail-ink-muted uppercase">
-                                        {user?.role?.replace(/_/g, ' ')}
+                                        {roleLabel}
                                     </p>
                                 </div>
                             </div>
@@ -339,19 +344,19 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                 <Link
                                     href="/dashboard/profile"
                                     onClick={onMobileClose}
-                                    title="My profile"
+                                    title={t("chrome.myProfile")}
                                     className="flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 text-[12px] font-medium text-rail-ink-soft transition-colors hover:bg-rail-hover hover:text-rail-ink"
                                 >
                                     <User className="size-3.5" aria-hidden />
-                                    Profile
+                                    {t("chrome.profile")}
                                 </Link>
                                 <button
                                     onClick={() => logout()}
-                                    title="Sign out"
+                                    title={tc("action.signOut")}
                                     className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md py-2 text-[12px] font-medium text-rail-danger transition-colors hover:bg-rail-danger-bg hover:text-rail-danger-ink"
                                 >
                                     <LogOut className="size-3.5" aria-hidden />
-                                    Sign out
+                                    {tc("action.signOut")}
                                 </button>
                             </div>
                         </div>
@@ -360,16 +365,16 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                         <div className="flex flex-col items-center gap-1.5 py-1">
                             <Link
                                 href="/dashboard/profile"
-                                title={`${user?.firstName} ${user?.lastName} — my profile`}
+                                title={t('chrome.profileOf', { name: `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() })}
                                 className="flex size-8 items-center justify-center rounded-lg bg-linear-to-br from-tile-from to-tile-to font-display text-[11.5px] font-bold text-tile-ink transition-all select-none hover:ring-2 hover:ring-brand-light/50"
                             >
                                 {user?.firstName?.[0]}{user?.lastName?.[0]}
                             </Link>
                             <button
                                 onClick={() => logout()}
-                                title="Sign out"
+                                title={tc("action.signOut")}
                                 className="cursor-pointer rounded-md p-1.5 text-rail-ink-muted transition-colors hover:bg-rail-danger-bg hover:text-rail-danger"
-                                aria-label="Sign out"
+                                aria-label={tc("action.signOut")}
                             >
                                 <LogOut className="size-3.5" />
                             </button>

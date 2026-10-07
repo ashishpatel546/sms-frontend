@@ -4,6 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Menu } from '@base-ui/react/menu';
 import { MoreVertical } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -52,7 +53,9 @@ const itemClass =
   'text-ink outline-none select-none data-highlighted:bg-brand-tint ' +
   'data-disabled:cursor-not-allowed data-disabled:opacity-45';
 
-export function RowActionsMenu({ actions, label = 'Actions', className }: RowActionsMenuProps) {
+export function RowActionsMenu({ actions, label: labelProp, className }: RowActionsMenuProps) {
+  const tc = useTranslations('common');
+  const label = labelProp ?? tc('action.actions');
   const items = actions.filter(Boolean) as RowAction[];
   if (items.length === 0) return null;
 

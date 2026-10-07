@@ -1,7 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { getUser } from "@/lib/auth";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
+import { useRoleLabel } from "@/i18n/useRoleLabel";
 import { CalendarDays, Sun, CloudSun, Moon, type LucideIcon } from "lucide-react";
 
 /**
@@ -10,25 +13,25 @@ import { CalendarDays, Sun, CloudSun, Moon, type LucideIcon } from "lucide-react
  * those carry the actual figures and should win the eye.
  */
 export default function GreetingCard() {
+    const t = useTranslations("dashboard");
+    const locale = useLocale() as Locale;
     const user = getUser();
+    const roleLabel = useRoleLabel(user?.role);
     const { greeting, TimeIcon } = useMemo<{
-        greeting: string;
+        greeting: "morning" | "afternoon" | "evening";
         TimeIcon: LucideIcon;
     }>(() => {
         const hour = new Date().getHours();
-        if (hour < 12) return { greeting: "Good morning", TimeIcon: Sun };
-        if (hour < 17) return { greeting: "Good afternoon", TimeIcon: CloudSun };
-        return { greeting: "Good evening", TimeIcon: Moon };
+        if (hour < 12) return { greeting: "morning", TimeIcon: Sun };
+        if (hour < 17) return { greeting: "afternoon", TimeIcon: CloudSun };
+        return { greeting: "evening", TimeIcon: Moon };
     }, []);
 
     if (!user) return null;
 
-    const firstName = user.firstName || "there";
-    const roleLabel = user.role
-        ? user.role.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())
-        : "";
+    const firstName = user.firstName || t("greeting.there");
 
-    const dateStr = new Date().toLocaleDateString("en-IN", {
+    const dateStr = new Date().toLocaleDateString(INTL_LOCALE[locale], {
         weekday: "long",
         day: "numeric",
         month: "long",
@@ -45,7 +48,7 @@ export default function GreetingCard() {
             <div className="relative flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 sm:px-5">
                 <h2 className="flex min-w-0 items-center gap-1.5 truncate font-display text-[14.5px] font-semibold text-ink sm:text-[15.5px]">
                     <TimeIcon className="size-4 shrink-0 text-accent" aria-hidden />
-                    <span className="truncate">{`${greeting}, ${firstName}`}</span>
+                    <span className="truncate">{t(`greeting.${greeting}`, { name: firstName })}</span>
                 </h2>
 
                 {roleLabel && (
@@ -64,7 +67,7 @@ export default function GreetingCard() {
                         <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-success opacity-75" />
                         <span className="relative inline-flex size-1.5 rounded-full bg-accent-success" />
                     </span>
-                    Live
+                    {t("greeting.live")}
                 </span>
             </div>
         </div>

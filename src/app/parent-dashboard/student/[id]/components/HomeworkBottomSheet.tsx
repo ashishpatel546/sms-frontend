@@ -3,6 +3,8 @@
 import { CheckCircle2 } from 'lucide-react';
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE } from "@/i18n/config";
 import { useHomework } from "../hooks/useStudentData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { API_BASE_URL } from "@/lib/api";
@@ -24,9 +26,12 @@ const SUBJECT_COLORS = [
 ];
 
 export const HomeworkBottomSheet = ({ studentId, isOpen, onClose, onViewFull }: Props) => {
+  const t = useTranslations("parent.homeworkSheet");
+  const tc = useTranslations("common");
+  const locale = useLocale();
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const displayDate = now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
+  const displayDate = now.toLocaleDateString(INTL_LOCALE[locale as keyof typeof INTL_LOCALE], { weekday: "long", day: "numeric", month: "long" });
 
   const { data: homeworkItems, isLoading } = useHomework(studentId, todayStr);
   const [openingWorksheetId, setOpeningWorksheetId] = useState<string | null>(null);
@@ -39,7 +44,7 @@ export const HomeworkBottomSheet = ({ studentId, isOpen, onClose, onViewFull }: 
       const { url } = await res.json();
       window.open(url, "_blank", "noopener");
     } catch {
-      toast.error("Could not open worksheet.");
+      toast.error(t("worksheetFailed"));
     } finally {
       setOpeningWorksheetId(null);
     }
@@ -61,7 +66,7 @@ export const HomeworkBottomSheet = ({ studentId, isOpen, onClose, onViewFull }: 
       className="fixed inset-0 z-60 flex flex-col justify-end"
       role="dialog"
       aria-modal="true"
-      aria-label="Today's Homework"
+      aria-label={t("title")}
     >
       {/* Backdrop */}
       <div
@@ -83,12 +88,12 @@ export const HomeworkBottomSheet = ({ studentId, isOpen, onClose, onViewFull }: 
           {/* Header */}
           <div className="flex items-center justify-between mb-1">
             <div>
-              <h2 className="text-lg font-bold text-ink">Today&apos;s Homework</h2>
+              <h2 className="text-lg font-bold text-ink">{t("title")}</h2>
               <p className="text-xs text-ink-muted mt-0.5">{displayDate}</p>
             </div>
             <button
               onClick={onClose}
-              aria-label="Close"
+              aria-label={tc("action.close")}
               className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-ink-muted hover:bg-slate-200 transition-colors text-lg font-bold"
             >
               ×
@@ -105,8 +110,8 @@ export const HomeworkBottomSheet = ({ studentId, isOpen, onClose, onViewFull }: 
             ) : items.length === 0 ? (
               <div className="py-12 text-center">
                 <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-accent-success-tint text-accent-success-deep"><CheckCircle2 className="size-6" aria-hidden /></div>
-                <p className="text-ink font-semibold text-base">No homework today!</p>
-                <p className="text-ink-muted text-sm mt-1">Enjoy your free time.</p>
+                <p className="text-ink font-semibold text-base">{t("empty")}</p>
+                <p className="text-ink-muted text-sm mt-1">{t("emptyHint")}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -133,7 +138,7 @@ export const HomeworkBottomSheet = ({ studentId, isOpen, onClose, onViewFull }: 
                             className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand/10 text-brand text-xs font-semibold disabled:opacity-60 transition-colors max-w-full"
                           >
                             <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-                            <span className="truncate">{openingWorksheetId === h.id ? "Opening…" : "Worksheet"}</span>
+                            <span className="truncate">{openingWorksheetId === h.id ? t("opening") : t("worksheet")}</span>
                           </button>
                         )}
                       </div>
@@ -143,7 +148,7 @@ export const HomeworkBottomSheet = ({ studentId, isOpen, onClose, onViewFull }: 
 
                 {/* Count badge */}
                 <p className="text-xs text-ink-muted text-center pt-1">
-                  {items.length} assignment{items.length !== 1 ? "s" : ""} for today
+                  {t("count", { count: items.length })}
                 </p>
               </div>
             )}
@@ -154,7 +159,7 @@ export const HomeworkBottomSheet = ({ studentId, isOpen, onClose, onViewFull }: 
             onClick={onViewFull}
             className="mt-5 w-full py-3 rounded-2xl bg-brand text-white font-semibold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
           >
-            View All Homework
+            {t("viewAll")}
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>

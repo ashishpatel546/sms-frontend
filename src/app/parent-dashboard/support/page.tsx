@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { useLocale, useTranslations } from "next-intl";
 import {
   ChevronDown,
   Globe,
@@ -44,6 +45,10 @@ interface Faq {
 }
 
 export default function ParentSupportPage() {
+  const t = useTranslations("parent.support");
+  const tc = useTranslations("common");
+  const tp = useTranslations("product");
+  const locale = useLocale();
   const schoolInfo = useSchoolInfo();
   const [user, setUser] = useState<any>(null);
   const [issue, setIssue] = useState("");
@@ -52,17 +57,23 @@ export default function ParentSupportPage() {
 
   // Parents get their own FAQ set — the staff list is written for people with
   // a sidebar full of admin menus they cannot see.
-  const loadFaqs = useCallback(
-    () =>
-      fetch("/faq-parent.json")
-        .then((res) => {
-          if (!res.ok) throw new Error("Failed to load FAQs");
-          return res.json();
-        })
-        .then((data: Faq[]) => setFaqs(data))
-        .catch(() => setFaqs([])),
-    [],
-  );
+  // Hindi and Bengali have their own file; English is the fallback if it fails.
+  const loadFaqs = useCallback(() => {
+    const loadFaqFile = (url: string) =>
+      fetch(url).then((res) => {
+        if (!res.ok) throw new Error("Failed to load FAQs");
+        return res.json();
+      });
+    const request =
+      locale === "hi" || locale === "bn"
+        ? loadFaqFile(`/faq-parent.${locale}.json`).catch(() =>
+            loadFaqFile("/faq-parent.json"),
+          )
+        : loadFaqFile("/faq-parent.json");
+    return request
+      .then((data: Faq[]) => setFaqs(data))
+      .catch(() => setFaqs([]));
+  }, [locale]);
 
   useEffect(() => {
     setUser(getUser());
@@ -100,24 +111,24 @@ export default function ParentSupportPage() {
   return (
     <PageShell measure="reading">
       <PageHeader
-        section="Parent portal"
-        title="Help & support"
-        description="Reach the school office, or tell us about a problem with the app."
+        section={tp("module.parentPortal")}
+        title={t("title")}
+        description={t("description")}
       />
 
       <PageBody>
         {/* ── The school office — the right answer to almost every question ── */}
         <Panel>
           <PanelHeader
-            title={schoolName ? `Contact ${schoolName}` : "Contact your school"}
-            description="Attendance, fees, marks, transport, or a correction to your details."
+            title={schoolName ? t("contactSchool", { school: schoolName }) : t("contactYourSchool")}
+            description={t("contactDescription")}
           />
           {hasSchoolContact || schoolInfo?.address ? (
             <PanelBody className="space-y-2.5">
               {schoolInfo?.phone && (
                 <ContactRow
                   icon={<Phone />}
-                  label="Call the office"
+                  label={t("callOffice")}
                   value={schoolInfo.phone}
                   href={`tel:${schoolInfo.phone.replace(/\s/g, "")}`}
                 />
@@ -125,7 +136,7 @@ export default function ParentSupportPage() {
               {schoolInfo?.email && (
                 <ContactRow
                   icon={<Mail />}
-                  label="Email the office"
+                  label={t("emailOffice")}
                   value={schoolInfo.email}
                   href={`mailto:${schoolInfo.email}`}
                 />
@@ -133,7 +144,7 @@ export default function ParentSupportPage() {
               {schoolInfo?.website && (
                 <ContactRow
                   icon={<Globe />}
-                  label="School website"
+                  label={t("website")}
                   value={schoolInfo.website.replace(/^https?:\/\//, "")}
                   href={
                     schoolInfo.website.startsWith("http")
@@ -145,7 +156,7 @@ export default function ParentSupportPage() {
               {schoolInfo?.address && (
                 <ContactRow
                   icon={<MapPin />}
-                  label="Address"
+                  label={tc("field.address")}
                   value={schoolInfo.address}
                 />
               )}
@@ -154,11 +165,11 @@ export default function ParentSupportPage() {
             <EmptyState
               compact
               icon={<School />}
-              title="No contact details on file"
+              title={t("noContactTitle")}
               description={
                 schoolInfo
-                  ? "Your school hasn't published a phone number or email here yet. Use the number printed on your child's diary or ID card."
-                  : "Loading your school's details…"
+                  ? t("noContactDescription")
+                  : t("loadingSchool")
               }
             />
           )}
@@ -167,14 +178,14 @@ export default function ParentSupportPage() {
         {/* ── FAQs ─────────────────────────────────────────────────────────── */}
         <Panel>
           <PanelHeader
-            title="Common questions"
-            description="Answers to what parents ask most."
+            title={t("faqTitle")}
+            description={t("faqDescription")}
           />
           {faqs.length === 0 ? (
             <EmptyState
               compact
-              title="Questions couldn't be loaded"
-              description="Pull down to refresh, or ask the school office directly."
+              title={t("faqFailedTitle")}
+              description={t("faqFailedDescription")}
             />
           ) : (
             <div className="divide-y divide-line">
@@ -213,27 +224,26 @@ export default function ParentSupportPage() {
         {/* ── App support — the vendor, not the school ─────────────────────── */}
         <Panel>
           <PanelHeader
-            title="Problem with the app?"
-            description="Sign-in trouble, a page that won't load, or a payment that isn't showing."
+            title={t("appTitle")}
+            description={t("appDescription")}
           />
           <PanelBody className="space-y-4">
             <Note pigment="info" icon={<LifeBuoy />}>
-              Questions about your child — fees, attendance, marks, a wrong name
-              or number — are answered faster by the school office above.
+              {t("appNote")}
             </Note>
 
             <div className="rounded-lg border border-line bg-surface-secondary px-4 py-3">
-              <p className="eyebrow mb-2">Sent with your message</p>
+              <p className="eyebrow mb-2">{t("sentWith")}</p>
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[13px]">
-                <dt className="text-ink-muted">Name</dt>
+                <dt className="text-ink-muted">{tc("field.name")}</dt>
                 <dd className="text-right font-medium text-ink">
                   {parentName || "—"}
                 </dd>
-                <dt className="text-ink-muted">Mobile</dt>
+                <dt className="text-ink-muted">{tc("field.mobile")}</dt>
                 <dd className="text-right font-medium text-ink">
                   {user?.mobile || "—"}
                 </dd>
-                <dt className="text-ink-muted">School</dt>
+                <dt className="text-ink-muted">{t("school")}</dt>
                 <dd className="text-right font-medium text-ink">
                   {schoolName || "—"}
                 </dd>
@@ -242,10 +252,10 @@ export default function ParentSupportPage() {
 
             <form onSubmit={openAppSupportChat} className="space-y-4">
               <Field
-                label="What went wrong?"
+                label={t("issueLabel")}
                 htmlFor="parent-support-issue"
                 required
-                hint="Say what you tapped and what happened — it saves a round of questions."
+                hint={t("issueHint")}
               >
                 <Textarea
                   id="parent-support-issue"
@@ -253,14 +263,14 @@ export default function ParentSupportPage() {
                   rows={5}
                   value={issue}
                   onChange={(e) => setIssue(e.target.value)}
-                  placeholder="e.g. I paid the term fee yesterday but it still shows as due."
+                  placeholder={t("issuePlaceholder")}
                 />
               </Field>
 
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button type="submit" block className="sm:w-auto sm:flex-1">
                   <MessageCircle />
-                  Send on WhatsApp
+                  {t("sendWhatsapp")}
                 </Button>
                 <Button
                   variant="outline"
@@ -269,12 +279,11 @@ export default function ParentSupportPage() {
                   render={<a href={`mailto:${APP_SUPPORT_EMAIL}`} />}
                 >
                   <Mail />
-                  Email instead
+                  {t("emailInstead")}
                 </Button>
               </div>
               <p className="text-[12px] text-ink-muted">
-                WhatsApp opens with your details already filled in. You can also
-                write to {APP_SUPPORT_EMAIL} — replies usually come within a day.
+                {t("whatsappNote", { email: APP_SUPPORT_EMAIL })}
               </p>
             </form>
           </PanelBody>

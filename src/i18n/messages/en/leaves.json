@@ -1,0 +1,84 @@
+{
+  "title": "Student Leaves",
+  "type": {
+    "SICK_LEAVE": "Sick Leave",
+    "CASUAL_LEAVE": "Casual Leave",
+    "OTHER_LEAVE": "Other Leave"
+  },
+  "status": {
+    "PENDING": "Pending",
+    "FIRST_APPROVED": "1st Approved",
+    "APPROVED": "Approved",
+    "REJECTED": "Rejected",
+    "CANCELLED": "Cancelled"
+  },
+  "duration": {
+    "halfDay": "Half Day",
+    "fullDay": "Full Day"
+  },
+  "sectionSuffix": " · Sec {name}",
+  "dateRange": "{name} — {from} to {to}",
+  "drawer": {
+    "title": "Leave #{id} Details",
+    "leaveType": "Leave Type",
+    "duration": "Duration",
+    "reason": "Reason",
+    "awaitingFirst": "Awaiting 1st approval",
+    "awaitingFinal": "Awaiting final approval",
+    "documents": "Documents",
+    "pdf": "PDF",
+    "image": "Image"
+  },
+  "reject": {
+    "title": "Reject Leave #{id}",
+    "reasonLabel": "Rejection Reason",
+    "placeholder": "Enter reason for rejection...",
+    "rejecting": "Rejecting…",
+    "confirm": "Reject Leave"
+  },
+  "requestDoc": {
+    "title": "Ask for Info — Leave #{id}",
+    "messageLabel": "Message to Parent",
+    "minChars": "(min 10 characters)",
+    "placeholder": "e.g. Please upload a medical certificate from a registered doctor confirming the illness.",
+    "sending": "Sending…",
+    "send": "Send Request"
+  },
+  "list": {
+    "heading": "Leave Requests",
+    "subtitle": "Review and manage student leave applications",
+    "allClasses": "All Classes",
+    "allSections": "All Sections",
+    "studentId": "Student ID",
+    "studentIdPlaceholder": "e.g. 101",
+    "allStatuses": "All Statuses",
+    "unapproved": "⏳ Unapproved (Active)",
+    "fromDate": "From Date",
+    "toDate": "To Date",
+    "empty": "No leave requests found",
+    "colDates": "Dates",
+    "colDuration": "Duration",
+    "colAppliedOn": "Applied On",
+    "actionNeeded": "⚠ Action Needed",
+    "rowsPerPage": "Rows per page:",
+    "range": "{from}–{to} of {total}",
+    "prev": "← Prev",
+    "next": "Next →"
+  },
+  "actions": {
+    "firstApprove": "1st Approve",
+    "finalApprove": "Final Approve",
+    "askInfo": "Ask for Info",
+    "cancelLeave": "Cancel"
+  },
+  "toast": {
+    "loadFailed": "Failed to load leave requests",
+    "actionFailed": "Action failed",
+    "firstApproved": "First approval granted",
+    "fullyApproved": "Leave fully approved — attendance updated",
+    "rejected": "Leave rejected",
+    "cancelled": "Leave cancelled",
+    "messageSent": "Message sent to parent",
+    "docUrlFailed": "Failed to get document URL"
+  }
+}

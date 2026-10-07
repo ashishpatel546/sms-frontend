@@ -1,4 +1,6 @@
 import React from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE } from "@/i18n/config";
 import { useAttendance, useFees, useNotifications, useHolidays, useHomework } from "../hooks/useStudentData";
 import type { AttendanceStatus } from "@/lib/attendanceColors";
 import { TodayAttendanceTile } from "./TodayAttendanceTile";
@@ -50,13 +52,16 @@ interface HomeworkRow {
   worksheetFileName?: string | null;
 }
 
-function greeting(hour: number): string {
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
+/** Key under `parent.today.greeting`. */
+function greeting(hour: number): "morning" | "afternoon" | "evening" {
+  if (hour < 12) return "morning";
+  if (hour < 17) return "afternoon";
+  return "evening";
 }
 
 export const HomeSection = ({ studentId, academicYearString, onChangeSection }: HomeSectionProps) => {
+  const t = useTranslations("parent.today");
+  const locale = useLocale();
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
@@ -106,8 +111,8 @@ export const HomeSection = ({ studentId, academicYearString, onChangeSection }: 
   // Distinct subjects only — three rows saying "Maths homework posted" is noise.
   const homeworkSubjects = React.useMemo<string[]>(
     () =>
-      Array.from(new Set(todayHomework.map((h) => h.subject || 'General'))).slice(0, 2),
-    [todayHomework],
+      Array.from(new Set(todayHomework.map((h) => h.subject || t('generalSubject')))).slice(0, 2),
+    [todayHomework, t],
   );
 
   return (
@@ -115,10 +120,10 @@ export const HomeSection = ({ studentId, academicYearString, onChangeSection }: 
       {/* ── Who this is and when ─────────────────────────────────────────── */}
       <div>
         <h2 className="font-display text-[17px] leading-tight font-bold text-ink">
-          {greeting(now.getHours())}, Parent!
+          {t(`greeting.${greeting(now.getHours())}`)}
         </h2>
         <p className="tabular mt-0.5 text-[11.5px] font-medium text-ink-muted">
-          {now.toLocaleDateString('en-IN', {
+          {now.toLocaleDateString(INTL_LOCALE[locale as keyof typeof INTL_LOCALE], {
             weekday: 'long',
             day: 'numeric',
             month: 'long',

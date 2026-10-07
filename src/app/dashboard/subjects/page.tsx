@@ -10,9 +10,12 @@ import { useRbac } from "@/lib/rbac";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 
 export default function SubjectsPage() {
     const rbac = useRbac();
+    const t = useTranslations("subjects");
+    const tc = useTranslations("common");
     
     // UI State & Filters
     const [searchId, setSearchId] = useState("");
@@ -81,92 +84,92 @@ export default function SubjectsPage() {
     };
 
     // Hardcoded unique categories to match backend SubjectCategory enum
-    const uniqueCategories = ['BASE', 'OPTIONAL', 'VOCATIONAL', 'ACTIVITY'];
+    const uniqueCategories = ['BASE', 'OPTIONAL', 'VOCATIONAL', 'ACTIVITY'] as const;
 
     const columns = [
-        { header: "ID", accessor: "id", sortable: true, sortKey: "id" },
-        { header: "Subject Name", accessor: "name", sortable: true, sortKey: "name" },
-        { header: "Category", accessor: "subjectCategory", sortable: true },
+        { header: t("list.colId"), accessor: "id", sortable: true, sortKey: "id" },
+        { header: t("form.name"), accessor: "name", sortable: true, sortKey: "name" },
+        { header: t("list.colCategory"), accessor: "subjectCategory", sortable: true, render: (s: { subjectCategory: string }) => (uniqueCategories as readonly string[]).includes(s.subjectCategory) ? t(`categoryShort.${s.subjectCategory as (typeof uniqueCategories)[number]}`) : s.subjectCategory },
         {
-            header: "Components",
+            header: t("list.colComponents"),
             render: (s: any) => (
                 <div className="flex gap-1">
-                    {s.hasTheory && <span className="bg-blue-100 text-blue-800 text-xs font-bold px-1.5 py-0.5 rounded">Th</span>}
-                    {s.hasPractical && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-1.5 py-0.5 rounded">Pr</span>}
+                    {s.hasTheory && <span className="bg-blue-100 text-blue-800 text-xs font-bold px-1.5 py-0.5 rounded">{t("list.theoryShort")}</span>}
+                    {s.hasPractical && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-1.5 py-0.5 rounded">{t("list.practicalShort")}</span>}
                     {!s.hasTheory && !s.hasPractical && <span className="text-gray-400 text-xs">-</span>}
                 </div>
             )
         },
         {
-            header: "Fee Mapping",
+            header: t("list.colFeeMapping"),
             render: (s: any) => s.feeCategory ? <span className="text-xs text-gray-500">{s.feeCategory.name}</span> : <span className="text-xs text-gray-300">-</span>
         },
         {
-            header: "Actions",
+            header: tc("action.actions"),
             render: (row: any) => rbac.canManageSubjects ? (
-                <Link href={`/dashboard/subjects/${row.id}/edit`} className="font-medium text-blue-600 hover:underline">Edit</Link>
+                <Link href={`/dashboard/subjects/${row.id}/edit`} className="font-medium text-blue-600 hover:underline">{tc("action.edit")}</Link>
             ) : (
-                <span className="text-xs text-slate-400">View only</span>
+                <span className="text-xs text-slate-400">{t("list.viewOnly")}</span>
             )
         }
     ];
 
-    if (error) return <div className="p-4 text-red-500">Failed to load subjects</div>;
+    if (error) return <div className="p-4 text-red-500">{t("list.loadFailed")}</div>;
 
     return (
         <main className="p-4 sm:p-5">
             <div className="max-w-7xl mx-auto">
                 <PageHeader
                     className="mb-4"
-                    section="Academics · Subjects"
-                    title="Subjects"
-                    description="Subjects taught, and the classes they belong to."
+                    section={t("list.section")}
+                    title={t("list.title")}
+                    description={t("list.description")}
                     actions={rbac.canManageSubjects ? (
                         <Button render={<Link href="/dashboard/subjects/new" />}>
                             <Plus />
-                            Add subject
+                            {t("list.addSubject")}
                         </Button>
                     ) : undefined}
                 />
 
                 {/* Search Filter */}
                 <div className="mb-4 rounded-xl border border-line bg-surface p-4 shadow-soft">
-                    <h2 className="mb-3.5 font-display text-[15px] font-semibold text-ink">Search Subjects</h2>
+                    <h2 className="mb-3.5 font-display text-[15px] font-semibold text-ink">{t("list.searchTitle")}</h2>
                     <form onSubmit={handleSearch}>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                             <div>
-                                <label className="eyebrow mb-1.5 block">Subject ID</label>
-                                <input type="text" value={searchId} onChange={e => setSearchId(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none" placeholder="e.g. 1" />
+                                <label className="eyebrow mb-1.5 block">{t("list.subjectId")}</label>
+                                <input type="text" value={searchId} onChange={e => setSearchId(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none" placeholder={t("list.idPlaceholder")} />
                             </div>
                             <div>
-                                <label className="eyebrow mb-1.5 block">Subject Name</label>
-                                <input type="text" value={searchName} onChange={e => setSearchName(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none" placeholder="Subject Name" />
+                                <label className="eyebrow mb-1.5 block">{t("form.name")}</label>
+                                <input type="text" value={searchName} onChange={e => setSearchName(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none" placeholder={t("form.name")} />
                             </div>
                             <div>
-                                <label className="eyebrow mb-1.5 block">Category</label>
+                                <label className="eyebrow mb-1.5 block">{t("list.colCategory")}</label>
                                 <select value={searchCategory} onChange={e => setSearchCategory(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none">
-                                    <option value="">All Categories</option>
+                                    <option value="">{t("list.allCategories")}</option>
                                     {uniqueCategories.map(c => (
-                                        <option key={c as string} value={c as string}>{c as string}</option>
+                                        <option key={c as string} value={c as string}>{t(`categoryShort.${c}`)}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="eyebrow mb-1.5 block">Components</label>
+                                <label className="eyebrow mb-1.5 block">{t("list.colComponents")}</label>
                                 <select value={searchComponent} onChange={e => setSearchComponent(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none">
-                                    <option value="">All Items</option>
-                                    <option value="Theory">Has Theory</option>
-                                    <option value="Practical">Has Practical</option>
-                                    <option value="Both">Both (Th + Pr)</option>
+                                    <option value="">{t("list.allItems")}</option>
+                                    <option value="Theory">{t("list.hasTheory")}</option>
+                                    <option value="Practical">{t("list.hasPractical")}</option>
+                                    <option value="Both">{t("list.both")}</option>
                                 </select>
                             </div>
                         </div>
                         <div className="flex justify-end gap-2">
                             <button type="button" onClick={handleReset} className="h-10 cursor-pointer rounded-md px-3.5 text-[13.5px] font-semibold text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink">
-                                Reset
+                                {tc("action.reset")}
                             </button>
                             <button type="submit" className="h-10 cursor-pointer rounded-md bg-brand px-4 text-[13.5px] font-semibold text-brand-contrast shadow-soft transition-all hover:bg-brand-deep hover:shadow-brand">
-                                Search
+                                {tc("action.search")}
                             </button>
                         </div>
                     </form>
@@ -178,8 +181,8 @@ export default function SubjectsPage() {
                             <svg className="mx-auto h-12 w-12 text-slate-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
-                            <h3 className="text-lg font-medium text-slate-900 mb-1">Find Subjects</h3>
-                            <p className="text-sm">Please apply filters and click Search to view the list.</p>
+                            <h3 className="text-lg font-medium text-slate-900 mb-1">{t("list.findTitle")}</h3>
+                            <p className="text-sm">{t("list.findHint")}</p>
                         </div>
                     ) : (
                         <>
@@ -188,14 +191,14 @@ export default function SubjectsPage() {
                                 data={paginatedSubjects}
                                 loading={loading && !subjects.length}
                                 defaultSortColumn="name"
-                                emptyMessage="No subjects found matching your criteria."
+                                emptyMessage={t("list.empty")}
                             />
 
                             {/* Pagination Controls */}
                             {total > 0 && (
                                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 pt-4 border-t border-slate-200">
                                     <div className="flex items-center gap-2 text-sm text-slate-600">
-                                        <span>Rows per page:</span>
+                                        <span>{t("list.rowsPerPage")}</span>
                                         <select
                                             value={pageSize}
                                             onChange={(e) => {
@@ -209,7 +212,7 @@ export default function SubjectsPage() {
                                             ))}
                                         </select>
                                         <span className="ml-2">
-                                            {Math.min((page - 1) * pageSize + 1, total)}–{Math.min(page * pageSize, total)} of {total}
+                                            {t("list.range", { from: Math.min((page - 1) * pageSize + 1, total), to: Math.min(page * pageSize, total), total })}
                                         </span>
                                     </div>
 
@@ -219,7 +222,7 @@ export default function SubjectsPage() {
                                             disabled={page === 1}
                                             className="px-3 py-1.5 text-sm rounded-md border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                                         >
-                                            ← Prev
+                                            {t("list.prev")}
                                         </button>
 
                                         {getPageNumbers().map((p, idx) =>
@@ -244,7 +247,7 @@ export default function SubjectsPage() {
                                             disabled={page === totalPages}
                                             className="px-3 py-1.5 text-sm rounded-md border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                                         >
-                                            Next →
+                                            {t("list.next")}
                                         </button>
                                     </div>
                                 </div>

@@ -18,13 +18,51 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useLocale, useTranslations } from "next-intl";
 import type { AttendanceZone, BoundaryPoint } from "@/lib/hr-api";
 import {
-  formatArea,
   ringAreaSqMetres,
+  ringSelfIntersects,
   validateBoundary,
   MAX_BOUNDARY_VERTICES,
+  MIN_BOUNDARY_AREA_SQ_M,
+  MAX_BOUNDARY_AREA_SQ_M,
 } from "@/lib/geo-boundary";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
+
+type AttendanceT = ReturnType<typeof useTranslations<"attendance">>;
+
+/**
+ * Translated counterpart of `validateBoundary` (same checks, same order). The
+ * lib helper stays the source of truth for whether a ring is valid; this only
+ * words the reason in the reader's language.
+ */
+function describeBoundaryProblem(ring: BoundaryPoint[], t: AttendanceT): string | null {
+  if (validateBoundary(ring) === null) return null;
+  if (ring.length < 3) return t("zoneMap.problem.tooFewPoints");
+  if (ring.length > MAX_BOUNDARY_VERTICES) {
+    return t("zoneMap.problem.tooManyPoints", { max: MAX_BOUNDARY_VERTICES });
+  }
+  if (ringSelfIntersects(ring)) return t("zoneMap.problem.selfIntersects");
+  const area = ringAreaSqMetres(ring);
+  if (area < MIN_BOUNDARY_AREA_SQ_M) {
+    return t("zoneMap.problem.tooSmall", { area: String(Math.round(area)) });
+  }
+  if (area > MAX_BOUNDARY_AREA_SQ_M) {
+    return t("zoneMap.problem.tooLarge", { area: (area / 1_000_000).toFixed(1) });
+  }
+  return validateBoundary(ring);
+}
+
+/** Translated counterpart of `formatArea`: square metres up close, hectares beyond. */
+function formatAreaLocalized(sqMetres: number, t: AttendanceT, locale: Locale): string {
+  if (sqMetres >= 10_000) {
+    return t("zoneMap.areaHectares", { value: (sqMetres / 10_000).toFixed(2) });
+  }
+  return t("zoneMap.areaSqM", {
+    value: Math.round(sqMetres).toLocaleString(INTL_LOCALE[locale]),
+  });
+}
 
 /**
  * Basemap sources. Esri's World Imagery needs no key, no billing account and
@@ -172,6 +210,8 @@ export default function ZoneBoundaryMap({
   onModeChange,
   readOnly = false,
 }: ZoneBoundaryMapProps) {
+  const t = useTranslations("attendance");
+  const locale = useLocale() as Locale;
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const tileRef = useRef<L.TileLayer | null>(null);
@@ -330,7 +370,7 @@ export default function ZoneBoundaryMap({
         if (readOnly) return;
 
         handle.bindTooltip(
-          `Point ${index + 1} — drag to move, tap to remove`,
+          t("zoneMap.pointTooltip", { n: index + 1 }),
           { direction: "top" },
         );
 
@@ -370,7 +410,7 @@ export default function ZoneBoundaryMap({
         fillColor: "#2563eb",
         fillOpacity: 1,
       })
-        .bindTooltip("Zone centre — drag onto the building")
+        .bindTooltip(t("zoneMap.centreTooltip"))
         .addTo(overlay);
 
       if (!readOnly) {
@@ -383,7 +423,7 @@ export default function ZoneBoundaryMap({
         });
       }
     }
-  }, [boundary, centre, radiusMeters, otherZones, readOnly]);
+  }, [boundary, centre, radiusMeters, otherZones, readOnly, t]);
 
   // ── Keep the viewport on the shape being edited ─────────────────────────
   useEffect(() => {
@@ -403,7 +443,7 @@ export default function ZoneBoundaryMap({
   }, [boundary === null, centre.lat, centre.lng]);
 
   const area = boundary && boundary.length >= 3 ? ringAreaSqMetres(boundary) : 0;
-  const problem = boundary && boundary.length > 0 ? validateBoundary(boundary) : null;
+  const problem = boundary && boundary.length > 0 ? describeBoundaryProblem(boundary, t) : null;
 
   return (
     <div className="space-y-2">
@@ -421,7 +461,7 @@ export default function ZoneBoundaryMap({
                   : "bg-white text-gray-700 hover:bg-gray-50"
               }`}
             >
-              {BASEMAPS[key].label}
+              {t(`zoneMap.basemap.${key}`)}
             </button>
           ))}
         </div>
@@ -442,7 +482,7 @@ export default function ZoneBoundaryMap({
                     : "bg-white text-gray-700 hover:bg-gray-50"
                 }`}
               >
-                Centre + radius
+                {t("zoneMap.modeCircle")}
               </button>
               <button
                 type="button"
@@ -454,7 +494,7 @@ export default function ZoneBoundaryMap({
                     : "bg-white text-gray-700 hover:bg-gray-50"
                 }`}
               >
-                Draw outline
+                {t("zoneMap.modeOutline")}
               </button>
             </div>
 
@@ -484,14 +524,14 @@ export default function ZoneBoundaryMap({
             }
             className="text-xs px-3 py-1.5 min-h-9 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
           >
-            Undo point
+            {t("zoneMap.undoPoint")}
           </button>
           <button
             type="button"
             onClick={() => onBoundaryChange(null)}
             className="text-xs px-3 py-1.5 min-h-9 rounded-lg border border-gray-300 bg-white text-red-600 hover:bg-red-50"
           >
-            Start over
+            {t("zoneMap.startOver")}
           </button>
         </div>
       )}
@@ -499,17 +539,20 @@ export default function ZoneBoundaryMap({
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
         <span className="text-gray-600">
           {boundary?.length
-            ? `${boundary.length} point${boundary.length === 1 ? "" : "s"}${
-                area ? ` · ${formatArea(area)}` : ""
-              }`
+            ? area
+              ? t("zoneMap.pointsWithArea", {
+                  count: boundary.length,
+                  area: formatAreaLocalized(area, t, locale),
+                })
+              : t("zoneMap.points", { count: boundary.length })
             : mode === "polygon"
-              ? "No points yet"
-              : `Circle · ${radiusMeters}m radius`}
+              ? t("zoneMap.noPoints")
+              : t("zoneMap.circleSummary", { radius: radiusMeters })}
         </span>
         <span className="text-blue-700">
           {mode === "polygon"
-            ? "Tap each corner of the campus. Tap a point to remove it."
-            : "Drag the centre dot onto your school building."}
+            ? t("zoneMap.hintOutline")
+            : t("zoneMap.hintCircle")}
         </span>
       </div>
 
@@ -521,9 +564,7 @@ export default function ZoneBoundaryMap({
 
       {!!boundary?.length && !problem && (
         <p className="text-xs text-gray-500">
-          Staff must stand inside this outline, with a GPS fix precise enough to
-          prove it. Leave room at the edges — a phone accurate to ±20m needs to
-          be at least 20m inside the line.
+          {t("zoneMap.insideNote")}
         </p>
       )}
     </div>

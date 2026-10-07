@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, RefObject } from "react";
+import { useTranslations } from "next-intl";
 import { Download } from "lucide-react";
 import { generateAiPdf } from "@/lib/pdf-export";
 
@@ -25,6 +26,7 @@ export function DownloadPdfButton({
   subtitle,
   disabled,
 }: DownloadPdfButtonProps) {
+  const t = useTranslations("ai.pdfButton");
   const [loading, setLoading] = useState(false);
 
   const handleDownload = async () => {
@@ -43,11 +45,11 @@ export function DownloadPdfButton({
     <button
       onClick={handleDownload}
       disabled={disabled || loading}
-      title="Download as PDF"
+      title={t("tooltip")}
       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-surface text-xs font-medium text-ink-muted hover:text-ink hover:border-slate-300 dark:hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
     >
       <Download className="w-3.5 h-3.5" />
-      {loading ? "Generating…" : "Download PDF"}
+      {loading ? t("generating") : t("download")}
     </button>
   );
 }

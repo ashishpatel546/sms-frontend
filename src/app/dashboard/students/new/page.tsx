@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -11,7 +12,7 @@ import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 import { authFetch } from "@/lib/auth";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
 import { sortByName } from "@/lib/utils";
-import { formatMobileInput, isValidMobile, MOBILE_ERROR } from "@/lib/mobile";
+import { formatMobileInput, isValidMobile } from "@/lib/mobile";
 import { PersonPhotosSection, type StagedPhotos } from "@/components/person/PersonPhotosSection";
 import {
     PersonDocumentsSection,
@@ -25,6 +26,9 @@ import {
 } from "@/lib/person-documents-api";
 
 export default function AddStudentPage() {
+    const t = useTranslations("students.create");
+    const f = useTranslations("students.form");
+    const tc = useTranslations("common");
     const router = useRouter();
     const rbac = useRbac();
     const readOnly = useReadOnlySession();
@@ -32,10 +36,10 @@ export default function AddStudentPage() {
     // Route guard — only SUB_ADMIN and above can add students
     useEffect(() => {
         if (!rbac.canManageStudents) {
-            toast.error("You don't have permission to add students.");
+            toast.error(t("noPermission"));
             router.replace('/dashboard/students');
         }
-    }, [rbac.canManageStudents, router]);
+    }, [rbac.canManageStudents, router, t]);
 
     const [formData, setFormData] = useState({
         firstName: "",
@@ -141,8 +145,8 @@ export default function AddStudentPage() {
 
     const renderSubjectComponents = (subject: any) => (
         <div className="flex gap-1">
-            {subject.hasTheory && <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Th</span>}
-            {subject.hasPractical && <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Pr</span>}
+            {subject.hasTheory && <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded">{t("theoryShort")}</span>}
+            {subject.hasPractical && <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-1.5 py-0.5 rounded">{t("practicalShort")}</span>}
             {!subject.hasTheory && !subject.hasPractical && <span className="text-gray-400 text-[10px]">-</span>}
         </div>
     );
@@ -201,7 +205,7 @@ export default function AddStudentPage() {
             const girlDiscount = availableDiscounts.find(d => d.applicationType === 'AUTO' && d.logicReference === 'GIRL');
             if (girlDiscount && !selectedDiscounts.includes(girlDiscount.id)) {
                 setSelectedDiscounts(prev => [...prev, girlDiscount.id]);
-                toast.success(`Auto-applied: ${girlDiscount.name}`);
+                toast.success(f("autoApplied", { name: girlDiscount.name }));
             }
         }
 
@@ -210,14 +214,14 @@ export default function AddStudentPage() {
             const ewsDiscount = availableDiscounts.find(d => d.applicationType === 'AUTO' && d.logicReference === 'EWS');
             if (ewsDiscount && !selectedDiscounts.includes(ewsDiscount.id)) {
                 setSelectedDiscounts(prev => [...prev, ewsDiscount.id]);
-                toast.success(`Auto-applied: ${ewsDiscount.name}`);
+                toast.success(f("autoApplied", { name: ewsDiscount.name }));
             }
         }
     };
 
     const openSiblingModal = () => {
         if (!formData.fathersName.trim() || !formData.mothersName.trim()) {
-            setSiblingModalError("Please fill in Father's Name and Mother's Name before searching for a sibling.");
+            setSiblingModalError(f("sibling.needParents"));
             return;
         }
         setSiblingModalError("");
@@ -279,7 +283,7 @@ export default function AddStudentPage() {
         const siblingDiscount = availableDiscounts.find(d => d.applicationType === 'AUTO' && d.logicReference === 'SIBLING');
         if (siblingDiscount && !selectedDiscounts.includes(siblingDiscount.id)) {
             setSelectedDiscounts(prev => [...prev, siblingDiscount.id]);
-            toast.success(`Auto-applied: ${siblingDiscount.name}`);
+            toast.success(f("autoApplied", { name: siblingDiscount.name }));
         }
     };
 
@@ -295,15 +299,15 @@ export default function AddStudentPage() {
         setError("");
 
         if (!isValidMobile(formData.mobile)) {
-            setError(`Mobile Number: ${MOBILE_ERROR}`);
+            setError(f("invalidMobileField.mobile"));
             return;
         }
         if (formData.alternateMobile && !isValidMobile(formData.alternateMobile)) {
-            setError(`Alternate Mobile: ${MOBILE_ERROR}`);
+            setError(f("invalidMobileField.alternate"));
             return;
         }
         if (formData.guardianPhone && !isValidMobile(formData.guardianPhone)) {
-            setError(`Guardian Phone: ${MOBILE_ERROR}`);
+            setError(f("invalidMobileField.guardian"));
             return;
         }
 
@@ -337,7 +341,7 @@ export default function AddStudentPage() {
             });
 
             if (enrollStudent && (!selectedClass || !selectedSection)) {
-                throw new Error("Please select Class and Section to enroll the student.");
+                throw new Error(t("selectClassSection"));
             }
 
             const res = await authFetch(`${API_BASE_URL}/students`, {
@@ -350,7 +354,7 @@ export default function AddStudentPage() {
 
             if (!res.ok) {
                 const errData = await res.json();
-                throw new Error(errData.message || "Failed to create student");
+                throw new Error(errData.message || t("createFailed"));
             }
             
             const newStudent = await res.json();
@@ -367,18 +371,18 @@ export default function AddStudentPage() {
                     try {
                         await uploadPersonPhoto(newUserId, kind, photo.full, photo.thumb);
                     } catch {
-                        toast.error(`Student saved, but the ${kind} photo did not upload. Add it from Edit.`);
+                        toast.error(t("photoUploadFailed", { kind: f(`photoKind.${kind}`) }));
                     }
                 }
                 if (stagedDocuments.length > 0) {
                     try {
                         await persistStagedDocuments(newUserId, stagedDocuments);
                     } catch {
-                        toast.error("Student saved, but the document checklist did not. Set it from Edit.");
+                        toast.error(t("checklistFailed"));
                     }
                 }
             } else if (Object.keys(stagedPhotos).length > 0 || stagedDocuments.length > 0) {
-                toast.error("Student saved, but photos and documents could not be attached. Add them from Edit.");
+                toast.error(t("extrasFailed"));
             }
 
             // Handle Enrollment if requested
@@ -398,21 +402,21 @@ export default function AddStudentPage() {
                     });
 
                     if (!enrollRes.ok) {
-                        toast.error("Student created successfully, but enrollment failed.");
+                        toast.error(t("enrollFailed"));
                     } else {
-                        toast.success("Student created and enrolled successfully!");
+                        toast.success(t("createdEnrolled"));
                     }
                 } catch (enrollErr) {
-                    toast.error("Student created successfully, but enrollment failed.");
+                    toast.error(t("enrollFailed"));
                 }
             } else {
-                toast.success("Student created successfully!");
+                toast.success(t("created"));
             }
 
             router.push("/dashboard/students");
             router.refresh();
         } catch (err: any) {
-            setError(err.message || "Failed to create student.");
+            setError(err.message || t("createFailed"));
         } finally {
             setLoading(false);
         }
@@ -422,9 +426,9 @@ export default function AddStudentPage() {
         <main className="p-4 sm:p-5">
             <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-slate-200 relative">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-slate-800">Add New Student</h2>
+                    <h2 className="text-2xl font-bold text-slate-800">{t("title")}</h2>
                     <Link href="/dashboard/students" className="text-blue-600 hover:underline">
-                        &larr; Back to Students
+                        &larr; {f("backToStudents")}
                     </Link>
                 </div>
 
@@ -438,27 +442,27 @@ export default function AddStudentPage() {
                     {/* TODO: For future, we'll make fields compulsory. For now only first name, last name, gender, father's name, mother's name make compulsory. All other are optional. */}
                     {/* Basic Info */}
                     <div>
-                        <h3 className="text-lg font-bold mb-4 text-slate-700 border-b pb-2">Basic Information</h3>
+                        <h3 className="text-lg font-bold mb-4 text-slate-700 border-b pb-2">{f("basicInfo")}</h3>
                         <div className="grid gap-6 md:grid-cols-3">
                             <div>
-                                <label htmlFor="firstName" className="block mb-2 text-sm font-medium text-gray-900">First name <span className="text-red-500">*</span></label>
+                                <label htmlFor="firstName" className="block mb-2 text-sm font-medium text-gray-900">{f("firstName")} <span className="text-red-500">*</span></label>
                                 <input type="text" id="firstName" name="firstName" value={formData.firstName} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required />
                             </div>
                             <div>
-                                <label htmlFor="lastName" className="block mb-2 text-sm font-medium text-gray-900">Last name</label>
+                                <label htmlFor="lastName" className="block mb-2 text-sm font-medium text-gray-900">{f("lastName")}</label>
                                 <input type="text" id="lastName" name="lastName" value={formData.lastName} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
                             </div>
                             <div>
-                                <label htmlFor="gender" className="block mb-2 text-sm font-medium text-gray-900">Gender <span className="text-red-500">*</span></label>
+                                <label htmlFor="gender" className="block mb-2 text-sm font-medium text-gray-900">{tc("field.gender")} <span className="text-red-500">*</span></label>
                                 <select id="gender" name="gender" value={formData.gender} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required>
-                                    <option value="">Select Gender</option>
-                                    <option value="Male">Male</option>
-                                    <option value="Female">Female</option>
-                                    <option value="Others">Others</option>
+                                    <option value="">{f("selectGender")}</option>
+                                    <option value="Male">{tc("field.male")}</option>
+                                    <option value="Female">{tc("field.female")}</option>
+                                    <option value="Others">{f("genderOthers")}</option>
                                 </select>
                             </div>
                             <div>
-                                <label htmlFor="dateOfBirth" className="block mb-2 text-sm font-medium text-gray-900">Date of Birth <span className="text-red-500">*</span></label>
+                                <label htmlFor="dateOfBirth" className="block mb-2 text-sm font-medium text-gray-900">{tc("field.dob")} <span className="text-red-500">*</span></label>
                                 <AppDatePicker
                                     name="dateOfBirth"
                                     value={formData.dateOfBirth}
@@ -467,9 +471,9 @@ export default function AddStudentPage() {
                                 />
                             </div>
                             <div>
-                                <label htmlFor="bloodGroup" className="block mb-2 text-sm font-medium text-gray-900">Blood Group</label>
+                                <label htmlFor="bloodGroup" className="block mb-2 text-sm font-medium text-gray-900">{f("bloodGroup")}</label>
                                 <select id="bloodGroup" name="bloodGroup" value={formData.bloodGroup} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
-                                    <option value="">Select Group</option>
+                                    <option value="">{f("selectGroup")}</option>
                                     <option value="A+">A+</option><option value="A-">A-</option>
                                     <option value="B+">B+</option><option value="B-">B-</option>
                                     <option value="O+">O+</option><option value="O-">O-</option>
@@ -477,60 +481,60 @@ export default function AddStudentPage() {
                                 </select>
                             </div>
                             <div>
-                                <label htmlFor="aadhaarNumber" className="block mb-2 text-sm font-medium text-gray-900">Aadhaar Number <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <label htmlFor="aadhaarNumber" className="block mb-2 text-sm font-medium text-gray-900">{f("aadhaarNumber")} <span className="text-gray-400 font-normal">({tc("state.optional")})</span></label>
                                 <input type="text" id="aadhaarNumber" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
                             </div>
                             <div>
                                 <label htmlFor="pen" className="block mb-2">
-                                    <span className="block text-sm font-medium text-gray-900">PEN (Permanent Enrollment Number)</span>
-                                    <span className="text-xs text-gray-400">(Optional)</span>
+                                    <span className="block text-sm font-medium text-gray-900">{f("penFull")}</span>
+                                    <span className="text-xs text-gray-400">({tc("state.optional")})</span>
                                 </label>
-                                <input type="text" id="pen" name="pen" value={formData.pen} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="e.g. 1234567890" />
+                                <input type="text" id="pen" name="pen" value={formData.pen} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder={f("penPlaceholder")} />
                             </div>
                             <div>
                                 <label htmlFor="aparId" className="block mb-2">
-                                    <span className="block text-sm font-medium text-gray-900">APAR ID</span>
-                                    <span className="text-xs text-gray-400">(Optional)</span>
+                                    <span className="block text-sm font-medium text-gray-900">{f("aparId")}</span>
+                                    <span className="text-xs text-gray-400">({tc("state.optional")})</span>
                                 </label>
-                                <input type="text" id="aparId" name="aparId" value={formData.aparId} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="Academic Bank of Credits ID" />
+                                <input type="text" id="aparId" name="aparId" value={formData.aparId} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder={f("aparPlaceholder")} />
                             </div>
                             <div>
                                 <label htmlFor="admissionNumber" className="block mb-2">
-                                    <span className="block text-sm font-medium text-gray-900">Admission No.</span>
-                                    <span className="text-xs text-gray-400">(Optional)</span>
+                                    <span className="block text-sm font-medium text-gray-900">{f("admissionNo")}</span>
+                                    <span className="text-xs text-gray-400">({tc("state.optional")})</span>
                                 </label>
-                                <input type="text" id="admissionNumber" name="admissionNumber" value={formData.admissionNumber} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="e.g. 150" />
+                                <input type="text" id="admissionNumber" name="admissionNumber" value={formData.admissionNumber} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder={f("admissionPlaceholder")} />
                             </div>
                             <div>
                                 <label htmlFor="abhaId" className="block mb-2">
-                                    <span className="block text-sm font-medium text-gray-900">ABHA ID</span>
-                                    <span className="text-xs text-gray-400">(Optional)</span>
+                                    <span className="block text-sm font-medium text-gray-900">{f("abhaId")}</span>
+                                    <span className="text-xs text-gray-400">({tc("state.optional")})</span>
                                 </label>
-                                <input type="text" id="abhaId" name="abhaId" value={formData.abhaId} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="Ayushman Bharat Health Account ID" />
+                                <input type="text" id="abhaId" name="abhaId" value={formData.abhaId} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder={f("abhaPlaceholder")} />
                             </div>
                         </div>
                     </div>
 
                     {/* Contact Info */}
                     <div>
-                        <h3 className="text-lg font-bold mb-4 text-slate-700 border-b pb-2">Contact Information</h3>
+                        <h3 className="text-lg font-bold mb-4 text-slate-700 border-b pb-2">{f("contactInfo")}</h3>
                         <div className="grid gap-6 md:grid-cols-3">
                             <div>
-                                <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900">Email address <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900">{f("emailAddress")} <span className="text-gray-400 font-normal">({tc("state.optional")})</span></label>
                                 <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
                             </div>
                             <div>
-                                <label htmlFor="mobile" className="block mb-2 text-sm font-medium text-gray-900">Mobile Number <span className="text-red-500">*</span></label>
-                                <input type="tel" id="mobile" name="mobile" value={formData.mobile} onChange={handleChange} maxLength={10} inputMode="numeric" placeholder="10-digit number" className={`bg-gray-50 border ${formData.mobile.length > 0 && !isValidMobile(formData.mobile) ? 'border-red-500' : 'border-gray-300'} text-sm rounded-lg block w-full p-2.5`} required />
+                                <label htmlFor="mobile" className="block mb-2 text-sm font-medium text-gray-900">{f("mobileNumber")} <span className="text-red-500">*</span></label>
+                                <input type="tel" id="mobile" name="mobile" value={formData.mobile} onChange={handleChange} maxLength={10} inputMode="numeric" placeholder={f("mobilePlaceholder")} className={`bg-gray-50 border ${formData.mobile.length > 0 && !isValidMobile(formData.mobile) ? 'border-red-500' : 'border-gray-300'} text-sm rounded-lg block w-full p-2.5`} required />
                                 {formData.mobile.length > 0 && !isValidMobile(formData.mobile) && (
-                                    <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
+                                    <p className="mt-1 text-xs font-medium text-red-500">{f("invalidMobile")}</p>
                                 )}
                             </div>
                             <div>
-                                <label htmlFor="alternateMobile" className="block mb-2 text-sm font-medium text-gray-900">Alternate Mobile</label>
-                                <input type="tel" id="alternateMobile" name="alternateMobile" value={formData.alternateMobile} onChange={handleChange} maxLength={10} inputMode="numeric" placeholder="10-digit number" className={`bg-gray-50 border ${formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) ? 'border-red-500' : 'border-gray-300'} text-sm rounded-lg block w-full p-2.5`} />
+                                <label htmlFor="alternateMobile" className="block mb-2 text-sm font-medium text-gray-900">{f("alternateMobile")}</label>
+                                <input type="tel" id="alternateMobile" name="alternateMobile" value={formData.alternateMobile} onChange={handleChange} maxLength={10} inputMode="numeric" placeholder={f("mobilePlaceholder")} className={`bg-gray-50 border ${formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) ? 'border-red-500' : 'border-gray-300'} text-sm rounded-lg block w-full p-2.5`} />
                                 {formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) && (
-                                    <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
+                                    <p className="mt-1 text-xs font-medium text-red-500">{f("invalidMobile")}</p>
                                 )}
                             </div>
                         </div>
@@ -538,141 +542,141 @@ export default function AddStudentPage() {
 
                     {/* Address Info */}
                     <div>
-                        <h3 className="text-lg font-bold mb-4 text-slate-700 border-b pb-2">Address Information</h3>
+                        <h3 className="text-lg font-bold mb-4 text-slate-700 border-b pb-2">{f("addressInfo")}</h3>
                         <div className="grid gap-6 md:grid-cols-2">
                             <div>
-                                <label htmlFor="country" className="block mb-2 text-sm font-medium text-gray-900">Country <span className="text-red-500">*</span></label>
+                                <label htmlFor="country" className="block mb-2 text-sm font-medium text-gray-900">{f("country")} <span className="text-red-500">*</span></label>
                                 <select id="country" name="country" value={formData.address?.country} onChange={handleAddressChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
-                                    <option value="">Select Country</option>
+                                    <option value="">{f("selectCountry")}</option>
                                     {countries.map(c => (
                                         <option key={c.isoCode} value={c.isoCode}>{c.name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label htmlFor="state" className="block mb-2 text-sm font-medium text-gray-900">State <span className="text-red-500">*</span></label>
+                                <label htmlFor="state" className="block mb-2 text-sm font-medium text-gray-900">{f("state")} <span className="text-red-500">*</span></label>
                                 <select id="state" name="state" value={formData.address?.state} onChange={handleAddressChange} disabled={!states.length} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:opacity-50">
-                                    <option value="">Select State</option>
+                                    <option value="">{f("selectState")}</option>
                                     {states.map(s => (
                                         <option key={s.isoCode} value={s.isoCode}>{s.name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label htmlFor="city" className="block mb-2 text-sm font-medium text-gray-900">City <span className="text-red-500">*</span></label>
+                                <label htmlFor="city" className="block mb-2 text-sm font-medium text-gray-900">{f("city")} <span className="text-red-500">*</span></label>
                                 {cities.length > 0 ? (
                                     <select id="city" name="city" value={formData.address?.city} onChange={handleAddressChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
-                                        <option value="">Select City</option>
+                                        <option value="">{f("selectCity")}</option>
                                         {cities.map(c => (
                                             <option key={c.name} value={c.name}>{c.name}</option>
                                         ))}
                                     </select>
                                 ) : (
-                                    <input type="text" id="city" name="city" value={formData.address?.city} onChange={handleAddressChange} placeholder="City name" disabled={!formData.address?.state} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:opacity-50" />
+                                    <input type="text" id="city" name="city" value={formData.address?.city} onChange={handleAddressChange} placeholder={f("cityPlaceholder")} disabled={!formData.address?.state} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:opacity-50" />
                                 )}
                             </div>
                             <div>
-                                <label htmlFor="postalCode" className="block mb-2 text-sm font-medium text-gray-900">Postal Code <span className="text-red-500">*</span></label>
-                                <input type="text" id="postalCode" name="postalCode" value={formData.address?.postalCode} onChange={handleAddressChange} placeholder="PIN code" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                                <label htmlFor="postalCode" className="block mb-2 text-sm font-medium text-gray-900">{f("postalCode")} <span className="text-red-500">*</span></label>
+                                <input type="text" id="postalCode" name="postalCode" value={formData.address?.postalCode} onChange={handleAddressChange} placeholder={f("pinPlaceholder")} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
                             </div>
                             <div className="md:col-span-2">
-                                <label htmlFor="addressLine1" className="block mb-2 text-sm font-medium text-gray-900">Address Line 1 <span className="text-red-500">*</span></label>
-                                <input type="text" id="addressLine1" name="addressLine1" value={formData.address?.addressLine1} onChange={handleAddressChange} placeholder="Street address, Flat no, etc." className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                                <label htmlFor="addressLine1" className="block mb-2 text-sm font-medium text-gray-900">{f("addressLine1")} <span className="text-red-500">*</span></label>
+                                <input type="text" id="addressLine1" name="addressLine1" value={formData.address?.addressLine1} onChange={handleAddressChange} placeholder={f("address1Placeholder")} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
                             </div>
                             <div className="md:col-span-2">
-                                <label htmlFor="addressLine2" className="block mb-2 text-sm font-medium text-gray-900">Address Line 2 (Optional)</label>
-                                <input type="text" id="addressLine2" name="addressLine2" value={formData.address?.addressLine2} onChange={handleAddressChange} placeholder="Apartment, suite, unit, etc." className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                                <label htmlFor="addressLine2" className="block mb-2 text-sm font-medium text-gray-900">{f("addressLine2")} ({tc("state.optional")})</label>
+                                <input type="text" id="addressLine2" name="addressLine2" value={formData.address?.addressLine2} onChange={handleAddressChange} placeholder={f("address2Placeholder")} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
                             </div>
                             <div className="md:col-span-2">
-                                <label htmlFor="landmark" className="block mb-2 text-sm font-medium text-gray-900">Landmark (Optional)</label>
-                                <input type="text" id="landmark" name="landmark" value={formData.address?.landmark} onChange={handleAddressChange} placeholder="Near..." className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                                <label htmlFor="landmark" className="block mb-2 text-sm font-medium text-gray-900">{f("landmark")} ({tc("state.optional")})</label>
+                                <input type="text" id="landmark" name="landmark" value={formData.address?.landmark} onChange={handleAddressChange} placeholder={f("landmarkPlaceholder")} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
                             </div>
                         </div>
                     </div>
 
                     {/* Parent & Family Info */}
                     <div>
-                        <h3 className="text-lg font-bold mb-4 text-slate-700 border-b pb-2">Parent &amp; Family Details</h3>
+                        <h3 className="text-lg font-bold mb-4 text-slate-700 border-b pb-2">{f("familyDetails")}</h3>
 
                         {/* Linked sibling badge */}
                         {selectedSiblingObj && (
                             <div className="flex items-center space-x-2 mb-4">
                                 <span className="text-xs font-semibold bg-green-100 text-green-800 px-2 py-1 rounded border border-green-200">
-                                    Linked Sibling: {selectedSiblingObj.firstName} {selectedSiblingObj.lastName} (ID: {selectedSiblingObj.id})
+                                    {f("linkedSibling", { name: [selectedSiblingObj.firstName, selectedSiblingObj.lastName].filter(Boolean).join(" "), id: selectedSiblingObj.id })}
                                 </span>
-                                <button type="button" onClick={clearSibling} className="text-red-600 hover:text-red-800 text-xs font-medium underline">Remove Link</button>
+                                <button type="button" onClick={clearSibling} className="text-red-600 hover:text-red-800 text-xs font-medium underline">{f("removeLink")}</button>
                             </div>
                         )}
 
                         <div className="grid gap-6 md:grid-cols-2">
                             <div>
-                                <label htmlFor="fathersName" className="block mb-2 text-sm font-medium text-gray-900">Father's Name <span className="text-red-500">*</span></label>
+                                <label htmlFor="fathersName" className="block mb-2 text-sm font-medium text-gray-900">{f("fathersName")} <span className="text-red-500">*</span></label>
                                 <input type="text" id="fathersName" name="fathersName" value={formData.fathersName} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" required />
                             </div>
                             <div>
-                                <label htmlFor="fatherAadhaarNumber" className="block mb-2 text-sm font-medium text-gray-900">Father's UUID (Aadhaar Number) <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <label htmlFor="fatherAadhaarNumber" className="block mb-2 text-sm font-medium text-gray-900">{f("fatherAadhaar")} <span className="text-gray-400 font-normal">({tc("state.optional")})</span></label>
                                 <input type="text" id="fatherAadhaarNumber" name="fatherAadhaarNumber" value={formData.fatherAadhaarNumber} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" />
                             </div>
                             <div>
-                                <label htmlFor="mothersName" className="block mb-2 text-sm font-medium text-gray-900">Mother's Name <span className="text-red-500">*</span></label>
+                                <label htmlFor="mothersName" className="block mb-2 text-sm font-medium text-gray-900">{f("mothersName")} <span className="text-red-500">*</span></label>
                                 <input type="text" id="mothersName" name="mothersName" value={formData.mothersName} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" required />
                             </div>
                             <div>
-                                <label htmlFor="motherAadhaarNumber" className="block mb-2 text-sm font-medium text-gray-900">Mother's UUID (Aadhaar Number) <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <label htmlFor="motherAadhaarNumber" className="block mb-2 text-sm font-medium text-gray-900">{f("motherAadhaar")} <span className="text-gray-400 font-normal">({tc("state.optional")})</span></label>
                                 <input type="text" id="motherAadhaarNumber" name="motherAadhaarNumber" value={formData.motherAadhaarNumber} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" />
                             </div>
                             <div>
-                                <label htmlFor="fatherPan" className="block mb-2 text-sm font-medium text-gray-900">Father's PAN <span className="text-gray-400 font-normal">(Optional)</span></label>
-                                <input type="text" id="fatherPan" name="fatherPan" value={formData.fatherPan} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="PAN Number" />
+                                <label htmlFor="fatherPan" className="block mb-2 text-sm font-medium text-gray-900">{f("fatherPan")} <span className="text-gray-400 font-normal">({tc("state.optional")})</span></label>
+                                <input type="text" id="fatherPan" name="fatherPan" value={formData.fatherPan} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder={f("panPlaceholder")} />
                             </div>
                             <div>
-                                <label htmlFor="motherPan" className="block mb-2 text-sm font-medium text-gray-900">Mother's PAN <span className="text-gray-400 font-normal">(Optional)</span></label>
-                                <input type="text" id="motherPan" name="motherPan" value={formData.motherPan} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="PAN Number" />
+                                <label htmlFor="motherPan" className="block mb-2 text-sm font-medium text-gray-900">{f("motherPan")} <span className="text-gray-400 font-normal">({tc("state.optional")})</span></label>
+                                <input type="text" id="motherPan" name="motherPan" value={formData.motherPan} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder={f("panPlaceholder")} />
                             </div>
                             <div>
-                                <label htmlFor="fatherOccupation" className="block mb-2 text-sm font-medium text-gray-900">Father's Occupation <span className="text-gray-400 font-normal">(Optional)</span></label>
-                                <input type="text" id="fatherOccupation" name="fatherOccupation" value={formData.fatherOccupation} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="e.g. Engineer" />
+                                <label htmlFor="fatherOccupation" className="block mb-2 text-sm font-medium text-gray-900">{f("fatherOccupation")} <span className="text-gray-400 font-normal">({tc("state.optional")})</span></label>
+                                <input type="text" id="fatherOccupation" name="fatherOccupation" value={formData.fatherOccupation} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder={f("fatherOccupationPlaceholder")} />
                             </div>
                             <div>
-                                <label htmlFor="motherOccupation" className="block mb-2 text-sm font-medium text-gray-900">Mother's Occupation <span className="text-gray-400 font-normal">(Optional)</span></label>
-                                <input type="text" id="motherOccupation" name="motherOccupation" value={formData.motherOccupation} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="e.g. Teacher" />
+                                <label htmlFor="motherOccupation" className="block mb-2 text-sm font-medium text-gray-900">{f("motherOccupation")} <span className="text-gray-400 font-normal">({tc("state.optional")})</span></label>
+                                <input type="text" id="motherOccupation" name="motherOccupation" value={formData.motherOccupation} onChange={handleChange} disabled={!!selectedSiblingObj} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder={f("motherOccupationPlaceholder")} />
                             </div>
                             <div>
-                                <label htmlFor="fatherIncome" className="block mb-2 text-sm font-medium text-gray-900">Father's Annual Income (₹) <span className="text-gray-400 font-normal">(Optional)</span></label>
-                                <input type="number" id="fatherIncome" name="fatherIncome" value={formData.fatherIncome} onChange={handleChange} disabled={!!selectedSiblingObj} min="0" step="0.01" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="e.g. 500000" />
+                                <label htmlFor="fatherIncome" className="block mb-2 text-sm font-medium text-gray-900">{f("fatherIncome")} <span className="text-gray-400 font-normal">({tc("state.optional")})</span></label>
+                                <input type="number" id="fatherIncome" name="fatherIncome" value={formData.fatherIncome} onChange={handleChange} disabled={!!selectedSiblingObj} min="0" step="0.01" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder={f("fatherIncomePlaceholder")} />
                             </div>
                             <div>
-                                <label htmlFor="motherIncome" className="block mb-2 text-sm font-medium text-gray-900">Mother's Annual Income (₹) <span className="text-gray-400 font-normal">(Optional)</span></label>
-                                <input type="number" id="motherIncome" name="motherIncome" value={formData.motherIncome} onChange={handleChange} disabled={!!selectedSiblingObj} min="0" step="0.01" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder="e.g. 300000" />
+                                <label htmlFor="motherIncome" className="block mb-2 text-sm font-medium text-gray-900">{f("motherIncome")} <span className="text-gray-400 font-normal">({tc("state.optional")})</span></label>
+                                <input type="number" id="motherIncome" name="motherIncome" value={formData.motherIncome} onChange={handleChange} disabled={!!selectedSiblingObj} min="0" step="0.01" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" placeholder={f("motherIncomePlaceholder")} />
                             </div>
                         </div>
 
                         {/* Guardian — filled in when someone other than a parent is the
                             day-to-day contact. Optional throughout. */}
                         <div className="mt-6">
-                            <h4 className="mb-1 text-base font-semibold text-slate-700">Guardian</h4>
-                            <p className="mb-4 text-xs text-gray-500">Only if someone other than the parents is the day-to-day contact.</p>
+                            <h4 className="mb-1 text-base font-semibold text-slate-700">{f("guardian")}</h4>
+                            <p className="mb-4 text-xs text-gray-500">{f("guardianHint")}</p>
                             <div className="grid gap-6 md:grid-cols-3">
                                 <div>
-                                    <label htmlFor="guardianName" className="block mb-2 text-sm font-medium text-gray-900">Guardian&apos;s Name <span className="text-gray-400 font-normal">(Optional)</span></label>
-                                    <input type="text" id="guardianName" name="guardianName" value={formData.guardianName} onChange={handleChange} maxLength={150} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="e.g. Rekha Sharma" />
+                                    <label htmlFor="guardianName" className="block mb-2 text-sm font-medium text-gray-900">{f("guardianName")} <span className="text-gray-400 font-normal">({tc("state.optional")})</span></label>
+                                    <input type="text" id="guardianName" name="guardianName" value={formData.guardianName} onChange={handleChange} maxLength={150} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder={f("guardianNamePlaceholder")} />
                                 </div>
                                 <div>
-                                    <label htmlFor="guardianRelation" className="block mb-2 text-sm font-medium text-gray-900">Relation to the student <span className="text-gray-400 font-normal">(Optional)</span></label>
-                                    <input type="text" id="guardianRelation" name="guardianRelation" value={formData.guardianRelation} onChange={handleChange} maxLength={50} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder="e.g. Grandmother" />
+                                    <label htmlFor="guardianRelation" className="block mb-2 text-sm font-medium text-gray-900">{f("guardianRelation")} <span className="text-gray-400 font-normal">({tc("state.optional")})</span></label>
+                                    <input type="text" id="guardianRelation" name="guardianRelation" value={formData.guardianRelation} onChange={handleChange} maxLength={50} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" placeholder={f("guardianRelationPlaceholder")} />
                                 </div>
                                 <div>
-                                    <label htmlFor="guardianPhone" className="block mb-2 text-sm font-medium text-gray-900">Guardian&apos;s Phone <span className="text-gray-400 font-normal">(Optional)</span></label>
-                                    <input type="tel" id="guardianPhone" name="guardianPhone" value={formData.guardianPhone} onChange={handleChange} maxLength={10} inputMode="numeric" placeholder="10-digit number" className={`bg-gray-50 border ${formData.guardianPhone.length > 0 && !isValidMobile(formData.guardianPhone) ? 'border-red-500' : 'border-gray-300'} text-sm rounded-lg block w-full p-2.5`} />
+                                    <label htmlFor="guardianPhone" className="block mb-2 text-sm font-medium text-gray-900">{f("guardianPhone")} <span className="text-gray-400 font-normal">({tc("state.optional")})</span></label>
+                                    <input type="tel" id="guardianPhone" name="guardianPhone" value={formData.guardianPhone} onChange={handleChange} maxLength={10} inputMode="numeric" placeholder={f("mobilePlaceholder")} className={`bg-gray-50 border ${formData.guardianPhone.length > 0 && !isValidMobile(formData.guardianPhone) ? 'border-red-500' : 'border-gray-300'} text-sm rounded-lg block w-full p-2.5`} />
                                     {formData.guardianPhone.length > 0 && !isValidMobile(formData.guardianPhone) && (
-                                        <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
+                                        <p className="mt-1 text-xs font-medium text-red-500">{f("invalidMobile")}</p>
                                     )}
                                 </div>
                             </div>
                         </div>
 
                         {selectedSiblingObj && (
-                            <p className="mt-2 text-xs text-blue-600 italic">Parent names are locked and synced with the linked sibling.</p>
+                            <p className="mt-2 text-xs text-blue-600 italic">{f("parentsLocked")}</p>
                         )}
 
                         {/* Add Sibling button — placed AFTER parent name fields */}
@@ -686,22 +690,22 @@ export default function AddStudentPage() {
                                     onClick={openSiblingModal}
                                     className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-xs px-3 py-1.5 focus:outline-none"
                                 >
-                                    + Add Sibling
+                                    {f("addSibling")}
                                 </button>
-                                <p className="text-xs text-gray-400 mt-1">Fill in Father&apos;s and Mother&apos;s Name first, then search for a sibling with matching parents.</p>
+                                <p className="text-xs text-gray-400 mt-1">{f("addSiblingHint")}</p>
                             </div>
                         )}
                     </div>
 
                     {/* Additional Demographics */}
                     <div>
-                        <h3 className="text-lg font-bold mb-4 text-slate-700 border-b pb-2">Demographics</h3>
+                        <h3 className="text-lg font-bold mb-4 text-slate-700 border-b pb-2">{f("demographics")}</h3>
                         <div className="grid gap-6 md:grid-cols-2">
                             <div>
-                                <label htmlFor="category" className="block mb-2 text-sm font-medium text-gray-900">Category <span className="text-red-500">*</span></label>
+                                <label htmlFor="category" className="block mb-2 text-sm font-medium text-gray-900">{f("category")} <span className="text-red-500">*</span></label>
                                 <select id="category" name="category" value={formData.category} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required>
-                                    <option value="">Select Category</option>
-                                    <option value="General">General</option>
+                                    <option value="">{f("selectCategory")}</option>
+                                    <option value="General">{f("categoryGeneral")}</option>
                                     <option value="SC">SC</option>
                                     <option value="ST">ST</option>
                                     <option value="OBC">OBC</option>
@@ -709,15 +713,15 @@ export default function AddStudentPage() {
                                 </select>
                             </div>
                             <div>
-                                <label htmlFor="religion" className="block mb-2 text-sm font-medium text-gray-900">Religion <span className="text-red-500">*</span></label>
+                                <label htmlFor="religion" className="block mb-2 text-sm font-medium text-gray-900">{f("religion")} <span className="text-red-500">*</span></label>
                                 <select id="religion" name="religion" value={formData.religion} onChange={handleChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required>
-                                    <option value="">Select Religion</option>
-                                    <option value="HINDU">HINDU</option>
-                                    <option value="MUSLIM">MUSLIM</option>
-                                    <option value="SIKH">SIKH</option>
-                                    <option value="CHRISTIAN">CHRISTIAN</option>
-                                    <option value="PARSI">PARSI</option>
-                                    <option value="OTHERS">OTHERS</option>
+                                    <option value="">{f("selectReligion")}</option>
+                                    <option value="HINDU">{f("religionOption.HINDU")}</option>
+                                    <option value="MUSLIM">{f("religionOption.MUSLIM")}</option>
+                                    <option value="SIKH">{f("religionOption.SIKH")}</option>
+                                    <option value="CHRISTIAN">{f("religionOption.CHRISTIAN")}</option>
+                                    <option value="PARSI">{f("religionOption.PARSI")}</option>
+                                    <option value="OTHERS">{f("religionOption.OTHERS")}</option>
                                 </select>
                             </div>
                         </div>
@@ -726,8 +730,8 @@ export default function AddStudentPage() {
                     {/* Fee Discounts */}
                     {availableDiscounts.length > 0 && (
                         <div>
-                            <h3 className="text-lg font-bold mb-4 text-slate-700 border-b pb-2">Fee Discounts</h3>
-                            <label className="block mb-3 text-sm font-medium text-gray-900">Fee Discounts applied to this student</label>
+                            <h3 className="text-lg font-bold mb-4 text-slate-700 border-b pb-2">{f("feeDiscounts")}</h3>
+                            <label className="block mb-3 text-sm font-medium text-gray-900">{f("discountsApplied")}</label>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                 {availableDiscounts.map(d => (
                                     <label key={d.id} className="flex flex-col p-3 border border-gray-200 bg-white rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
@@ -758,7 +762,7 @@ export default function AddStudentPage() {
                     <div className="space-y-4">
                         <PersonPhotosSection
                             kinds={["self", "father", "mother", "guardian"]}
-                            selfLabel="Student photo"
+                            selfLabel={f("studentPhoto")}
                             staged={stagedPhotos}
                             onStagedChange={(kind, photo) =>
                                 setStagedPhotos(prev => ({ ...prev, [kind]: photo }))
@@ -768,7 +772,7 @@ export default function AddStudentPage() {
                         />
                         <PersonDocumentsSection
                             owners={["SELF", "FATHER", "MOTHER", "GUARDIAN"]}
-                            selfLabel="Student"
+                            selfLabel={tc("field.student")}
                             staged={stagedDocuments}
                             onStagedChange={setStagedDocuments}
                             disabled={readOnly}
@@ -785,28 +789,28 @@ export default function AddStudentPage() {
                                 onChange={(e) => setEnrollStudent(e.target.checked)}
                                 className="w-5 h-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-brand/40"
                             />
-                            <span className="text-base font-bold text-blue-900">Enroll this student immediately?</span>
+                            <span className="text-base font-bold text-blue-900">{t("enrollNow")}</span>
                         </label>
 
                         {enrollStudent && (
                             <div className="bg-white p-6 rounded-lg border border-slate-200 space-y-6">
-                                <h3 className="text-lg font-bold text-slate-700 border-b pb-2">Enrollment Details</h3>
+                                <h3 className="text-lg font-bold text-slate-700 border-b pb-2">{t("enrollDetails")}</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     <div>
-                                        <label className="block mb-1 text-sm font-medium">Academic Session</label>
+                                        <label className="block mb-1 text-sm font-medium">{t("academicSession")}</label>
                                         <select
                                             className="w-full border p-2 rounded focus:ring-2 focus:ring-brand/40 bg-white"
                                             value={selectedSessionId}
                                             onChange={e => setSelectedSessionId(e.target.value === "" ? "" : parseInt(e.target.value))}
                                         >
-                                            <option value="">-- Select Session --</option>
+                                            <option value="">{t("selectSession")}</option>
                                             {academicSessions.map((s: any) => (
-                                                <option key={s.id} value={s.id}>{s.name} {s.isActive ? '(Active)' : ''}</option>
+                                                <option key={s.id} value={s.id}>{s.name} {s.isActive ? t("activeSuffix") : ''}</option>
                                             ))}
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block mb-1 text-sm font-medium">Class <span className="text-red-500">*</span></label>
+                                        <label className="block mb-1 text-sm font-medium">{tc("field.class")} <span className="text-red-500">*</span></label>
                                         <select
                                             className="w-full border p-2 rounded focus:ring-2 focus:ring-brand/40 bg-white"
                                             value={selectedClass}
@@ -816,14 +820,14 @@ export default function AddStudentPage() {
                                             }}
                                             required={enrollStudent}
                                         >
-                                            <option value="">-- Select Class --</option>
+                                            <option value="">{t("selectClass")}</option>
                                             {classes.map((c: any) => (
                                                 <option key={c.id} value={c.id}>{c.name}</option>
                                             ))}
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block mb-1 text-sm font-medium">Section <span className="text-red-500">*</span></label>
+                                        <label className="block mb-1 text-sm font-medium">{tc("field.section")} <span className="text-red-500">*</span></label>
                                         <select
                                             className="w-full border p-2 rounded focus:ring-2 focus:ring-brand/40 bg-white disabled:bg-slate-100"
                                             value={selectedSection}
@@ -831,7 +835,7 @@ export default function AddStudentPage() {
                                             disabled={!selectedClass || sections.length === 0}
                                             required={enrollStudent}
                                         >
-                                            <option value="">-- Select Section --</option>
+                                            <option value="">{t("selectSection")}</option>
                                             {sections.map((sec: any) => (
                                                 <option key={sec.id} value={sec.id}>{sec.name}</option>
                                             ))}
@@ -841,10 +845,10 @@ export default function AddStudentPage() {
 
                                 {/* Subject Selection */}
                                 <div>
-                                    <label className="block mb-2 text-sm font-medium">Elective/Extra Subjects (Optional)</label>
+                                    <label className="block mb-2 text-sm font-medium">{t("electives")}</label>
                                     <div className="p-3 border rounded bg-slate-50 max-h-48 overflow-y-auto">
                                         {subjects.length === 0 ? (
-                                            <p className="text-sm text-slate-500">No subjects available.</p>
+                                            <p className="text-sm text-slate-500">{t("noSubjects")}</p>
                                         ) : (
                                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                                 {subjects.map((sub: any) => (
@@ -867,7 +871,7 @@ export default function AddStudentPage() {
                                             </div>
                                         )}
                                     </div>
-                                    <p className="text-xs text-slate-500 mt-1">Core subjects for the selected class are assigned automatically.</p>
+                                    <p className="text-xs text-slate-500 mt-1">{t("coreSubjectsHint")}</p>
                                 </div>
                             </div>
                         )}
@@ -875,10 +879,10 @@ export default function AddStudentPage() {
 
                     <div className="flex items-center space-x-4 pt-4 border-t">
                         <button type="submit" disabled={loading || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-bold rounded-lg text-lg w-full sm:w-auto px-8 py-3 text-center disabled:opacity-50">
-                            {loading ? 'Registering...' : 'Register Student'}
+                            {loading ? t("registering") : t("register")}
                         </button>
                         <Link href="/dashboard/students" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-line-strong font-medium rounded-lg text-sm px-5 py-3">
-                            Cancel
+                            {tc("action.cancel")}
                         </Link>
                     </div>
                 </form>
@@ -889,14 +893,14 @@ export default function AddStudentPage() {
                         <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                             <div className="flex items-center justify-between p-4 border-b">
                                 <div>
-                                    <h3 className="text-xl font-semibold text-gray-900">Search Existing Sibling</h3>
+                                    <h3 className="text-xl font-semibold text-gray-900">{f("sibling.title")}</h3>
                                     <p className="text-xs text-gray-500 mt-0.5">
-                                        Searching for siblings of: <span className="font-medium text-gray-700">{formData.fathersName}</span> &amp; <span className="font-medium text-gray-700">{formData.mothersName}</span>
+                                        {f.rich("sibling.searchingFor", { father: formData.fathersName, mother: formData.mothersName, b: (c) => <span className="font-medium text-gray-700">{c}</span> })}
                                     </p>
                                 </div>
                                 <button type="button" onClick={() => setShowSiblingModal(false)} className="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center">
                                     <svg className="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14"><path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6" /></svg>
-                                    <span className="sr-only">Close modal</span>
+                                    <span className="sr-only">{tc("action.close")}</span>
                                 </button>
                             </div>
                             <div className="p-6 flex-1 overflow-y-auto">
@@ -910,7 +914,7 @@ export default function AddStudentPage() {
                                             : 'bg-white text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
-                                        Search by Name
+                                        {f("sibling.byName")}
                                     </button>
                                     <button
                                         type="button"
@@ -920,7 +924,7 @@ export default function AddStudentPage() {
                                             : 'bg-white text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
-                                        Search by ID
+                                        {f("sibling.byId")}
                                     </button>
                                 </div>
                                 <form className="flex items-center space-x-2 mb-4" onSubmit={(e) => { e.preventDefault(); handleSearchSibling(); }}>
@@ -928,18 +932,18 @@ export default function AddStudentPage() {
                                         type={siblingSearchMode === 'id' ? 'number' : 'text'}
                                         value={siblingSearch}
                                         onChange={e => setSiblingSearch(e.target.value)}
-                                        placeholder={siblingSearchMode === 'id' ? 'Enter student ID (e.g. 42)' : 'Search by first or last name (e.g. Raj)'}
+                                        placeholder={siblingSearchMode === 'id' ? f("sibling.idPlaceholder") : f("sibling.namePlaceholder")}
                                         className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                     />
-                                    <button type="submit" className="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5" disabled={siblingLoading}>{siblingLoading ? '...' : 'Search'}</button>
+                                    <button type="submit" className="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5" disabled={siblingLoading}>{siblingLoading ? '...' : tc("action.search")}</button>
                                 </form>
 
                                 <div className="mt-4">
                                     {siblingResults.length > 0 ? (
                                         <>
                                             <p className="text-xs text-gray-500 mb-2">
-                                                <span className="inline-flex items-center mr-3"><span className="w-2 h-2 rounded-full bg-green-500 inline-block mr-1"></span>Names match — can be linked</span>
-                                                <span className="inline-flex items-center"><span className="w-2 h-2 rounded-full bg-red-400 inline-block mr-1"></span>Names don&apos;t match — cannot link</span>
+                                                <span className="inline-flex items-center mr-3"><span className="w-2 h-2 rounded-full bg-green-500 inline-block mr-1"></span>{f("sibling.match")}</span>
+                                                <span className="inline-flex items-center"><span className="w-2 h-2 rounded-full bg-red-400 inline-block mr-1"></span>{f("sibling.noMatch")}</span>
                                             </p>
                                             <ul className="divide-y divide-gray-200 border rounded-lg max-h-64 overflow-y-auto">
                                                 {siblingResults.map(s => {
@@ -951,9 +955,9 @@ export default function AddStudentPage() {
                                                                     <span className={`w-2 h-2 rounded-full shrink-0 ${match ? 'bg-green-500' : 'bg-red-400'}`}></span>
                                                                     <p className="text-sm font-medium text-gray-900">{s.firstName} {s.lastName}</p>
                                                                 </div>
-                                                                <p className="text-xs text-gray-500 ml-4">ID: {s.id} | Father: {s.fathersName || 'N/A'} | Mother: {s.mothersName || 'N/A'}</p>
+                                                                <p className="text-xs text-gray-500 ml-4">{f("sibling.resultMeta", { id: s.id, father: s.fathersName || f("na"), mother: s.mothersName || f("na") })}</p>
                                                                 {!match && (
-                                                                    <p className="text-xs text-red-600 ml-4 mt-0.5">⚠ Parent names do not match — cannot select as sibling</p>
+                                                                    <p className="text-xs text-red-600 ml-4 mt-0.5">{f("sibling.mismatchWarning")}</p>
                                                                 )}
                                                             </div>
                                                             <button
@@ -962,7 +966,7 @@ export default function AddStudentPage() {
                                                                 disabled={!match}
                                                                 className={`font-medium rounded-lg text-xs px-3 py-1.5 focus:outline-none shrink-0 ml-2 ${match ? 'text-white bg-green-600 hover:bg-green-700' : 'text-gray-400 bg-gray-200 cursor-not-allowed'}`}
                                                             >
-                                                                Select
+                                                                {f("sibling.select")}
                                                             </button>
                                                         </li>
                                                     );
@@ -970,7 +974,7 @@ export default function AddStudentPage() {
                                             </ul>
                                         </>
                                     ) : (
-                                        <p className="text-sm text-gray-500 italic text-center py-4">Search to find siblings.</p>
+                                        <p className="text-sm text-gray-500 italic text-center py-4">{f("sibling.empty")}</p>
                                     )}
                                 </div>
                             </div>

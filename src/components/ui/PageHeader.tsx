@@ -1,6 +1,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 /**
@@ -57,11 +58,12 @@ export function PageHeader({
   description,
   actions,
   backHref,
-  backLabel = 'Back',
+  backLabel,
   meta,
   tabs,
   className,
 }: PageHeaderProps) {
+  const tc = useTranslations('common');
   return (
     <header
       className={cn(
@@ -78,7 +80,7 @@ export function PageHeader({
               className="ml-auto mr-4 inline-flex items-center gap-1 text-[12.5px] font-medium text-ink-muted transition-colors hover:text-brand"
             >
               <ChevronLeft className="size-3.5" />
-              {backLabel}
+              {backLabel ?? tc('action.back')}
             </Link>
           )}
         </div>

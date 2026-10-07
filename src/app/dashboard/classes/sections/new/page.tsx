@@ -6,9 +6,12 @@ import Link from "next/link";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import toast from "react-hot-toast";
+import { useTranslations } from "next-intl";
 
 export default function AddSectionPage() {
     const router = useRouter();
+    const t = useTranslations("classes");
+    const tc = useTranslations("common");
     const [name, setName] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -27,14 +30,14 @@ export default function AddSectionPage() {
 
             if (!res.ok) {
                 const errBody = await res.json().catch(() => ({}));
-                throw new Error(errBody?.message ?? "Failed to create section");
+                throw new Error(errBody?.message ?? t("sectionForm.createFailed"));
             }
 
-            toast.success(`Section "${name}" created successfully!`);
+            toast.success(t("sectionForm.created", { name }));
             router.push("/dashboard/classes");
             router.refresh();
         } catch (err: any) {
-            setError(err.message ?? "Failed to create section. Please try again.");
+            setError(err.message ?? t("sectionForm.createFailedRetry"));
         } finally {
             setLoading(false);
         }
@@ -43,9 +46,9 @@ export default function AddSectionPage() {
     return (
         <main className="p-4">
             <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-slate-200">
-                <h2 className="text-2xl font-bold mb-2 text-slate-800">Add New Section</h2>
+                <h2 className="text-2xl font-bold mb-2 text-slate-800">{t("sectionForm.title")}</h2>
                 <p className="text-sm text-slate-500 mb-6">
-                    Sections are shared across classes (e.g. &quot;A&quot;, &quot;B&quot;). Once created, you can assign a section to any class.
+                    {t("sectionForm.description")}
                 </p>
 
                 {error && (
@@ -56,17 +59,17 @@ export default function AddSectionPage() {
 
                 <form onSubmit={handleSubmit}>
                     <div className="mb-6">
-                        <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-900">Section Name</label>
+                        <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-900">{t("sectionForm.name")}</label>
                         <input
                             type="text"
                             id="name"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
-                            placeholder="e.g. A"
+                            placeholder={t("list.sectionPlaceholder")}
                             required
                         />
-                        <p className="mt-1 text-xs text-gray-500">Section names must be unique (case-insensitive).</p>
+                        <p className="mt-1 text-xs text-gray-500">{t("sectionForm.uniqueHint")}</p>
                     </div>
 
                     <div className="flex items-center space-x-4">
@@ -75,10 +78,10 @@ export default function AddSectionPage() {
                             disabled={loading}
                             className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50"
                         >
-                            {loading ? 'Creating...' : 'Create Section'}
+                            {loading ? t("form.creating") : t("sectionForm.create")}
                         </button>
                         <Link href="/dashboard/classes" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-line-strong font-medium rounded-lg text-sm px-5 py-2.5">
-                            Cancel
+                            {tc("action.cancel")}
                         </Link>
                     </div>
                 </form>

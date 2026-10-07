@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import ReactMarkdown from "react-markdown";
 import { Sparkles, Square, Zap } from "lucide-react";
 import { streamAiResponse, SseUsage } from "@/lib/ai-stream";
@@ -10,10 +11,10 @@ import { DownloadPdfButton } from "@/components/ai/DownloadPdfButton";
 
 const GRADES = ["1","2","3","4","5","6","7","8","9","10","11","12"];
 const SIMPLIFY_LEVELS = [
-  { value: "simple", label: "Simple (Easy)" },
-  { value: "medium", label: "Medium" },
-  { value: "advanced", label: "Advanced" },
-];
+  { value: "simple" },
+  { value: "medium" },
+  { value: "advanced" },
+] as const;
 
 interface ExplainTopicToolProps {
   defaultGrade?: string;
@@ -21,6 +22,7 @@ interface ExplainTopicToolProps {
 }
 
 export function ExplainTopicTool({ defaultGrade, onUpgradeClick }: ExplainTopicToolProps) {
+  const t = useTranslations("ai.tools");
   const abortRef = useRef<AbortController | null>(null);
   const outputRef = useRef<HTMLDivElement | null>(null);
 
@@ -49,10 +51,15 @@ export function ExplainTopicTool({ defaultGrade, onUpgradeClick }: ExplainTopicT
       "/api/v1/student/explain-topic",
       { topic: topic.trim(), grade, subject: subject.trim(), simplify_level: simplifyLevel, language },
       {
-        onToken: (t) => setOutput((p) => p + t),
+        onToken: (tok) => setOutput((p) => p + tok),
         onDone: (u) => { setUsage(u); setStreaming(false); },
         onError: (msg) => { setError(msg); setStreaming(false); },
         signal: ctrl.signal,
+        errorMessages: {
+          noBody: t("shared.streamError.noBody"),
+          serviceError: t("shared.streamError.serviceError"),
+          unknown: t("shared.streamError.unknown"),
+        },
       },
     );
   };
@@ -67,20 +74,20 @@ export function ExplainTopicTool({ defaultGrade, onUpgradeClick }: ExplainTopicT
           <Sparkles className="w-5 h-5 text-violet-600 dark:text-violet-400" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-ink">Explain a Topic</h1>
-          <p className="text-sm text-ink-muted">Get a clear, step-by-step explanation of any concept</p>
+          <h1 className="text-xl font-bold text-ink">{t("explain.title")}</h1>
+          <p className="text-sm text-ink-muted">{t("explain.subtitle")}</p>
         </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface p-5 space-y-4">
         <div>
           <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">
-            What do you want explained? <span className="text-red-500">*</span>
+            {t("explain.topic")} <span className="text-red-500">*</span>
           </label>
           <input
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="e.g. How does photosynthesis work?"
+            placeholder={t("explain.topicPlaceholder")}
             maxLength={300}
             className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-violet-500/40"
           />
@@ -89,28 +96,28 @@ export function ExplainTopicTool({ defaultGrade, onUpgradeClick }: ExplainTopicT
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">Subject *</label>
+            <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">{t("shared.subject")} *</label>
             <input
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="e.g. Biology"
+              placeholder={t("explain.subjectPlaceholder")}
               className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-violet-500/40"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">Grade</label>
+            <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">{t("shared.grade")}</label>
             <select
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
               className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-surface-secondary px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-violet-500/40"
             >
-              {GRADES.map((g) => <option key={g} value={g}>Grade {g}</option>)}
+              {GRADES.map((g) => <option key={g} value={g}>{t("shared.gradeOption", { grade: g })}</option>)}
             </select>
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-2">Explanation Level</label>
+          <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-2">{t("explain.level")}</label>
           <div className="flex gap-2">
             {SIMPLIFY_LEVELS.map((l) => (
               <button
@@ -122,19 +129,19 @@ export function ExplainTopicTool({ defaultGrade, onUpgradeClick }: ExplainTopicT
                     : "bg-slate-100 dark:bg-surface-secondary text-ink-muted hover:text-ink"
                 }`}
               >
-                {l.label}
+                {t(`explain.levels.${l.value}`)}
               </button>
             ))}
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">Language</label>
+          <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1.5">{t("shared.language")}</label>
           <div className="flex gap-2">
-            {["en", "hi", "hinglish"].map((l) => (
+            {(["en", "hi", "hinglish"] as const).map((l) => (
               <button key={l} onClick={() => setLanguage(l)}
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${language === l ? "bg-violet-600 text-white" : "bg-slate-100 dark:bg-surface-secondary text-ink-muted hover:text-ink"}`}>
-                {l === "en" ? "English" : l === "hi" ? "Hindi" : "Hinglish"}
+                {t(`shared.lang.${l}`)}
               </button>
             ))}
           </div>
@@ -143,11 +150,11 @@ export function ExplainTopicTool({ defaultGrade, onUpgradeClick }: ExplainTopicT
         <div className="pt-1">
           {streaming ? (
             <button onClick={stop} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors">
-              <Square className="w-4 h-4" /> Stop
+              <Square className="w-4 h-4" /> {t("shared.stop")}
             </button>
           ) : (
             <button onClick={generate} disabled={!canGenerate} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors">
-              <Sparkles className="w-4 h-4" /> Explain
+              <Sparkles className="w-4 h-4" /> {t("explain.explain")}
             </button>
           )}
         </div>
@@ -161,10 +168,10 @@ export function ExplainTopicTool({ defaultGrade, onUpgradeClick }: ExplainTopicT
         <div className="space-y-4">
           <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface p-5">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-semibold text-ink">Explanation</span>
+              <span className="text-sm font-semibold text-ink">{t("explain.output")}</span>
               <div className="flex items-center gap-3">
-                {streaming && <span className="flex items-center gap-1.5 text-xs text-violet-500"><span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />Thinking...</span>}
-                {usage && <span className="flex items-center gap-1 text-xs text-ink-muted"><Zap className="w-3 h-3 text-amber-500" />{usage.credits_charged} credits · {usage.credits_remaining} remaining</span>}
+                {streaming && <span className="flex items-center gap-1.5 text-xs text-violet-500"><span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />{t("explain.thinking")}</span>}
+                {usage && <span className="flex items-center gap-1 text-xs text-ink-muted"><Zap className="w-3 h-3 text-amber-500" />{t("shared.usage", { charged: usage.credits_charged, remaining: usage.credits_remaining })}</span>}
                 <DownloadPdfButton
                   contentRef={outputRef}
                   title="Topic Explanation"

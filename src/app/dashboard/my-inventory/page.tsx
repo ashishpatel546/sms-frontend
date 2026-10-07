@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import useSWR from 'swr';
+import { useLocale, useTranslations } from 'next-intl';
 import { Toaster } from 'react-hot-toast';
 import { ArrowLeftRight, Boxes, Receipt, ShoppingBag } from 'lucide-react';
 
@@ -18,6 +19,7 @@ import { Column, DataTable, TableCount } from '@/components/ui/DataTable';
 import { Pagination } from '@/components/ui/FilterBar';
 import { Money } from '@/components/ui/Money';
 import { StatusChip } from '@/components/ui/StatusChip';
+import { INTL_LOCALE, type Locale } from '@/i18n/config';
 
 const PAGE_SIZE = 10;
 
@@ -27,6 +29,10 @@ const PAGE_SIZE = 10;
  * read-only — questions, not another counter.
  */
 export default function MyInventoryPage() {
+  const t = useTranslations('inventory.my');
+  const tc = useTranslations('common');
+  const ti = useTranslations('inventory');
+  const locale = useLocale() as Locale;
   const [salesPage, setSalesPage] = React.useState(1);
   const [issuancesPage, setIssuancesPage] = React.useState(1);
 
@@ -42,19 +48,19 @@ export default function MyInventoryPage() {
   const saleColumns: Column<InventorySale>[] = [
     {
       key: 'receipt',
-      header: 'Receipt',
+      header: t('col.receipt'),
       accessor: (r) => <span className="tabular font-mono text-[12.5px]">{r.receiptNumber}</span>,
       card: 'title',
     },
     {
       key: 'date',
-      header: 'Date',
-      accessor: (r) => new Date(r.createdAt).toLocaleDateString('en-IN'),
+      header: tc('field.date'),
+      accessor: (r) => new Date(r.createdAt).toLocaleDateString(INTL_LOCALE[locale]),
       card: 'meta',
     },
     {
       key: 'items',
-      header: 'Items',
+      header: t('col.items'),
       accessor: (r) => {
         const names = (r.lines ?? []).map((l) => `${l.itemName} × ${l.qty}`);
         return (
@@ -65,56 +71,56 @@ export default function MyInventoryPage() {
       },
       card: 'field',
     },
-    { key: 'net', header: 'Net', align: 'right', accessor: (r) => <Money amount={r.netAmount} symbol />, card: 'field' },
+    { key: 'net', header: t('col.net'), align: 'right', accessor: (r) => <Money amount={r.netAmount} symbol />, card: 'field' },
     {
       key: 'balance',
-      header: 'Balance',
+      header: t('col.balance'),
       align: 'right',
       accessor: (r) => <Money amount={r.balanceAmount} symbol tone={r.balanceAmount > 0 ? 'owing' : 'default'} />,
       card: 'field',
     },
-    { key: 'status', header: 'Status', align: 'right', accessor: (r) => <StatusChip status={r.status} />, card: 'trailing' },
+    { key: 'status', header: tc('field.status'), align: 'right', accessor: (r) => <StatusChip status={r.status} label={ti(`saleStatus.${r.status}`)} />, card: 'trailing' },
   ];
 
   const issuanceColumns: Column<InventoryIssuance>[] = [
-    { key: 'item', header: 'Item', accessor: (r) => r.itemName, card: 'title' },
-    { key: 'qty', header: 'Qty', align: 'right', accessor: (r) => r.qty, card: 'field' },
+    { key: 'item', header: t('col.item'), accessor: (r) => r.itemName, card: 'title' },
+    { key: 'qty', header: t('col.qty'), align: 'right', accessor: (r) => r.qty, card: 'field' },
     {
       key: 'outstanding',
-      header: 'To return',
+      header: t('col.toReturn'),
       align: 'right',
       accessor: (r) => issuanceOutstanding(r),
       card: 'field',
     },
     {
       key: 'due',
-      header: 'Due',
+      header: t('col.due'),
       accessor: (r) => {
         const overdue = r.status === 'OVERDUE';
         return (
           <span className={overdue ? 'font-semibold text-accent-danger-deep' : undefined}>
-            {new Date(r.dueDate).toLocaleDateString('en-IN')}
+            {new Date(r.dueDate).toLocaleDateString(INTL_LOCALE[locale])}
           </span>
         );
       },
       card: 'meta',
     },
-    { key: 'status', header: 'Status', align: 'right', accessor: (r) => <StatusChip status={r.status} />, card: 'trailing' },
+    { key: 'status', header: tc('field.status'), align: 'right', accessor: (r) => <StatusChip status={r.status} label={ti(`issuanceStatus.${r.status}`)} />, card: 'trailing' },
   ];
 
   return (
     <FeatureGate
       flag="inventory_management"
-      title="My Inventory"
+      title={t('title')}
       icon={<ShoppingBag />}
-      description="Your school-store purchases and borrowed items, with balances and due dates."
+      description={t('gateDescription')}
     >
       <PageShell>
         <Toaster position="top-center" />
         <PageHeader
-          section="Store"
-          title="My Inventory"
-          description="Purchases and borrowed items — yours, and your children's."
+          section={t('section')}
+          title={t('title')}
+          description={t('description')}
         />
 
         <PageBody className="space-y-4">
@@ -123,11 +129,11 @@ export default function MyInventoryPage() {
             data={sales?.data}
             loading={salesLoading}
             rowKey={(r) => r.id}
-            emptyMessage="No purchases yet"
+            emptyMessage={t('noPurchases')}
             toolbar={
               <>
                 <Receipt className="size-4 text-ink-faint" />
-                <span className="font-display text-[15px] font-semibold text-ink">Purchases</span>
+                <span className="font-display text-[15px] font-semibold text-ink">{t('purchases')}</span>
                 {sales && <TableCount>{sales.total}</TableCount>}
               </>
             }
@@ -150,11 +156,11 @@ export default function MyInventoryPage() {
             loading={issuancesLoading}
             rowKey={(r) => r.id}
             isRowFlagged={(r) => r.status === 'OVERDUE'}
-            emptyMessage="Nothing borrowed right now"
+            emptyMessage={t('noBorrowed')}
             toolbar={
               <>
                 <ArrowLeftRight className="size-4 text-ink-faint" />
-                <span className="font-display text-[15px] font-semibold text-ink">Borrowed items</span>
+                <span className="font-display text-[15px] font-semibold text-ink">{t('borrowed')}</span>
                 {issuances && <TableCount>{issuances.total}</TableCount>}
               </>
             }
@@ -173,8 +179,7 @@ export default function MyInventoryPage() {
 
           <p className="flex items-center gap-1.5 text-[12.5px] text-ink-muted">
             <Boxes className="size-3.5" aria-hidden />
-            Bought or returned something that isn&apos;t shown here yet? The school office records
-            store activity — ask at the counter.
+            {t('footnote')}
           </p>
         </PageBody>
       </PageShell>

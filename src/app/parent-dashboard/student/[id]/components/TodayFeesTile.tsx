@@ -1,5 +1,6 @@
 import React from 'react';
 import { Check } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Money } from '@/components/ui/Money';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -19,17 +20,18 @@ interface TodayFeesTileProps {
 }
 
 export const TodayFeesTile = ({ totalDue, isLoading, onOpen }: TodayFeesTileProps) => {
+  const t = useTranslations('parent.today');
   const settled = totalDue <= 0;
 
   return (
     <button
       onClick={onOpen}
-      aria-label={settled ? 'No fees due. Open fees.' : `${totalDue} rupees due. Open fees to pay.`}
+      aria-label={settled ? t('feesNoneAria') : t('feesDueAria', { amount: totalDue })}
       className={`flex min-h-33 w-full cursor-pointer flex-col items-center gap-1 rounded-xl border p-2.5 text-center shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-raised focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none ${
         settled ? 'border-line bg-surface hover:border-brand-edge' : 'border-accent-warn-edge bg-accent-warn-tint'
       }`}
     >
-      <span className="eyebrow w-full text-left">Fees</span>
+      <span className="eyebrow w-full text-left">{t("fees")}</span>
 
       {isLoading ? (
         <Skeleton className="mt-2 h-11 w-16 rounded-lg" />
@@ -38,7 +40,7 @@ export const TodayFeesTile = ({ totalDue, isLoading, onOpen }: TodayFeesTileProp
           <span className="grid size-9 place-items-center rounded-xl bg-accent-success-tint text-accent-success-deep">
             <Check className="size-4.5" strokeWidth={3} aria-hidden />
           </span>
-          <span className="text-[11px] leading-tight font-semibold text-ink">All paid</span>
+          <span className="text-[11px] leading-tight font-semibold text-ink">{t("allPaid")}</span>
         </span>
       ) : (
         <span className="mt-1.5 flex flex-col items-center">
@@ -50,13 +52,13 @@ export const TodayFeesTile = ({ totalDue, isLoading, onOpen }: TodayFeesTileProp
             short={totalDue >= 100000}
             className="text-[17px] leading-none font-extrabold text-accent-warn-deep"
           />
-          <span className="mt-1 text-[11px] leading-tight font-semibold text-ink">due</span>
+          <span className="mt-1 text-[11px] leading-tight font-semibold text-ink">{t("due")}</span>
         </span>
       )}
 
       {!settled && !isLoading && (
         <span className="mt-auto rounded-md bg-brand px-2.5 py-1 text-[11px] font-semibold text-brand-contrast">
-          Pay
+          {t('pay')}
         </span>
       )}
       {(settled || isLoading) && <span className="mt-auto pt-1.5 text-[11px] text-ink-faint">&nbsp;</span>}

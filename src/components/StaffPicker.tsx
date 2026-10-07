@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
+import { useTranslations } from "next-intl";
 
 export interface StaffResult {
     id: number;
@@ -25,11 +26,14 @@ interface Props {
 export default function StaffPicker({
     value,
     onChange,
-    label = "Staff Member",
-    placeholder = "Search by name or mobile...",
+    label: labelProp,
+    placeholder: placeholderProp,
     required = false,
     className = "",
 }: Props) {
+    const t = useTranslations("staff.picker");
+    const label = labelProp ?? t("label");
+    const placeholder = placeholderProp ?? t("placeholder");
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<StaffResult[]>([]);
     const [selected, setSelected] = useState<StaffResult | null>(null);
@@ -152,7 +156,7 @@ export default function StaffPicker({
                         type="button"
                         onClick={handleClear}
                         className="shrink-0 text-blue-400 hover:text-blue-600 p-0.5"
-                        title="Clear selection"
+                        title={t("clear")}
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

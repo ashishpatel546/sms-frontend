@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
     LayoutDashboard,
     Bell,
@@ -29,6 +30,7 @@ interface BottomTabBarProps {
  */
 export function BottomTabBar({ onMoreClick, onPlusClick }: BottomTabBarProps) {
     const pathname = usePathname();
+    const t = useTranslations("nav");
 
     const isActive = (href: string) =>
         href === "/dashboard"
@@ -37,14 +39,14 @@ export function BottomTabBar({ onMoreClick, onPlusClick }: BottomTabBarProps) {
 
     return (
         <nav
-            aria-label="Primary"
+            aria-label={t("chrome.primaryNav")}
             className="fixed right-0 bottom-0 left-0 z-50 border-t border-line bg-surface-glass pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_-2px_rgba(16,23,40,0.08)] backdrop-blur-xl md:hidden"
         >
             <div className="relative flex h-15 items-stretch justify-between px-1">
-                <Tab href="/dashboard" label="Home" icon={LayoutDashboard} active={isActive("/dashboard")} />
+                <Tab href="/dashboard" label={t("tab.home")} icon={LayoutDashboard} active={isActive("/dashboard")} />
                 <Tab
                     href="/dashboard/pickup/scan"
-                    label="Scan"
+                    label={t("tab.scan")}
                     icon={QrCode}
                     active={isActive("/dashboard/pickup/scan")}
                 />
@@ -53,17 +55,17 @@ export function BottomTabBar({ onMoreClick, onPlusClick }: BottomTabBarProps) {
                 <div className="relative flex w-full flex-col items-center justify-end pb-1.5">
                     <button
                         onClick={onPlusClick}
-                        aria-label="Quick actions"
+                        aria-label={t("tab.quickActions")}
                         className="absolute -top-5 flex size-13 cursor-pointer items-center justify-center rounded-full border-4 border-surface bg-linear-to-br from-brass-400 to-brass-600 shadow-brand transition-transform active:scale-95"
                     >
                         <Plus className="size-6 text-white" aria-hidden />
                     </button>
-                    <span className="text-[10px] font-medium text-ink-faint">Actions</span>
+                    <span className="text-[10px] font-medium text-ink-faint">{t("tab.actions")}</span>
                 </div>
 
                 <Tab
                     href="/dashboard/notifications"
-                    label="Alerts"
+                    label={t("tab.alerts")}
                     icon={Bell}
                     active={isActive("/dashboard/notifications")}
                 />
@@ -71,10 +73,10 @@ export function BottomTabBar({ onMoreClick, onPlusClick }: BottomTabBarProps) {
                 <button
                     onClick={onMoreClick}
                     className="flex w-full cursor-pointer flex-col items-center justify-center gap-0.5 text-ink-muted transition-colors active:text-ink"
-                    aria-label="Open navigation menu"
+                    aria-label={t("chrome.openMenu")}
                 >
                     <Menu className="size-5" aria-hidden />
-                    <span className="text-[10px] font-medium">More</span>
+                    <span className="text-[10px] font-medium">{t("tab.more")}</span>
                 </button>
             </div>
         </nav>

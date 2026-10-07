@@ -9,6 +9,7 @@ import { Sidebar } from "@/components/dashboard/Sidebar";
 import { BottomTabBar } from "@/components/dashboard/BottomTabBar";
 import { useRbac } from "@/lib/rbac";
 import { X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { usePinnedActions } from "@/hooks/usePinnedActions";
 import { useQuickActionTiles } from "@/lib/quickActions";
 import { QuickActionPicker } from "@/components/dashboard/QuickActionPicker";
@@ -23,6 +24,8 @@ import { AssistantPanel } from "@/components/assistant/AssistantPanel";
  * dialog in QuickActions.tsx, so the two can no longer drift apart.
  */
 function QuickActionsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+    const t = useTranslations("dashboard");
+    const tc = useTranslations("common");
     const { pinned, togglePin } = usePinnedActions();
     const { tilesInPlan } = useQuickActionTiles();
 
@@ -40,24 +43,24 @@ function QuickActionsSheet({ open, onClose }: { open: boolean; onClose: () => vo
             <div
                 role="dialog"
                 aria-modal="true"
-                aria-label="Dashboard shortcuts"
+                aria-label={t("quickActions.dialogTitle")}
                 className="fixed right-0 bottom-0 left-0 z-70 rounded-t-2xl border-t border-line bg-surface pb-[calc(env(safe-area-inset-bottom)+60px)] shadow-glass md:hidden"
             >
                 {/* Drag handle */}
                 <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-line-strong" aria-hidden />
                 <div className="flex flex-col px-4 pt-3 pb-2">
                     <div className="mb-1 flex items-center justify-between">
-                        <h3 className="font-display text-[16px] font-semibold text-ink">Dashboard shortcuts</h3>
+                        <h3 className="font-display text-[16px] font-semibold text-ink">{t("quickActions.dialogTitle")}</h3>
                         <button
                             onClick={onClose}
                             className="cursor-pointer rounded-md p-1.5 text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink"
-                            aria-label="Close"
+                            aria-label={tc("action.close")}
                         >
                             <X className="size-5" />
                         </button>
                     </div>
                     <p className="text-[12.5px] text-ink-muted">
-                        Pick the actions you use most. They appear as tiles on your dashboard.
+                        {t("quickActions.dialogBody")}
                     </p>
                 </div>
                 <div className="no-scrollbar max-h-[50vh] overflow-y-auto px-4 pt-2 pb-4">
@@ -69,6 +72,7 @@ function QuickActionsSheet({ open, onClose }: { open: boolean; onClose: () => vo
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+    const t = useTranslations("dashboard");
     const pathname = usePathname();
     const router = useRouter();
     const [user, setUser] = useState<any>(null);
@@ -169,7 +173,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 href="#main-content"
                 className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-100 focus:rounded-md focus:bg-brand focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-brand-contrast"
             >
-                Skip to main content
+                {t("layout.skipToContent")}
             </a>
 
             <TopBar

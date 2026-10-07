@@ -1,0 +1,230 @@
+{
+  "layout": {
+    "title": "ID Cards",
+    "description": "Print CR80 identity cards for students and staff, with a QR the gate can verify."
+  },
+  "shared": {
+    "buildFailed": "Could not build the PDF. Please try again.",
+    "revokedTitle": "This card is revoked",
+    "downloadPdf": "Download PDF"
+  },
+  "page": {
+    "section": "Identity",
+    "title": "ID cards",
+    "descriptionMe": "Your own card, as it prints.",
+    "descriptionRegister": "Pick who needs a card, check the artwork, print the sheet.",
+    "verify": "Verify a card",
+    "onPrintList": "{count} on the print list",
+    "onThisPage": "{count} on this page",
+    "sheetsDuplex": "{count, plural, one {# A4 sheet} other {# A4 sheets}} · {sides} sides",
+    "sheetsOneSide": "{count, plural, one {# A4 sheet} other {# A4 sheets}} · one side",
+    "clearSelection": "Clear selection",
+    "loadFailed": "Could not load ID cards",
+    "offTitle": "ID cards are switched off for your school",
+    "offDescription": "The module exists but nobody has enabled it yet. Your super admin can turn it on from Billing, or write to support@appme.in and we will do it."
+  },
+  "tabs": {
+    "me": "My card",
+    "students": "Students",
+    "staff": "Staff"
+  },
+  "filter": {
+    "allClasses": "All classes",
+    "department": "Department",
+    "anyDepartment": "Any department",
+    "rowsPerPage": "Rows per page",
+    "searchByName": "Search by name",
+    "namePlaceholder": "Name…"
+  },
+  "note": {
+    "maxRows": "100 cards a page is the maximum — each one needs a fresh, signed photo link. Select across pages to build a longer run.",
+    "linksExpiredTitle": "Some photo links may have expired",
+    "linksExpiredBody": "Photo links last about fifteen minutes. Reload the page and select again if you want portraits rather than initials."
+  },
+  "table": {
+    "emptyStudents": "No students match these filters",
+    "emptyStaff": "No staff match these filters",
+    "selectPage": "Select this page",
+    "withoutPhoto": "{count} without a photo — these print with initials",
+    "revokedOnPage": "{count} revoked — left out of any print run",
+    "ariaRevoked": "{name}'s card is revoked and cannot be printed",
+    "ariaInclude": "Include {name} in the print list"
+  },
+  "column": {
+    "designation": "Designation",
+    "blood": "Blood",
+    "roll": "Roll",
+    "guardian": "Guardian",
+    "department": "Department",
+    "empCode": "Emp code"
+  },
+  "chip": {
+    "revoked": "Revoked",
+    "onFile": "On file",
+    "missing": "Missing"
+  },
+  "toast": {
+    "batchDuplex": "{cards, plural, one {# card} other {# cards}} on {sheets, plural, one {# sheet} other {# sheets}} — fronts and backs, print two-sided",
+    "batchSideBySide": "{cards, plural, one {# card} other {# cards}} on {sheets, plural, one {# sheet} other {# sheets}} — front and back side by side",
+    "photosDropped": "Photos could not be embedded, so the cards print with initials. The PDF is otherwise complete.",
+    "batchFailed": "Could not build the PDF. Try a smaller batch.",
+    "oneDone": "{name} — front and back on one sheet",
+    "onePhotoDropped": "The photo could not be embedded — this card prints with initials."
+  },
+  "preview": {
+    "title": "Card preview",
+    "descriptionReady": "Exactly what gets printed, at actual size.",
+    "descriptionEmpty": "Choose someone from the register.",
+    "revokedWithReason": "“{reason}” — it is refused at the gate and cannot be printed. Issue a new card to give {firstName} a working one.",
+    "revokedNoReason": "It is refused at the gate and cannot be printed. Issue a new card to give {firstName} a working one.",
+    "removeFromList": "Remove from print list",
+    "addToList": "Add to print list",
+    "justThisOne": "Just this one",
+    "issueNew": "Issue new card",
+    "replace": "Replace card",
+    "revoke": "Revoke",
+    "issue": "Issue {version}",
+    "issueValid": "Issue {version} · valid until {date}",
+    "emptyTitle": "Nothing to preview",
+    "emptyDescription": "Pick a class, then tap anyone in the list.",
+    "size": "<num>85.6 × 54 mm</num> — standard CR80, shown to scale.",
+    "showBack": "Show the back",
+    "showFront": "Show the front"
+  },
+  "print": {
+    "title": "How it prints",
+    "description": "Pick what your printer can actually do.",
+    "layout": {
+      "sideBySide": {
+        "label": "Side by side",
+        "description": "Front and back on the same row. Any printer — cut and glue back to back."
+      },
+      "duplex": {
+        "label": "Double-sided",
+        "description": "Ten a sheet, fronts and backs on separate pages. Needs a duplex printer."
+      }
+    },
+    "duplexTip1": "Ten cards to an A4 sheet, butted edge to edge — one cut serves the two cards either side of it.",
+    "duplexTip2": "Fronts and backs alternate as whole pages. Print double sided, flipping on the <strong>long edge</strong>.",
+    "sideTip1": "Four cards to an A4 sheet, each one's front and back on the same row.",
+    "sideTip2": "Cut around both faces, then glue them back to back. No two-sided printing anywhere.",
+    "scalingTip": "Set scaling to 100%. \"Fit to page\" shrinks the cards out of standard size."
+  },
+  "scan": {
+    "verifyFailed": "This card could not be verified",
+    "invalidTitle": "Not a valid ID card",
+    "backToScanner": "Back to scanner",
+    "checking": "Checking this card…",
+    "standingClass": "Class {name}",
+    "standingSection": "Section {name}",
+    "staff": "Staff",
+    "student": "Student",
+    "field": {
+      "rollNo": "Roll no",
+      "bloodGroup": "Blood group",
+      "fathersName": "Father's name",
+      "mothersName": "Mother's name",
+      "guardian": "Guardian",
+      "parentContact": "Parent contact",
+      "dob": "Date of birth",
+      "employeeCode": "Employee code",
+      "department": "Department",
+      "contact": "Contact"
+    },
+    "validHeadline": "Valid card",
+    "validStudent": "This student is on the current roll.",
+    "validStaff": "This member of staff is currently employed.",
+    "expiredHeadline": "Expired card",
+    "expiredDetail": "This card belongs to a previous session. The office must issue a fresh one.",
+    "revokedHeadline": "Card revoked",
+    "revokedDetail": "The office cancelled this card and issued no replacement. Do not admit on it — send them to the office.",
+    "replacedHeadline": "Replaced — issue {issue} of {current}",
+    "replacedDetail": "A newer card was issued. Do not admit on this one — send them to the office.",
+    "inactiveHeadline": "Card no longer valid",
+    "inactiveStudent": "This student has been deactivated. Do not admit on this card — send them to the office.",
+    "inactiveStaff": "This person is no longer active on the staff roll. Send them to the office.",
+    "faceCheck": "Check the face against the photo. Nothing is recorded by a scan — this only confirms who the card belongs to.",
+    "scanNext": "Scan next card"
+  },
+  "my": {
+    "downloaded": "Your ID card — front and back on one sheet",
+    "photoDropped": "Your photo could not be embedded — this prints with initials.",
+    "noCardTitle": "No ID card is issued for your account",
+    "noCardBody": "Cards are issued to students and staff. If you think this is wrong, ask the school office to check your profile.",
+    "cancelledTitle": "This card has been cancelled",
+    "cancelledWithReason": "Recorded reason: {reason}. It will not be accepted at the gate and cannot be downloaded. Ask the school office to issue a new one.",
+    "cancelledNoReason": "It will not be accepted at the gate and cannot be downloaded. Ask the school office to issue a new one.",
+    "preparing": "Preparing…",
+    "download": "Download my card",
+    "size": "Prints at 85.6 × 54 mm — the standard card size."
+  },
+  "signature": {
+    "tooLarge": "Signature must be 1 MB or smaller.",
+    "saved": "Signature saved — it will print on every card.",
+    "uploadFailed": "Could not upload the signature.",
+    "removed": "Signature removed. Cards will print a blank rule.",
+    "removeFailed": "Could not remove the signature.",
+    "title": "Authorised signatory",
+    "description": "Printed on the back of every card.",
+    "alt": "Authorised signatory signature",
+    "none": "No signature — cards print a blank rule to sign by hand",
+    "replace": "Replace",
+    "upload": "Upload signature",
+    "refreshTitle": "Fetch the signature again — use this if another admin has just changed it",
+    "hint": "A PNG with a transparent background prints best. Up to 1 MB. The image is fetched once and reused for the whole print run, so a hundred cards cost one download."
+  },
+  "reissue": {
+    "revokedTitle": "This card is revoked",
+    "current": "Currently on issue {version}.",
+    "currentValid": "Currently on issue {version}, valid until {date}.",
+    "revokedWithReason": "“{reason}” — it is refused at the gate. Issue {next} to give them a working card again.",
+    "revokedNoReason": "It is refused at the gate. Issue {next} to give them a working card again.",
+    "tabReplace": "Replace card",
+    "tabIssueNew": "Issue new card",
+    "tabRevoke": "Revoke",
+    "tabExtend": "Extend",
+    "revokeWarnTitle": "The card stops working and nothing replaces it",
+    "revokeWarnBody": "Issue {version} is refused at the gate from the moment you confirm, and {firstName} will have no working card until you issue one. The card disappears from the parent portal and cannot be printed from here.",
+    "revokeUseReplace": "Use <b>Replace card</b> instead if they need a new one straight away.",
+    "revokeReasonLabel": "Why is it being revoked?",
+    "revokePlaceholder": "Reported stolen — police complaint filed",
+    "revokeReasonHint": "With no replacement card to explain itself, this reason is the only record of what happened.",
+    "reissueWarnRevoked": "A working card is issued in place of the revoked one",
+    "reissueWarnActive": "The card they are holding will stop working immediately",
+    "reissueBodyRevoked": "Issue {version} stays revoked and keeps its reason. Issue {next} appears on the parent portal and here straight away — print it and hand it over.",
+    "reissueBodyActive": "Issue {version} is refused at the gate from the moment you confirm. Issue {next} appears on the parent portal and here straight away — print it and hand it over.",
+    "replaceReasonLabel": "Why is it being replaced?",
+    "replacePlaceholder": "Lost on the school bus",
+    "replaceHint": "Kept against the old card, so this is answerable later.",
+    "extendBody": "Keeps the current card working past its session. Nothing is reprinted and the QR does not change — the same plastic simply stays valid.",
+    "validUntil": "Valid until",
+    "noteLabel": "Note <muted>(optional)</muted>",
+    "extendPlaceholder": "Session extended by a term",
+    "historyTitle": "Card history",
+    "historyIssue": "Issue {version}",
+    "historyRevoked": "· revoked",
+    "historyReplaced": "· replaced",
+    "historyCurrent": "· current",
+    "historyUntil": "· until {date}",
+    "toastReissued": "New card issued (issue {version}). The previous card no longer works.",
+    "toastRevoked": "Card revoked. It is refused at the gate from now on — no replacement has been printed.",
+    "toastExtended": "Valid until {date} — the same card keeps working.",
+    "toastFailed": "Could not update the card.",
+    "working": "Working…",
+    "submitReplace": "Replace — issue {next}",
+    "submitIssue": "Issue card no. {next}",
+    "submitRevoke": "Revoke issue {version}",
+    "submitExtend": "Extend validity"
+  },
+  "dialog": {
+    "noCard": "No ID card for this person. They may have been deactivated.",
+    "loadFailed": "Could not load the ID card.",
+    "fallbackTitle": "ID card",
+    "description": "The card exactly as it prints — 85.6 × 54 mm, front and back.",
+    "offTitle": "ID cards are not part of this school's plan yet",
+    "offBody": "Ask your administrator to enable the ID cards module.",
+    "revokedWithReason": "“{reason}” — it is refused at the gate and cannot be printed. Issue a new card from the ID Cards page.",
+    "revokedNoReason": "It is refused at the gate and cannot be printed. Issue a new card from the ID Cards page.",
+    "sideBySideHint": "Front and back side by side on one A4 sheet."
+  }
+}

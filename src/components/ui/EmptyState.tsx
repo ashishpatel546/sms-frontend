@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 /**
@@ -51,10 +52,10 @@ export function EmptyState({
  * what happened — they say what went wrong and how to get past it.
  */
 export function ErrorState({
-  title = 'That didn’t load',
+  title,
   description,
   onRetry,
-  retryLabel = 'Try again',
+  retryLabel,
   className,
 }: {
   title?: React.ReactNode;
@@ -63,6 +64,8 @@ export function ErrorState({
   retryLabel?: string;
   className?: string;
 }) {
+  const t = useTranslations('ui');
+  const tc = useTranslations('common');
   return (
     <div className={cn('flex flex-col items-center justify-center px-6 py-14 text-center', className)}>
       <div className="mb-3.5 grid size-11 place-items-center rounded-xl border border-accent-danger-edge bg-accent-danger-tint text-accent-danger-deep">
@@ -71,7 +74,7 @@ export function ErrorState({
           <path strokeLinecap="round" d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
         </svg>
       </div>
-      <h3 className="font-display text-[16px] font-semibold text-ink">{title}</h3>
+      <h3 className="font-display text-[16px] font-semibold text-ink">{title ?? t('error.didNotLoad')}</h3>
       {description && (
         <p className="mt-1.5 max-w-sm text-[13.5px] leading-relaxed text-ink-muted">{description}</p>
       )}
@@ -81,7 +84,7 @@ export function ErrorState({
           onClick={onRetry}
           className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-md border border-line-strong bg-surface px-3.5 text-[13.5px] font-semibold text-ink transition-colors hover:border-brand hover:bg-brand-tint hover:text-brand"
         >
-          {retryLabel}
+          {retryLabel ?? tc('action.retry')}
         </button>
       )}
     </div>

@@ -10,6 +10,8 @@ import toast, { Toaster } from "react-hot-toast";
 import { useRbac } from "@/lib/rbac";
 import ExamEntryModal from "./ExamEntryModal";
 import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 
 interface ExamScheduleCalendarProps {
     scheduleId: number;
@@ -28,6 +30,9 @@ interface SelectedCell {
 export default function ExamScheduleCalendar({ scheduleId, onBack }: ExamScheduleCalendarProps) {
     const { isAdmin } = useRbac();
     const readOnly = useReadOnlySession();
+    const t = useTranslations("exams");
+    const tc = useTranslations("common");
+    const intlLocale = INTL_LOCALE[useLocale() as Locale];
     const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
     const [isDownloading, setIsDownloading] = useState(false);
 
@@ -40,8 +45,8 @@ export default function ExamScheduleCalendar({ scheduleId, onBack }: ExamSchedul
     // Fetch all classes for row headers
     const { data: allClasses } = useSWR(`${API_BASE_URL}/classes`, fetcher);
 
-    if (isLoading) return <div className="text-center py-10 text-slate-500">Loading schedule...</div>;
-    if (!schedule) return <div className="text-center py-10 text-slate-500">Schedule not found</div>;
+    if (isLoading) return <div className="text-center py-10 text-slate-500">{t("calendar.loading")}</div>;
+    if (!schedule) return <div className="text-center py-10 text-slate-500">{t("calendar.notFound")}</div>;
 
     const canEdit = (schedule.status === "DRAFT" || isAdmin) && !readOnly;
 
@@ -97,14 +102,14 @@ export default function ExamScheduleCalendar({ scheduleId, onBack }: ExamSchedul
 
     const handlePublish = async () => {
         const res = await authFetch(`${API_BASE_URL}/exam-schedules/${scheduleId}/publish`, { method: "PATCH" });
-        if (res.ok) { toast.success("Schedule published!"); mutate(); }
-        else toast.error("Failed to publish");
+        if (res.ok) { toast.success(t("calendar.published")); mutate(); }
+        else toast.error(t("calendar.publishFailed"));
     };
 
     const handleToggleActive = async () => {
         const res = await authFetch(`${API_BASE_URL}/exam-schedules/${scheduleId}/toggle-active`, { method: "PATCH" });
-        if (res.ok) { toast.success(schedule.isActive ? "Deactivated" : "Activated"); mutate(); }
-        else toast.error("Failed to toggle");
+        if (res.ok) { toast.success(schedule.isActive ? t("calendar.deactivated") : t("calendar.activated")); mutate(); }
+        else toast.error(t("calendar.toggleFailed"));
     };
 
     const handleDownloadPDF = async () => {
@@ -152,7 +157,7 @@ export default function ExamScheduleCalendar({ scheduleId, onBack }: ExamSchedul
             });
 
             if (tableData.length === 0) {
-                toast.error("No exams scheduled yet. Nothing to download.");
+                toast.error(t("calendar.nothingToDownload"));
                 return;
             }
 
@@ -189,7 +194,7 @@ export default function ExamScheduleCalendar({ scheduleId, onBack }: ExamSchedul
             doc.save(`exam-schedule-${schedule.examCategory?.name || "download"}.pdf`);
         } catch (error) {
             console.error("PDF generation error:", error);
-            toast.error("Failed to generate PDF");
+            toast.error(t("shared.pdfFailed"));
         } finally {
             setIsDownloading(false);
         }
@@ -208,15 +213,15 @@ export default function ExamScheduleCalendar({ scheduleId, onBack }: ExamSchedul
                         <h2 className="text-xl font-bold text-slate-800 flex items-center gap-3">
                             {schedule.examCategory?.name}
                             <span className={`px-2.5 py-1 text-xs rounded-full font-medium ${schedule.status === "PUBLISHED" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>
-                                {schedule.status}
+                                {schedule.status === "PUBLISHED" ? tc("status.published") : schedule.status === "DRAFT" ? tc("status.draft") : schedule.status}
                             </span>
                             <span className={`px-2.5 py-1 text-xs rounded-full font-medium ${schedule.isActive ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}`}>
-                                {schedule.isActive ? "Active" : "Inactive"}
+                                {schedule.isActive ? tc("status.active") : tc("status.inactive")}
                             </span>
                         </h2>
                         <p className="text-sm text-slate-500 mt-1">
                             {schedule.academicSession?.name} &nbsp;|&nbsp;
-                            {new Date(schedule.startDate).toLocaleDateString()} to {new Date(schedule.endDate).toLocaleDateString()}
+                            {t("calendar.dateRange", { start: new Date(schedule.startDate).toLocaleDateString(intlLocale), end: new Date(schedule.endDate).toLocaleDateString(intlLocale) })}
                         </p>
                     </div>
                 </div>
@@ -231,16 +236,16 @@ export default function ExamScheduleCalendar({ scheduleId, onBack }: ExamSchedul
                         ) : (
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                         )}
-                        <span className="hidden sm:inline">Download PDF</span>
+                        <span className="hidden sm:inline">{t("shared.downloadPdf")}</span>
                     </button>
                     {isAdmin && (
                         <>
                             <button onClick={handleToggleActive} disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${schedule.isActive ? "bg-gray-100 text-gray-700 hover:bg-gray-200" : "bg-blue-100 text-blue-700 hover:bg-blue-200"}`}>
-                                {schedule.isActive ? "Deactivate" : "Activate"}
+                                {schedule.isActive ? t("calendar.deactivate") : t("calendar.activate")}
                             </button>
                             {schedule.status === "DRAFT" && (
                                 <button onClick={handlePublish} disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                                    Publish
+                                    {t("calendar.publish")}
                                 </button>
                             )}
                         </>
@@ -250,10 +255,10 @@ export default function ExamScheduleCalendar({ scheduleId, onBack }: ExamSchedul
 
             {/* Legend */}
             <div className="flex items-center gap-4 mb-3 text-xs text-slate-500 shrink-0">
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-100 border border-amber-300 inline-block" />Holiday</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-slate-100 border border-slate-300 inline-block" />Sunday</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-50 border border-blue-300 inline-block" />Today</span>
-                {canEdit && <span className="text-slate-400 ml-auto">Click any cell to add/edit an exam entry</span>}
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-100 border border-amber-300 inline-block" />{tc("status.holiday")}</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-slate-100 border border-slate-300 inline-block" />{t("calendar.sunday")}</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-50 border border-blue-300 inline-block" />{t("calendar.today")}</span>
+                {canEdit && <span className="text-slate-400 ml-auto">{t("calendar.clickHint")}</span>}
             </div>
 
             {/* Matrix Table */}
@@ -263,7 +268,7 @@ export default function ExamScheduleCalendar({ scheduleId, onBack }: ExamSchedul
                         <tr className="bg-slate-50 border-b border-slate-200">
                             {/* Sticky class column header */}
                             <th className="sticky left-0 z-20 bg-slate-50 border-r border-slate-200 px-4 py-3 text-left font-semibold text-slate-700 min-w-40 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">
-                                Class
+                                {tc("field.class")}
                             </th>
                             {dates.map(dateStr => {
                                 const isToday = dateStr === todayStr;
@@ -272,9 +277,9 @@ export default function ExamScheduleCalendar({ scheduleId, onBack }: ExamSchedul
                                 const d = new Date(dateStr + "T00:00:00");
                                 return (
                                     <th key={dateStr} className={`px-3 py-3 text-center font-medium min-w-35 border-r border-slate-200 ${isToday ? "bg-blue-50 text-blue-700" : isHoliday ? "bg-amber-50 text-amber-700" : sunday ? "bg-slate-100 text-slate-400" : "text-slate-600"}`}>
-                                        <div className="text-xs uppercase tracking-wide">{d.toLocaleDateString("en-US", { weekday: "short" })}</div>
+                                        <div className="text-xs uppercase tracking-wide">{d.toLocaleDateString(intlLocale, { weekday: "short" })}</div>
                                         <div className={`text-base font-bold ${isToday ? "text-blue-700" : isHoliday ? "text-amber-700" : sunday ? "text-slate-400" : "text-slate-800"}`}>
-                                            {d.toLocaleDateString("en-US", { day: "numeric", month: "short" })}
+                                            {d.toLocaleDateString(intlLocale, { day: "numeric", month: "short" })}
                                         </div>
                                     </th>
                                 );
@@ -309,7 +314,7 @@ export default function ExamScheduleCalendar({ scheduleId, onBack }: ExamSchedul
                                             {entry ? (
                                                 <div className="bg-white border border-slate-200 rounded-md p-2 shadow-sm text-xs space-y-0.5 hover:shadow-md transition-shadow">
                                                     <p className="font-semibold text-slate-800 truncate">
-                                                        {entry.subjectName || entry.subject?.name || "Exam"}
+                                                        {entry.subjectName || entry.subject?.name || t("calendar.examFallback")}
                                                     </p>
                                                     {(entry.startTime || entry.endTime) && (
                                                         <p className="text-slate-500 flex items-center gap-1">
@@ -322,7 +327,7 @@ export default function ExamScheduleCalendar({ scheduleId, onBack }: ExamSchedul
                                             ) : holiday ? (
                                                 <span className="text-xs text-amber-600 font-medium px-1">{holiday.description}</span>
                                             ) : sunday ? (
-                                                <span className="text-xs text-slate-400 px-1">Sunday</span>
+                                                <span className="text-xs text-slate-400 px-1">{t("calendar.sunday")}</span>
                                             ) : canEdit ? (
                                                 <div className="h-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                                                     <span className="text-slate-300 text-lg">+</span>
@@ -335,7 +340,7 @@ export default function ExamScheduleCalendar({ scheduleId, onBack }: ExamSchedul
                         ))}
                         {(!allClasses || allClasses.length === 0) && (
                             <tr>
-                                <td colSpan={dates.length + 1} className="text-center py-10 text-slate-400">Loading classes...</td>
+                                <td colSpan={dates.length + 1} className="text-center py-10 text-slate-400">{t("calendar.loadingClasses")}</td>
                             </tr>
                         )}
                     </tbody>

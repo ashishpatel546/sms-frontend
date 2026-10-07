@@ -2,6 +2,7 @@
 
 import { CalendarDays } from 'lucide-react';
 import React, { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useAttendance } from "../hooks/useStudentData";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -14,19 +15,24 @@ interface Props {
 
 // LATE and HALF_DAY count as present, so their circle is split diagonally —
 // present green plus the status's own color — matching the full calendar's cells.
-const STATUS_CONFIG: Record<string, { label: string; circleBg: string; ringColor: string; circleStyle?: React.CSSProperties }> = {
-  PRESENT:  { label: "P",  circleBg: "bg-green-500 text-white",                       ringColor: "ring-green-300"  },
-  ABSENT:   { label: "A",  circleBg: "bg-red-500 text-white",                         ringColor: "ring-red-300"    },
-  LATE:     { label: "L",  circleBg: "text-white",                                    ringColor: "ring-yellow-300", circleStyle: { background: "linear-gradient(135deg, #22c55e 50%, #facc15 50%)" } },
-  HALF_DAY: { label: "H",  circleBg: "text-white",                                    ringColor: "ring-purple-300", circleStyle: { background: "linear-gradient(135deg, #22c55e 50%, #a855f7 50%)" } },
-  LEAVE:    { label: "Lv", circleBg: "bg-blue-500 text-white",                        ringColor: "ring-blue-300"   },
-  HOLIDAY:  { label: "Ho", circleBg: "bg-sky-400 text-white",                         ringColor: "ring-sky-300"    },
-  SUNDAY:   { label: "—",  circleBg: "bg-orange-100 text-orange-700 border border-orange-200", ringColor: "ring-orange-200" },
+// `label` is a key under `parent.attendanceSheet.abbr`.
+const STATUS_CONFIG: Record<string, { label: "present" | "absent" | "late" | "halfDay" | "leave" | "holiday" | "sunday"; circleBg: string; ringColor: string; circleStyle?: React.CSSProperties }> = {
+  PRESENT:  { label: "present",  circleBg: "bg-green-500 text-white",                       ringColor: "ring-green-300"  },
+  ABSENT:   { label: "absent",  circleBg: "bg-red-500 text-white",                         ringColor: "ring-red-300"    },
+  LATE:     { label: "late",  circleBg: "text-white",                                    ringColor: "ring-yellow-300", circleStyle: { background: "linear-gradient(135deg, #22c55e 50%, #facc15 50%)" } },
+  HALF_DAY: { label: "halfDay",  circleBg: "text-white",                                    ringColor: "ring-purple-300", circleStyle: { background: "linear-gradient(135deg, #22c55e 50%, #a855f7 50%)" } },
+  LEAVE:    { label: "leave", circleBg: "bg-blue-500 text-white",                        ringColor: "ring-blue-300"   },
+  HOLIDAY:  { label: "holiday", circleBg: "bg-sky-400 text-white",                         ringColor: "ring-sky-300"    },
+  SUNDAY:   { label: "sunday",  circleBg: "bg-orange-100 text-orange-700 border border-orange-200", ringColor: "ring-orange-200" },
 };
 
-const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// Keys under `parent.attendanceSheet.weekday`, Monday first.
+const DAY_LABELS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 
 export const AttendanceBottomSheet = ({ studentId, isOpen, onClose, onViewFull }: Props) => {
+  const t = useTranslations("parent.attendanceSheet");
+  const ta = useTranslations("attendance");
+  const tc = useTranslations("common");
   const now = new Date();
   const year  = now.getFullYear();
   const month = now.getMonth() + 1;
@@ -66,12 +72,12 @@ export const AttendanceBottomSheet = ({ studentId, isOpen, onClose, onViewFull }
   }, [attendance, year, month, now.getDate(), todayStr]);
 
   const STAT_ROWS = [
-    { label: "Present",  value: attendance?.present  ?? 0, color: "text-green-600",  bg: "bg-green-50  border-green-100"  },
-    { label: "Absent",   value: attendance?.absent   ?? 0, color: "text-red-600",    bg: "bg-red-50    border-red-100"    },
-    { label: "Late",     value: attendance?.late     ?? 0, color: "text-yellow-600", bg: "bg-yellow-50 border-yellow-100" },
-    { label: "Leave",    value: attendance?.leave    ?? 0, color: "text-blue-600",   bg: "bg-blue-50   border-blue-100"   },
-    { label: "Half Day", value: attendance?.halfDay  ?? 0, color: "text-purple-600", bg: "bg-purple-50 border-purple-100" },
-    { label: "Holiday",  value: attendance?.holiday  ?? 0, color: "text-sky-600",    bg: "bg-sky-50    border-sky-100"    },
+    { label: ta("tone.present"),  value: attendance?.present  ?? 0, color: "text-green-600",  bg: "bg-green-50  border-green-100"  },
+    { label: ta("tone.absent"),   value: attendance?.absent   ?? 0, color: "text-red-600",    bg: "bg-red-50    border-red-100"    },
+    { label: ta("tone.late"),     value: attendance?.late     ?? 0, color: "text-yellow-600", bg: "bg-yellow-50 border-yellow-100" },
+    { label: ta("tone.leave"),    value: attendance?.leave    ?? 0, color: "text-blue-600",   bg: "bg-blue-50   border-blue-100"   },
+    { label: ta("tone.halfDay"), value: attendance?.halfDay  ?? 0, color: "text-purple-600", bg: "bg-purple-50 border-purple-100" },
+    { label: ta("tone.holiday"),  value: attendance?.holiday  ?? 0, color: "text-sky-600",    bg: "bg-sky-50    border-sky-100"    },
   ];
 
   if (!isOpen) return null;
@@ -81,7 +87,7 @@ export const AttendanceBottomSheet = ({ studentId, isOpen, onClose, onViewFull }
       className="fixed inset-0 z-60 flex flex-col justify-end"
       role="dialog"
       aria-modal="true"
-      aria-label="Attendance Overview"
+      aria-label={t("title")}
     >
       {/* Backdrop */}
       <div
@@ -102,10 +108,10 @@ export const AttendanceBottomSheet = ({ studentId, isOpen, onClose, onViewFull }
         <div className="px-5 pb-10 pt-2">
           {/* Header */}
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-bold text-ink">Attendance overview</h2>
+            <h2 className="text-lg font-bold text-ink">{t("title")}</h2>
             <button
               onClick={onClose}
-              aria-label="Close"
+              aria-label={tc("action.close")}
               className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-ink-muted hover:bg-slate-200 transition-colors text-lg font-bold"
             >
               ×
@@ -121,7 +127,7 @@ export const AttendanceBottomSheet = ({ studentId, isOpen, onClose, onViewFull }
           ) : !attendance || attendance.total === 0 ? (
             <div className="py-14 text-center">
               <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-surface-secondary text-ink-faint"><CalendarDays className="size-6" aria-hidden /></div>
-              <p className="text-ink-muted text-sm font-medium">No attendance data for this month</p>
+              <p className="text-ink-muted text-sm font-medium">{t("noData")}</p>
             </div>
           ) : (
             <>
@@ -143,10 +149,10 @@ export const AttendanceBottomSheet = ({ studentId, isOpen, onClose, onViewFull }
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <span className="text-sm font-bold text-ink leading-none">{attendance.percentage}%</span>
-                      <span className="text-[9px] text-ink-muted font-medium mt-0.5">Present</span>
+                      <span className="text-[9px] text-ink-muted font-medium mt-0.5">{tc("status.present")}</span>
                     </div>
                   </div>
-                  <p className="text-[10px] text-ink-muted mt-1.5 font-medium">This Month</p>
+                  <p className="text-[10px] text-ink-muted mt-1.5 font-medium">{t("thisMonth")}</p>
                 </div>
 
                 {/* Stat tiles */}
@@ -162,14 +168,14 @@ export const AttendanceBottomSheet = ({ studentId, isOpen, onClose, onViewFull }
 
               {/* ── This Week ── */}
               <div className="mb-5">
-                <p className="text-sm font-semibold text-ink mb-3">This Week</p>
+                <p className="text-sm font-semibold text-ink mb-3">{t("thisWeek")}</p>
                 <div className="grid grid-cols-7 gap-1">
                   {thisWeekDays.map(({ day, status, isFuture, isToday }) => {
                     const cfg = status ? STATUS_CONFIG[status] : null;
                     return (
                       <div key={day} className="flex flex-col items-center gap-1.5">
                         <span className={`text-[10px] font-semibold ${isToday ? "text-brand" : "text-ink-muted"}`}>
-                          {day}
+                          {t(`weekday.${day}`)}
                         </span>
                         <div
                           style={!isFuture ? cfg?.circleStyle : undefined}
@@ -183,7 +189,7 @@ export const AttendanceBottomSheet = ({ studentId, isOpen, onClose, onViewFull }
                               : "bg-slate-100 text-slate-400",
                           ].join(" ")}
                         >
-                          {isFuture ? "–" : cfg ? cfg.label : "–"}
+                          {isFuture ? "–" : cfg ? t(`abbr.${cfg.label}`) : "–"}
                         </div>
                       </div>
                     );
@@ -196,7 +202,7 @@ export const AttendanceBottomSheet = ({ studentId, isOpen, onClose, onViewFull }
                 onClick={onViewFull}
                 className="w-full py-3 rounded-2xl bg-brand text-white font-semibold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
               >
-                View Full Calendar
+                {t("viewFull")}
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>

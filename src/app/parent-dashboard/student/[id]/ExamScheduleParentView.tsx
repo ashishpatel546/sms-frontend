@@ -6,6 +6,8 @@ import { API_BASE_URL, fetcher } from "@/lib/api";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import toast from "react-hot-toast";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE } from "@/i18n/config";
 
 interface ExamScheduleParentViewProps {
     classId: number;
@@ -13,6 +15,9 @@ interface ExamScheduleParentViewProps {
 }
 
 export default function ExamScheduleParentView({ classId, sessionId }: ExamScheduleParentViewProps) {
+    const t = useTranslations("parent.examSchedule");
+    const locale = useLocale();
+    const intlLocale = INTL_LOCALE[locale as keyof typeof INTL_LOCALE];
     const [selectedScheduleId, setSelectedScheduleId] = useState<number | null>(null);
 
     // Fetch the list of published & active schedules for this class & session
@@ -36,8 +41,8 @@ export default function ExamScheduleParentView({ classId, sessionId }: ExamSched
                 <div className="bg-slate-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
                     <svg className="w-10 h-10 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                 </div>
-                <h3 className="text-xl font-medium text-ink mb-2">No Exam Schedules</h3>
-                <p className="text-ink-muted max-w-md mx-auto">There are currently no published exam schedules for this academic session.</p>
+                <h3 className="text-xl font-medium text-ink mb-2">{t("emptyTitle")}</h3>
+                <p className="text-ink-muted max-w-md mx-auto">{t("emptyDescription")}</p>
             </div>
         );
     }
@@ -57,16 +62,16 @@ export default function ExamScheduleParentView({ classId, sessionId }: ExamSched
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
                                 </div>
                                 <span className="text-xs font-medium bg-slate-100 text-ink px-2.5 py-1 rounded-full">
-                                    {schedule.entryCount || 0} Exams
+                                    {t("examCount", { count: schedule.entryCount || 0 })}
                                 </span>
                             </div>
                             <h3 className="text-lg font-semibold text-ink mb-1">{schedule.examCategory?.name}</h3>
                             <p className="text-sm text-ink-muted mb-1">{schedule.academicSession?.name}</p>
                             <p className="text-sm text-ink-muted mb-4">
-                                {new Date(schedule.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })} - {new Date(schedule.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                {new Date(schedule.startDate).toLocaleDateString(intlLocale, { month: "short", day: "numeric" })} - {new Date(schedule.endDate).toLocaleDateString(intlLocale, { month: "short", day: "numeric", year: "numeric" })}
                             </p>
                             <div className="text-sm font-medium text-brand flex items-center gap-1 group-hover:text-brand-light">
-                                View Schedule
+                                {t("viewSchedule")}
                                 <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
                             </div>
                         </div>
@@ -90,9 +95,13 @@ function ScheduleMatrix({ scheduleId, classId, onBack }: { scheduleId: number, c
     const [selectedDateDetail, setSelectedDateDetail] = useState<{ dateStr: string, entry: any | null, holiday: any | null } | null>(null);
     const printRef = useRef<HTMLDivElement>(null);
     const [isDownloading, setIsDownloading] = useState(false);
+    const t = useTranslations("parent.examSchedule");
+    const tc = useTranslations("common");
+    const locale = useLocale();
+    const intlLocale = INTL_LOCALE[locale as keyof typeof INTL_LOCALE];
 
-    if (isLoading) return <div className="text-center py-12 text-ink-muted">Loading schedule details...</div>;
-    if (!schedule) return <div className="text-center py-12 text-ink-muted">Schedule not found.</div>;
+    if (isLoading) return <div className="text-center py-12 text-ink-muted">{t("loadingDetails")}</div>;
+    if (!schedule) return <div className="text-center py-12 text-ink-muted">{t("notFound")}</div>;
 
     const toLocalDateStr = (d: Date) => {
         const y = d.getFullYear();
@@ -146,8 +155,9 @@ function ScheduleMatrix({ scheduleId, classId, onBack }: { scheduleId: number, c
         setCurrentMonth({ year: d.getFullYear(), month: d.getMonth() });
     };
 
-    const monthLabel = firstOfMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-    const weekDayHeaders = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const monthLabel = firstOfMonth.toLocaleDateString(intlLocale, { month: "long", year: "numeric" });
+    // Keys under `parent.examSchedule.weekday`, Monday first.
+    const weekDayHeaders = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 
     const examsThisMonth = schedule.entries?.filter((e: any) => {
         if (e.class?.id !== classId) return false;
@@ -212,7 +222,7 @@ function ScheduleMatrix({ scheduleId, classId, onBack }: { scheduleId: number, c
             });
 
             if (tableData.length === 0) {
-                toast.error("No exams scheduled yet. Nothing to download.");
+                toast.error(t("nothingToDownload"));
                 return;
             }
 
@@ -236,7 +246,7 @@ function ScheduleMatrix({ scheduleId, classId, onBack }: { scheduleId: number, c
             doc.save(`exam-schedule-${schedule.examCategory?.name || "download"}.pdf`);
         } catch (error) {
             console.error("PDF generation error:", error);
-            toast.error("Failed to generate PDF");
+            toast.error(t("pdfFailed"));
         } finally {
             setIsDownloading(false);
         }
@@ -250,14 +260,14 @@ function ScheduleMatrix({ scheduleId, classId, onBack }: { scheduleId: number, c
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                 </button>
                 <div className="flex-1 min-w-0">
-                    <h2 className="text-xl font-bold text-ink">{schedule.examCategory?.name} Schedule</h2>
+                    <h2 className="text-xl font-bold text-ink">{t("scheduleTitle", { name: schedule.examCategory?.name ?? "" })}</h2>
                     <p className="text-sm text-ink-muted mt-1">{schedule.academicSession?.name}</p>
                 </div>
                 <div className="text-right text-sm text-ink-muted hidden sm:flex flex-col items-end gap-2">
                     <div>
-                        <span>{new Date(scheduleStartStr + "T00:00:00").toLocaleDateString("en-US", { day: "numeric", month: "short" })}</span>
+                        <span>{new Date(scheduleStartStr + "T00:00:00").toLocaleDateString(intlLocale, { day: "numeric", month: "short" })}</span>
                         <span className="mx-1 text-slate-600">–</span>
-                        <span>{new Date(scheduleEndStr + "T00:00:00").toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}</span>
+                        <span>{new Date(scheduleEndStr + "T00:00:00").toLocaleDateString(intlLocale, { day: "numeric", month: "short", year: "numeric" })}</span>
                     </div>
                     <button
                         onClick={handleDownloadPDF}
@@ -269,7 +279,7 @@ function ScheduleMatrix({ scheduleId, classId, onBack }: { scheduleId: number, c
                         ) : (
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                         )}
-                        Download PDF
+                        {t("downloadPdf")}
                     </button>
                 </div>
             </div>
@@ -286,7 +296,7 @@ function ScheduleMatrix({ scheduleId, classId, onBack }: { scheduleId: number, c
                 <div className="text-center">
                     <div className="text-base font-semibold text-ink">{monthLabel}</div>
                     <div className="text-xs text-brand mt-0.5 h-4">
-                        {examsThisMonth > 0 ? `${examsThisMonth} exam${examsThisMonth !== 1 ? "s" : ""} this month` : ""}
+                        {examsThisMonth > 0 ? t("examsThisMonth", { count: examsThisMonth }) : ""}
                     </div>
                 </div>
                 <button
@@ -305,9 +315,9 @@ function ScheduleMatrix({ scheduleId, classId, onBack }: { scheduleId: number, c
                     {weekDayHeaders.map((day) => (
                         <div
                             key={day}
-                            className={`text-center text-xs font-semibold uppercase tracking-wider py-2 ${day === "Sun" ? "text-rose-400" : "text-slate-500"}`}
+                            className={`text-center text-xs font-semibold uppercase tracking-wider py-2 ${day === "sun" ? "text-rose-400" : "text-slate-500"}`}
                         >
-                            {day}
+                            {t(`weekday.${day}`)}
                         </div>
                     ))}
                 </div>
@@ -359,7 +369,7 @@ function ScheduleMatrix({ scheduleId, classId, onBack }: { scheduleId: number, c
                                         {entry && (
                                             <div className="bg-brand/10 border border-brand/30 rounded px-1.5 py-1 text-xs leading-tight">
                                                 <div className="font-semibold text-brand truncate">
-                                                    {entry.subjectName || entry.subject?.name || "Exam"}
+                                                    {entry.subjectName || entry.subject?.name || t("exam")}
                                                 </div>
                                                 {entry.startTime && (
                                                     <div className="text-brand/60 mt-0.5 truncate">
@@ -373,7 +383,7 @@ function ScheduleMatrix({ scheduleId, classId, onBack }: { scheduleId: number, c
                                         )}
                                         {holiday && (
                                             <div className="bg-amber-500/20 border border-amber-400/50 rounded px-1.5 py-1 text-[10px] text-amber-500 leading-tight truncate font-medium">
-                                                {holiday.description || "Holiday"}
+                                                {holiday.description || tc("status.holiday")}
                                             </div>
                                         )}
                                     </div>
@@ -387,19 +397,19 @@ function ScheduleMatrix({ scheduleId, classId, onBack }: { scheduleId: number, c
                 <div className="mt-4 pt-3 border-t border-slate-200/50 flex flex-wrap gap-x-5 gap-y-2 text-xs text-ink-muted">
                     <div className="flex items-center gap-1.5">
                         <div className="w-4 h-4 rounded-full bg-indigo-500 shrink-0" />
-                        <span>Today</span>
+                        <span>{t("legendToday")}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                         <div className="w-4 h-4 rounded bg-indigo-500/25 border border-brand/40 shrink-0" />
-                        <span>Exam</span>
+                        <span>{t("exam")}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                         <div className="w-4 h-4 rounded bg-amber-500/30 border border-amber-500/60 shrink-0" />
-                        <span>Holiday</span>
+                        <span>{tc("status.holiday")}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                         <div className="w-4 h-4 rounded bg-transparent border border-slate-800/20 shrink-0" />
-                        <span>Outside schedule</span>
+                        <span>{t("outsideSchedule")}</span>
                     </div>
                 </div>
             </div>
@@ -410,7 +420,7 @@ function ScheduleMatrix({ scheduleId, classId, onBack }: { scheduleId: number, c
                     <div className="bg-surface border border-slate-200/50 shadow-2xl rounded-2xl w-full max-w-sm overflow-hidden animate-scale-in">
                         <div className="flex items-center justify-between p-4 border-b border-slate-200/50 bg-surface-secondary">
                             <h3 className="font-semibold text-ink">
-                                {new Date(selectedDateDetail.dateStr + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                                {new Date(selectedDateDetail.dateStr + "T00:00:00").toLocaleDateString(intlLocale, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
                             </h3>
                             <button onClick={() => setSelectedDateDetail(null)} className="p-1 text-ink-muted hover:text-ink transition-colors bg-slate-100 hover:bg-slate-200 rounded-full">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -421,15 +431,15 @@ function ScheduleMatrix({ scheduleId, classId, onBack }: { scheduleId: number, c
                                 <div className="bg-brand/5 border border-brand/20 rounded-xl p-4">
                                     <div className="flex items-center gap-2 mb-2 text-brand font-semibold">
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                        Examination
+                                        {t("examination")}
                                     </div>
                                     <h4 className="text-lg font-bold text-ink leading-tight mb-2">
-                                        {selectedDateDetail.entry.subjectName || selectedDateDetail.entry.subject?.name || "Exam"}
+                                        {selectedDateDetail.entry.subjectName || selectedDateDetail.entry.subject?.name || t("exam")}
                                     </h4>
                                     {(selectedDateDetail.entry.startTime || selectedDateDetail.entry.endTime) && (
                                         <div className="flex items-center gap-2 text-brand/70 text-sm mb-2">
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                            {selectedDateDetail.entry.startTime || "TBD"} – {selectedDateDetail.entry.endTime || "TBD"}
+                                            {selectedDateDetail.entry.startTime || t("tbd")} – {selectedDateDetail.entry.endTime || t("tbd")}
                                         </div>
                                     )}
                                     {selectedDateDetail.entry.notes && (
@@ -444,10 +454,10 @@ function ScheduleMatrix({ scheduleId, classId, onBack }: { scheduleId: number, c
                                 <div className="bg-amber-500/10 border border-amber-400/40 rounded-xl p-4">
                                     <div className="flex items-center gap-2 mb-2 text-amber-500 font-semibold">
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
-                                        Holiday
+                                        {tc("status.holiday")}
                                     </div>
                                     <h4 className="text-lg font-bold text-ink leading-tight">
-                                        {selectedDateDetail.holiday.description || "Holiday"}
+                                        {selectedDateDetail.holiday.description || tc("status.holiday")}
                                     </h4>
                                 </div>
                             )}

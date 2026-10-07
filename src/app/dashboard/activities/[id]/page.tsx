@@ -35,7 +35,8 @@ import {
   type ActivityPhoto,
   type ParticipantEntryInput,
 } from '@/lib/activities-api';
-import { loadImageFromFile, prepareGalleryPhoto, isImageFile } from '@/components/person/photo-pipeline';
+import { loadImageFromFile, prepareGalleryPhoto, isImageFile, PhotoError } from '@/components/person/photo-pipeline';
+import { useHelperMessage } from '@/i18n/useHelperMessage';
 import { API_BASE_URL } from '@/lib/api';
 import { authFetch } from '@/lib/auth';
 import { PageBody, PageHeader, PageShell } from '@/components/ui/PageHeader';
@@ -46,6 +47,7 @@ import { StatusChip } from '@/components/ui/StatusChip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRbac } from '@/lib/rbac';
 import { READ_ONLY_TITLE, useReadOnlySession } from '@/lib/support-session';
+import { useTranslations } from 'next-intl';
 
 interface ClassOption {
   id: number;
@@ -66,6 +68,8 @@ export default function ActivityDetailPage() {
   const router = useRouter();
   const rbac = useRbac();
   const readOnly = useReadOnlySession();
+  const t = useTranslations('activities');
+  const tc = useTranslations('common');
   const { data: activity, isLoading, mutate } = useSWR(id ? `/activities/${id}` : null, () => fetchActivity(id));
 
   const canManage = rbac.canManageActivities && !readOnly;
@@ -73,7 +77,7 @@ export default function ActivityDetailPage() {
   if (isLoading || !activity) {
     return (
       <PageShell>
-        <PageHeader section="Campus" title="Activity" actions={<Skeleton className="h-9 w-24" />} />
+        <PageHeader section={t('list.section')} title={t('detail.title')} actions={<Skeleton className="h-9 w-24" />} />
         <PageBody>
           <Skeleton className="h-48 w-full rounded-xl" />
         </PageBody>
@@ -81,13 +85,13 @@ export default function ActivityDetailPage() {
     );
   }
 
-  const runAction = async (label: string, fn: () => Promise<unknown>) => {
+  const runAction = async (action: 'publish' | 'notify' | 'archive' | 'unarchive', fn: () => Promise<unknown>) => {
     try {
       await fn();
-      toast.success(label);
+      toast.success(t(`detail.run.${action}.done`));
       void mutate();
     } catch (err) {
-      toast.error(errorMessage(err, `Could not ${label.toLowerCase()}`));
+      toast.error(errorMessage(err, t(`detail.run.${action}.failed`)));
     }
   };
 
@@ -95,54 +99,54 @@ export default function ActivityDetailPage() {
     <PageShell>
       <Toaster position="top-center" />
       <PageHeader
-        section="Campus"
+        section={t('list.section')}
         title={activity.title}
         description={
           <span className="inline-flex items-center gap-2">
-            <StatusChip status={activity.status} />
-            <span>{ACTIVITY_CATEGORY_LABELS[activity.category]} · {activity.startDate}{activity.endDate ? ` – ${activity.endDate}` : ''}</span>
+            <StatusChip status={activity.status} label={t(`status.${activity.status}`)} />
+            <span>{activity.category in ACTIVITY_CATEGORY_LABELS ? t(`category.${activity.category}`) : activity.category} · {activity.startDate}{activity.endDate ? ` – ${activity.endDate}` : ''}</span>
           </span>
         }
         actions={
           <>
             <Button variant="ghost" onClick={() => router.push('/dashboard/activities')}>
-              <ArrowLeft /> Back
+              <ArrowLeft /> {tc('action.back')}
             </Button>
             {canManage && activity.status === 'DRAFT' && (
-              <Button onClick={() => runAction('Published', () => publishActivity(activity.id))}>
-                Publish
+              <Button onClick={() => runAction('publish', () => publishActivity(activity.id))}>
+                {t('detail.publish')}
               </Button>
             )}
             {canManage && activity.status === 'PUBLISHED' && (
               <>
-                <Button variant="outline" onClick={() => runAction('Notified again', () => notifyAgainActivity(activity.id))} title={readOnly ? READ_ONLY_TITLE : undefined}>
-                  <Bell /> Notify again
+                <Button variant="outline" onClick={() => runAction('notify', () => notifyAgainActivity(activity.id))} title={readOnly ? READ_ONLY_TITLE : undefined}>
+                  <Bell /> {t('detail.notifyAgain')}
                 </Button>
-                <Button variant="outline" onClick={() => runAction('Archived', () => archiveActivity(activity.id))} title={readOnly ? READ_ONLY_TITLE : undefined}>
-                  <Archive /> Archive
+                <Button variant="outline" onClick={() => runAction('archive', () => archiveActivity(activity.id))} title={readOnly ? READ_ONLY_TITLE : undefined}>
+                  <Archive /> {t('detail.archive')}
                 </Button>
               </>
             )}
             {canManage && activity.status === 'ARCHIVED' && (
-              <Button variant="outline" onClick={() => runAction('Unarchived', () => unarchiveActivity(activity.id))} title={readOnly ? READ_ONLY_TITLE : undefined}>
-                <ArchiveRestore /> Unarchive
+              <Button variant="outline" onClick={() => runAction('unarchive', () => unarchiveActivity(activity.id))} title={readOnly ? READ_ONLY_TITLE : undefined}>
+                <ArchiveRestore /> {t('detail.unarchive')}
               </Button>
             )}
             {canManage && activity.status === 'DRAFT' && activity.photoCount === 0 && (
               <Button
                 variant="destructive"
                 onClick={async () => {
-                  if (!confirm('Delete this draft activity? This cannot be undone.')) return;
+                  if (!confirm(t('detail.deleteConfirm'))) return;
                   try {
                     await deleteActivity(activity.id);
-                    toast.success('Draft deleted');
+                    toast.success(t('detail.deleted'));
                     router.push('/dashboard/activities');
                   } catch (err) {
-                    toast.error(errorMessage(err, 'Could not delete'));
+                    toast.error(errorMessage(err, t('detail.deleteFailed')));
                   }
                 }}
               >
-                <Trash2 /> Delete
+                <Trash2 /> {tc('action.delete')}
               </Button>
             )}
           </>
@@ -171,6 +175,8 @@ function DetailsPanel({
   readOnly: boolean;
   onSaved: () => void;
 }) {
+  const t = useTranslations('activities');
+  const tc = useTranslations('common');
   const [editing, setEditing] = React.useState(false);
   const [title, setTitle] = React.useState(activity.title);
   const [description, setDescription] = React.useState(activity.description);
@@ -204,11 +210,11 @@ function DetailsPanel({
         remarks: remarks || undefined,
         resultSummary: resultSummary || undefined,
       });
-      toast.success('Saved');
+      toast.success(tc('state.saved'));
       setEditing(false);
       onSaved();
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not save'));
+      toast.error(errorMessage(err, t('details.saveFailed')));
     } finally {
       setSaving(false);
     }
@@ -217,42 +223,42 @@ function DetailsPanel({
   return (
     <Panel>
       <PanelHeader
-        title="Details"
-        action={canManage && !editing ? <Button size="sm" variant="outline" onClick={startEdit} title={readOnly ? READ_ONLY_TITLE : undefined} disabled={readOnly}>Edit</Button> : undefined}
+        title={t('details.title')}
+        action={canManage && !editing ? <Button size="sm" variant="outline" onClick={startEdit} title={readOnly ? READ_ONLY_TITLE : undefined} disabled={readOnly}>{tc('action.edit')}</Button> : undefined}
       />
       <PanelBody>
         {editing ? (
           <div className="space-y-3">
-            <Field label="Title" required><Input value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
-            <Field label="Description" required><Textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
+            <Field label={t('field.title')} required><Input value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
+            <Field label={tc('field.description')} required><Textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
             <FieldGrid columns={2}>
-              <Field label="Category">
+              <Field label={t('field.category')}>
                 <Select value={category} onChange={(e) => setCategory(e.target.value as ActivityCategory)}>
-                  {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{ACTIVITY_CATEGORY_LABELS[c]}</option>)}
+                  {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{t(`category.${c}`)}</option>)}
                 </Select>
               </Field>
-              <Field label="Venue"><Input value={venue} onChange={(e) => setVenue(e.target.value)} /></Field>
+              <Field label={t('field.venue')}><Input value={venue} onChange={(e) => setVenue(e.target.value)} /></Field>
             </FieldGrid>
             <FieldGrid columns={2}>
-              <Field label="Start date"><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></Field>
-              <Field label="End date"><Input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} /></Field>
+              <Field label={tc('field.startDate')}><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></Field>
+              <Field label={tc('field.endDate')}><Input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} /></Field>
             </FieldGrid>
-            <Field label="Remarks" hint="Internal, staff-only"><Textarea rows={2} value={remarks} onChange={(e) => setRemarks(e.target.value)} /></Field>
-            <Field label="Result summary" hint="Shown to parents once the activity is published"><Textarea rows={2} value={resultSummary} onChange={(e) => setResultSummary(e.target.value)} /></Field>
+            <Field label={tc('field.remarks')} hint={t('details.remarksHint')}><Textarea rows={2} value={remarks} onChange={(e) => setRemarks(e.target.value)} /></Field>
+            <Field label={t('details.resultSummary')} hint={t('details.resultSummaryHint')}><Textarea rows={2} value={resultSummary} onChange={(e) => setResultSummary(e.target.value)} /></Field>
           </div>
         ) : (
           <div className="space-y-3">
             <p className="whitespace-pre-wrap text-[13.5px] text-ink">{activity.description}</p>
-            {activity.venue && <p className="text-[12.5px] text-ink-muted">Venue: {activity.venue}</p>}
-            {activity.remarks && <p className="text-[12.5px] text-ink-muted">Remarks: {activity.remarks}</p>}
-            {activity.resultSummary && <p className="text-[12.5px] text-ink-muted">Result: {activity.resultSummary}</p>}
+            {activity.venue && <p className="text-[12.5px] text-ink-muted">{t('details.venueLine', { venue: activity.venue })}</p>}
+            {activity.remarks && <p className="text-[12.5px] text-ink-muted">{t('details.remarksLine', { remarks: activity.remarks })}</p>}
+            {activity.resultSummary && <p className="text-[12.5px] text-ink-muted">{t('details.resultLine', { result: activity.resultSummary })}</p>}
           </div>
         )}
       </PanelBody>
       {editing && (
         <PanelFooter>
-          <Button variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
-          <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</Button>
+          <Button variant="ghost" onClick={() => setEditing(false)}>{tc('action.cancel')}</Button>
+          <Button onClick={save} disabled={saving}>{saving ? tc('action.saving') : t('details.saveChanges')}</Button>
         </PanelFooter>
       )}
     </Panel>
@@ -266,14 +272,14 @@ type DraftParticipant = ParticipantEntryInput & {
   admissionNumber?: string | null;
 };
 
-function participantsToDraft(activity: Activity): DraftParticipant[] {
+function participantsToDraft(activity: Activity, unnamed: (studentId: number) => string): DraftParticipant[] {
   return (activity.participants ?? []).map((p: ActivityParticipant) => ({
     studentId: p.studentId,
     isWinner: p.isWinner,
     position: p.position ?? undefined,
     award: p.award ?? undefined,
     remark: p.remark ?? undefined,
-    name: p.student?.user ? `${p.student.user.firstName} ${p.student.user.lastName}` : (p.student ? `${p.student.firstName ?? ''} ${p.student.lastName ?? ''}`.trim() : `Student #${p.studentId}`),
+    name: p.student?.user ? `${p.student.user.firstName} ${p.student.user.lastName}` : (p.student ? `${p.student.firstName ?? ''} ${p.student.lastName ?? ''}`.trim() : unnamed(p.studentId)),
     admissionNumber: p.student?.admissionNumber,
   }));
 }
@@ -289,7 +295,10 @@ function ParticipantsPanel({
   readOnly: boolean;
   onSaved: () => void;
 }) {
-  const [draft, setDraft] = React.useState<DraftParticipant[]>(() => participantsToDraft(activity));
+  const t = useTranslations('activities');
+  const tc = useTranslations('common');
+  const unnamed = (studentId: number) => t('participants.unnamed', { id: studentId });
+  const [draft, setDraft] = React.useState<DraftParticipant[]>(() => participantsToDraft(activity, unnamed));
   const [dirty, setDirty] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [search, setSearch] = React.useState('');
@@ -301,8 +310,9 @@ function ParticipantsPanel({
   const [addingClass, setAddingClass] = React.useState(false);
 
   React.useEffect(() => {
-    setDraft(participantsToDraft(activity));
+    setDraft(participantsToDraft(activity, unnamed));
     setDirty(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `unnamed` only formats a fallback label
   }, [activity]);
 
   React.useEffect(() => {
@@ -313,7 +323,7 @@ function ParticipantsPanel({
   React.useEffect(() => {
     if (!search) { setResults([]); return; }
     setSearching(true);
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const res = await authFetch(`${API_BASE_URL}/students?${new URLSearchParams({ search, page: '1', limit: '8' })}`);
         if (res.ok) {
@@ -324,7 +334,7 @@ function ParticipantsPanel({
         setSearching(false);
       }
     }, 300);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [search]);
 
   const existingIds = new Set(draft.map((d) => d.studentId));
@@ -343,15 +353,15 @@ function ParticipantsPanel({
   };
 
   const addWholeClass = async () => {
-    if (!pickClass || !pickSection) { toast.error('Pick a class and section first'); return; }
+    if (!pickClass || !pickSection) { toast.error(t('participants.pickFirst')); return; }
     setAddingClass(true);
     try {
       const res = await authFetch(`${API_BASE_URL}/students?${new URLSearchParams({ classId: pickClass, sectionId: pickSection, page: '1', limit: '200' })}`);
-      if (!res.ok) throw new Error('Could not load the roster');
+      if (!res.ok) throw new Error(t('participants.rosterFailed'));
       const data = await res.json();
       const rows: StudentHit[] = data?.data ?? (Array.isArray(data) ? data : []);
       const toAdd = rows.filter((s) => !existingIds.has(s.id));
-      if (!toAdd.length) { toast('Everyone in that section is already added'); return; }
+      if (!toAdd.length) { toast(t('participants.allAdded')); return; }
       setDraft((prev) => [...prev, ...toAdd.map((s) => ({
         studentId: s.id,
         isWinner: false,
@@ -359,9 +369,9 @@ function ParticipantsPanel({
         admissionNumber: s.admissionNumber,
       }))]);
       setDirty(true);
-      toast.success(`Added ${toAdd.length} student${toAdd.length === 1 ? '' : 's'}`);
+      toast.success(t('participants.added', { count: toAdd.length }));
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not add the class'));
+      toast.error(errorMessage(err, t('participants.addClassFailed')));
     } finally {
       setAddingClass(false);
     }
@@ -381,11 +391,11 @@ function ParticipantsPanel({
     setSaving(true);
     try {
       await setParticipants(activity.id, draft.map(({ studentId, isWinner, position, award, remark }) => ({ studentId, isWinner, position, award, remark })));
-      toast.success('Participants saved');
+      toast.success(t('participants.saved'));
       setDirty(false);
       onSaved();
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not save participants'));
+      toast.error(errorMessage(err, t('participants.saveFailed')));
     } finally {
       setSaving(false);
     }
@@ -398,11 +408,11 @@ function ParticipantsPanel({
   return (
     <Panel>
       <PanelHeader
-        title="Participants & winners"
-        description={`${draft.length} participant${draft.length === 1 ? '' : 's'}, ${winners.length} winner${winners.length === 1 ? '' : 's'}`}
+        title={t('participants.title')}
+        description={t('participants.summary', { participants: draft.length, winners: winners.length })}
         action={
-          <Button size="sm" variant="outline" onClick={() => downloadParticipantsCsv(activity.id, activity.title).catch(() => toast.error('Could not export'))}>
-            <Download /> Export CSV
+          <Button size="sm" variant="outline" onClick={() => downloadParticipantsCsv(activity.id, activity.title).catch(() => toast.error(t('participants.exportFailed')))}>
+            <Download /> {t('participants.exportCsv')}
           </Button>
         }
       />
@@ -410,11 +420,11 @@ function ParticipantsPanel({
         {canManage && (
           <div className="space-y-2 rounded-lg border border-line bg-surface-secondary p-3">
             <div className="relative">
-              <Input placeholder="Search a student by name or admission no…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input placeholder={t('participants.searchPlaceholder')} value={search} onChange={(e) => setSearch(e.target.value)} />
               {search && (
                 <ul className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-line bg-surface shadow-raised">
                   {searching ? (
-                    <li className="px-3 py-2 text-[12.5px] text-ink-muted">Searching…</li>
+                    <li className="px-3 py-2 text-[12.5px] text-ink-muted">{t('participants.searching')}</li>
                   ) : results.length ? (
                     results.map((s) => (
                       <li key={s.id} className="cursor-pointer px-3 py-2 text-[13px] hover:bg-surface-secondary" onClick={() => addStudent(s)}>
@@ -422,44 +432,44 @@ function ParticipantsPanel({
                       </li>
                     ))
                   ) : (
-                    <li className="px-3 py-2 text-[12.5px] text-ink-muted">No students found</li>
+                    <li className="px-3 py-2 text-[12.5px] text-ink-muted">{t('participants.noStudents')}</li>
                   )}
                 </ul>
               )}
             </div>
             <div className="flex flex-wrap items-end gap-2">
               <FieldGrid columns={2} className="flex-1 min-w-[240px]">
-                <Field label="Class">
+                <Field label={tc('field.class')}>
                   <Select value={pickClass} onChange={(e) => { setPickClass(e.target.value); setPickSection(''); }}>
-                    <option value="">Select class</option>
+                    <option value="">{t('participants.selectClass')}</option>
                     {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </Select>
                 </Field>
-                <Field label="Section">
+                <Field label={tc('field.section')}>
                   <Select value={pickSection} onChange={(e) => setPickSection(e.target.value)} disabled={!pickClass}>
-                    <option value="">Select section</option>
+                    <option value="">{t('participants.selectSection')}</option>
                     {selectedClassSections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </Select>
                 </Field>
               </FieldGrid>
               <Button type="button" variant="outline" size="sm" onClick={addWholeClass} disabled={addingClass || !pickClass || !pickSection}>
-                <Plus className="size-3.5" /> Add whole class
+                <Plus className="size-3.5" /> {t('participants.addWholeClass')}
               </Button>
             </div>
           </div>
         )}
 
         {draft.length === 0 ? (
-          <p className="text-[12.5px] text-ink-muted">No participants added yet.</p>
+          <p className="text-[12.5px] text-ink-muted">{t('participants.none')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[13px]">
               <thead className="text-[11.5px] uppercase tracking-wide text-ink-faint">
                 <tr>
-                  <th className="pb-2 pr-2">Student</th>
-                  <th className="pb-2 pr-2">Winner</th>
-                  <th className="pb-2 pr-2">Position</th>
-                  <th className="pb-2 pr-2">Award</th>
+                  <th className="pb-2 pr-2">{tc('field.student')}</th>
+                  <th className="pb-2 pr-2">{t('participants.winner')}</th>
+                  <th className="pb-2 pr-2">{t('participants.position')}</th>
+                  <th className="pb-2 pr-2">{t('participants.award')}</th>
                   {canManage && <th className="pb-2" />}
                 </tr>
               </thead>
@@ -486,12 +496,12 @@ function ParticipantsPanel({
                     </td>
                     <td className="py-1.5 pr-2">
                       {canManage && p.isWinner ? (
-                        <Input className="h-8" value={p.award ?? ''} onChange={(e) => updateRow(p.studentId, { award: e.target.value })} placeholder="e.g. Gold medal" />
+                        <Input className="h-8" value={p.award ?? ''} onChange={(e) => updateRow(p.studentId, { award: e.target.value })} placeholder={t('participants.awardPlaceholder')} />
                       ) : (p.award ?? '')}
                     </td>
                     {canManage && (
                       <td className="py-1.5 text-right">
-                        <button type="button" onClick={() => removeRow(p.studentId)} title="Remove">
+                        <button type="button" onClick={() => removeRow(p.studentId)} title={tc('action.remove')}>
                           <Trash2 className="size-3.5 text-ink-faint hover:text-accent-danger" />
                         </button>
                       </td>
@@ -505,8 +515,8 @@ function ParticipantsPanel({
       </PanelBody>
       {canManage && dirty && (
         <PanelFooter>
-          <Button variant="ghost" onClick={() => { setDraft(participantsToDraft(activity)); setDirty(false); }}>Discard changes</Button>
-          <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save participants'}</Button>
+          <Button variant="ghost" onClick={() => { setDraft(participantsToDraft(activity, unnamed)); setDirty(false); }}>{t('participants.discard')}</Button>
+          <Button onClick={save} disabled={saving}>{saving ? tc('action.saving') : t('participants.save')}</Button>
         </PanelFooter>
       )}
     </Panel>
@@ -526,6 +536,9 @@ function PhotosPanel({
   readOnly: boolean;
   onSaved: () => void;
 }) {
+  const helperText = useHelperMessage();
+  const t = useTranslations('activities');
+  const tc = useTranslations('common');
   const [loaded, setLoaded] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [photos, setPhotos] = React.useState<ActivityPhoto[]>([]);
@@ -542,14 +555,14 @@ function PhotosPanel({
       setUrls(u);
       setLoaded(true);
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not load photos'));
+      toast.error(errorMessage(err, t('photos.loadFailed')));
     } finally {
       setLoading(false);
     }
   };
 
   const handleFile = async (file: File) => {
-    if (!isImageFile(file)) { toast.error('Only image files are allowed'); return; }
+    if (!isImageFile(file)) { toast.error(t('photos.onlyImages')); return; }
     setUploading(true);
     try {
       const { image } = await loadImageFromFile(file);
@@ -558,10 +571,10 @@ function PhotosPanel({
       setPhotos((prev) => [...prev, photo]);
       const u = await fetchActivityPhotoUrls(activity.id, [photo.id], 'thumb');
       setUrls((prev) => ({ ...prev, ...u }));
-      toast.success('Photo uploaded');
+      toast.success(t('photos.uploaded'));
       onSaved();
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not upload the photo'));
+      toast.error(err instanceof PhotoError ? helperText({ key: err.key }) : errorMessage(err, t('photos.uploadFailed')));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -569,14 +582,14 @@ function PhotosPanel({
   };
 
   const removePhoto = async (photoId: number) => {
-    if (!confirm('Delete this photo?')) return;
+    if (!confirm(t('photos.deleteConfirm'))) return;
     try {
       await deleteActivityPhoto(activity.id, photoId);
       setPhotos((prev) => prev.filter((p) => p.id !== photoId));
-      toast.success('Photo deleted');
+      toast.success(t('photos.deleted'));
       onSaved();
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not delete the photo'));
+      toast.error(errorMessage(err, t('photos.deleteFailed')));
     }
   };
 
@@ -589,38 +602,38 @@ function PhotosPanel({
     try {
       await reorderActivityPhotos(activity.id, next.map((p, i) => ({ id: p.id, sortOrder: i })));
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not reorder photos'));
+      toast.error(errorMessage(err, t('photos.reorderFailed')));
     }
   };
 
   const makeCover = async (photoId: number) => {
     try {
       await setCoverPhoto(activity.id, photoId);
-      toast.success('Cover photo set');
+      toast.success(t('photos.coverSet'));
       onSaved();
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not set cover photo'));
+      toast.error(errorMessage(err, t('photos.coverFailed')));
     }
   };
 
   return (
     <Panel>
       <PanelHeader
-        title="Photos"
-        description={`${activity.photoCount} photo${activity.photoCount === 1 ? '' : 's'}`}
+        title={t('photos.title')}
+        description={t('photos.count', { count: activity.photoCount })}
         action={
           <div className="flex items-center gap-2">
             {canManage && loaded && (
               <>
                 <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
                 <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading} title={readOnly ? READ_ONLY_TITLE : undefined}>
-                  <ImagePlus className="size-3.5" /> {uploading ? 'Uploading…' : 'Add photo'}
+                  <ImagePlus className="size-3.5" /> {uploading ? t('photos.uploading') : t('photos.add')}
                 </Button>
               </>
             )}
             {!loaded && (
               <Button size="sm" variant="outline" onClick={load} disabled={loading}>
-                {loading ? 'Loading…' : `Load photos (${activity.photoCount})`}
+                {loading ? tc('state.loading') : t('photos.load', { count: activity.photoCount })}
               </Button>
             )}
           </div>
@@ -629,7 +642,7 @@ function PhotosPanel({
       {loaded && (
         <PanelBody>
           {photos.length === 0 ? (
-            <p className="flex items-center gap-2 text-[12.5px] text-ink-muted"><ImageOff className="size-4" /> No photos yet.</p>
+            <p className="flex items-center gap-2 text-[12.5px] text-ink-muted"><ImageOff className="size-4" /> {t('photos.none')}</p>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {photos.map((p, i) => (
@@ -641,7 +654,7 @@ function PhotosPanel({
                     <div className="aspect-square w-full animate-pulse bg-surface-inset" />
                   )}
                   {activity.coverPhotoId === p.id && (
-                    <span className="absolute top-1.5 left-1.5 rounded-full bg-accent-warn px-1.5 py-0.5 text-[10px] font-semibold text-white">Cover</span>
+                    <span className="absolute top-1.5 left-1.5 rounded-full bg-accent-warn px-1.5 py-0.5 text-[10px] font-semibold text-white">{t('photos.cover')}</span>
                   )}
                   {canManage && (
                     <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-black/55 px-1.5 py-1 opacity-0 transition-opacity group-hover:opacity-100">
@@ -650,8 +663,8 @@ function PhotosPanel({
                         <button type="button" onClick={() => move(i, 1)} disabled={i === photos.length - 1} className="text-white/90 hover:text-white disabled:opacity-30"><ChevronDown className="size-3.5" /></button>
                       </div>
                       <div className="flex gap-1.5">
-                        <button type="button" onClick={() => makeCover(p.id)} title="Set as cover"><StarFilled className="size-3.5 text-white/90 hover:text-accent-warn" /></button>
-                        <button type="button" onClick={() => removePhoto(p.id)} title="Delete"><Trash2 className="size-3.5 text-white/90 hover:text-accent-danger" /></button>
+                        <button type="button" onClick={() => makeCover(p.id)} title={t('photos.setCover')}><StarFilled className="size-3.5 text-white/90 hover:text-accent-warn" /></button>
+                        <button type="button" onClick={() => removePhoto(p.id)} title={tc('action.delete')}><Trash2 className="size-3.5 text-white/90 hover:text-accent-danger" /></button>
                       </div>
                     </div>
                   )}

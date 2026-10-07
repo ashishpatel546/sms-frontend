@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { Popover } from "@base-ui/react/popover";
 import { Check, Monitor, Moon, Sun, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { PALETTES, type PaletteId } from "@/lib/palettes";
 import { usePalette } from "@/components/providers/PaletteProvider";
@@ -33,9 +34,9 @@ import { IconButton } from "@/components/ui/button";
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const APPEARANCE = [
-    { value: "light", label: "Light", icon: Sun },
-    { value: "dark", label: "Dark", icon: Moon },
-    { value: "system", label: "Auto", icon: Monitor },
+    { value: "light", label: "light", icon: Sun },
+    { value: "dark", label: "dark", icon: Moon },
+    { value: "system", label: "auto", icon: Monitor },
 ] as const;
 
 export function ThemePicker({
@@ -46,6 +47,8 @@ export function ThemePicker({
     className?: string;
     onInk?: boolean;
 }) {
+    const t = useTranslations("ui");
+    const tc = useTranslations("common");
     const { theme, setTheme } = useTheme();
     const { palette, setPalette } = usePalette();
     const [mounted, setMounted] = useState(false);
@@ -58,8 +61,8 @@ export function ThemePicker({
     return (
         <Popover.Root>
             <Popover.Trigger
-                aria-label="Theme"
-                title="Theme"
+                aria-label={t("theme.title")}
+                title={t("theme.title")}
                 className={cn(
                     "flex size-9 cursor-pointer items-center justify-center gap-0.75 rounded-lg border transition-colors",
                     "focus-visible:ring-3 focus-visible:ring-brand/16 focus-visible:outline-none",
@@ -93,10 +96,10 @@ export function ThemePicker({
                             still work via the Popover's own behaviour. */}
                         <div className="mb-2.5 flex items-center justify-between">
                             <Popover.Title className="text-[13px] font-semibold text-ink">
-                                Theme
+                                {t("theme.title")}
                             </Popover.Title>
                             <IconButton
-                                label="Close"
+                                label={tc("action.close")}
                                 render={<Popover.Close />}
                                 nativeButton
                                 variant="ghost"
@@ -108,10 +111,10 @@ export function ThemePicker({
                         </div>
 
                         {/* ── Appearance ─────────────────────────────────── */}
-                        <p className="eyebrow mb-1.5">Appearance</p>
+                        <p className="eyebrow mb-1.5">{t("theme.appearance")}</p>
                         <div
                             role="radiogroup"
-                            aria-label="Appearance"
+                            aria-label={t("theme.appearance")}
                             className="flex gap-0.5 rounded-lg border border-line bg-surface-secondary p-0.5"
                         >
                             {APPEARANCE.map(({ value, label, icon: Icon }) => {
@@ -132,17 +135,17 @@ export function ThemePicker({
                                         )}
                                     >
                                         <Icon className="size-3.5" aria-hidden />
-                                        {label}
+                                        {t(`theme.mode.${label}`)}
                                     </button>
                                 );
                             })}
                         </div>
 
                         {/* ── Palette ────────────────────────────────────── */}
-                        <p className="eyebrow mt-3.5 mb-1.5">Palette</p>
+                        <p className="eyebrow mt-3.5 mb-1.5">{t("theme.palette")}</p>
                         <div
                             role="radiogroup"
-                            aria-label="Palette"
+                            aria-label={t("theme.palette")}
                             className="flex flex-col gap-1.5"
                         >
                             {PALETTES.map((p) => {
@@ -164,10 +167,10 @@ export function ThemePicker({
                                         <PalettePreview palette={p} />
                                         <span className="min-w-0">
                                             <span className="block truncate text-[13px] font-semibold text-ink">
-                                                {p.name}
+                                                {t(`theme.paletteName.${p.id as PaletteId}`)}
                                             </span>
                                             <span className="block truncate text-[11px] text-ink-muted">
-                                                {p.hint}
+                                                {t(`theme.paletteHint.${p.id as PaletteId}`)}
                                             </span>
                                         </span>
                                         {active && (

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Lock, Sparkles } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useFeatureFlag } from '@/lib/useSchoolFeatures';
 import { useRbac } from '@/lib/rbac';
 
@@ -36,6 +37,7 @@ export default function FeatureGate({
   description?: string;
   children: React.ReactNode;
 }) {
+  const t = useTranslations('dashboard');
   const { enabled, status } = useFeatureFlag(flag);
   const rbac = useRbac();
 
@@ -51,7 +53,7 @@ export default function FeatureGate({
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
         <p className="text-[13.5px] font-medium text-accent-danger-deep">
-          We couldn&apos;t check which modules your school has. Refresh to try again.
+          {t('featureGate.checkFailed')}
         </p>
       </div>
     );
@@ -71,13 +73,13 @@ export default function FeatureGate({
           </div>
 
           <h2 className="font-display text-[17px] font-semibold text-ink">
-            {`${title} isn’t part of your plan`}
+            {t('featureGate.notInPlan', { title })}
           </h2>
 
           <p className="mt-2 text-[13.5px] text-ink-muted">
             {description ??
-              `${title} is available on our higher plans.`}{' '}
-            We would be glad to switch it on for you.
+              t('featureGate.higherPlans', { title })}{' '}
+            {t('featureGate.gladToEnable')}
           </p>
 
           {/*
@@ -92,23 +94,25 @@ export default function FeatureGate({
                 className="mt-6 inline-flex h-10 items-center gap-2 rounded-md bg-brand px-4 text-[13.5px] font-semibold text-brand-contrast shadow-soft transition-all hover:bg-brand-deep hover:shadow-brand"
               >
                 <Sparkles className="size-4" aria-hidden />
-                See plans and upgrade
+                {t('featureGate.seePlans')}
               </Link>
               <p className="mt-3 text-[12px] text-ink-faint">
-                Or write to{' '}
-                <a
-                  href="mailto:support@appme.in"
-                  className="underline hover:text-ink-muted"
-                >
-                  support@appme.in
-                </a>{' '}
-                and we will sort it out.
+                {t.rich('featureGate.orWrite', {
+                  email: 'support@appme.in',
+                  link: (c) => (
+                    <a
+                      href="mailto:support@appme.in"
+                      className="underline hover:text-ink-muted"
+                    >
+                      {c}
+                    </a>
+                  ),
+                })}
               </p>
             </>
           ) : (
             <p className="mt-6 text-[12px] text-ink-faint">
-              Ask your school&apos;s super admin to add it — they can do it from
-              the Billing section.
+              {t('featureGate.askSuperAdmin')}
             </p>
           )}
         </div>

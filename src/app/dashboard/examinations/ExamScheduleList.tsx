@@ -9,10 +9,13 @@ import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
 import { AppDatePicker } from "@/components/ui/AppDatePicker";
 import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
+import { useTranslations } from "next-intl";
 
 export default function ExamScheduleList({ onView }: { onView: (id: number) => void }) {
     const rbac = useRbac();
     const readOnly = useReadOnlySession();
+    const t = useTranslations("exams");
+    const tc = useTranslations("common");
 
     const [schedules, setSchedules] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -40,22 +43,22 @@ export default function ExamScheduleList({ onView }: { onView: (id: number) => v
                 setSchedules(Array.isArray(data) ? data : []);
             }
         } catch {
-            toast.error("Failed to fetch exam schedules");
+            toast.error(t("schedule.fetchFailed"));
         } finally {
             setLoading(false);
         }
-    }, [searchSessionId, searchStatus, searchIsActive]);
+    }, [searchSessionId, searchStatus, searchIsActive, t]);
 
     useEffect(() => {
         fetchSchedules();
     }, [fetchSchedules]);
 
     const columns = [
-        { header: "ID", accessor: "id", sortable: true },
-        { header: "Session", render: (row: any) => row.academicSession?.name ?? "-" },
-        { header: "Exam Category", render: (row: any) => row.examCategory?.name ?? "-" },
+        { header: t("page.colId"), accessor: "id", sortable: true },
+        { header: t("schedule.colSession"), render: (row: any) => row.academicSession?.name ?? "-" },
+        { header: t("shared.examCategory"), render: (row: any) => row.examCategory?.name ?? "-" },
         {
-            header: "Date Range",
+            header: t("schedule.colDateRange"),
             render: (row: any) => (
                 <span className="text-sm text-gray-600">
                     {row.startDate ?? ""} &rarr; {row.endDate ?? ""}
@@ -63,27 +66,27 @@ export default function ExamScheduleList({ onView }: { onView: (id: number) => v
             ),
         },
         {
-            header: "Status",
+            header: tc("field.status"),
             render: (row: any) => (
                 <span className={`px-2 py-0.5 rounded text-xs font-semibold ${row.status === "PUBLISHED" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>
-                    {row.status}
+                    {row.status === "PUBLISHED" ? tc("status.published") : row.status === "DRAFT" ? tc("status.draft") : row.status}
                 </span>
             ),
         },
         {
-            header: "Active",
+            header: tc("status.active"),
             render: (row: any) => (
                 <span className={`px-2 py-0.5 rounded text-xs font-semibold ${row.isActive ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-500"}`}>
-                    {row.isActive ? "Yes" : "No"}
+                    {row.isActive ? tc("action.yes") : tc("action.no")}
                 </span>
             ),
         },
         {
-            header: "Actions",
+            header: tc("action.actions"),
             render: (row: any) => (
                 <button
                     onClick={() => onView(row.id)}
-                    title="View Schedule"
+                    title={t("schedule.viewSchedule")}
                     className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -110,7 +113,7 @@ export default function ExamScheduleList({ onView }: { onView: (id: number) => v
         <div>
             <Toaster position="top-right" />
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-800">Exam Schedules</h2>
+                <h2 className="text-xl font-bold text-gray-800">{t("schedule.listTitle")}</h2>
                 {rbac.isSubAdmin && (
                     <button
                         onClick={() => setIsCreateModalOpen(true)}
@@ -121,7 +124,7 @@ export default function ExamScheduleList({ onView }: { onView: (id: number) => v
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                         </svg>
-                        New Schedule
+                        {t("schedule.newSchedule")}
                     </button>
                 )}
             </div>
@@ -130,40 +133,40 @@ export default function ExamScheduleList({ onView }: { onView: (id: number) => v
             <form onSubmit={handleSearch} className="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
                     <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Academic Session</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">{t("shared.academicSession")}</label>
                         <select
                             value={searchSessionId}
                             onChange={e => setSearchSessionId(e.target.value)}
                             className="w-full p-2 text-sm border border-gray-300 rounded-md bg-white focus:ring-brand/40 focus:border-brand"
                         >
-                            <option value="">All Sessions</option>
+                            <option value="">{t("shared.allSessions")}</option>
                             {sessions?.map((s: any) => (
                                 <option key={s.id} value={s.id}>{s.name}</option>
                             ))}
                         </select>
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">{tc("field.status")}</label>
                         <select
                             value={searchStatus}
                             onChange={e => setSearchStatus(e.target.value)}
                             className="w-full p-2 text-sm border border-gray-300 rounded-md bg-white focus:ring-brand/40 focus:border-brand"
                         >
-                            <option value="">All Statuses</option>
-                            <option value="DRAFT">Draft</option>
-                            <option value="PUBLISHED">Published</option>
+                            <option value="">{t("schedule.allStatuses")}</option>
+                            <option value="DRAFT">{tc("status.draft")}</option>
+                            <option value="PUBLISHED">{tc("status.published")}</option>
                         </select>
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Active</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">{tc("status.active")}</label>
                         <select
                             value={searchIsActive}
                             onChange={e => setSearchIsActive(e.target.value)}
                             className="w-full p-2 text-sm border border-gray-300 rounded-md bg-white focus:ring-brand/40 focus:border-brand"
                         >
-                            <option value="">All</option>
-                            <option value="true">Active</option>
-                            <option value="false">Inactive</option>
+                            <option value="">{tc("field.all")}</option>
+                            <option value="true">{tc("status.active")}</option>
+                            <option value="false">{tc("status.inactive")}</option>
                         </select>
                     </div>
                 </div>
@@ -173,13 +176,13 @@ export default function ExamScheduleList({ onView }: { onView: (id: number) => v
                         onClick={handleReset}
                         className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                     >
-                        Reset
+                        {tc("action.reset")}
                     </button>
                     <button
                         type="submit"
                         className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
                     >
-                        Search
+                        {tc("action.search")}
                     </button>
                 </div>
             </form>
@@ -188,7 +191,7 @@ export default function ExamScheduleList({ onView }: { onView: (id: number) => v
                 columns={columns}
                 data={schedules}
                 loading={loading}
-                emptyMessage="No exam schedules found. Create one to get started."
+                emptyMessage={t("schedule.empty")}
             />
 
             {isCreateModalOpen && (
@@ -215,6 +218,8 @@ function CreateScheduleModal({
     onSuccess: () => void;
 }) {
     const readOnly = useReadOnlySession();
+    const t = useTranslations("exams");
+    const tc = useTranslations("common");
     const [loading, setLoading] = useState(false);
     const [academicSessionId, setAcademicSessionId] = useState("");
     const [examCategoryId, setExamCategoryId] = useState("");
@@ -243,14 +248,14 @@ function CreateScheduleModal({
                 }),
             });
             if (res.ok) {
-                toast.success("Exam schedule created!");
+                toast.success(t("schedule.created"));
                 onSuccess();
             } else {
                 const data = await res.json();
-                toast.error(data.message || "Failed to create schedule");
+                toast.error(data.message || t("schedule.createFailed"));
             }
         } catch {
-            toast.error("Network error");
+            toast.error(t("shared.networkError"));
         } finally {
             setLoading(false);
         }
@@ -260,7 +265,7 @@ function CreateScheduleModal({
         <div className="fixed inset-0 bg-walnut-950/55 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
                 <div className="flex justify-between items-center p-6 border-b">
-                    <h3 className="text-lg font-semibold text-gray-800">Create Exam Schedule</h3>
+                    <h3 className="text-lg font-semibold text-gray-800">{t("schedule.createTitle")}</h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -269,12 +274,12 @@ function CreateScheduleModal({
                 </div>
                 <div className="p-6">
                     <p className="text-sm text-blue-600 bg-blue-50 rounded-md p-3 mb-4">
-                        This schedule will cover all classes. You can add per-class exam entries after creation.
+                        {t("schedule.createHint")}
                     </p>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Academic Session <span className="text-red-500">*</span>
+                                {t("shared.academicSession")} <span className="text-red-500">*</span>
                             </label>
                             <select
                                 required
@@ -282,7 +287,7 @@ function CreateScheduleModal({
                                 onChange={e => { setAcademicSessionId(e.target.value); setExamCategoryId(""); }}
                                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-brand/40 focus:border-brand text-sm"
                             >
-                                <option value="">Select session...</option>
+                                <option value="">{t("schedule.selectSession")}</option>
                                 {sessions.map((s: any) => (
                                     <option key={s.id} value={s.id}>{s.name}</option>
                                 ))}
@@ -290,7 +295,7 @@ function CreateScheduleModal({
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Exam Category <span className="text-red-500">*</span>
+                                {t("shared.examCategory")} <span className="text-red-500">*</span>
                             </label>
                             <select
                                 required
@@ -299,7 +304,7 @@ function CreateScheduleModal({
                                 disabled={!academicSessionId}
                                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-brand/40 focus:border-brand text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <option value="">{!academicSessionId ? "Select a session first..." : "Select category..."}</option>
+                                <option value="">{!academicSessionId ? t("schedule.selectSessionFirst") : t("schedule.selectCategory")}</option>
                                 {examCategories?.map((c: any) => (
                                     <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
@@ -308,7 +313,7 @@ function CreateScheduleModal({
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Start Date <span className="text-red-500">*</span>
+                                    {tc("field.startDate")} <span className="text-red-500">*</span>
                                 </label>
                                 <AppDatePicker
                                     required
@@ -318,7 +323,7 @@ function CreateScheduleModal({
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    End Date <span className="text-red-500">*</span>
+                                    {tc("field.endDate")} <span className="text-red-500">*</span>
                                 </label>
                                 <AppDatePicker
                                     required
@@ -334,7 +339,7 @@ function CreateScheduleModal({
                                 onClick={onClose}
                                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand/40"
                             >
-                                Cancel
+                                {tc("action.cancel")}
                             </button>
                             <button
                                 type="submit"
@@ -342,7 +347,7 @@ function CreateScheduleModal({
                                 title={readOnly ? READ_ONLY_TITLE : undefined}
                                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand/40 disabled:opacity-50"
                             >
-                                {loading ? "Creating..." : "Create Schedule"}
+                                {loading ? t("schedule.creating") : t("schedule.createSchedule")}
                             </button>
                         </div>
                     </form>

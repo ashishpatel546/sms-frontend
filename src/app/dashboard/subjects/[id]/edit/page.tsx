@@ -6,10 +6,13 @@ import Link from "next/link";
 import { API_BASE_URL, fetcher } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
+import { useTranslations } from "next-intl";
 
 export default function EditSubjectPage() {
     const readOnly = useReadOnlySession();
     const router = useRouter();
+    const t = useTranslations("subjects");
+    const tc = useTranslations("common");
     const params = useParams();
     const id = params?.id as string;
     const [formData, setFormData] = useState({
@@ -47,17 +50,17 @@ export default function EditSubjectPage() {
                         feeCategoryId: subject.feeCategory ? subject.feeCategory.id.toString() : ""
                     });
                 } else {
-                    setError("Subject not found");
+                    setError(t("form.notFound"));
                 }
             } catch (_err) {
-                setError("Failed to load subject data");
+                setError(t("form.loadFailed"));
             } finally {
                 setLoading(false);
             }
         };
 
         fetchSubject();
-    }, [id]);
+    }, [id, t]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const value = e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value;
@@ -98,28 +101,28 @@ export default function EditSubjectPage() {
             router.refresh();
         } catch (err) {
             console.error(err);
-            setError("Failed to update subject. Please try again.");
+            setError(t("form.updateFailed"));
         } finally {
             setSaving(false);
         }
     };
 
-    if (loading) return <div className="p-4">Loading...</div>;
+    if (loading) return <div className="p-4">{tc("state.loading")}</div>;
     if (error) return <div className="p-4 text-red-600">{error}</div>;
 
     return (
         <main className="p-4">
             <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-slate-200">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-slate-800">Edit Subject</h2>
+                    <h2 className="text-2xl font-bold text-slate-800">{t("form.editTitle")}</h2>
                     <Link href="/dashboard/subjects" className="text-blue-600 hover:underline">
-                        &larr; Back to Subjects
+                        {t("form.back")}
                     </Link>
                 </div>
 
                 <form onSubmit={handleSubmit}>
                     <div className="mb-6">
-                        <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-900">Subject Name</label>
+                        <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-900">{t("form.name")}</label>
                         <input
                             type="text"
                             id="name"
@@ -133,34 +136,34 @@ export default function EditSubjectPage() {
 
                     <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-900">Subject Category</label>
+                            <label className="block mb-2 text-sm font-medium text-gray-900">{t("form.category")}</label>
                             <select
                                 name="subjectCategory"
                                 value={formData.subjectCategory}
                                 onChange={handleChange}
                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                             >
-                                <option value="BASE">Base / Compulsory</option>
-                                <option value="OPTIONAL">Optional</option>
-                                <option value="VOCATIONAL">Vocational</option>
-                                <option value="ACTIVITY">Activity</option>
+                                <option value="BASE">{t("category.BASE")}</option>
+                                <option value="OPTIONAL">{t("category.OPTIONAL")}</option>
+                                <option value="VOCATIONAL">{t("category.VOCATIONAL")}</option>
+                                <option value="ACTIVITY">{t("category.ACTIVITY")}</option>
                             </select>
                         </div>
 
                         <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-900">Linked Fee Category (Optional)</label>
+                            <label className="block mb-2 text-sm font-medium text-gray-900">{t("form.feeCategory")}</label>
                             <select
                                 name="feeCategoryId"
                                 value={formData.feeCategoryId}
                                 onChange={handleChange}
                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                             >
-                                <option value="">-- None (Implicit) --</option>
+                                <option value="">{t("form.feeNone")}</option>
                                 {feeCategories.map(c => (
                                     <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
                             </select>
-                            <p className="mt-1 text-xs text-gray-500">If mapped, opting into this subject will auto-apply this fee type dynamically.</p>
+                            <p className="mt-1 text-xs text-gray-500">{t("form.feeHint")}</p>
                         </div>
                     </div>
 
@@ -174,7 +177,7 @@ export default function EditSubjectPage() {
                                 onChange={handleChange}
                                 className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-brand/40"
                             />
-                            <label htmlFor="hasTheory" className="text-sm font-medium text-gray-900">Has Theory Component?</label>
+                            <label htmlFor="hasTheory" className="text-sm font-medium text-gray-900">{t("form.hasTheory")}</label>
                         </div>
                         <div className="flex items-center space-x-2">
                             <input
@@ -185,10 +188,10 @@ export default function EditSubjectPage() {
                                 onChange={handleChange}
                                 className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-brand/40"
                             />
-                            <label htmlFor="hasPractical" className="text-sm font-medium text-gray-900">Has Practical Component?</label>
+                            <label htmlFor="hasPractical" className="text-sm font-medium text-gray-900">{t("form.hasPractical")}</label>
                         </div>
                         <div className="col-span-1 md:col-span-2">
-                            <p className="text-xs text-gray-500">If both are checked, exam data entry will provide separate fields for Theory and Practical marks which auto-sum to the total.</p>
+                            <p className="text-xs text-gray-500">{t("form.bothHint")}</p>
                         </div>
                     </div>
 
@@ -199,10 +202,10 @@ export default function EditSubjectPage() {
                             title={readOnly ? READ_ONLY_TITLE : undefined}
                             className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50"
                         >
-                            {saving ? 'Saving...' : 'Save Changes'}
+                            {saving ? tc("action.saving") : t("form.saveChanges")}
                         </button>
                         <Link href="/dashboard/subjects" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-line-strong font-medium rounded-lg text-sm px-5 py-2.5">
-                            Cancel
+                            {tc("action.cancel")}
                         </Link>
                     </div>
                 </form>

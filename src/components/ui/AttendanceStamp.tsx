@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { Check, X, Clock, CircleDot, Palmtree, Plane } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
+import { INTL_LOCALE, type Locale } from '@/i18n/config';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    THE STAMP — the parent portal's signature.
@@ -31,8 +33,11 @@ export type StampStatus =
   | 'HOLIDAY'
   | 'PENDING';
 
+type StampLabel = 'present' | 'absent' | 'late' | 'halfDay' | 'onLeave' | 'holiday' | 'notMarked';
+
 interface StampFace {
-  label: string;
+  /** Translation key; `notMarked` lives in `ui.stamp`, the rest in `common.status`. */
+  label: StampLabel;
   icon: React.ElementType;
   /** Border + text colour. */
   ink: string;
@@ -45,49 +50,49 @@ interface StampFace {
 
 const FACES: Record<StampStatus, StampFace> = {
   PRESENT: {
-    label: 'Present',
+    label: 'present',
     icon: Check,
     ink: 'border-accent-success text-accent-success-deep',
     wash: 'bg-accent-success-tint',
     halo: 'bg-accent-success',
   },
   ABSENT: {
-    label: 'Absent',
+    label: 'absent',
     icon: X,
     ink: 'border-accent-danger text-accent-danger-deep',
     wash: 'bg-accent-danger-tint',
     halo: 'bg-accent-danger',
   },
   LATE: {
-    label: 'Late',
+    label: 'late',
     icon: Clock,
     ink: 'border-accent-warn text-accent-warn-deep',
     wash: 'bg-accent-warn-tint',
     halo: 'bg-accent-warn',
   },
   HALF_DAY: {
-    label: 'Half day',
+    label: 'halfDay',
     icon: CircleDot,
     ink: 'border-accent-warn text-accent-warn-deep',
     wash: 'bg-accent-warn-tint',
     halo: 'bg-accent-warn',
   },
   LEAVE: {
-    label: 'On leave',
+    label: 'onLeave',
     icon: Plane,
     ink: 'border-accent-info text-accent-info-deep',
     wash: 'bg-accent-info-tint',
     halo: 'bg-accent-info',
   },
   HOLIDAY: {
-    label: 'Holiday',
+    label: 'holiday',
     icon: Palmtree,
     ink: 'border-brand-edge text-brand',
     wash: 'bg-brand-tint',
     halo: 'bg-brand',
   },
   PENDING: {
-    label: 'Not marked',
+    label: 'notMarked',
     icon: CircleDot,
     // Quiet, but not invisible — it still has to read as the space where the
     // day's mark will go, from arm's length, on a phone.
@@ -111,11 +116,15 @@ export function AttendanceStamp({
   time?: string | null;
   className?: string;
 }) {
+  const t = useTranslations('ui');
+  const tc = useTranslations('common');
+  const locale = useLocale() as Locale;
   const face = FACES[status] ?? FACES.PENDING;
   const Icon = face.icon;
+  const label = face.label === 'notMarked' ? t('stamp.notMarked') : tc(`status.${face.label}`);
 
   const day = date
-    .toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+    .toLocaleDateString(INTL_LOCALE[locale], { day: '2-digit', month: 'short' })
     .toUpperCase();
 
   return (
@@ -132,7 +141,7 @@ export function AttendanceStamp({
 
       <div
         role="status"
-        aria-label={`Attendance today: ${face.label}`}
+        aria-label={t('stamp.todayAria', { status: label })}
         className={cn(
           // Squarer and heavier than a badge: a stamp is a block of ink, and
           // the width is held so a long word cannot flatten it into a pill.
@@ -155,7 +164,7 @@ export function AttendanceStamp({
 
         {/* Uppercase and widely tracked, because that is how a stamp is cut. */}
         <span className="mt-2 font-display text-[15px] leading-none font-extrabold tracking-[0.13em] uppercase">
-          {face.label}
+          {label}
         </span>
 
         <span className="tabular mt-2 text-[10px] leading-none font-bold tracking-[0.22em] opacity-65">
@@ -164,7 +173,7 @@ export function AttendanceStamp({
       </div>
 
       {time && (
-        <p className="tabular mt-2.5 text-[12px] text-ink-muted">Marked at {time}</p>
+        <p className="tabular mt-2.5 text-[12px] text-ink-muted">{t('stamp.markedAt', { time })}</p>
       )}
     </div>
   );

@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import toast from 'react-hot-toast';
+import { useTranslations } from 'next-intl';
 import { Ban, Download, IdCard, Loader2, TriangleAlert } from 'lucide-react';
 
 import {
@@ -49,6 +50,7 @@ export function IdCardDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const t = useTranslations('idCards');
   const [row, setRow] = React.useState<IdCardRow | null>(null);
   const [school, setSchool] = React.useState<IdCardBranding | null>(null);
   const [state, setState] = React.useState<
@@ -85,9 +87,7 @@ export function IdCardDialog({
         if (!card) {
           // The batch endpoints skip deactivated people on purpose — printing
           // a card for someone who has left is never wanted.
-          setMessage(
-            'No ID card for this person. They may have been deactivated.',
-          );
+          setMessage(t('dialog.noCard'));
           setState('error');
           return;
         }
@@ -102,7 +102,7 @@ export function IdCardDialog({
           return;
         }
         setMessage(
-          e instanceof Error ? e.message : 'Could not load the ID card.',
+          e instanceof Error ? e.message : t('dialog.loadFailed'),
         );
         setState('error');
       });
@@ -110,6 +110,8 @@ export function IdCardDialog({
     return () => {
       cancelled = true;
     };
+    // `t` is stable for a locale; a language switch is no reason to refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, subject]);
 
   const download = async () => {
@@ -118,7 +120,7 @@ export function IdCardDialog({
     try {
       await downloadSingleIdCardPdf(row, school);
     } catch {
-      toast.error('Could not build the PDF. Please try again.');
+      toast.error(t('shared.buildFailed'));
     } finally {
       setSaving(false);
     }
@@ -133,10 +135,10 @@ export function IdCardDialog({
           </span>
           <div className="min-w-0">
             <DialogTitle className="text-[16px] font-semibold">
-              {row?.name ?? subject?.name ?? 'ID card'}
+              {row?.name ?? subject?.name ?? t('dialog.fallbackTitle')}
             </DialogTitle>
             <DialogDescription className="text-ink-muted mt-0.5 text-[12.5px]">
-              The card exactly as it prints — 85.6 × 54 mm, front and back.
+              {t('dialog.description')}
             </DialogDescription>
           </div>
         </div>
@@ -148,10 +150,10 @@ export function IdCardDialog({
         {state === 'off' ? (
           <div className="border-line bg-surface-secondary rounded-xl border p-4">
             <p className="text-ink text-[13.5px] font-semibold">
-              ID cards are not part of this school&apos;s plan yet
+              {t('dialog.offTitle')}
             </p>
             <p className="text-ink-muted mt-1 text-[12.5px]">
-              Ask your administrator to enable the ID cards module.
+              {t('dialog.offBody')}
             </p>
           </div>
         ) : null}
@@ -182,12 +184,12 @@ export function IdCardDialog({
                 />
                 <div className="text-[12.5px] leading-relaxed">
                   <p className="text-accent-danger-deep font-semibold">
-                    This card is revoked
+                    {t('shared.revokedTitle')}
                   </p>
                   <p className="text-ink-muted mt-1">
-                    {row.revokedReason ? `“${row.revokedReason}” — it` : 'It'} is
-                    refused at the gate and cannot be printed. Issue a new card
-                    from the ID Cards page.
+                    {row.revokedReason
+                      ? t('dialog.revokedWithReason', { reason: row.revokedReason })
+                      : t('dialog.revokedNoReason')}
                   </p>
                 </div>
               </div>
@@ -204,10 +206,10 @@ export function IdCardDialog({
                 ) : (
                   <Download className="size-4" aria-hidden />
                 )}
-                Download PDF
+                {t('shared.downloadPdf')}
               </button>
               <span className="text-ink-muted text-[12px]">
-                Front and back side by side on one A4 sheet.
+                {t('dialog.sideBySideHint')}
               </span>
             </div>
           </>

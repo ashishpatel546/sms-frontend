@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 export default function ServiceUnavailableBanner() {
+  const t = useTranslations('ui');
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -18,11 +20,10 @@ export default function ServiceUnavailableBanner() {
       <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm mx-4 text-center">
         <div className="text-5xl mb-4">⚠️</div>
         <h2 className="text-lg font-semibold text-gray-800 mb-2">
-          Service Temporarily Unavailable
+          {t('serviceUnavailable.title')}
         </h2>
         <p className="text-sm text-gray-500 leading-relaxed">
-          We&rsquo;re unable to connect to the server right now. Please contact
-          your school administrator for assistance.
+          {t('serviceUnavailable.body')}
         </p>
       </div>
     </div>

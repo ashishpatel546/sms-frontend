@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { Users, GraduationCap, Presentation, IndianRupee, UserCheck } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { authFetch } from '@/lib/auth';
+import { INTL_LOCALE, type Locale } from '@/i18n/config';
 import { useRbac } from '@/lib/rbac';
 import { getEnv } from '@/lib/env';
 import { StatTile, StatGrid } from '@/components/ui/StatTile';
@@ -27,6 +29,8 @@ const defaultStats: Stats = {
 };
 
 export default function DashboardStats({ selectedDate }: { selectedDate: string }) {
+    const t = useTranslations('dashboard');
+    const locale = useLocale() as Locale;
     const [stats, setStats] = useState<Stats>(defaultStats);
     const [loading, setLoading] = useState(true);
     const { isAdmin } = useRbac();
@@ -66,31 +70,31 @@ export default function DashboardStats({ selectedDate }: { selectedDate: string 
         bar?: number;
     }[] = [
         {
-            label: 'Total students',
-            value: stats.students.toLocaleString('en-IN'),
-            hint: 'Enrolled',
+            label: t('stats.totalStudents'),
+            value: stats.students.toLocaleString(INTL_LOCALE[locale]),
+            hint: t('stats.enrolled'),
             icon: <Users />,
             pigment: 'info',
         },
         {
-            label: 'Present today',
-            value: stats.attendanceToday.toLocaleString('en-IN'),
-            hint: 'Students present',
+            label: t('stats.presentToday'),
+            value: stats.attendanceToday.toLocaleString(INTL_LOCALE[locale]),
+            hint: t('stats.studentsPresent'),
             icon: <UserCheck />,
             pigment: 'success',
             bar: attendancePct,
         },
         {
-            label: 'Staff',
-            value: stats.staff.toLocaleString('en-IN'),
-            hint: 'Teachers & admins',
+            label: t('stats.staff'),
+            value: stats.staff.toLocaleString(INTL_LOCALE[locale]),
+            hint: t('stats.teachersAdmins'),
             icon: <GraduationCap />,
             pigment: 'info',
         },
         {
-            label: 'Classes',
-            value: stats.classes.toLocaleString('en-IN'),
-            hint: 'Active sections',
+            label: t('stats.classes'),
+            value: stats.classes.toLocaleString(INTL_LOCALE[locale]),
+            hint: t('stats.activeSections'),
             icon: <Presentation />,
             pigment: 'info',
         },
@@ -98,9 +102,9 @@ export default function DashboardStats({ selectedDate }: { selectedDate: string 
 
     if (isAdmin) {
         cards.push({
-            label: 'Fees this month',
+            label: t('stats.feesThisMonth'),
             value: `₹${formatINRShort(stats.feesCollected ?? 0)}`,
-            hint: 'Collected',
+            hint: t('stats.collected'),
             icon: <IndianRupee />,
             pigment: 'attn',
         });
@@ -121,7 +125,7 @@ export default function DashboardStats({ selectedDate }: { selectedDate: string 
                     {card.bar !== undefined && !loading && (
                         <div className="flex flex-col gap-1.5">
                             <div className="flex items-center justify-between">
-                                <span className="eyebrow">Attendance rate</span>
+                                <span className="eyebrow">{t('stats.attendanceRate')}</span>
                                 <span className="tabular text-[11.5px] font-semibold text-accent-success-deep">
                                     {card.bar}%
                                 </span>
@@ -131,7 +135,7 @@ export default function DashboardStats({ selectedDate }: { selectedDate: string 
                                 aria-valuenow={card.bar}
                                 aria-valuemin={0}
                                 aria-valuemax={100}
-                                aria-label="Attendance rate"
+                                aria-label={t('stats.attendanceRate')}
                                 className="h-1.5 w-full overflow-hidden rounded-full bg-accent-success-tint"
                             >
                                 <div

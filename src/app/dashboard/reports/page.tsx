@@ -22,6 +22,11 @@ import {
     SERIES, SERIES_CONTEXT_SOFT, categorical,
 } from "@/lib/chartTokens";
 import DailyAttendanceRegister from "@/components/DailyAttendanceRegister";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE } from "@/i18n/config";
+
+// Session months in school order (April → March); labels come from Intl.
+const SESSION_MONTHS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3] as const;
 
 interface AttendanceTrendPoint {
   date: string;
@@ -42,6 +47,7 @@ function AttendanceTrendTooltip({
   payload?: { payload: AttendanceTrendPoint }[];
   label?: string;
 }) {
+  const t = useTranslations("reports");
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
   if (!d) return null;
@@ -51,10 +57,10 @@ function AttendanceTrendTooltip({
       {/* Each line wears the colour of the mark it describes — the rate line
           and the coverage bars — so the tooltip is read without a legend. */}
       <p className="font-medium text-brand">
-        {d.attendancePercent === null ? 'No attendance marked' : `${d.attendancePercent}% present (of ${d.marked} marked)`}
+        {d.attendancePercent === null ? t('trendTooltip.noAttendance') : t('trendTooltip.presentOfMarked', { percent: d.attendancePercent, marked: d.marked })}
       </p>
       <p className="font-medium text-accent-info-deep">
-        {d.coveragePercent}% of school reported ({d.marked}/{d.totalStudents} students)
+        {t('trendTooltip.coverage', { coverage: d.coveragePercent, marked: d.marked, total: d.totalStudents })}
       </p>
     </div>
   );
@@ -63,6 +69,8 @@ function AttendanceTrendTooltip({
 // ── Library Fees Report (used inside reports page) ────────────────────────────
 
 function LibraryFeesReportSection() {
+    const t = useTranslations("reports");
+    const tc = useTranslations("common");
     const [data, setData] = useState<any>(null);
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
@@ -80,7 +88,7 @@ function LibraryFeesReportSection() {
             const res = await authFetch(`${API_BASE_URL}/library/reports/fees?${q}`);
             if (!res.ok) throw new Error();
             setData(await res.json());
-        } catch { toast.error('Failed to load library fees'); } finally { setLoading(false); }
+        } catch { toast.error(t('library.loadFailed')); } finally { setLoading(false); }
     };
 
     useEffect(() => { load(1); }, []);
@@ -99,7 +107,7 @@ function LibraryFeesReportSection() {
         <div className="space-y-4">
             {data?.summary && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {[['Total Charged', data.summary.totalCharged, 'text-slate-700'], ['Collected', data.summary.totalCollected, 'text-green-600'], ['Waived', data.summary.totalWaived, 'text-amber-600'], ['Outstanding', data.summary.totalOutstanding, 'text-red-600']].map(([l, v, c]) => (
+                    {[[t('library.totalCharged'), data.summary.totalCharged, 'text-slate-700'], [t('library.collected'), data.summary.totalCollected, 'text-green-600'], [t('library.waived'), data.summary.totalWaived, 'text-amber-600'], [t('library.outstanding'), data.summary.totalOutstanding, 'text-red-600']].map(([l, v, c]) => (
                         <div key={String(l)} className="bg-white border border-slate-200 rounded-xl p-4 text-center shadow-sm">
                             <div className={`text-2xl font-bold ${c}`}>₹{Number(v).toFixed(2)}</div>
                             <div className="text-xs text-slate-500 mt-1">{l}</div>
@@ -110,9 +118,9 @@ function LibraryFeesReportSection() {
             <div className="flex flex-wrap gap-2">
                 <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="border border-gray-300 rounded-lg text-sm p-2 bg-gray-50" />
                 <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="border border-gray-300 rounded-lg text-sm p-2 bg-gray-50" />
-                <button onClick={() => load(1)} className="px-4 py-2 rounded-lg bg-lime-600 text-white text-sm hover:bg-lime-700">Search</button>
+                <button onClick={() => load(1)} className="px-4 py-2 rounded-lg bg-lime-600 text-white text-sm hover:bg-lime-700">{tc('action.search')}</button>
                 <button onClick={downloadCsv} className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-300 text-sm hover:bg-slate-100">
-                    <Download className="w-4 h-4" /> Export CSV
+                    <Download className="w-4 h-4" /> {t('library.exportCsv')}
                 </button>
             </div>
             {loading ? (
@@ -122,13 +130,13 @@ function LibraryFeesReportSection() {
                     <table className="w-full text-sm">
                         <thead className="bg-slate-50">
                             <tr className="text-slate-500 text-left">
-                                <th className="px-4 py-3">Book</th>
-                                <th className="px-4 py-3">Borrower</th>
-                                <th className="px-4 py-3 text-right">Charged</th>
-                                <th className="px-4 py-3 text-right">Paid</th>
-                                <th className="px-4 py-3 text-right">Waived</th>
-                                <th className="px-4 py-3">Method</th>
-                                <th className="px-4 py-3">Collected At</th>
+                                <th className="px-4 py-3">{t('library.book')}</th>
+                                <th className="px-4 py-3">{t('library.borrower')}</th>
+                                <th className="px-4 py-3 text-right">{t('library.charged')}</th>
+                                <th className="px-4 py-3 text-right">{t('library.paid')}</th>
+                                <th className="px-4 py-3 text-right">{t('library.waived')}</th>
+                                <th className="px-4 py-3">{t('library.method')}</th>
+                                <th className="px-4 py-3">{t('library.collectedAt')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -152,7 +160,7 @@ function LibraryFeesReportSection() {
                     {data && (
                         <div className="flex items-center justify-center gap-1 p-3 border-t">
                             <button disabled={page === 1} onClick={() => { setPage(p => p - 1); load(page - 1); }} className="px-2 py-1 rounded border text-sm disabled:opacity-40">‹</button>
-                            <span className="text-sm text-slate-600 px-2">Page {page} of {Math.ceil((data.total ?? 0) / LIMIT) || 1}</span>
+                            <span className="text-sm text-slate-600 px-2">{t('filter.pageOf', { page, total: Math.ceil((data.total ?? 0) / LIMIT) || 1 })}</span>
                             <button disabled={page >= Math.ceil((data.total ?? 0) / LIMIT)} onClick={() => { setPage(p => p + 1); load(page + 1); }} className="px-2 py-1 rounded border text-sm disabled:opacity-40">›</button>
                         </div>
                     )}
@@ -179,6 +187,9 @@ interface InventorySummaryTeaser {
 }
 
 function InventoryReportsTeaser() {
+    const t = useTranslations("reports");
+    const tc = useTranslations("common");
+    const locale = useLocale();
     const [summary, setSummary] = useState<InventorySummaryTeaser | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -200,31 +211,29 @@ function InventoryReportsTeaser() {
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-slate-800">Inventory — this month at a glance</h2>
+                <h2 className="text-lg font-semibold text-slate-800">{t('inventory.heading')}</h2>
                 <Link
                     href="/dashboard/inventory/reports"
                     className="inline-flex items-center gap-1.5 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold rounded-lg transition-colors"
                 >
-                    Open full inventory reports →
+                    {t('inventory.openFull')}
                 </Link>
             </div>
             {loading ? (
-                <p className="text-sm text-slate-500">Loading…</p>
+                <p className="text-sm text-slate-500">{tc('state.loading')}</p>
             ) : !summary ? (
-                <p className="text-sm text-slate-500">Could not load the inventory summary.</p>
+                <p className="text-sm text-slate-500">{t('inventory.loadFailed')}</p>
             ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                    {tile('Sales', String(summary.salesCount), 'text-slate-800')}
-                    {tile('Sales value', `₹${Number(summary.salesValue).toLocaleString('en-IN')}`, 'text-slate-800')}
-                    {tile('Collected', `₹${Number(summary.collected).toLocaleString('en-IN')}`, 'text-green-700')}
-                    {tile('Outstanding', `₹${Number(summary.outstanding).toLocaleString('en-IN')}`, 'text-amber-600')}
-                    {tile('Low stock items', String(summary.lowStockCount), summary.lowStockCount > 0 ? 'text-red-600' : 'text-slate-800')}
+                    {tile(t('inventory.sales'), String(summary.salesCount), 'text-slate-800')}
+                    {tile(t('inventory.salesValue'), `₹${Number(summary.salesValue).toLocaleString(INTL_LOCALE[locale])}`, 'text-slate-800')}
+                    {tile(t('inventory.collected'), `₹${Number(summary.collected).toLocaleString(INTL_LOCALE[locale])}`, 'text-green-700')}
+                    {tile(t('inventory.outstanding'), `₹${Number(summary.outstanding).toLocaleString(INTL_LOCALE[locale])}`, 'text-amber-600')}
+                    {tile(t('inventory.lowStock'), String(summary.lowStockCount), summary.lowStockCount > 0 ? 'text-red-600' : 'text-slate-800')}
                 </div>
             )}
             <p className="text-xs text-slate-500">
-                Sales vs. borrow reports, payments collected, outstanding balances, waive-offs and stock — with date range,
-                mobile, item, category, payment mode and status filters, each exportable as CSV or PDF — are on the full
-                inventory reports screen.
+                {t('inventory.note')}
             </p>
         </div>
     );
@@ -233,6 +242,11 @@ function InventoryReportsTeaser() {
 export default function ReportsDashboard() {
     const router = useRouter();
     const rbac = useRbac();
+    const t = useTranslations("reports");
+    const tc = useTranslations("common");
+    const locale = useLocale();
+    const intlLocale = INTL_LOCALE[locale];
+    const monthLabel = (m: number) => new Intl.DateTimeFormat(intlLocale, { month: 'long' }).format(new Date(2000, m - 1, 1));
     const [mounted, setMounted] = useState(false);
     const [activeTab, setActiveTab] = useState<'FEES' | 'PENDING_DUES' | 'FEE_RECEIVED' | 'EXAMINATIONS' | 'ATTENDANCE' | 'STUDENTS' | 'STAFF' | 'SALARY' | 'LIBRARY_FEES' | 'INVENTORY'>('FEES');
 
@@ -335,7 +349,11 @@ export default function ReportsDashboard() {
     const [attendanceTrend, setAttendanceTrend] = useState<AttendanceTrendPoint[]>([]);
     const [staffDistribution, setStaffDistribution] = useState([]);
     const [enrollmentClass, setEnrollmentClass] = useState([]);
-    const collectionStatusWithFill = collectionStatus.map((entry, index) => ({ ...entry, fill: categorical(index) }));
+    const collectionStatusWithFill = collectionStatus.map((entry, index) => ({
+        ...entry,
+        name: entry.name === 'Collected' ? t('fees.collected') : entry.name === 'Pending Dues' ? t('fees.pendingDues') : entry.name,
+        fill: categorical(index),
+    }));
     const staffDistributionWithFill = staffDistribution.map((entry: any, index: number) => ({ ...entry, fill: categorical(index) }));
 
     // Colours come from ATTENDANCE_TONE so this donut, the staff calendar and its
@@ -343,18 +361,18 @@ export default function ReportsDashboard() {
     // renders a label for them, which litters the ring with "0"s.
     const staffAttendanceChartData = staffAttendanceSummary
         ? [
-              { name: 'Present', value: staffAttendanceSummary.summary.PRESENT, fill: ATTENDANCE_TONE.PRESENT.fill },
+              { name: tc('status.present'), value: staffAttendanceSummary.summary.PRESENT, fill: ATTENDANCE_TONE.PRESENT.fill },
               // `lateArrivals`, not `summary.LATE` — the latter is a legacy bucket
               // that auto-compute no longer writes, so it trends to 0 regardless.
-              { name: 'Late', value: staffAttendanceSummary.lateArrivals, fill: ATTENDANCE_TONE.LATE.fill },
-              { name: 'Half day', value: staffAttendanceSummary.summary.HALF_DAY, fill: ATTENDANCE_TONE.HALF_DAY.fill },
-              { name: 'On leave', value: staffAttendanceSummary.summary.ON_LEAVE, fill: ATTENDANCE_TONE.LEAVE.fill },
-              { name: 'Absent', value: staffAttendanceSummary.summary.ABSENT, fill: ATTENDANCE_TONE.ABSENT.fill },
-              { name: 'Holiday', value: staffAttendanceSummary.summary.HOLIDAY, fill: ATTENDANCE_TONE.HOLIDAY.fill },
+              { name: tc('status.late'), value: staffAttendanceSummary.lateArrivals, fill: ATTENDANCE_TONE.LATE.fill },
+              { name: tc('status.halfDay'), value: staffAttendanceSummary.summary.HALF_DAY, fill: ATTENDANCE_TONE.HALF_DAY.fill },
+              { name: tc('status.onLeave'), value: staffAttendanceSummary.summary.ON_LEAVE, fill: ATTENDANCE_TONE.LEAVE.fill },
+              { name: tc('status.absent'), value: staffAttendanceSummary.summary.ABSENT, fill: ATTENDANCE_TONE.ABSENT.fill },
+              { name: tc('status.holiday'), value: staffAttendanceSummary.summary.HOLIDAY, fill: ATTENDANCE_TONE.HOLIDAY.fill },
               // Grey by elimination: sage, marigold, iris, lapis, vermilion and brass
               // are all claimed above, and every other hue tried read as a near
               // neighbour of one of them — teal beside Present, magenta beside Absent.
-              { name: 'Not marked', value: staffAttendanceSummary.summary.NOT_MARKED ?? 0, fill: 'var(--color-ink-faint)' },
+              { name: t('staff.notMarked'), value: staffAttendanceSummary.summary.NOT_MARKED ?? 0, fill: 'var(--color-ink-faint)' },
           ].filter((d) => d.value > 0)
         : [];
     const [admissionsTrend, setAdmissionsTrend] = useState([]);
@@ -537,13 +555,13 @@ export default function ReportsDashboard() {
         if (activeTab !== 'SALARY' || !hrPortalEnabled) return;
         hrApi.payroll.monthlySummary(salaryYear)
             .then((data) => setSalaryData(data))
-            .catch((e) => { console.error(e); toast.error('Failed to load salary data'); });
-    }, [activeTab, salaryYear, hrPortalEnabled]);
+            .catch((e) => { console.error(e); toast.error(t('salary.loadFailed')); });
+    }, [activeTab, salaryYear, hrPortalEnabled, t]);
 
     // PENDING DUES - manual fetch (triggered by Apply Filters button)
     const fetchPendingDues = async () => {
         if (!pendingSessionId) {
-            toast.error('Please select an academic session');
+            toast.error(t('filter.selectSessionFirst'));
             return;
         }
         setPendingDuesLoading(true);
@@ -564,11 +582,11 @@ export default function ReportsDashboard() {
                 const data = await res.json();
                 setPendingDuesData(data);
             } else {
-                toast.error('Failed to fetch pending dues data');
+                toast.error(t('pending.fetchFailed'));
             }
         } catch (e) {
             console.error(e);
-            toast.error('An error occurred while fetching pending dues data');
+            toast.error(t('pending.fetchError'));
         } finally {
             setPendingDuesLoading(false);
         }
@@ -577,7 +595,7 @@ export default function ReportsDashboard() {
     // FEE RECEIVED - manual fetch (triggered by Apply Filters button)
     const fetchFeeReceived = async (pageOverride?: number) => {
         if (!receivedSessionId) {
-            toast.error('Please select an academic session');
+            toast.error(t('filter.selectSessionFirst'));
             return;
         }
         const page = pageOverride ?? receivedPage;
@@ -607,11 +625,11 @@ export default function ReportsDashboard() {
                 setReceivedTotalCount(data.totalCount || 0);
                 if (!pageOverride) setReceivedPage(1);
             } else {
-                toast.error('Failed to fetch fee received data');
+                toast.error(t('received.fetchFailed'));
             }
         } catch (e) {
             console.error(e);
-            toast.error('An error occurred while fetching fee received data');
+            toast.error(t('received.fetchError'));
         } finally {
             setReceivedLoading(false);
         }
@@ -656,7 +674,7 @@ export default function ReportsDashboard() {
 
     const exportToCSV = () => {
         if (displayedPendingDuesAll.length === 0) {
-            toast.error('No data to export');
+            toast.error(t('filter.noDataToExport'));
             return;
         }
 
@@ -711,7 +729,7 @@ export default function ReportsDashboard() {
                 const bulkData = json.data || [];
                 
                 if (bulkData.length === 0) {
-                    toast.error('No data to export');
+                    toast.error(t('filter.noDataToExport'));
                     return;
                 }
 
@@ -741,11 +759,11 @@ export default function ReportsDashboard() {
                 link.click();
                 document.body.removeChild(link);
             } else {
-                toast.error('Failed to export bulk fee received data');
+                toast.error(t('received.exportBulkFailed'));
             }
         } catch (e) {
             console.error(e);
-            toast.error('Failed to export fee received data');
+            toast.error(t('received.exportFailed'));
         } finally {
             setReceivedLoading(false);
         }
@@ -774,17 +792,17 @@ export default function ReportsDashboard() {
             });
 
             if (res.ok) {
-                toast.success('Notification sent successfully!');
+                toast.success(t('notify.sent'));
                 setShowNotifModal(false);
                 setUseCustomMessage(false);
                 setCustomNotifMessage('');
             } else {
                 const errData = await res.json();
-                toast.error(errData.message || 'Failed to send notification');
+                toast.error(errData.message || t('notify.sendFailed'));
             }
         } catch (e) {
             console.error("Notification Error:", e);
-            toast.error('An error occurred while sending notification');
+            toast.error(t('notify.sendError'));
         } finally {
             setSendingNotif(false);
         }
@@ -792,10 +810,10 @@ export default function ReportsDashboard() {
 
     useEffect(() => {
         if (mounted && !rbac.isAdmin) {
-            toast.error("You don't have permission to access Reports.");
+            toast.error(t('noPermission'));
             router.replace('/dashboard');
         }
-    }, [mounted, rbac.isAdmin, router]);
+    }, [mounted, rbac.isAdmin, router, t]);
 
     useEffect(() => {
         setMounted(true);
@@ -813,7 +831,7 @@ export default function ReportsDashboard() {
         <main className="p-4 flex-1 h-full overflow-y-auto w-full max-w-7xl mx-auto">
             <Toaster position="top-right" />
             <div className="flex justify-between items-center mb-6">
-                <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Reports Dashboard</h1>
+                <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t('heading')}</h1>
             </div>
 
             {/* TABS */}
@@ -827,7 +845,7 @@ export default function ReportsDashboard() {
                     }`}
                 >
                     <Wallet className="w-4 h-4" />
-                    Fees & Revenue
+                    {t('tabs.fees')}
                 </button>
                 <button
                     onClick={() => setActiveTab('FEE_RECEIVED')}
@@ -838,7 +856,7 @@ export default function ReportsDashboard() {
                     }`}
                 >
                     <ClipboardList className="w-4 h-4" />
-                    Fee Received
+                    {t('tabs.feeReceived')}
                 </button>
                 <button
                     onClick={() => setActiveTab('PENDING_DUES')}
@@ -849,7 +867,7 @@ export default function ReportsDashboard() {
                     }`}
                 >
                     <AlertCircle className="w-4 h-4" />
-                    Pending Dues
+                    {t('tabs.pendingDues')}
                 </button>
                 <button
                     onClick={() => setActiveTab('EXAMINATIONS')}
@@ -860,7 +878,7 @@ export default function ReportsDashboard() {
                     }`}
                 >
                     <ClipboardList className="w-4 h-4" />
-                    Examinations
+                    {t('tabs.examinations')}
                 </button>
                 <button
                     onClick={() => setActiveTab('ATTENDANCE')}
@@ -871,7 +889,7 @@ export default function ReportsDashboard() {
                     }`}
                 >
                     <CalendarCheck className="w-4 h-4" />
-                    Attendance
+                    {t('tabs.attendance')}
                 </button>
                 <button
                     onClick={() => setActiveTab('STUDENTS')}
@@ -882,7 +900,7 @@ export default function ReportsDashboard() {
                     }`}
                 >
                     <Users className="w-4 h-4" />
-                    Students
+                    {t('tabs.students')}
                 </button>
                 <button
                     onClick={() => setActiveTab('STAFF')}
@@ -893,7 +911,7 @@ export default function ReportsDashboard() {
                     }`}
                 >
                     <UserCircle className="w-4 h-4" />
-                    Staff
+                    {t('tabs.staff')}
                 </button>
                 {hrPortalEnabled && (
                     <button
@@ -905,7 +923,7 @@ export default function ReportsDashboard() {
                         }`}
                     >
                         <Wallet className="w-4 h-4" />
-                        Salary
+                        {t('tabs.salary')}
                     </button>
                 )}
                 {libraryEnabled && (
@@ -918,7 +936,7 @@ export default function ReportsDashboard() {
                         }`}
                     >
                         <Download className="w-4 h-4" />
-                        Library Fees
+                        {t('tabs.libraryFees')}
                     </button>
                 )}
                 {inventoryEnabled && (
@@ -931,7 +949,7 @@ export default function ReportsDashboard() {
                         }`}
                     >
                         <Boxes className="w-4 h-4" />
-                        Inventory
+                        {t('tabs.inventory')}
                     </button>
                 )}
             </div>
@@ -943,13 +961,13 @@ export default function ReportsDashboard() {
                         {/* Monthly Collection Chart */}
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                             <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-lg font-bold text-slate-800">Monthly Fee Collection Trend</h2>
+                                <h2 className="text-lg font-bold text-slate-800">{t('fees.monthlyTrend')}</h2>
                                 <select 
                                     className="border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={feeCollectionSession}
                                     onChange={(e) => setFeeCollectionSession(e.target.value)}
                                 >
-                                    <option value="">Select Session</option>
+                                    <option value="">{t('filter.selectSession')}</option>
                                     {academicSessions.map(session => (
                                         <option key={session.id} value={session.id.toString()}>{session.name}</option>
                                     ))}
@@ -961,9 +979,9 @@ export default function ReportsDashboard() {
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={CHART_GRID} />
                                         <XAxis dataKey="month" axisLine={false} tickLine={false} tick={CHART_TICK} />
                                         <YAxis axisLine={false} tickLine={false} tick={CHART_TICK} tickFormatter={(val) => `₹${val/1000}k`} />
-                                        <Tooltip {...CHART_TOOLTIP} formatter={(val: any) => `₹${val.toLocaleString()}`} cursor={CHART_CURSOR} />
+                                        <Tooltip {...CHART_TOOLTIP} formatter={(val: any) => `₹${val.toLocaleString(intlLocale)}`} cursor={CHART_CURSOR} />
                                         <Legend />
-                                        <Bar dataKey="collected" name="Collected" fill={SERIES.settled} radius={[4,4,0,0]} />
+                                        <Bar dataKey="collected" name={t('fees.collected')} fill={SERIES.settled} radius={[4,4,0,0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
@@ -973,9 +991,9 @@ export default function ReportsDashboard() {
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col">
                             <div className="flex justify-between items-start mb-2">
                                 <div>
-                                    <h2 className="text-lg font-bold text-slate-800">Collection vs Pending Dues</h2>
+                                    <h2 className="text-lg font-bold text-slate-800">{t('fees.collectionVsPending')}</h2>
                                     <p className="text-sm text-gray-500 mt-1 max-w-md">
-                                        This chart compares the total amount <strong>collected in the current month</strong> against the overall <strong>pending dues up to today's date</strong>.
+                                        {t.rich('fees.collectionVsPendingHint', { b: (c) => <strong>{c}</strong> })}
                                     </p>
                                 </div>
                             </div>
@@ -990,7 +1008,7 @@ export default function ReportsDashboard() {
                                 {collectionStatus.every((d) => d.value === 0) ? (
                                     <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
                                         <svg className="w-12 h-12 mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
-                                        <p>No fee data found for this period.</p>
+                                        <p>{t('fees.noFeeData')}</p>
                                     </div>
                                 ) : (
                                     <ResponsiveContainer width="100%" height="100%">
@@ -1017,7 +1035,7 @@ export default function ReportsDashboard() {
                                                     <Cell key={i} fill={entry.fill} />
                                                 ))}
                                             </Pie>
-                                            <Tooltip {...CHART_TOOLTIP} formatter={(val: any) => `₹${val.toLocaleString()}`} />
+                                            <Tooltip {...CHART_TOOLTIP} formatter={(val: any) => `₹${val.toLocaleString(intlLocale)}`} />
                                             <Legend verticalAlign="bottom" height={36}/>
                                         </PieChart>
                                     </ResponsiveContainer>
@@ -1031,8 +1049,8 @@ export default function ReportsDashboard() {
                         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                             <div className="p-5 border-b border-gray-200 flex justify-between items-center flex-wrap gap-4">
                                 <div>
-                                    <h2 className="text-lg font-bold text-slate-800">Recent Fee Adjustments (Waive-off & Refund)</h2>
-                                    <p className="text-sm text-gray-500">Log of recent records from the fee_adjustment table.</p>
+                                    <h2 className="text-lg font-bold text-slate-800">{t('fees.adjustmentsTitle')}</h2>
+                                    <p className="text-sm text-gray-500">{t('fees.adjustmentsHint')}</p>
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <div className="w-40">
@@ -1050,7 +1068,7 @@ export default function ReportsDashboard() {
                                             }}
                                         />
                                     </div>
-                                    <span className="text-slate-500 text-sm">to</span>
+                                    <span className="text-slate-500 text-sm">{t('filter.to')}</span>
                                     <div className="w-40">
                                         <AppDatePicker
                                             value={feeAdjustmentsToDate}
@@ -1059,13 +1077,13 @@ export default function ReportsDashboard() {
                                             onChange={(to) => {
                                                 const from = feeAdjustmentsFromDate;
                                                 const diffDays = (new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24);
-                                                if (diffDays > 31) { toast.error('Date range cannot exceed 31 days'); return; }
-                                                if (to < from) { toast.error('End date cannot be before start date'); return; }
+                                                if (diffDays > 31) { toast.error(t('filter.rangeTooLong')); return; }
+                                                if (to < from) { toast.error(t('filter.endBeforeStart')); return; }
                                                 setFeeAdjustmentsToDate(to);
                                             }}
                                         />
                                     </div>
-                                    <span className="text-xs text-slate-400">Max 31 days</span>
+                                    <span className="text-xs text-slate-400">{t('fees.max31Days')}</span>
                                     {feeAdjustments.length > 0 && (
                                         <button
                                             onClick={() => {
@@ -1090,7 +1108,7 @@ export default function ReportsDashboard() {
                                             className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors"
                                         >
                                             <Download className="w-4 h-4" />
-                                            CSV
+                                            {t('filter.csv')}
                                         </button>
                                     )}
                                 </div>
@@ -1100,12 +1118,12 @@ export default function ReportsDashboard() {
                                     <table className="w-full text-sm text-left text-gray-600">
                                         <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-gray-200 sticky top-0 z-10">
                                             <tr>
-                                                <th className="px-5 py-3 font-semibold">Date</th>
-                                                <th className="px-5 py-3 font-semibold">Student</th>
-                                                <th className="px-5 py-3 font-semibold">Type</th>
-                                                <th className="px-5 py-3 font-semibold text-right">Amount</th>
-                                                <th className="px-5 py-3 font-semibold">Recorded By</th>
-                                                <th className="px-5 py-3 font-semibold">Permitted By</th>
+                                                <th className="px-5 py-3 font-semibold">{tc('field.date')}</th>
+                                                <th className="px-5 py-3 font-semibold">{tc('field.student')}</th>
+                                                <th className="px-5 py-3 font-semibold">{tc('field.type')}</th>
+                                                <th className="px-5 py-3 font-semibold text-right">{tc('field.amount')}</th>
+                                                <th className="px-5 py-3 font-semibold">{t('fees.recordedBy')}</th>
+                                                <th className="px-5 py-3 font-semibold">{t('fees.permittedBy')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1115,7 +1133,7 @@ export default function ReportsDashboard() {
                                                     <td className="px-5 py-3 font-medium text-slate-800">{adj.student}</td>
                                                     <td className="px-5 py-3">
                                                         <span className={`px-2 py-1 rounded text-xs font-semibold ${adj.type === 'REFUND' ? 'bg-orange-100 text-orange-700' : 'bg-purple-100 text-purple-700'}`}>
-                                                            {adj.type}
+                                                            {adj.type === 'REFUND' ? t('fees.typeRefund') : adj.type === 'WAIVE_OFF' ? t('fees.typeWaiveOff') : adj.type}
                                                         </span>
                                                     </td>
                                                     <td className="px-5 py-3 text-right font-semibold">₹{adj.amount}</td>
@@ -1127,12 +1145,12 @@ export default function ReportsDashboard() {
                                     </table>
                                 </div>
                                 {feeAdjustments.length === 0 && (
-                                    <div className="p-4 text-center text-gray-500">No adjustments found in this date range.</div>
+                                    <div className="p-4 text-center text-gray-500">{t('fees.noAdjustments')}</div>
                                 )}
                                 {feeAdjustments.length > 0 && (
                                     <div className="p-4 border-t border-gray-200 flex justify-between items-center bg-gray-50">
                                         <span className="text-sm text-gray-500">
-                                            Showing {(feeAdjPage - 1) * FEE_ADJ_PER_PAGE + 1} to {Math.min(feeAdjPage * FEE_ADJ_PER_PAGE, feeAdjustments.length)} of {feeAdjustments.length}
+                                            {t('fees.showingRange', { from: (feeAdjPage - 1) * FEE_ADJ_PER_PAGE + 1, to: Math.min(feeAdjPage * FEE_ADJ_PER_PAGE, feeAdjustments.length), total: feeAdjustments.length })}
                                         </span>
                                         <div className="flex gap-2">
                                             <button 
@@ -1140,14 +1158,14 @@ export default function ReportsDashboard() {
                                                 disabled={feeAdjPage === 1}
                                                 onClick={() => setFeeAdjPage(p => p - 1)}
                                             >
-                                                Prev
+                                                {tc('action.previous')}
                                             </button>
                                             <button 
                                                 className="px-3 py-1 border border-gray-300 rounded bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                                                 disabled={feeAdjPage * FEE_ADJ_PER_PAGE >= feeAdjustments.length}
                                                 onClick={() => setFeeAdjPage(p => p + 1)}
                                             >
-                                                Next
+                                                {tc('action.next')}
                                             </button>
                                         </div>
                                     </div>
@@ -1159,15 +1177,15 @@ export default function ReportsDashboard() {
                         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                             <div className="p-5 border-b border-gray-200 flex justify-between items-center flex-wrap gap-4">
                                 <div>
-                                    <h2 className="text-lg font-bold text-slate-800">Waived-off Trend</h2>
-                                    <p className="text-sm text-gray-500">Comparison of waived-off fees.</p>
+                                    <h2 className="text-lg font-bold text-slate-800">{t('fees.waivedTrendTitle')}</h2>
+                                    <p className="text-sm text-gray-500">{t('fees.waivedTrendHint')}</p>
                                 </div>
                                 <select 
                                     className="border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={waivedOffTrendSession}
                                     onChange={(e) => setWaivedOffTrendSession(e.target.value)}
                                 >
-                                    <option value="">Select Session</option>
+                                    <option value="">{t('filter.selectSession')}</option>
                                     {academicSessions.map(session => (
                                         <option key={session.id} value={session.id.toString()}>{session.name}</option>
                                     ))}
@@ -1179,10 +1197,10 @@ export default function ReportsDashboard() {
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={CHART_GRID} />
                                         <XAxis dataKey="month" axisLine={false} tickLine={false} tick={CHART_TICK} />
                                         <YAxis axisLine={false} tickLine={false} tick={CHART_TICK} tickFormatter={(val) => `₹${val/1000}k`} />
-                                        <Tooltip {...CHART_TOOLTIP} formatter={(val: any) => `₹${val.toLocaleString()}`} />
+                                        <Tooltip {...CHART_TOOLTIP} formatter={(val: any) => `₹${val.toLocaleString(intlLocale)}`} />
                                         <Legend />
-                                        <Line type="monotone" dataKey="waivedOff" name="Waived-off Trend" stroke={SERIES.correction} strokeWidth={3} dot={{r: 4, fill: SERIES.correction}} />
-                                        <Line type="monotone" dataKey="pending" name="Pending Trend" stroke={SERIES.attention} strokeWidth={3} dot={{r: 4, fill: SERIES.attention}} />
+                                        <Line type="monotone" dataKey="waivedOff" name={t('fees.waivedTrendSeries')} stroke={SERIES.correction} strokeWidth={3} dot={{r: 4, fill: SERIES.correction}} />
+                                        <Line type="monotone" dataKey="pending" name={t('fees.pendingTrendSeries')} stroke={SERIES.attention} strokeWidth={3} dot={{r: 4, fill: SERIES.attention}} />
                                     </LineChart>
                                 </ResponsiveContainer>
                             </div>
@@ -1197,8 +1215,8 @@ export default function ReportsDashboard() {
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                         <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 mb-6">
                             <div>
-                                <h2 className="text-xl font-bold text-slate-800">Pending Dues Report</h2>
-                                <p className="text-sm text-gray-500">Filter and export pending fee dues.</p>
+                                <h2 className="text-xl font-bold text-slate-800">{t('pending.title')}</h2>
+                                <p className="text-sm text-gray-500">{t('pending.hint')}</p>
                             </div>
                             <div className="flex flex-col sm:flex-row gap-2">
                                 <button
@@ -1209,7 +1227,7 @@ export default function ReportsDashboard() {
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                     </svg>
-                                    Notify Selected
+                                    {t('pending.notifySelected')}
                                 </button>
                                 <button
                                     onClick={exportToCSV}
@@ -1217,27 +1235,27 @@ export default function ReportsDashboard() {
                                     className="bg-emerald-600 text-white px-4 py-2 rounded shadow hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center"
                                 >
                                     <Download className="w-4 h-4" />
-                                    Download CSV
+                                    {t('filter.downloadCsv')}
                                 </button>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-6">
                             <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Session</label>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{t('filter.session')}</label>
                                 <select
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={pendingSessionId}
                                     onChange={(e) => setPendingSessionId(e.target.value)}
                                 >
-                                    <option value="">Select Session</option>
+                                    <option value="">{t('filter.selectSession')}</option>
                                     {academicSessions.map(session => (
                                         <option key={session.id} value={session.id.toString()}>{session.name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Class</label>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{tc('field.class')}</label>
                                 <select
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={pendingClassId}
@@ -1248,66 +1266,57 @@ export default function ReportsDashboard() {
                                         setPendingAvailableSections(cls ? cls.sections : []);
                                     }}
                                 >
-                                    <option value="">All Classes</option>
+                                    <option value="">{t('filter.allClasses')}</option>
                                     {classes.map((cls: any) => (
                                         <option key={cls.id} value={cls.id.toString()}>{cls.name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Section</label>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{tc('field.section')}</label>
                                 <select
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50 disabled:opacity-50"
                                     value={pendingSectionId}
                                     onChange={(e) => setPendingSectionId(e.target.value)}
                                     disabled={!pendingClassId}
                                 >
-                                    <option value="">All Sections</option>
+                                    <option value="">{t('filter.allSections')}</option>
                                     {pendingAvailableSections.map((sec: any) => (
                                         <option key={sec.id} value={sec.id.toString()}>{sec.name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div className="lg:col-span-2">
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Search Student</label>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{t('pending.searchStudent')}</label>
                                 <input
                                     type="text"
-                                    placeholder="Search by ID, Roll No, or Name..."
+                                    placeholder={t('pending.searchPlaceholder')}
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={pendingSearchQuery}
                                     onChange={(e) => setPendingSearchQuery(e.target.value)}
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Mobile No.</label>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{t('filter.mobileNo')}</label>
                                 <input
                                     type="text"
-                                    placeholder="Mobile..."
+                                    placeholder={t('filter.mobilePlaceholder')}
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={pendingMobile}
                                     onChange={(e) => setPendingMobile(e.target.value)}
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Month</label>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{t('filter.month')}</label>
                                 <select 
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={pendingMonth}
                                     onChange={(e) => setPendingMonth(e.target.value)}
                                 >
-                                    <option value="">Whole Session</option>
-                                    <option value="4">April</option>
-                                    <option value="5">May</option>
-                                    <option value="6">June</option>
-                                    <option value="7">July</option>
-                                    <option value="8">August</option>
-                                    <option value="9">September</option>
-                                    <option value="10">October</option>
-                                    <option value="11">November</option>
-                                    <option value="12">December</option>
-                                    <option value="1">January</option>
-                                    <option value="2">February</option>
-                                    <option value="3">March</option>
+                                    <option value="">{t('pending.wholeSession')}</option>
+                                    {SESSION_MONTHS.map((m) => (
+                                        <option key={m} value={m}>{monthLabel(m)}</option>
+                                    ))}
                                 </select>
                             </div>
                         </div>
@@ -1318,14 +1327,14 @@ export default function ReportsDashboard() {
                                 disabled={!pendingSessionId}
                                 className="bg-blue-600 text-white px-6 py-2 rounded-lg shadow hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                             >
-                                Apply Filters
+                                {t('filter.applyFilters')}
                             </button>
                         </div>
 
                         {!pendingHasSearched ? (
                             <div className="border border-dashed border-slate-300 rounded-lg p-12 text-center text-slate-400">
                                 <svg className="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/></svg>
-                                <p className="text-sm font-medium">Select filters above and click <span className="text-blue-600 font-semibold">Apply Filters</span> to view pending dues.</p>
+                                <p className="text-sm font-medium">{t.rich('pending.emptyPrompt', { b: (c) => <span className="text-blue-600 font-semibold">{c}</span> })}</p>
                             </div>
                         ) : (
                         <>
@@ -1354,7 +1363,7 @@ export default function ReportsDashboard() {
                                             </th>
                                             <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100 group select-none" onClick={() => handlePendingSort('studentId')}>
                                                 <div className="flex items-center gap-1">
-                                                    Student ID 
+                                                    {t('column.studentId')}{' '}
                                                     <span className="text-gray-400 text-xs">
                                                         {pendingSortColumn === 'studentId' ? (pendingSortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
                                                     </span>
@@ -1362,7 +1371,7 @@ export default function ReportsDashboard() {
                                             </th>
                                             <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100 group select-none" onClick={() => handlePendingSort('rollNo')}>
                                                 <div className="flex items-center gap-1">
-                                                    Roll No 
+                                                    {t('column.rollNo')}{' '}
                                                     <span className="text-gray-400 text-xs">
                                                         {pendingSortColumn === 'rollNo' ? (pendingSortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
                                                     </span>
@@ -1370,7 +1379,7 @@ export default function ReportsDashboard() {
                                             </th>
                                             <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100 group select-none" onClick={() => handlePendingSort('firstName')}>
                                                 <div className="flex items-center gap-1">
-                                                    Name 
+                                                    {tc('field.name')}{' '}
                                                     <span className="text-gray-400 text-xs">
                                                         {pendingSortColumn === 'firstName' ? (pendingSortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
                                                     </span>
@@ -1378,7 +1387,7 @@ export default function ReportsDashboard() {
                                             </th>
                                             <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100 group select-none" onClick={() => handlePendingSort('className')}>
                                                 <div className="flex items-center gap-1">
-                                                    Class 
+                                                    {tc('field.class')}{' '}
                                                     <span className="text-gray-400 text-xs">
                                                         {pendingSortColumn === 'className' ? (pendingSortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
                                                     </span>
@@ -1386,7 +1395,7 @@ export default function ReportsDashboard() {
                                             </th>
                                             <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100 group select-none" onClick={() => handlePendingSort('sectionName')}>
                                                 <div className="flex items-center gap-1">
-                                                    Section 
+                                                    {tc('field.section')}{' '}
                                                     <span className="text-gray-400 text-xs">
                                                         {pendingSortColumn === 'sectionName' ? (pendingSortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
                                                     </span>
@@ -1394,7 +1403,7 @@ export default function ReportsDashboard() {
                                             </th>
                                             <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100 group select-none" onClick={() => handlePendingSort('mobile')}>
                                                 <div className="flex items-center gap-1">
-                                                    Mobile 
+                                                    {tc('field.mobile')}{' '}
                                                     <span className="text-gray-400 text-xs">
                                                         {pendingSortColumn === 'mobile' ? (pendingSortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
                                                     </span>
@@ -1402,7 +1411,7 @@ export default function ReportsDashboard() {
                                             </th>
                                             <th className="px-5 py-3 font-semibold cursor-pointer hover:bg-slate-100 group select-none" onClick={() => handlePendingSort('pendingAmount')}>
                                                 <div className="flex items-center justify-end gap-1">
-                                                    Pending Amount 
+                                                    {t('pending.pendingAmount')}{' '}
                                                     <span className="text-gray-400 text-xs">
                                                         {pendingSortColumn === 'pendingAmount' ? (pendingSortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
                                                     </span>
@@ -1434,13 +1443,13 @@ export default function ReportsDashboard() {
                                                     <td className="px-5 py-3">{row.className}</td>
                                                     <td className="px-5 py-3">{row.sectionName}</td>
                                                     <td className="px-5 py-3">{row.mobile}</td>
-                                                    <td className="px-5 py-3 text-right font-bold text-red-600">₹{row.pendingAmount.toLocaleString()}</td>
+                                                    <td className="px-5 py-3 text-right font-bold text-red-600">₹{row.pendingAmount.toLocaleString(intlLocale)}</td>
                                                 </tr>
                                             ))
                                         ) : (
                                             <tr>
                                                 <td colSpan={8} className="p-8 text-center text-gray-500">
-                                                    No pending dues found matching the selected filters.
+                                                    {t('pending.noResults')}
                                                 </td>
                                             </tr>
                                         )}
@@ -1448,9 +1457,9 @@ export default function ReportsDashboard() {
                                     {paginatedPendingDues.length > 0 && (
                                         <tfoot className="bg-slate-50 border-t border-gray-200 font-bold text-slate-800 sticky bottom-0">
                                             <tr>
-                                                <td colSpan={7} className="px-5 py-3 text-right uppercase text-xs text-slate-500">Total Pending Dues</td>
+                                                <td colSpan={7} className="px-5 py-3 text-right uppercase text-xs text-slate-500">{t('pending.totalPending')}</td>
                                                 <td className="px-5 py-3 text-right text-red-600 text-lg">
-                                                    ₹{displayedPendingDuesAll.reduce((sum, row) => sum + row.pendingAmount, 0).toLocaleString()}
+                                                    ₹{displayedPendingDuesAll.reduce((sum, row) => sum + row.pendingAmount, 0).toLocaleString(intlLocale)}
                                                 </td>
                                             </tr>
                                         </tfoot>
@@ -1463,7 +1472,12 @@ export default function ReportsDashboard() {
                         {displayedPendingDuesAll.length > 0 && (
                             <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50 mt-4 rounded-lg">
                                 <div className="text-sm text-slate-500">
-                                    Showing <span className="font-medium text-slate-900">{(pendingDuesPage - 1) * PENDING_DUES_PER_PAGE + 1}</span> to <span className="font-medium text-slate-900">{Math.min(pendingDuesPage * PENDING_DUES_PER_PAGE, displayedPendingDuesAll.length)}</span> of <span className="font-medium text-slate-900">{displayedPendingDuesAll.length}</span> students
+                                    {t.rich('pending.showingStudents', {
+                                        from: (pendingDuesPage - 1) * PENDING_DUES_PER_PAGE + 1,
+                                        to: Math.min(pendingDuesPage * PENDING_DUES_PER_PAGE, displayedPendingDuesAll.length),
+                                        total: displayedPendingDuesAll.length,
+                                        b: (c) => <span className="font-medium text-slate-900">{c}</span>,
+                                    })}
                                 </div>
                                 <div className="flex gap-2">
                                     <button 
@@ -1471,17 +1485,17 @@ export default function ReportsDashboard() {
                                         disabled={pendingDuesPage === 1}
                                         className="px-3 py-1 border border-slate-200 rounded text-sm disabled:opacity-50 bg-white hover:bg-slate-50 transition"
                                     >
-                                        Previous
+                                        {tc('action.previous')}
                                     </button>
                                     <span className="px-3 py-1 text-sm flex items-center">
-                                        Page {pendingDuesPage} of {totalPendingPages || 1}
+                                        {t('filter.pageOf', { page: pendingDuesPage, total: totalPendingPages || 1 })}
                                     </span>
                                     <button 
                                         onClick={() => setPendingDuesPage(p => Math.min(totalPendingPages, p + 1))}
                                         disabled={pendingDuesPage === totalPendingPages || totalPendingPages === 0}
                                         className="px-3 py-1 border border-slate-200 rounded text-sm disabled:opacity-50 bg-white hover:bg-slate-50 transition"
                                     >
-                                        Next
+                                        {tc('action.next')}
                                     </button>
                                 </div>
                             </div>
@@ -1498,8 +1512,8 @@ export default function ReportsDashboard() {
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                         <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 mb-6">
                             <div>
-                                <h2 className="text-xl font-bold text-slate-800">Fee Received Report</h2>
-                                <p className="text-sm text-gray-500">View and export all fee collections.</p>
+                                <h2 className="text-xl font-bold text-slate-800">{t('received.title')}</h2>
+                                <p className="text-sm text-gray-500">{t('received.hint')}</p>
                             </div>
                             <div className="flex flex-col sm:flex-row gap-2">
                                 <button
@@ -1508,27 +1522,27 @@ export default function ReportsDashboard() {
                                     className="bg-emerald-600 text-white px-4 py-2 rounded shadow hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center"
                                 >
                                     <Download className="w-4 h-4" />
-                                    Download CSV
+                                    {t('filter.downloadCsv')}
                                 </button>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                             <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Session</label>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{t('filter.session')}</label>
                                 <select
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={receivedSessionId}
                                     onChange={(e) => setReceivedSessionId(e.target.value)}
                                 >
-                                    <option value="">Select Session</option>
+                                    <option value="">{t('filter.selectSession')}</option>
                                     {academicSessions.map(session => (
                                         <option key={session.id} value={session.id.toString()}>{session.name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Class</label>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{tc('field.class')}</label>
                                 <select
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={receivedClassId}
@@ -1539,63 +1553,63 @@ export default function ReportsDashboard() {
                                         setReceivedAvailableSections(cls ? cls.sections : []);
                                     }}
                                 >
-                                    <option value="">All Classes</option>
+                                    <option value="">{t('filter.allClasses')}</option>
                                     {classes.map((cls: any) => (
                                         <option key={cls.id} value={cls.id.toString()}>{cls.name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Section</label>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{tc('field.section')}</label>
                                 <select
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50 disabled:opacity-50"
                                     value={receivedSectionId}
                                     onChange={(e) => setReceivedSectionId(e.target.value)}
                                     disabled={!receivedClassId}
                                 >
-                                    <option value="">All Sections</option>
+                                    <option value="">{t('filter.allSections')}</option>
                                     {receivedAvailableSections.map((sec: any) => (
                                         <option key={sec.id} value={sec.id.toString()}>{sec.name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Method</label>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{t('column.method')}</label>
                                 <select
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={receivedMethod}
                                     onChange={(e) => setReceivedMethod(e.target.value)}
                                 >
-                                    <option value="">All Methods</option>
-                                    <option value="CASH">Cash</option>
+                                    <option value="">{t('received.allMethods')}</option>
+                                    <option value="CASH">{t('received.methodCash')}</option>
                                     <option value="UPI">UPI</option>
-                                    <option value="ONLINE">Online</option>
-                                    <option value="CARD">Card</option>
-                                    <option value="CHEQUE">Cheque</option>
+                                    <option value="ONLINE">{t('received.methodOnline')}</option>
+                                    <option value="CARD">{t('received.methodCard')}</option>
+                                    <option value="CHEQUE">{t('received.methodCheque')}</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Student ID</label>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{t('column.studentId')}</label>
                                 <input
                                     type="text"
-                                    placeholder="Search by ID..."
+                                    placeholder={t('received.searchById')}
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={receivedSearchQuery}
                                     onChange={(e) => setReceivedSearchQuery(e.target.value)}
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Mobile No.</label>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{t('filter.mobileNo')}</label>
                                 <input
                                     type="text"
-                                    placeholder="Mobile..."
+                                    placeholder={t('filter.mobilePlaceholder')}
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                     value={receivedMobile}
                                     onChange={(e) => setReceivedMobile(e.target.value)}
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">From Date</label>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{t('received.fromDate')}</label>
                                 <AppDatePicker
                                     value={receivedFromDate}
                                     onChange={(from) => {
@@ -1611,7 +1625,7 @@ export default function ReportsDashboard() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">To Date <span className="text-slate-400 font-normal normal-case">(max 31 days)</span></label>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{t('received.toDate')} <span className="text-slate-400 font-normal normal-case">{t('received.max31Hint')}</span></label>
                                 <AppDatePicker
                                     value={receivedToDate}
                                     min={receivedFromDate || undefined}
@@ -1619,8 +1633,8 @@ export default function ReportsDashboard() {
                                     onChange={(to) => {
                                         if (receivedFromDate) {
                                             const diffDays = (new Date(to).getTime() - new Date(receivedFromDate).getTime()) / (1000 * 60 * 60 * 24);
-                                            if (diffDays > 31) { toast.error('Date range cannot exceed 31 days'); return; }
-                                            if (to < receivedFromDate) { toast.error('End date cannot be before start date'); return; }
+                                            if (diffDays > 31) { toast.error(t('filter.rangeTooLong')); return; }
+                                            if (to < receivedFromDate) { toast.error(t('filter.endBeforeStart')); return; }
                                         }
                                         setReceivedToDate(to);
                                     }}
@@ -1634,14 +1648,14 @@ export default function ReportsDashboard() {
                                 disabled={!receivedSessionId}
                                 className="bg-blue-600 text-white px-6 py-2 rounded-lg shadow hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                             >
-                                Apply Filters
+                                {t('filter.applyFilters')}
                             </button>
                         </div>
 
                         {!receivedHasSearched ? (
                             <div className="border border-dashed border-slate-300 rounded-lg p-12 text-center text-slate-400">
                                 <svg className="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/></svg>
-                                <p className="text-sm font-medium">Select filters above and click <span className="text-blue-600 font-semibold">Apply Filters</span> to view fee received records.</p>
+                                <p className="text-sm font-medium">{t.rich('received.emptyPrompt', { b: (c) => <span className="text-blue-600 font-semibold">{c}</span> })}</p>
                             </div>
                         ) : (
                         <>
@@ -1654,37 +1668,37 @@ export default function ReportsDashboard() {
                                 <table className="w-full text-sm text-left text-gray-600">
                                     <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
                                         <tr>
-                                            <th className="px-5 py-3 font-semibold">Payment Date</th>
-                                            <th className="px-5 py-3 font-semibold">Receipt No</th>
-                                            <th className="px-5 py-3 font-semibold">Student Name</th>
-                                            <th className="px-5 py-3 font-semibold">Class</th>
-                                            <th className="px-5 py-3 font-semibold">Method</th>
-                                            <th className="px-5 py-3 font-semibold">Fee Month</th>
-                                            <th className="px-5 py-3 font-semibold">Collected By</th>
-                                            <th className="px-5 py-3 font-semibold text-right">Amount Paid</th>
+                                            <th className="px-5 py-3 font-semibold">{t('received.paymentDate')}</th>
+                                            <th className="px-5 py-3 font-semibold">{t('received.receiptNo')}</th>
+                                            <th className="px-5 py-3 font-semibold">{t('column.studentName')}</th>
+                                            <th className="px-5 py-3 font-semibold">{tc('field.class')}</th>
+                                            <th className="px-5 py-3 font-semibold">{t('column.method')}</th>
+                                            <th className="px-5 py-3 font-semibold">{t('received.feeMonth')}</th>
+                                            <th className="px-5 py-3 font-semibold">{t('column.collectedBy')}</th>
+                                            <th className="px-5 py-3 font-semibold text-right">{t('received.amountPaid')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {receivedData.length > 0 ? (
                                             receivedData.map((row, idx) => (
                                                 <tr key={idx} className="border-b border-gray-100 hover:bg-slate-50/50">
-                                                    <td className="px-5 py-3">{new Date(row.paymentDate).toLocaleDateString()}</td>
+                                                    <td className="px-5 py-3">{new Date(row.paymentDate).toLocaleDateString(intlLocale)}</td>
                                                     <td className="px-5 py-3 font-medium text-slate-800">{row.receiptNumber}</td>
                                                     <td className="px-5 py-3">
                                                         {row.firstName} {row.lastName}
-                                                        <div className="text-xs text-gray-400">ID: {row.studentId}</div>
+                                                        <div className="text-xs text-gray-400">{t('received.idLabel', { id: row.studentId })}</div>
                                                     </td>
                                                     <td className="px-5 py-3">{row.className} {row.sectionName}</td>
                                                     <td className="px-5 py-3">{row.paymentMethod}</td>
                                                     <td className="px-5 py-3">{row.feeMonth || '-'}</td>
                                                     <td className="px-5 py-3">{row.collectedBy}</td>
-                                                    <td className="px-5 py-3 text-right font-bold text-green-600">₹{row.amountPaid?.toLocaleString()}</td>
+                                                    <td className="px-5 py-3 text-right font-bold text-green-600">₹{row.amountPaid?.toLocaleString(intlLocale)}</td>
                                                 </tr>
                                             ))
                                         ) : (
                                             <tr>
                                                 <td colSpan={8} className="p-8 text-center text-gray-500">
-                                                    No fee received records matching the selected filters.
+                                                    {t('received.noResults')}
                                                 </td>
                                             </tr>
                                         )}
@@ -1697,7 +1711,12 @@ export default function ReportsDashboard() {
                         {receivedHasSearched && receivedTotalCount > 0 && (
                             <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50 mt-4 rounded-lg">
                                 <div className="text-sm text-slate-500">
-                                    Showing <span className="font-medium text-slate-900">{(receivedPage - 1) * RECEIVED_PER_PAGE + 1}</span> to <span className="font-medium text-slate-900">{Math.min(receivedPage * RECEIVED_PER_PAGE, receivedTotalCount)}</span> of <span className="font-medium text-slate-900">{receivedTotalCount}</span> records
+                                    {t.rich('received.showingRecords', {
+                                        from: (receivedPage - 1) * RECEIVED_PER_PAGE + 1,
+                                        to: Math.min(receivedPage * RECEIVED_PER_PAGE, receivedTotalCount),
+                                        total: receivedTotalCount,
+                                        b: (c) => <span className="font-medium text-slate-900">{c}</span>,
+                                    })}
                                 </div>
                                 <div className="flex gap-2">
                                     <button 
@@ -1705,17 +1724,17 @@ export default function ReportsDashboard() {
                                         disabled={receivedPage === 1}
                                         className="px-3 py-1 border border-slate-200 rounded text-sm disabled:opacity-50 bg-white hover:bg-slate-50 transition"
                                     >
-                                        Previous
+                                        {tc('action.previous')}
                                     </button>
                                     <span className="px-3 py-1 text-sm flex items-center">
-                                        Page {receivedPage} of {Math.ceil(receivedTotalCount / RECEIVED_PER_PAGE) || 1}
+                                        {t('filter.pageOf', { page: receivedPage, total: Math.ceil(receivedTotalCount / RECEIVED_PER_PAGE) || 1 })}
                                     </span>
                                     <button 
                                         onClick={() => { const p = Math.min(Math.ceil(receivedTotalCount / RECEIVED_PER_PAGE), receivedPage + 1); setReceivedPage(p); fetchFeeReceived(p); }}
                                         disabled={receivedPage === Math.ceil(receivedTotalCount / RECEIVED_PER_PAGE)}
                                         className="px-3 py-1 border border-slate-200 rounded text-sm disabled:opacity-50 bg-white hover:bg-slate-50 transition"
                                     >
-                                        Next
+                                        {tc('action.next')}
                                     </button>
                                 </div>
                             </div>
@@ -1732,33 +1751,33 @@ export default function ReportsDashboard() {
                     {/* Filters Row */}
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap gap-4 items-end">
                         <div className="flex-1 min-w-37.5">
-                            <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Academic Year</label>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{tc('field.academicYear')}</label>
                             <select
                                 className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-white"
                                 value={selectedExamYear}
                                 onChange={(e) => setSelectedExamYear(e.target.value)}
                             >
-                                <option value="">Select Session</option>
+                                <option value="">{t('filter.selectSession')}</option>
                                 {academicSessions.map(session => (
                                     <option key={session.id} value={session.id.toString()}>{session.name}</option>
                                 ))}
                             </select>
                         </div>
                         <div className="flex-1 min-w-37.5">
-                            <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Exam Term</label>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{t('exams.examTerm')}</label>
                             <select
                                 className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-white"
                                 value={selectedExamTerm}
                                 onChange={(e) => setSelectedExamTerm(e.target.value)}
                             >
-                                <option value="">Select Term</option>
+                                <option value="">{t('exams.selectTerm')}</option>
                                 {examTerms.map(term => (
                                     <option key={term.id} value={term.id.toString()}>{term.name}</option>
                                 ))}
                             </select>
                         </div>
                         <div className="flex-1 min-w-37.5">
-                            <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Class</label>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{tc('field.class')}</label>
                             <select
                                 className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-white"
                                 value={selectedExamClass}
@@ -1769,7 +1788,7 @@ export default function ReportsDashboard() {
                                     setAvailableSections(cls ? cls.sections : []);
                                 }}
                             >
-                                <option value="">All Classes</option>
+                                <option value="">{t('filter.allClasses')}</option>
                                 {classes.map((cls: any) => (
                                     <option key={cls.id} value={cls.id.toString()}>{cls.name}</option>
                                 ))}
@@ -1777,13 +1796,13 @@ export default function ReportsDashboard() {
                         </div>
                         {selectedExamClass && availableSections.length > 0 && (
                             <div className="flex-1 min-w-37.5">
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Section</label>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{tc('field.section')}</label>
                                 <select 
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-white"
                                     value={selectedExamSection}
                                     onChange={(e) => setSelectedExamSection(e.target.value)}
                                 >
-                                    <option value="">All Sections</option>
+                                    <option value="">{t('filter.allSections')}</option>
                                     {availableSections.map((sec: any) => (
                                         <option key={sec.id} value={sec.id.toString()}>{sec.name}</option>
                                     ))}
@@ -1794,7 +1813,7 @@ export default function ReportsDashboard() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                            <h2 className="text-lg font-bold text-slate-800 mb-4">Average Marks by Class</h2>
+                            <h2 className="text-lg font-bold text-slate-800 mb-4">{t('exams.avgByClass')}</h2>
                             <div className="h-72">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={examClassAvg}>
@@ -1802,7 +1821,7 @@ export default function ReportsDashboard() {
                                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={CHART_TICK} />
                                         <YAxis axisLine={false} tickLine={false} tick={CHART_TICK} domain={[0, 100]} />
                                         <Tooltip {...CHART_TOOLTIP} formatter={(val: any) => `${val}%`} cursor={CHART_CURSOR} />
-                                        <Bar dataKey="avg" name="Average %" fill={SERIES.brand} radius={[4,4,0,0]} />
+                                        <Bar dataKey="avg" name={t('exams.averagePercent')} fill={SERIES.brand} radius={[4,4,0,0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
@@ -1811,18 +1830,18 @@ export default function ReportsDashboard() {
                         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                             <div className="p-5 border-b border-gray-200 flex justify-between items-center">
                                 <div>
-                                    <h2 className="text-lg font-bold text-slate-800">Top Performers / Highest Marks</h2>
-                                    <p className="text-sm text-gray-500">Highest scores per subject</p>
+                                    <h2 className="text-lg font-bold text-slate-800">{t('exams.topPerformers')}</h2>
+                                    <p className="text-sm text-gray-500">{t('exams.topPerformersHint')}</p>
                                 </div>
                             </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm text-left text-gray-600">
                                     <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-gray-200">
                                         <tr>
-                                            <th className="px-5 py-3 font-semibold">Subject</th>
-                                            <th className="px-5 py-3 font-semibold">Class</th>
-                                            <th className="px-5 py-3 font-semibold">Student Name</th>
-                                            <th className="px-5 py-3 font-semibold text-right">Highest %</th>
+                                            <th className="px-5 py-3 font-semibold">{tc('field.subject')}</th>
+                                            <th className="px-5 py-3 font-semibold">{tc('field.class')}</th>
+                                            <th className="px-5 py-3 font-semibold">{t('column.studentName')}</th>
+                                            <th className="px-5 py-3 font-semibold text-right">{t('exams.highestPercent')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1837,7 +1856,7 @@ export default function ReportsDashboard() {
                                     </tbody>
                                 </table>
                                 {topPerformers.length === 0 && (
-                                    <div className="p-4 text-center text-gray-500">No score records found.</div>
+                                    <div className="p-4 text-center text-gray-500">{t('exams.noScores')}</div>
                                 )}
                             </div>
                         </div>
@@ -1851,13 +1870,13 @@ export default function ReportsDashboard() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                             <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-                                <h2 className="text-lg font-bold text-slate-800">Average Attendance by Class</h2>
+                                <h2 className="text-lg font-bold text-slate-800">{t('attendance.avgByClass')}</h2>
                                 <select 
                                     className="border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50 mr-2"
                                     value={attendanceSession}
                                     onChange={(e) => setAttendanceSession(e.target.value)}
                                 >
-                                    <option value="">Select Session</option>
+                                    <option value="">{t('filter.selectSession')}</option>
                                     {academicSessions.map(session => (
                                         <option key={session.id} value={session.id.toString()}>{session.name}</option>
                                     ))}
@@ -1867,19 +1886,10 @@ export default function ReportsDashboard() {
                                     value={attendanceMonth}
                                     onChange={(e) => setAttendanceMonth(e.target.value)}
                                 >
-                                    <option value="">Whole Year</option>
-                                    <option value="4">April</option>
-                                    <option value="5">May</option>
-                                    <option value="6">June</option>
-                                    <option value="7">July</option>
-                                    <option value="8">August</option>
-                                    <option value="9">September</option>
-                                    <option value="10">October</option>
-                                    <option value="11">November</option>
-                                    <option value="12">December</option>
-                                    <option value="1">January</option>
-                                    <option value="2">February</option>
-                                    <option value="3">March</option>
+                                    <option value="">{t('attendance.wholeYear')}</option>
+                                    {SESSION_MONTHS.map((m) => (
+                                        <option key={m} value={m}>{monthLabel(m)}</option>
+                                    ))}
                                 </select>
                             </div>
                             {/* Grow with the class count so many classes don't squish the bars. */}
@@ -1890,7 +1900,7 @@ export default function ReportsDashboard() {
                                         <XAxis type="number" domain={[0, 100]} axisLine={false} tickLine={false} tick={CHART_TICK} />
                                         <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={CHART_TICK} width={80} />
                                         <Tooltip {...CHART_TOOLTIP} formatter={(val: any) => `${val}%`} cursor={CHART_CURSOR} />
-                                        <Bar dataKey="attendance" name="Attendance %" fill={SERIES.settled} radius={[0,4,4,0]} />
+                                        <Bar dataKey="attendance" name={t('attendance.attendancePercent')} fill={SERIES.settled} radius={[0,4,4,0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
@@ -1899,9 +1909,9 @@ export default function ReportsDashboard() {
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                             <div className="flex justify-between items-start mb-3 flex-wrap gap-4">
                                 <div>
-                                    <h2 className="text-lg font-bold text-slate-800">School-Wide Daily Trend</h2>
+                                    <h2 className="text-lg font-bold text-slate-800">{t('attendance.dailyTrend')}</h2>
                                     <p className="text-xs text-slate-500 mt-0.5">
-                                        Bars show what % of the school marked attendance. Line shows % present among those marked.
+                                        {t('attendance.dailyTrendHint')}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -1911,7 +1921,7 @@ export default function ReportsDashboard() {
                                             onChange={(v) => setAttendanceFromDate(v)}
                                         />
                                     </div>
-                                    <span className="text-slate-500 text-sm">to</span>
+                                    <span className="text-slate-500 text-sm">{t('filter.to')}</span>
                                     <div className="w-40">
                                         <AppDatePicker
                                             value={attendanceToDate}
@@ -1925,11 +1935,20 @@ export default function ReportsDashboard() {
                                 const lowCoverage = latest.coveragePercent < 50;
                                 return (
                                     <p className={`text-xs mb-3 ${lowCoverage ? 'text-amber-600 font-medium' : 'text-slate-500'}`}>
-                                        {lowCoverage && '⚠ '}Latest ({latest.date}): {latest.marked}/{latest.totalStudents} students marked
-                                        <span className="font-semibold"> ({latest.coveragePercent}%)</span>
+                                        {lowCoverage && '⚠ '}
+                                        {t.rich('attendance.latest', {
+                                            date: latest.date,
+                                            marked: latest.marked,
+                                            total: latest.totalStudents,
+                                            coverage: latest.coveragePercent,
+                                            b: (c) => <span className="font-semibold">{c}</span>,
+                                        })}
                                         {latest.attendancePercent !== null && (
                                             <>
-                                              · <span className="font-semibold">{latest.attendancePercent}%</span> present
+                                              {' '}{t.rich('attendance.latestPresent', {
+                                                  percent: latest.attendancePercent,
+                                                  b: (c) => <span className="font-semibold">{c}</span>,
+                                              })}
                                             </>
                                         )}
                                     </p>
@@ -1946,11 +1965,11 @@ export default function ReportsDashboard() {
                                         {/* Coverage is the context the rate is read against, so it
                                             stays a pale fill behind the line rather than a second
                                             competing series. */}
-                                        <Bar dataKey="coveragePercent" name="School coverage" fill={SERIES_CONTEXT_SOFT} radius={[4, 4, 0, 0]} barSize={16} />
+                                        <Bar dataKey="coveragePercent" name={t('attendance.schoolCoverage')} fill={SERIES_CONTEXT_SOFT} radius={[4, 4, 0, 0]} barSize={16} />
                                         <Line
                                             type="monotone"
                                             dataKey="attendancePercent"
-                                            name="Attendance (marked)"
+                                            name={t('attendance.attendanceMarked')}
                                             stroke={SERIES.brand}
                                             strokeWidth={3}
                                             dot={{r: 4, fill: SERIES.brand}}
@@ -1976,14 +1995,14 @@ export default function ReportsDashboard() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                             <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-                                <h2 className="text-lg font-bold text-slate-800">Student Enrollment by Class</h2>
+                                <h2 className="text-lg font-bold text-slate-800">{t('students.enrollmentByClass')}</h2>
                                 <div className="flex items-center gap-2">
                                     <select 
                                         className="border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                         value={enrollmentFromSession}
                                         onChange={(e) => setEnrollmentFromSession(e.target.value)}
                                     >
-                                        <option value="">Filter Session</option>
+                                        <option value="">{t('students.filterSession')}</option>
                                         {academicSessions.map(session => (
                                             <option key={session.id} value={session.id.toString()}>{session.name}</option>
                                         ))}
@@ -1997,7 +2016,7 @@ export default function ReportsDashboard() {
                                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={CHART_TICK} />
                                         <YAxis axisLine={false} tickLine={false} tick={CHART_TICK} />
                                         <Tooltip {...CHART_TOOLTIP} cursor={CHART_CURSOR} />
-                                        <Bar dataKey="students" name="Enrolled Students" fill={SERIES.brand} radius={[4,4,0,0]} />
+                                        <Bar dataKey="students" name={t('students.enrolledStudents')} fill={SERIES.brand} radius={[4,4,0,0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
@@ -2005,25 +2024,25 @@ export default function ReportsDashboard() {
 
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                             <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-                                <h2 className="text-lg font-bold text-slate-800">New Admissions Trend</h2>
+                                <h2 className="text-lg font-bold text-slate-800">{t('students.admissionsTrend')}</h2>
                                 <div className="flex items-center gap-2">
                                     <select 
                                         className="w-32 border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                         value={admissionsFromSession}
                                         onChange={(e) => setAdmissionsFromSession(e.target.value)}
                                     >
-                                        <option value="">From Session</option>
+                                        <option value="">{t('students.fromSession')}</option>
                                         {academicSessions.map(session => (
                                             <option key={session.id} value={session.id.toString()}>{session.name}</option>
                                         ))}
                                     </select>
-                                    <span className="text-slate-500 text-sm">to</span>
+                                    <span className="text-slate-500 text-sm">{t('filter.to')}</span>
                                     <select 
                                         className="w-32 border-gray-300 rounded-lg shadow-sm focus:ring-brand/40 focus:border-brand text-sm p-2 bg-gray-50"
                                         value={admissionsToSession}
                                         onChange={(e) => setAdmissionsToSession(e.target.value)}
                                     >
-                                        <option value="">To Session</option>
+                                        <option value="">{t('students.toSession')}</option>
                                         {academicSessions.map(session => (
                                             <option key={session.id} value={session.id.toString()}>{session.name}</option>
                                         ))}
@@ -2037,7 +2056,7 @@ export default function ReportsDashboard() {
                                         <XAxis dataKey="year" axisLine={false} tickLine={false} tick={CHART_TICK} />
                                         <YAxis axisLine={false} tickLine={false} tick={CHART_TICK} />
                                         <Tooltip {...CHART_TOOLTIP} />
-                                        <Line type="monotone" dataKey="admissions" name="New Admissions" stroke={SERIES.brand} strokeWidth={3} dot={{r: 4, fill: SERIES.brand}} />
+                                        <Line type="monotone" dataKey="admissions" name={t('students.newAdmissions')} stroke={SERIES.brand} strokeWidth={3} dot={{r: 4, fill: SERIES.brand}} />
                                     </LineChart>
                                 </ResponsiveContainer>
                             </div>
@@ -2051,7 +2070,7 @@ export default function ReportsDashboard() {
                 <div className="space-y-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                            <h2 className="text-lg font-bold text-slate-800 mb-4">Staff Distribution</h2>
+                            <h2 className="text-lg font-bold text-slate-800 mb-4">{t('staff.distribution')}</h2>
                             <div className="h-72">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
@@ -2077,19 +2096,19 @@ export default function ReportsDashboard() {
 
                         {hrPortalEnabled && (
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                                <h2 className="text-lg font-bold text-slate-800 mb-4">Staff Attendance Today</h2>
+                                <h2 className="text-lg font-bold text-slate-800 mb-4">{t('staff.attendanceToday')}</h2>
                                 <div className="h-72">
                                     {staffAttendanceError ? (
                                         <div className="h-full flex items-center justify-center text-center text-sm text-rose-600 px-4">
-                                            Couldn&apos;t load staff attendance. Refresh to try again.
+                                            {t('staff.loadFailed')}
                                         </div>
                                     ) : !staffAttendanceSummary ? (
                                         <div className="h-full flex items-center justify-center text-sm text-slate-400">
-                                            Loading…
+                                            {tc('state.loading')}
                                         </div>
                                     ) : staffAttendanceChartData.length === 0 ? (
                                         <div className="h-full flex items-center justify-center text-sm text-slate-500">
-                                            No attendance recorded yet today.
+                                            {t('staff.noneToday')}
                                         </div>
                                     ) : (
                                         <ResponsiveContainer width="100%" height="100%">
@@ -2123,7 +2142,7 @@ export default function ReportsDashboard() {
                 <div className="space-y-6">
                     {/* Year selector */}
                     <div className="flex items-center gap-3">
-                        <label className="text-sm font-medium text-slate-700">Year</label>
+                        <label className="text-sm font-medium text-slate-700">{t('salary.year')}</label>
                         <select
                             value={salaryYear}
                             onChange={(e) => setSalaryYear(Number(e.target.value))}
@@ -2136,22 +2155,22 @@ export default function ReportsDashboard() {
                     </div>
 
                     {salaryData.length === 0 ? (
-                        <div className="text-center py-12 text-slate-500 text-sm">No finalized payroll runs found for {salaryYear}.</div>
+                        <div className="text-center py-12 text-slate-500 text-sm">{t('salary.noRuns', { year: salaryYear })}</div>
                     ) : (
                         <>
                             {/* Bar chart */}
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                                <h2 className="text-lg font-bold text-slate-800 mb-4">Monthly Payroll Summary — {salaryYear}</h2>
+                                <h2 className="text-lg font-bold text-slate-800 mb-4">{t('salary.monthlySummary', { year: salaryYear })}</h2>
                                 <div className="h-72">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={salaryData}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={CHART_GRID} />
                                             <XAxis dataKey="monthName" axisLine={false} tickLine={false} tick={CHART_TICK} />
                                             <YAxis axisLine={false} tickLine={false} tick={CHART_TICK} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
-                                            <Tooltip {...CHART_TOOLTIP} formatter={(v: any) => `₹${Number(v).toLocaleString('en-IN')}`} cursor={CHART_CURSOR} />
+                                            <Tooltip {...CHART_TOOLTIP} formatter={(v: any) => `₹${Number(v).toLocaleString(intlLocale)}`} cursor={CHART_CURSOR} />
                                             <Legend />
-                                            <Bar dataKey="totalGross" name="Gross Earnings" fill={SERIES.brand} radius={[4, 4, 0, 0]} />
-                                            <Bar dataKey="totalNetPay" name="Net Pay" fill={SERIES.settled} radius={[4, 4, 0, 0]} />
+                                            <Bar dataKey="totalGross" name={t('salary.grossEarnings')} fill={SERIES.brand} radius={[4, 4, 0, 0]} />
+                                            <Bar dataKey="totalNetPay" name={t('salary.netPay')} fill={SERIES.settled} radius={[4, 4, 0, 0]} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -2162,11 +2181,11 @@ export default function ReportsDashboard() {
                                 <table className="min-w-full text-sm">
                                     <thead className="bg-slate-50 text-slate-600 text-xs uppercase">
                                         <tr>
-                                            <th className="px-4 py-3 text-left">Month</th>
-                                            <th className="px-4 py-3 text-right">Headcount</th>
-                                            <th className="px-4 py-3 text-right">Gross Earnings</th>
-                                            <th className="px-4 py-3 text-right">Total Deductions</th>
-                                            <th className="px-4 py-3 text-right">Net Pay</th>
+                                            <th className="px-4 py-3 text-left">{t('salary.month')}</th>
+                                            <th className="px-4 py-3 text-right">{t('salary.headcount')}</th>
+                                            <th className="px-4 py-3 text-right">{t('salary.grossEarnings')}</th>
+                                            <th className="px-4 py-3 text-right">{t('salary.totalDeductions')}</th>
+                                            <th className="px-4 py-3 text-right">{t('salary.netPay')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -2174,9 +2193,9 @@ export default function ReportsDashboard() {
                                             <tr key={`${row.year}-${row.month}`} className="hover:bg-slate-50">
                                                 <td className="px-4 py-3 font-medium text-slate-900">{row.monthName} {row.year}</td>
                                                 <td className="px-4 py-3 text-right">{row.headcount}</td>
-                                                <td className="px-4 py-3 text-right">₹{Number(row.totalGross).toLocaleString('en-IN')}</td>
-                                                <td className="px-4 py-3 text-right text-red-600">₹{Number(row.totalDeductions).toLocaleString('en-IN')}</td>
-                                                <td className="px-4 py-3 text-right font-semibold text-green-700">₹{Number(row.totalNetPay).toLocaleString('en-IN')}</td>
+                                                <td className="px-4 py-3 text-right">₹{Number(row.totalGross).toLocaleString(intlLocale)}</td>
+                                                <td className="px-4 py-3 text-right text-red-600">₹{Number(row.totalDeductions).toLocaleString(intlLocale)}</td>
+                                                <td className="px-4 py-3 text-right font-semibold text-green-700">₹{Number(row.totalNetPay).toLocaleString(intlLocale)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -2203,7 +2222,7 @@ export default function ReportsDashboard() {
                                 <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                 </svg>
-                                Send Fee Reminder Notification
+                                {t('notify.title')}
                             </h3>
                             <button onClick={() => setShowNotifModal(false)} className="text-slate-400 hover:text-slate-600 transition">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -2212,20 +2231,20 @@ export default function ReportsDashboard() {
                         <div className="p-6 space-y-5">
                             <div className="bg-indigo-50 text-indigo-700 p-3 rounded-lg text-sm border border-indigo-100 flex gap-3 items-center">
                                 <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                <span>Will notify parents of <strong>{selectedPendingStudents.length}</strong> selected student(s).</span>
+                                <span>{t.rich('notify.willNotify', { count: selectedPendingStudents.length, b: (c) => <strong>{c}</strong> })}</span>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-1">Notification Title</label>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1">{t('notify.notificationTitle')}</label>
                                 <input type="text" value="Fee Payment Reminder" disabled className="w-full border-slate-200 bg-slate-50 text-slate-500 rounded-lg p-2.5 text-sm" />
                             </div>
 
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <label className="text-sm font-semibold text-slate-700">Message Content</label>
+                                    <label className="text-sm font-semibold text-slate-700">{t('notify.messageContent')}</label>
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input type="checkbox" checked={useCustomMessage} onChange={(e) => setUseCustomMessage(e.target.checked)} className="rounded border-slate-300 text-indigo-600 focus:ring-brand/40" />
-                                        <span className="text-xs text-slate-600 font-medium">Use custom message</span>
+                                        <span className="text-xs text-slate-600 font-medium">{t('notify.useCustom')}</span>
                                     </label>
                                 </div>
                                 
@@ -2233,7 +2252,7 @@ export default function ReportsDashboard() {
                                     <textarea
                                         value={customNotifMessage}
                                         onChange={(e) => setCustomNotifMessage(e.target.value)}
-                                        placeholder="Write your custom reminder message here..."
+                                        placeholder={t('notify.customPlaceholder')}
                                         className="w-full border-slate-300 rounded-lg p-3 text-sm focus:ring-brand/40 focus:border-brand min-h-30"
                                     />
                                 ) : (
@@ -2249,7 +2268,7 @@ export default function ReportsDashboard() {
                                 disabled={sendingNotif}
                                 className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-200 bg-slate-100 rounded-lg transition"
                             >
-                                Cancel
+                                {tc('action.cancel')}
                             </button>
                             <button
                                 onClick={handleSendNotification}
@@ -2257,7 +2276,7 @@ export default function ReportsDashboard() {
                                 className="px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow transition flex items-center gap-2 disabled:opacity-50"
                             >
                                 {sendingNotif && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                                {sendingNotif ? 'Sending...' : 'Send Notification'}
+                                {sendingNotif ? t('notify.sending') : t('notify.send')}
                             </button>
                         </div>
                     </div>

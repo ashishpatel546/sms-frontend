@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE } from "@/i18n/config";
 import FeatureNotAvailableNotice from "@/components/parent/FeatureNotAvailableNotice";
 import Link from "next/link";
 import { PieChart, Pie, Tooltip, ResponsiveContainer } from "recharts";
@@ -24,7 +26,7 @@ import { AiToolsSection } from "./components/AiToolsSection";
 import { IdCardSection } from "./components/IdCardSection";
 import { ActivitiesSection } from "./components/ActivitiesSection";
 import { SectionSkeleton, StudentRecordSkeleton } from "@/components/ui/Skeletons";
-import { ATTENDANCE_LEGEND, ATTENDANCE_TONE, attendanceCellStyle } from "@/lib/attendanceColors";
+import { ATTENDANCE_LEGEND, ATTENDANCE_TONE, attendanceCellStyle, type AttendanceStatus } from "@/lib/attendanceColors";
 import { InitialsAvatar } from "@/components/ui/InitialsAvatar";
 import { createSubjectColorMap } from "@/lib/subjectColors";
 import { AttendanceBottomSheet } from "./components/AttendanceBottomSheet";
@@ -46,8 +48,6 @@ import {
 import { PageBody, PageHeader, PageShell } from "@/components/ui/PageHeader";
 import { StatusChip } from "@/components/ui/StatusChip";
 
-const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
 const LEAVE_STATUS_PIGMENT: Record<string, 'attn' | 'info' | 'success' | 'danger' | 'neutral'> = {
     PENDING: 'attn',
     FIRST_APPROVED: 'info',
@@ -55,18 +55,11 @@ const LEAVE_STATUS_PIGMENT: Record<string, 'attn' | 'info' | 'success' | 'danger
     REJECTED: 'danger',
     CANCELLED: 'neutral',
 };
-const LEAVE_STATUS_LABELS: Record<string, string> = {
-    PENDING: "Pending",
-    FIRST_APPROVED: "1st Approved",
-    APPROVED: "Approved",
-    REJECTED: "Rejected",
-    CANCELLED: "Cancelled",
-};
-const LEAVE_TYPE_LABELS: Record<string, string> = {
-    SICK_LEAVE: "Sick Leave",
-    CASUAL_LEAVE: "Casual Leave",
-    OTHER_LEAVE: "Other Leave",
-};
+/** Leave statuses / types with a translated label (`parent.student.leaves.status.*` / `.type.*`); anything else shows as sent. */
+const LEAVE_STATUS_KEYS = ["PENDING", "FIRST_APPROVED", "APPROVED", "REJECTED", "CANCELLED"] as const;
+const LEAVE_TYPE_KEYS = ["SICK_LEAVE", "CASUAL_LEAVE", "OTHER_LEAVE"] as const;
+/** Weekday initials for the attendance calendar header, Sunday first. */
+const WEEKDAY_KEYS = ["su", "mo", "tu", "we", "th", "fr", "sa"] as const;
 const fmtDate = (d: string) => { const [y, m, day] = d.split("-"); return `${day}/${m}/${y}`; };
 
 type ActiveSection = "home" | "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework" | "pickup" | "id-card" | "leaves" | "library" | "ai-tutor" | "activities";
@@ -111,6 +104,17 @@ export default function StudentDashboardPage() {
     const params = useParams();
     const router = useRouter();
     const studentId = params.id;
+    const t = useTranslations("parent.student");
+    const tc = useTranslations("common");
+    const ta = useTranslations("attendance");
+    const tp = useTranslations("product");
+    const locale = useLocale();
+    const intlLocale = INTL_LOCALE[locale as keyof typeof INTL_LOCALE];
+
+    const leaveStatusLabel = (s: string) =>
+        (LEAVE_STATUS_KEYS as readonly string[]).includes(s) ? t(`leaves.status.${s as (typeof LEAVE_STATUS_KEYS)[number]}`) : s;
+    const leaveTypeLabel = (s: string) =>
+        (LEAVE_TYPE_KEYS as readonly string[]).includes(s) ? t(`leaves.type.${s as (typeof LEAVE_TYPE_KEYS)[number]}`) : s;
 
     // QR Codes tab: pickup (existing, with history) vs visiting (stateless, no history)
     const [qrMode, setQrMode] = useState<"pickup" | "visit">("pickup");
@@ -327,11 +331,11 @@ export default function StudentDashboardPage() {
     const handleReply = async () => {
         if (!replyLeaveId) return;
         if (!replyNote.trim() && !replyFile) {
-            toast.error("Please write a message or attach a document.");
+            toast.error(t("leaves.replyEmpty"));
             return;
         }
         if (replyFile && replyFile.size > 5 * 1024 * 1024) {
-            toast.error("File is too large. Maximum size is 5 MB.");
+            toast.error(t("leaves.fileTooLarge"));
             return;
         }
         setReplySending(true);
@@ -345,15 +349,15 @@ export default function StudentDashboardPage() {
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
-                throw new Error(err.message || "Failed to send reply");
+                throw new Error(err.message || t("leaves.replyFailed"));
             }
-            toast.success("Reply sent!");
+            toast.success(t("leaves.replySent"));
             setReplyLeaveId(null);
             setReplyNote("");
             setReplyFile(null);
             fetchLeaves(leavesPage);
         } catch (err: any) {
-            toast.error(err.message || "Failed to send reply");
+            toast.error(err.message || t("leaves.replyFailed"));
         } finally {
             setReplySending(false);
         }
@@ -366,9 +370,9 @@ export default function StudentDashboardPage() {
                 const { url } = await res.json();
                 setViewerDoc({ url, fileName: doc.fileName, mimeType: doc.mimeType });
             } else {
-                toast.error("Failed to get document URL");
+                toast.error(t("leaves.docOpenFailed"));
             }
-        } catch { toast.error("Failed to get document URL"); }
+        } catch { toast.error(t("leaves.docOpenFailed")); }
     };
 
     const handleOpenWorksheet = async (h: { id: string; worksheetFileName: string; worksheetMimeType: string | null }) => {
@@ -378,9 +382,9 @@ export default function StudentDashboardPage() {
                 const { url } = await res.json();
                 setViewerDoc({ url, fileName: h.worksheetFileName, mimeType: h.worksheetMimeType || "" });
             } else {
-                toast.error("Failed to open worksheet");
+                toast.error(t("homework.worksheetFailed"));
             }
-        } catch { toast.error("Failed to open worksheet"); }
+        } catch { toast.error(t("homework.worksheetFailed")); }
     };
 
     const handleCancelLeave = async () => {
@@ -394,13 +398,13 @@ export default function StudentDashboardPage() {
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
-                throw new Error(err.message || "Cancellation failed");
+                throw new Error(err.message || t("leaves.cancelFailed"));
             }
-            toast.success("Leave cancelled");
+            toast.success(t("leaves.cancelled"));
             setCancelLeaveId(null);
             fetchLeaves(leavesPage);
         } catch (err: any) {
-            toast.error(err.message || "Failed to cancel leave");
+            toast.error(err.message || t("leaves.cancelFailed"));
         } finally {
             setCancelLeaving(false);
         }
@@ -496,17 +500,17 @@ export default function StudentDashboardPage() {
 
             if (!res.ok) {
                 const errData = await res.json();
-                throw new Error(errData.message || "Failed to initiate payment");
+                throw new Error(errData.message || t("fees.payInitFailed"));
             }
 
             const order = await res.json();
 
             // 2. Load the official Razorpay script into the browser
             const scriptLoaded = await loadRazorpayScript();
-            if (!scriptLoaded) throw new Error("Failed to load Razorpay SDK. Check your connection.");
+            if (!scriptLoaded) throw new Error(t("fees.razorpayLoadFailed"));
 
             const rzpKey = order.keyId as string | undefined;
-            if (!rzpKey) throw new Error("Razorpay is not configured for this school. Please contact the school administration.");
+            if (!rzpKey) throw new Error(t("fees.razorpayNotConfigured"));
 
             // 3. Configure the checkout popup
             const baseUrl = getEnv('FRONTEND_URL') || window.location.origin;
@@ -514,8 +518,8 @@ export default function StudentDashboardPage() {
                 key: rzpKey,
                 amount: order.amount,
                 currency: order.currency,
-                name: "School Management System",
-                description: `Fee Payment for ${keys.length} months`,
+                name: tp("tagline"),
+                description: t("fees.razorpayDescription", { count: keys.length }),
                 order_id: order.id,
                 prefill: {
                     name: `${info.firstName} ${info.lastName}`,
@@ -531,7 +535,7 @@ export default function StudentDashboardPage() {
 
             rzpObj.on('payment.failed', function (response: any) {
                 // Redirect user to a failure verification page
-                window.location.href = `${baseUrl}/parent-dashboard/payment-failure?order_id=${order.id}&error=${encodeURIComponent(response.error.description || "Unknown Error")}`;
+                window.location.href = `${baseUrl}/parent-dashboard/payment-failure?order_id=${order.id}&error=${encodeURIComponent(response.error.description || t("fees.unknownError"))}`;
             });
 
             // Open the popup
@@ -542,7 +546,7 @@ export default function StudentDashboardPage() {
 
         } catch (err: any) {
             console.error(err);
-            toast.error(err.message || "Failed to initiate payment");
+            toast.error(err.message || t("fees.payInitFailed"));
             setPayProcessing(false);
         }
     };
@@ -560,7 +564,7 @@ export default function StudentDashboardPage() {
         ["ABSENT", attendance.absent],
         ["HOLIDAY", attendance.holiday],
     ] as const).map(([status, value]) => ({
-        name: ATTENDANCE_TONE[status].label,
+        name: ta(ATTENDANCE_TONE[status].labelKey),
         value: value || 0,
         color: ATTENDANCE_TONE[status].fill,
         fill: ATTENDANCE_TONE[status].fill,
@@ -569,6 +573,7 @@ export default function StudentDashboardPage() {
     // Calendar logic
     const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
     const firstDayOfMonth = new Date(currentYear, currentMonth - 1, 1).getDay();
+    const monthLabel = new Date(currentYear, currentMonth - 1, 1).toLocaleDateString(intlLocale, { month: 'long', year: 'numeric' });
     const calendarDays = Array.from({ length: 42 }, (_, i) => {
         const dayNumber = i - firstDayOfMonth + 1;
         if (dayNumber > 0 && dayNumber <= daysInMonth) {
@@ -633,13 +638,13 @@ export default function StudentDashboardPage() {
             {siblings.length > 0 && (
                 <div className="animate-fade-in">
                     <div className="mb-2 flex items-center justify-between gap-3 px-0.5">
-                        <p className="eyebrow">Switch child</p>
+                        <p className="eyebrow">{t("switchChild")}</p>
                         <Link
                             href="/parent-dashboard"
                             className="inline-flex items-center gap-1 text-[12px] font-medium text-ink-muted transition-colors hover:text-brand"
                         >
                             <ChevronLeft className="size-3.5" aria-hidden />
-                            All children
+                            {t("allChildren")}
                         </Link>
                     </div>
                     <div className="flex gap-2.5 overflow-x-auto pb-1 no-scrollbar snap-x snap-mandatory">
@@ -675,7 +680,7 @@ export default function StudentDashboardPage() {
                                             {s.firstName} {s.lastName}
                                         </p>
                                         <p className="mt-0.5 truncate text-[11px] leading-tight text-ink-muted">
-                                            {[s.className, s.sectionName ? `Sec ${s.sectionName}` : null].filter(Boolean).join(" · ")}
+                                            {[s.className, s.sectionName ? t("secShort", { section: s.sectionName }) : null].filter(Boolean).join(" · ")}
                                         </p>
                                     </div>
                                     {isActive && <div className="size-2 shrink-0 rounded-full bg-brand" />}
@@ -752,18 +757,18 @@ export default function StudentDashboardPage() {
                             {/* Academic year selector + summary */}
                             <div className="flex flex-wrap items-center justify-between gap-3 bg-white/80 backdrop-blur-sm border border-slate-200 p-4 rounded-2xl">
                         <div className="flex items-center gap-3">
-                            <label className="text-ink-muted text-sm font-medium">Academic Year:</label>
+                            <label className="text-ink-muted text-sm font-medium">{t("fees.academicYear")}</label>
                             <select value={academicSessionId || ""} onChange={handleSessionChange}
                                 className="bg-slate-100 border border-slate-200 text-ink text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand">
-                                {sessions.map(s => <option key={s.id} value={s.id}>{s.name} {s.isActive && "(Current)"}</option>)}
+                                {sessions.map(s => <option key={s.id} value={s.id}>{s.name} {s.isActive && t("currentSession")}</option>)}
                             </select>
                         </div>
                         <div className="flex flex-wrap gap-3 text-sm">
                             <span className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg border border-emerald-500/20 font-medium">
-                                Paid Total: ₹{Number(fees?.totalPaid || 0).toLocaleString()}
+                                {t("fees.paidTotal", { amount: Number(fees?.totalPaid || 0).toLocaleString() })}
                             </span>
                             <span className="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg border border-red-500/20 font-medium">
-                                Due Total: ₹{Number(fees?.totalDue || 0).toLocaleString()}
+                                {t("fees.dueTotal", { amount: Number(fees?.totalDue || 0).toLocaleString() })}
                             </span>
                         </div>
                     </div>
@@ -774,11 +779,11 @@ export default function StudentDashboardPage() {
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="text-ink font-bold flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-red-400 inline-block"></span>
-                                    Pending Dues ({allDueItems.length})
+                                    {t("fees.pendingDues", { count: allDueItems.length })}
                                 </h2>
                                 {onlinePaymentEnabled && allDueItems.length > 0 && (
                                     <button onClick={() => setSelectedMonths2Pay(allDueItems.map((m: any) => m.key))} className="text-xs text-brand hover:text-brand-light font-medium">
-                                        Select All
+                                        {tc("action.selectAll")}
                                     </button>
                                 )}
                             </div>
@@ -787,8 +792,8 @@ export default function StudentDashboardPage() {
                                 path depends on the school having enabled it. */}
                             {!onlinePaymentEnabled && allDueItems.length > 0 && (
                                 <FeatureNotAvailableNotice
-                                    title="Online fee payment"
-                                    description="You would be able to pay these dues from here by card or UPI."
+                                    title={t("fees.onlineFeature")}
+                                    description={t("fees.onlineFeatureDescription")}
                                     className="mb-4"
                                 />
                             )}
@@ -796,8 +801,8 @@ export default function StudentDashboardPage() {
                             {allDueItems.length === 0 ? (
                                 <div className="text-center py-12 flex-1 flex flex-col justify-center">
                                     <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-accent-success-tint text-accent-success-deep"><CheckCircle2 className="size-6" aria-hidden /></div>
-                                    <p className="text-emerald-400 font-semibold text-base">All fees cleared!</p>
-                                    <p className="text-slate-500 text-sm mt-1">No pending dues for this session.</p>
+                                    <p className="text-emerald-400 font-semibold text-base">{t("fees.allCleared")}</p>
+                                    <p className="text-slate-500 text-sm mt-1">{t("fees.noDues")}</p>
                                 </div>
                             ) : (
                                 <div className="space-y-2 overflow-y-auto max-h-87.5 pr-2 custom-scrollbar">
@@ -816,20 +821,20 @@ export default function StudentDashboardPage() {
                                                         )}
                                                         <div>
                                                             <span className="text-amber-700 text-sm font-semibold">{m.label}</span>
-                                                            <span className="ml-2 text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold uppercase tracking-wider">Annual</span>
+                                                            <span className="ml-2 text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold uppercase tracking-wider">{t("fees.annual")}</span>
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-3">
                                                         <div className="text-right">
                                                             <div className="text-ink font-bold text-sm">₹{Number(m.amount).toLocaleString()}</div>
                                                             {m.status === 'PARTIAL' && m.totalPaid > 0 && (
-                                                                <div className="text-yellow-400 text-[10px]">₹{Number(m.totalPaid).toLocaleString()} paid of ₹{Number(m.totalDue).toLocaleString()}</div>
+                                                                <div className="text-yellow-400 text-[10px]">{t("fees.paidOf", { paid: Number(m.totalPaid).toLocaleString(), total: Number(m.totalDue).toLocaleString() })}</div>
                                                             )}
                                                         </div>
                                                         {m.status === 'PARTIAL' ? (
-                                                            <span className="text-yellow-400 text-[10px] px-2 py-0.5 bg-yellow-500/10 rounded-full font-bold uppercase tracking-wider">Partial</span>
+                                                            <span className="text-yellow-400 text-[10px] px-2 py-0.5 bg-yellow-500/10 rounded-full font-bold uppercase tracking-wider">{t("fees.partial")}</span>
                                                         ) : (
-                                                            <span className="text-red-400 text-[10px] px-2 py-0.5 bg-red-500/10 rounded-full font-bold uppercase tracking-wider">Due</span>
+                                                            <span className="text-red-400 text-[10px] px-2 py-0.5 bg-red-500/10 rounded-full font-bold uppercase tracking-wider">{t("fees.due")}</span>
                                                         )}
                                                     </div>
                                                 </label>
@@ -843,13 +848,13 @@ export default function StudentDashboardPage() {
                                                         ))}
                                                         {m.discount > 0 && (
                                                             <div className="flex justify-between text-xs text-emerald-400/80">
-                                                                <span>Discount</span>
+                                                                <span>{t("fees.discount")}</span>
                                                                 <span>-₹{m.discount}</span>
                                                             </div>
                                                         )}
                                                         {m.lateFee > 0 && (
                                                             <div className="flex justify-between text-xs text-red-400/80">
-                                                                <span>Late Fee</span>
+                                                                <span>{t("fees.lateFee")}</span>
                                                                 <span>+₹{m.lateFee}</span>
                                                             </div>
                                                         )}
@@ -887,7 +892,7 @@ export default function StudentDashboardPage() {
                                                         }}
                                                         className="mt-2 ml-7 text-xs px-2.5 py-1 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 rounded-lg transition-colors border border-yellow-500/20 hover:border-yellow-500/40"
                                                     >
-                                                        View Partial Receipt
+                                                        {t("fees.viewPartialReceipt")}
                                                     </button>
                                                 )}
                                             </div>
@@ -911,15 +916,15 @@ export default function StudentDashboardPage() {
                                                     <div className="text-right">
                                                         <div className="text-ink font-bold text-sm">₹{Number(m.amount).toLocaleString()}</div>
                                                         {m.status === 'PARTIAL' && m.totalPaid > 0 && (
-                                                            <div className="text-yellow-400 text-[10px]">₹{Number(m.totalPaid).toLocaleString()} paid of ₹{Number(m.totalDue).toLocaleString()}</div>
+                                                            <div className="text-yellow-400 text-[10px]">{t("fees.paidOf", { paid: Number(m.totalPaid).toLocaleString(), total: Number(m.totalDue).toLocaleString() })}</div>
                                                         )}
                                                     </div>
                                                     {m.status === 'UPCOMING' ? (
-                                                        <span className="text-sky-400 text-[10px] px-2 py-0.5 bg-sky-500/10 rounded-full font-bold uppercase tracking-wider">Upcoming</span>
+                                                        <span className="text-sky-400 text-[10px] px-2 py-0.5 bg-sky-500/10 rounded-full font-bold uppercase tracking-wider">{t("fees.upcoming")}</span>
                                                     ) : m.status === 'PARTIAL' ? (
-                                                        <span className="text-yellow-400 text-[10px] px-2 py-0.5 bg-yellow-500/10 rounded-full font-bold uppercase tracking-wider">Partial</span>
+                                                        <span className="text-yellow-400 text-[10px] px-2 py-0.5 bg-yellow-500/10 rounded-full font-bold uppercase tracking-wider">{t("fees.partial")}</span>
                                                     ) : (
-                                                        <span className="text-red-400 text-[10px] px-2 py-0.5 bg-red-500/10 rounded-full font-bold uppercase tracking-wider">Due</span>
+                                                        <span className="text-red-400 text-[10px] px-2 py-0.5 bg-red-500/10 rounded-full font-bold uppercase tracking-wider">{t("fees.due")}</span>
                                                     )}
                                                 </div>
                                             </label>
@@ -933,13 +938,13 @@ export default function StudentDashboardPage() {
                                                     ))}
                                                     {m.discount > 0 && (
                                                         <div className="flex justify-between text-xs text-emerald-400/80">
-                                                            <span>Discount</span>
+                                                            <span>{t("fees.discount")}</span>
                                                             <span>-₹{m.discount}</span>
                                                         </div>
                                                     )}
                                                     {m.lateFee > 0 && (
                                                         <div className="flex justify-between text-xs text-red-400/80">
-                                                            <span>Late Fee</span>
+                                                            <span>{t("fees.lateFee")}</span>
                                                             <span>+₹{m.lateFee}</span>
                                                         </div>
                                                     )}
@@ -980,7 +985,7 @@ export default function StudentDashboardPage() {
                                                     }}
                                                     className="mt-2 ml-7 text-xs px-2.5 py-1 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 rounded-lg transition-colors border border-yellow-500/20 hover:border-yellow-500/40"
                                                 >
-                                                    View Partial Receipt
+                                                    {t("fees.viewPartialReceipt")}
                                                 </button>
                                             )}
                                         </div>
@@ -993,7 +998,7 @@ export default function StudentDashboardPage() {
                                 <div className="mt-4 pt-4 border-t border-slate-200">
                                     <div className="flex items-start gap-2 p-3 bg-sky-500/5 border border-sky-500/20 rounded-xl">
                                         <span className="text-sm">ℹ️</span>
-                                        <p className="text-sky-700 text-xs">Online payment is not available. Please pay at the school office.</p>
+                                        <p className="text-sky-700 text-xs">{t("fees.payAtOffice")}</p>
                                     </div>
                                 </div>
                             )}
@@ -1002,12 +1007,12 @@ export default function StudentDashboardPage() {
                             {onlinePaymentEnabled && selectedMonths2Pay.length > 0 && (
                                 <div className="mt-4 pt-4 border-t border-slate-200">
                                     <div className="flex items-center justify-between mb-3 text-sm">
-                                        <span className="text-slate-400">Selected ({selectedMonths2Pay.length} item{selectedMonths2Pay.length !== 1 ? 's' : ''})</span>
+                                        <span className="text-slate-400">{t("fees.selectedItems", { count: selectedMonths2Pay.length })}</span>
                                         <span className="text-ink font-bold text-xl">₹{selectedAmountTotal.toLocaleString()}</span>
                                     </div>
                                     <button onClick={handleConfirmPay}
                                         className="w-full py-3 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-ink font-semibold rounded-xl transition-all shadow-lg shadow-indigo-500/25">
-                                        Proceed to Pay
+                                        {t("fees.proceedToPay")}
                                     </button>
                                 </div>
                             )}
@@ -1017,10 +1022,10 @@ export default function StudentDashboardPage() {
                         <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-5 flex flex-col h-full">
                             <h2 className="text-ink font-bold mb-4 flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
-                                Payment History ({paidMonths.length + (paidOneTimeFee ? 1 : 0)})
+                                {t("fees.paymentHistory", { count: paidMonths.length + (paidOneTimeFee ? 1 : 0) })}
                             </h2>
                             {paidMonths.length === 0 && !paidOneTimeFee ? (
-                                <p className="text-slate-500 text-sm text-center py-12 flex-1 flex flex-col justify-center">No payment history found for {academicYearString}</p>
+                                <p className="text-slate-500 text-sm text-center py-12 flex-1 flex flex-col justify-center">{t("fees.noHistory", { session: academicYearString })}</p>
                             ) : (
                                 <div className="space-y-2 overflow-y-auto max-h-87.5 pr-2 custom-scrollbar">
                                     {/* Paid One-Time & Annual Fees at top */}
@@ -1030,7 +1035,7 @@ export default function StudentDashboardPage() {
                                             <div key={m.key} className="flex items-center gap-3 p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl">
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-amber-700 text-sm font-semibold">{m.label}</p>
-                                                    <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold uppercase tracking-wider">Annual</span>
+                                                    <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold uppercase tracking-wider">{t("fees.annual")}</span>
                                                 </div>
                                                 <div className="text-right whitespace-nowrap">
                                                     <div className="text-emerald-400 text-sm font-bold block mb-1">₹{(m.payments && m.payments.length > 1 ? m.payments.reduce((sum: number, p: any) => sum + Number(p.amountPaid || 0), 0) : Number(m.payment?.amountPaid || 0)).toLocaleString()}</div>
@@ -1062,7 +1067,7 @@ export default function StudentDashboardPage() {
                                                         }
                                                     }}
                                                         className="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-100 text-ink rounded-lg transition-colors border border-slate-200 hover:border-brand/40">
-                                                        Receipt
+                                                        {t("fees.receipt")}
                                                     </button>
                                                 </div>
                                             </div>
@@ -1106,7 +1111,7 @@ export default function StudentDashboardPage() {
                                                     }
                                                 }}
                                                     className="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-100 text-ink rounded-lg transition-colors border border-slate-200 hover:border-brand/40">
-                                                    Receipt
+                                                    {t("fees.receipt")}
                                                 </button>
                                             </div>
                                         </div>
@@ -1124,7 +1129,7 @@ export default function StudentDashboardPage() {
             {activeSection === "attendance" && (
                 <div id="tabpanel-attendance" role="tabpanel" aria-labelledby="tab-attendance" className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-6 animate-scale-in">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-                        <h2 className="text-ink font-bold text-lg">Attendance</h2>
+                        <h2 className="text-ink font-bold text-lg">{t("attendance.title")}</h2>
                         <div className="flex gap-2">
                             <AppMonthPicker
                                 value={attendanceMonth}
@@ -1136,10 +1141,10 @@ export default function StudentDashboardPage() {
                     {attendance && attendance.total > 0 ? (
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                             <div className="bg-slate-100/60 rounded-2xl p-5 border border-slate-200/50">
-                                <h3 className="text-ink font-semibold text-center mb-4">{MONTH_NAMES[currentMonth - 1]} {currentYear}</h3>
+                                <h3 className="text-ink font-semibold text-center mb-4">{monthLabel}</h3>
                                 <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
-                                        <div key={day} className="text-slate-400 text-xs font-medium py-1">{day}</div>
+                                    {WEEKDAY_KEYS.map(day => (
+                                        <div key={day} className="text-slate-400 text-xs font-medium py-1">{t(`attendance.weekday.${day}`)}</div>
                                     ))}
                                 </div>
                                 <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
@@ -1156,7 +1161,7 @@ export default function StudentDashboardPage() {
                                             const { className, style } = d.day ? attendanceCellStyle(d.status) : { className: 'bg-transparent border-transparent', style: undefined };
                                             return (
                                                 <div key={`${wIndex}-${i}`}
-                                                    title={d.day ? (d.status === 'SUNDAY' ? `${d.date}: Sunday (Weekly Holiday)` : d.status ? `${d.date}: ${d.status}` : d.date) : ''}
+                                                    title={d.day ? (d.status === 'SUNDAY' ? t("attendance.sundayTitle", { date: d.date }) : d.status ? `${d.date}: ${d.status in ATTENDANCE_TONE ? ta(ATTENDANCE_TONE[d.status as AttendanceStatus].labelKey) : d.status}` : d.date) : ''}
                                                     style={style}
                                                     className={`aspect-square flex items-center justify-center rounded-lg text-sm font-medium border ${className} transition-colors duration-200`}>
                                                     {d.day || ''}
@@ -1169,17 +1174,17 @@ export default function StudentDashboardPage() {
                                     {ATTENDANCE_LEGEND.filter(status => status !== 'LATE' && status !== 'HALF_DAY').map(status => (
                                         <div key={status} className="flex items-center gap-1.5">
                                             <span className={`size-3 rounded-full ${ATTENDANCE_TONE[status].dot}`} />
-                                            {ATTENDANCE_TONE[status].label}
+                                            {ta(ATTENDANCE_TONE[status].labelKey)}
                                         </div>
                                     ))}
                                     {/* Late/half-day both count as present, so their cell is a split circle — one glance shows both facts. */}
                                     <div className="flex items-center gap-1.5">
                                         <span className="size-3 rounded-full" style={{ background: `linear-gradient(135deg, ${ATTENDANCE_TONE.PRESENT.fill} 50%, ${ATTENDANCE_TONE.LATE.fill} 50%)` }} />
-                                        Present + Late
+                                        {t("attendance.presentLate")}
                                     </div>
                                     <div className="flex items-center gap-1.5">
                                         <span className="size-3 rounded-full" style={{ background: `linear-gradient(135deg, ${ATTENDANCE_TONE.PRESENT.fill} 50%, ${ATTENDANCE_TONE.HALF_DAY.fill} 50%)` }} />
-                                        Present + Half day
+                                        {t("attendance.presentHalfDay")}
                                     </div>
                                 </div>
                             </div>
@@ -1194,7 +1199,7 @@ export default function StudentDashboardPage() {
                                                     white card with near-black text, which was an
                                                     unreadable flash of white in the dark theme. */}
                                                 <Tooltip
-                                                    formatter={(val: any, name: any) => [`${val} days`, name]}
+                                                    formatter={(val: any, name: any) => [t("attendance.days", { count: Number(val) }), name]}
                                                     wrapperStyle={{ zIndex: 10 }}
                                                     contentStyle={{
                                                         background: 'var(--surface)',
@@ -1209,7 +1214,7 @@ export default function StudentDashboardPage() {
                                         </ResponsiveContainer>
                                         <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
                                             <span className="text-ink text-3xl font-bold">{attendance.percentage}%</span>
-                                            <span className="text-ink-muted text-xs mt-1 uppercase tracking-wider font-semibold">Present</span>
+                                            <span className="text-ink-muted text-xs mt-1 uppercase tracking-wider font-semibold">{tc("status.present")}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1229,12 +1234,12 @@ export default function StudentDashboardPage() {
                                             <div className={`tabular mb-1 text-2xl font-bold ${ATTENDANCE_TONE[status].figure}`}>
                                                 {value || 0}
                                             </div>
-                                            <div className="eyebrow">{ATTENDANCE_TONE[status].label}</div>
+                                            <div className="eyebrow">{ta(ATTENDANCE_TONE[status].labelKey)}</div>
                                         </div>
                                     ))}
                                 </div>
                                 <div className="mt-2 bg-brand/5 border border-brand/20 rounded-xl p-3 text-center">
-                                    <div className="text-ink-muted font-medium text-xs">Total Working Days</div>
+                                    <div className="text-ink-muted font-medium text-xs">{t("attendance.workingDays")}</div>
                                     <div className="text-xl font-bold text-ink mt-1">{attendance.workingDaysCount ?? (attendance.total - (attendance.holiday || 0))}</div>
                                 </div>
                             </div>
@@ -1242,8 +1247,8 @@ export default function StudentDashboardPage() {
                     ) : (
                         <div className="py-16 text-center border-2 border-dashed border-slate-200 rounded-xl">
                             <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-surface-secondary text-ink-faint"><CalendarDays className="size-6" aria-hidden /></div>
-                            <p className="text-slate-400 font-medium">No attendance data for {MONTH_NAMES[currentMonth - 1]} {currentYear}</p>
-                            <p className="text-slate-500 text-sm mt-1">There are no records found for this month.</p>
+                            <p className="text-slate-400 font-medium">{t("attendance.noData", { month: monthLabel })}</p>
+                            <p className="text-slate-500 text-sm mt-1">{t("attendance.noRecords")}</p>
                         </div>
                     )}
                 </div>
@@ -1256,10 +1261,10 @@ export default function StudentDashboardPage() {
                 <div id="tabpanel-results" role="tabpanel" aria-labelledby="tab-results" className="space-y-4 animate-scale-in">
                     <div className="flex flex-wrap items-center justify-between gap-3 bg-white/80 backdrop-blur-sm border border-slate-200 p-4 rounded-2xl">
                         <div className="flex items-center gap-3">
-                            <label className="text-slate-400 text-sm">Session:</label>
+                            <label className="text-slate-400 text-sm">{t("results.session")}</label>
                             <select value={academicSessionId || ""} onChange={handleSessionChange}
                                 className="bg-slate-100 border border-slate-200 text-ink text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand">
-                                {sessions.map(s => <option key={s.id} value={s.id}>{s.name} {s.isActive && "(Current)"}</option>)}
+                                {sessions.map(s => <option key={s.id} value={s.id}>{s.name} {s.isActive && t("currentSession")}</option>)}
                             </select>
                         </div>
                         {examResults?.categories?.length > 0 && (
@@ -1269,7 +1274,7 @@ export default function StudentDashboardPage() {
                                     onClick={() => setShowCatDropdown(prev => !prev)}
                                     className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-slate-100 hover:bg-slate-100 text-ink"
                                 >
-                                    <span>Categories ({selectedExamCats.size}/{examResults.categories.length})</span>
+                                    <span>{t("results.categories", { selected: selectedExamCats.size, total: examResults.categories.length })}</span>
                                     <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                                 </button>
                                 {showCatDropdown && (
@@ -1287,7 +1292,7 @@ export default function StudentDashboardPage() {
                                                 }}
                                                 className="w-4 h-4 rounded border-slate-300 bg-slate-100 text-brand focus:ring-brand"
                                             />
-                                            <span className="font-medium text-ink">Show All</span>
+                                            <span className="font-medium text-ink">{t("results.showAll")}</span>
                                         </label>
                                         {examResults.categories.map((cat: string) => (
                                             <label key={cat} className="flex items-center gap-2 px-4 py-2 text-sm cursor-pointer hover:bg-slate-100">
@@ -1318,12 +1323,12 @@ export default function StudentDashboardPage() {
                     </div>
 
                     <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-6">
-                        <h2 className="text-ink font-bold text-lg mb-4">Examination Dashboard</h2>
+                        <h2 className="text-ink font-bold text-lg mb-4">{t("results.title")}</h2>
 
                         {(!examResults || examResults.subjects?.length === 0) ? (
                             <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
                                 <div className="text-4xl mb-3 opacity-50">📑</div>
-                                <p className="text-slate-400 text-sm font-medium">No results published for {academicYearString}</p>
+                                <p className="text-slate-400 text-sm font-medium">{t("results.noResults", { session: academicYearString })}</p>
                             </div>
                         ) : (
                             <div className="relative overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
@@ -1334,7 +1339,7 @@ export default function StudentDashboardPage() {
                                 <table className="w-full text-sm text-left text-ink min-w-125">
                                     <thead className="text-xs text-slate-400 uppercase">
                                         <tr>
-                                            <th className="px-4 py-3 bg-slate-100 sticky left-0 z-10 w-40 sm:w-48 align-bottom border-b border-slate-200" rowSpan={2}>Subject</th>
+                                            <th className="px-4 py-3 bg-slate-100 sticky left-0 z-10 w-40 sm:w-48 align-bottom border-b border-slate-200" rowSpan={2}>{tc("field.subject")}</th>
                                             {visibleCats.map((cat: string) => (
                                                 <th key={cat} className="px-4 py-3 text-center border-l border-b border-slate-200 bg-slate-100" colSpan={6}>
                                                     {cat}
@@ -1344,12 +1349,12 @@ export default function StudentDashboardPage() {
                                         <tr>
                                             {visibleCats.map((cat: string) => (
                                                 <React.Fragment key={`sub-${cat}`}>
-                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-200 bg-slate-100/80">Th. Marks</th>
-                                                    <th className="px-2 py-2 text-center text-[10px] text-purple-400 border-l border-b border-slate-200 bg-purple-900/20">Pr. Marks</th>
-                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-200 bg-slate-100/80">Total</th>
-                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-200 bg-slate-100/80">Obtained</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-200 bg-slate-100/80">{t("results.theoryMarks")}</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-purple-400 border-l border-b border-slate-200 bg-purple-900/20">{t("results.practicalMarks")}</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-200 bg-slate-100/80">{tc("field.total")}</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-200 bg-slate-100/80">{t("results.obtained")}</th>
                                                     <th className="px-2 py-2 text-center text-[10px] text-indigo-400 border-l border-b border-slate-200 bg-indigo-900/20">%</th>
-                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-200 bg-slate-100/80">Grade</th>
+                                                    <th className="px-2 py-2 text-center text-[10px] text-slate-400 border-l border-b border-slate-200 bg-slate-100/80">{t("results.grade")}</th>
                                                 </React.Fragment>
                                             ))}
                                         </tr>
@@ -1372,13 +1377,13 @@ export default function StudentDashboardPage() {
                                                             {/* Theory Marks */}
                                                             <td className="px-2 py-2 border-l border-slate-200 text-center">
                                                                 {isSplit && m?.theoryTotalMarks
-                                                                    ? <div className="text-[10px] text-ink-muted">Obt: <span className="font-bold text-ink">{m.theoryObtainedMarks ?? '-'}</span><br />Tot: {m.theoryTotalMarks}</div>
+                                                                    ? <div className="text-[10px] text-ink-muted">{t("results.obtShort")} <span className="font-bold text-ink">{m.theoryObtainedMarks ?? '-'}</span><br />{t("results.totShort")} {m.theoryTotalMarks}</div>
                                                                     : <span className="text-ink-muted">—</span>}
                                                             </td>
                                                             {/* Practical Marks */}
                                                             <td className="px-2 py-2 border-l border-slate-200 text-center bg-purple-500/10">
                                                                 {isSplit && m?.practicalTotalMarks
-                                                                    ? <div className="text-[10px] text-purple-600">Obt: <span className="font-bold">{m.practicalObtainedMarks ?? '-'}</span><br />Tot: {m.practicalTotalMarks}</div>
+                                                                    ? <div className="text-[10px] text-purple-600">{t("results.obtShort")} <span className="font-bold">{m.practicalObtainedMarks ?? '-'}</span><br />{t("results.totShort")} {m.practicalTotalMarks}</div>
                                                                     : <span className="text-ink-muted">—</span>}
                                                             </td>
                                                             {/* Total */}
@@ -1400,8 +1405,8 @@ export default function StudentDashboardPage() {
                                                                 {m ? (
                                                                     <div className="flex flex-col items-center gap-1">
                                                                         <span className="font-bold text-ink-muted">{m.grade || '-'}</span>
-                                                                        {m.isPass === true && <span className="px-1.5 py-0.5 text-[9px] font-bold rounded uppercase bg-emerald-500/20 text-emerald-400">Pass</span>}
-                                                                        {m.isPass === false && <span className="px-1.5 py-0.5 text-[9px] font-bold rounded uppercase bg-red-500/20 text-red-400">Fail</span>}
+                                                                        {m.isPass === true && <span className="px-1.5 py-0.5 text-[9px] font-bold rounded uppercase bg-emerald-500/20 text-emerald-400">{t("results.pass")}</span>}
+                                                                        {m.isPass === false && <span className="px-1.5 py-0.5 text-[9px] font-bold rounded uppercase bg-red-500/20 text-red-400">{t("results.fail")}</span>}
                                                                     </div>
                                                                 ) : <span className="text-slate-600">-</span>}
                                                             </td>
@@ -1413,7 +1418,7 @@ export default function StudentDashboardPage() {
                                     </tbody>
                                     <tfoot className="border-t-2 border-slate-200 bg-slate-100/70 font-bold">
                                         <tr>
-                                            <td className="px-4 py-4 sticky left-0 z-10 bg-slate-100 text-ink uppercase tracking-wider text-xs">Overall / Total</td>
+                                            <td className="px-4 py-4 sticky left-0 z-10 bg-slate-100 text-ink uppercase tracking-wider text-xs">{t("results.overall")}</td>
                                             {visibleCats.map((cat: string) => {
                                                 let sumTotal = 0;
                                                 let sumObtained = 0;
@@ -1435,7 +1440,7 @@ export default function StudentDashboardPage() {
                                                     );
                                                     if (assigned) {
                                                         overallGrade = assigned.gradeName;
-                                                        isPassText = assigned.isFailGrade ? 'FAIL' : 'PASS';
+                                                        isPassText = assigned.isFailGrade ? t("results.fail") : t("results.pass");
                                                         isPassColor = assigned.isFailGrade
                                                             ? 'bg-red-500/20 text-red-400'
                                                             : 'bg-emerald-500/20 text-emerald-400';
@@ -1481,15 +1486,15 @@ export default function StudentDashboardPage() {
                                 <Palmtree className="size-5" aria-hidden />
                             </div>
                             <div>
-                                <h2 className="text-ink font-bold text-lg">School Holidays</h2>
-                                <p className="text-slate-400 text-sm">Upcoming and past holidays applicable for {info?.firstName}</p>
+                                <h2 className="text-ink font-bold text-lg">{t("holidays.title")}</h2>
+                                <p className="text-slate-400 text-sm">{t("holidays.subtitle", { name: info?.firstName ?? "" })}</p>
                             </div>
                         </div>
 
                         {holidays.length === 0 ? (
                             <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
                                 <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-surface-secondary text-ink-faint"><CalendarDays className="size-6" aria-hidden /></div>
-                                <p className="text-slate-400 text-sm font-medium">No holidays declared at this moment.</p>
+                                <p className="text-slate-400 text-sm font-medium">{t("holidays.empty")}</p>
                             </div>
                         ) : (
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -1504,24 +1509,24 @@ export default function StudentDashboardPage() {
                                             <div className="flex justify-between items-start mb-3">
                                                 <h3 className="text-ink font-bold">{h.description}</h3>
                                                 {isUpcoming ? (
-                                                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-sky-500/20 text-sky-400 tracking-wider">Upcoming</span>
+                                                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-sky-500/20 text-sky-400 tracking-wider">{t("holidays.upcoming")}</span>
                                                 ) : (
-                                                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-slate-100 text-slate-400 tracking-wider">Past</span>
+                                                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-slate-100 text-slate-400 tracking-wider">{t("holidays.past")}</span>
                                                 )}
                                             </div>
 
                                             <div className="flex items-center text-sm text-ink gap-2 mb-3">
                                                 <svg className="w-4 h-4 opacity-70 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                                 <span>
-                                                    {start.toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                    {!isSingleDay && ` - ${end.toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                                                    {start.toLocaleDateString(intlLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                    {!isSingleDay && ` - ${end.toLocaleDateString(intlLocale, { day: 'numeric', month: 'short', year: 'numeric' })}`}
                                                 </span>
                                             </div>
 
                                             {h.isEntireSchool ? (
                                                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                                                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                    Entire School
+                                                    {t("holidays.entireSchool")}
                                                 </span>
                                             ) : (
                                                 <span className="inline-flex flex-wrap gap-1">
@@ -1547,7 +1552,7 @@ export default function StudentDashboardPage() {
                     {/* Subjects */}
                     {info.subjects?.length > 0 && (
                         <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-5">
-                            <h2 className="text-ink font-bold mb-3">Enrolled Subjects</h2>
+                            <h2 className="text-ink font-bold mb-3">{t("info.subjects")}</h2>
                             <div className="flex flex-wrap gap-2">
                                 {info.subjects.map((s: string, i: number) => (
                                     <span key={i} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-100 text-ink transition-colors text-sm rounded-lg border border-slate-200">{s}</span>
@@ -1557,18 +1562,18 @@ export default function StudentDashboardPage() {
                     )}
                     {/* Personal details */}
                     <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-soft p-5">
-                        <h2 className="mb-4 font-display text-[16px] font-semibold text-ink">Student information</h2>
+                        <h2 className="mb-4 font-display text-[16px] font-semibold text-ink">{t("info.title")}</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {[
-                                { label: "Father's Name", value: info.fathersName },
-                                { label: "Mother's Name", value: info.mothersName },
-                                { label: "Date of Birth", value: info.dateOfBirth ? new Date(info.dateOfBirth).toLocaleDateString("en-IN", { day: 'numeric', month: 'long', year: 'numeric' }) : null },
-                                { label: "Gender", value: info.gender },
-                                { label: "Mobile", value: info.mobile },
-                                { label: "Class", value: info.className },
-                                { label: "Section", value: info.sectionName },
-                                { label: "Roll No", value: info.rollNo },
-                                { label: "Academic Session", value: academicYearString },
+                                { label: t("info.fathersName"), value: info.fathersName },
+                                { label: t("info.mothersName"), value: info.mothersName },
+                                { label: tc("field.dob"), value: info.dateOfBirth ? new Date(info.dateOfBirth).toLocaleDateString(intlLocale, { day: 'numeric', month: 'long', year: 'numeric' }) : null },
+                                { label: tc("field.gender"), value: info.gender },
+                                { label: tc("field.mobile"), value: info.mobile },
+                                { label: tc("field.class"), value: info.className },
+                                { label: tc("field.section"), value: info.sectionName },
+                                { label: tc("field.rollNo"), value: info.rollNo },
+                                { label: t("info.academicSession"), value: academicYearString },
                             ].filter(f => f.value).map(field => (
                                 <div key={field.label} className="flex gap-3 p-3 bg-slate-100/60 rounded-xl border border-transparent hover:border-slate-200 transition-colors">
                                     <span className="text-slate-500 text-sm min-w-32.5">{field.label}</span>
@@ -1639,14 +1644,15 @@ export default function StudentDashboardPage() {
                         const displayDate = (() => {
                             const [y, m, d] = homeworkDate.split('-').map(Number);
                             const dt = new Date(y, m - 1, d);
-                            if (homeworkDate === todayStr) return 'Today';
+                            if (homeworkDate === todayStr) return t("homework.today");
                             const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
                             const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-                            if (homeworkDate === yStr) return 'Yesterday';
-                            return dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+                            if (homeworkDate === yStr) return t("homework.yesterday");
+                            return dt.toLocaleDateString(intlLocale, { weekday: 'short', day: 'numeric', month: 'short' });
                         })();
 
                         const isToday = homeworkDate === todayStr;
+                        const isNamedDay = displayDate === t("homework.today") || displayDate === t("homework.yesterday");
 
                         return (
                             <>
@@ -1654,8 +1660,8 @@ export default function StudentDashboardPage() {
                                 <div className="flex items-center gap-3 mb-5">
                                     <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-accent-info-tint text-accent-info-deep"><BookOpen className="size-5" aria-hidden /></div>
                                     <div>
-                                        <h2 className="text-ink font-bold text-lg leading-tight">Homework</h2>
-                                        <p className="text-slate-400 text-sm">{info?.firstName}&apos;s class assignments</p>
+                                        <h2 className="text-ink font-bold text-lg leading-tight">{t("homework.title")}</h2>
+                                        <p className="text-slate-400 text-sm">{t("homework.subtitle", { name: info?.firstName ?? "" })}</p>
                                     </div>
                                 </div>
 
@@ -1666,7 +1672,7 @@ export default function StudentDashboardPage() {
                                         <button
                                             onClick={() => shiftDate(-1)}
                                             className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-ink hover:bg-slate-100 active:scale-90 transition-all text-lg font-bold"
-                                            title="Previous day"
+                                            title={t("homework.previousDay")}
                                         >
                                             ‹
                                         </button>
@@ -1677,11 +1683,11 @@ export default function StudentDashboardPage() {
                                                 type="button"
                                                 onClick={() => homeworkDateInputRef.current?.showPicker()}
                                                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-slate-100 active:scale-95 transition-all group"
-                                                title="Pick a date"
+                                                title={t("homework.pickDate")}
                                             >
                                                 <div className="text-center min-w-18">
                                                     <p className="text-ink font-semibold text-sm group-hover:text-indigo-300 transition-colors leading-tight">{displayDate}</p>
-                                                    {displayDate !== 'Today' && displayDate !== 'Yesterday' && (
+                                                    {!isNamedDay && (
                                                         <p className="text-slate-500 text-[10px] leading-tight">{homeworkDate}</p>
                                                     )}
                                                 </div>
@@ -1703,7 +1709,7 @@ export default function StudentDashboardPage() {
                                             onClick={() => shiftDate(1)}
                                             disabled={isToday}
                                             className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-ink hover:bg-slate-100 active:scale-90 transition-all disabled:opacity-25 disabled:cursor-not-allowed text-lg font-bold"
-                                            title="Next day"
+                                            title={t("homework.nextDay")}
                                         >
                                             ›
                                         </button>
@@ -1718,8 +1724,8 @@ export default function StudentDashboardPage() {
                                 ) : homework.length === 0 ? (
                                     <div className="text-center py-16">
                                         <div className="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-accent-success-tint text-accent-success-deep"><CheckCircle2 className="size-7" aria-hidden /></div>
-                                        <p className="text-ink font-medium">No homework for {displayDate.toLowerCase()}!</p>
-                                        <p className="text-slate-500 text-sm mt-1">Check another date or enjoy the break.</p>
+                                        <p className="text-ink font-medium">{homeworkDate === todayStr ? t("homework.noneToday") : displayDate === t("homework.yesterday") ? t("homework.noneYesterday") : t("homework.noneOn", { date: displayDate })}</p>
+                                        <p className="text-slate-500 text-sm mt-1">{t("homework.noneHint")}</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
@@ -1740,7 +1746,7 @@ export default function StudentDashboardPage() {
                                                             className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-brand/10 text-brand hover:bg-brand/20 text-xs font-semibold transition-colors max-w-full"
                                                         >
                                                             <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-                                                            <span className="truncate">View worksheet</span>
+                                                            <span className="truncate">{t("homework.viewWorksheet")}</span>
                                                         </button>
                                                     )}
                                                 </div>
@@ -1765,19 +1771,19 @@ export default function StudentDashboardPage() {
                     <div className="flex items-center gap-3">
                         <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-accent-info-tint text-accent-info-deep"><QrCode className="size-5" aria-hidden /></div>
                         <div>
-                            <h2 className="text-ink font-bold text-lg leading-tight">{visitorMgmtEnabled ? "QR Codes" : "Pickup QR"}</h2>
+                            <h2 className="text-ink font-bold text-lg leading-tight">{visitorMgmtEnabled ? t("qr.titleBoth") : t("qr.pickup")}</h2>
                             <p className="text-slate-400 text-sm">
                                 {qrMode === "pickup" || !visitorMgmtEnabled
-                                    ? `Authorise someone to collect ${info?.firstName ?? "your child"}`
-                                    : "Generate a gate-entry QR for your school visit"}
+                                    ? (info?.firstName ? t("qr.pickupHint", { name: info.firstName }) : t("qr.pickupHintGeneric"))
+                                    : t("qr.visitHint")}
                             </p>
                         </div>
                     </div>
 
                     {/* Pickup / Visiting switcher — Visiting only when the school has visitor management enabled */}
                     {visitorMgmtEnabled && (
-                        <div role="tablist" aria-label="QR type" className="grid grid-cols-2 gap-1.5 bg-surface border border-slate-200 dark:border-white/10 rounded-xl p-1.5">
-                            {([["pickup", "🚗", "Pickup QR"], ["visit", "🚶", "Visiting QR"]] as const).map(([key, icon, label]) => (
+                        <div role="tablist" aria-label={t("qr.typeLabel")} className="grid grid-cols-2 gap-1.5 bg-surface border border-slate-200 dark:border-white/10 rounded-xl p-1.5">
+                            {([["pickup", "🚗", t("qr.pickup")], ["visit", "🚶", t("qr.visit")]] as const).map(([key, icon, label]) => (
                                 <button
                                     key={key}
                                     role="tab"
@@ -1808,15 +1814,15 @@ export default function StudentDashboardPage() {
                         <div className="flex items-center gap-3">
                             <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-accent-info-tint text-accent-info-deep"><CalendarDays className="size-5" aria-hidden /></div>
                             <div>
-                                <h2 className="text-ink font-bold text-lg leading-tight">Leave Requests</h2>
-                                <p className="text-slate-400 text-sm">Track and apply for leaves</p>
+                                <h2 className="text-ink font-bold text-lg leading-tight">{t("leaves.title")}</h2>
+                                <p className="text-slate-400 text-sm">{t("leaves.subtitle")}</p>
                             </div>
                         </div>
                         <button
                             onClick={() => setShowApplyLeave(true)}
                             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors shrink-0"
                         >
-                            + Apply Leave
+                            + {t("leaves.apply")}
                         </button>
                     </div>
 
@@ -1826,39 +1832,39 @@ export default function StudentDashboardPage() {
                                 <div key={leave.id} className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4">
                                     <div className="flex items-start justify-between gap-2">
                                         <div>
-                                            <p className="text-ink font-medium text-sm">{LEAVE_TYPE_LABELS[leave.leaveType] ?? leave.leaveType}</p>
+                                            <p className="text-ink font-medium text-sm">{leaveTypeLabel(leave.leaveType)}</p>
                                             <p className="text-slate-400 text-xs mt-0.5">
-                                                {fmtDate(leave.fromDate)}{leave.fromDate !== leave.toDate ? ` → ${fmtDate(leave.toDate)}` : ""} · {leave.leaveDuration === "HALF_DAY" ? "Half Day" : "Full Day"}
+                                                {fmtDate(leave.fromDate)}{leave.fromDate !== leave.toDate ? ` → ${fmtDate(leave.toDate)}` : ""} · {leave.leaveDuration === "HALF_DAY" ? t("leaves.halfDay") : t("leaves.fullDay")}
                                             </p>
                                         </div>
                                         <StatusChip
                                             className="shrink-0"
                                             pigment={LEAVE_STATUS_PIGMENT[leave.status] ?? 'neutral'}
-                                            label={LEAVE_STATUS_LABELS[leave.status] ?? leave.status}
+                                            label={leaveStatusLabel(leave.status)}
                                         />
                                     </div>
                                     {leave.isActionRequired && (
                                         <div className="mt-2 flex items-center gap-1.5">
                                             <svg className="w-3.5 h-3.5 shrink-0 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                            <span className="text-orange-400 text-xs font-medium">Response needed</span>
+                                            <span className="text-orange-400 text-xs font-medium">{t("leaves.responseNeeded")}</span>
                                         </div>
                                     )}
                                     <div className="flex items-center justify-between mt-3">
-                                        <p className="text-slate-600 text-xs">Applied {new Date(leave.createdAt).toLocaleDateString()}</p>
+                                        <p className="text-slate-600 text-xs">{t("leaves.appliedOn", { date: new Date(leave.createdAt).toLocaleDateString(intlLocale) })}</p>
                                         <div className="flex items-center gap-2">
                                             {leave.status === "PENDING" && (
                                                 <button
                                                     onClick={() => setCancelLeaveId(leave.id)}
                                                     className="px-2.5 py-1 text-xs font-medium text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-colors"
                                                 >
-                                                    Cancel
+                                                    {tc("action.cancel")}
                                                 </button>
                                             )}
                                             <button
                                                 onClick={() => setViewLeave(leave)}
                                                 className="px-2.5 py-1 text-xs font-medium text-ink border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
                                             >
-                                                View Details
+                                                {t("leaves.viewDetails")}
                                             </button>
                                         </div>
                                     </div>
@@ -1868,8 +1874,8 @@ export default function StudentDashboardPage() {
                     ) : (
                         <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-8 text-center">
                             <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-surface-secondary text-ink-faint"><CalendarDays className="size-6" aria-hidden /></div>
-                            <p className="text-slate-400 text-sm">No leave requests yet</p>
-                            <p className="text-slate-600 text-xs mt-1">Tap &quot;Apply Leave&quot; to submit a new request</p>
+                            <p className="text-slate-400 text-sm">{t("leaves.empty")}</p>
+                            <p className="text-slate-600 text-xs mt-1">{t("leaves.emptyHint")}</p>
                         </div>
                     )}
 
@@ -1880,13 +1886,13 @@ export default function StudentDashboardPage() {
                                 onClick={() => setLeavesPage(p => Math.max(1, p - 1))}
                                 disabled={leavesPage === 1}
                                 className="px-3 py-1.5 text-xs border border-slate-200 text-slate-400 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition-colors"
-                            >← Prev</button>
+                            >← {tc("action.previous")}</button>
                             <span className="text-xs text-slate-500">{leavesPage} / {Math.ceil((leaves.total ?? 0) / 10)}</span>
                             <button
                                 onClick={() => setLeavesPage(p => p + 1)}
                                 disabled={leavesPage >= Math.ceil((leaves.total ?? 0) / 10)}
                                 className="px-3 py-1.5 text-xs border border-slate-200 text-slate-400 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition-colors"
-                            >Next →</button>
+                            >{tc("action.next")} →</button>
                         </div>
                     )}
                 </div>
@@ -1900,8 +1906,8 @@ export default function StudentDashboardPage() {
                             <div className="mx-auto mb-3 grid size-14 place-items-center rounded-full bg-brand-tint text-brand">
                                 <CreditCard className="size-6" aria-hidden />
                             </div>
-                            <h3 className="text-ink font-bold text-xl">Confirm Payment</h3>
-                            <p className="text-slate-400 text-sm mt-1">You are paying for {selectedMonths2Pay.length} months</p>
+                            <h3 className="text-ink font-bold text-xl">{t("fees.confirmTitle")}</h3>
+                            <p className="text-slate-400 text-sm mt-1">{t("fees.confirmPayingFor", { count: selectedMonths2Pay.length })}</p>
                         </div>
 
                         <div className="bg-slate-100 rounded-xl p-4 mb-5 space-y-2">
@@ -1915,7 +1921,7 @@ export default function StudentDashboardPage() {
                                 );
                             })}
                             <div className="border-t border-slate-200 pt-2 mt-2 flex justify-between">
-                                <span className="text-slate-400">Total Amount</span>
+                                <span className="text-slate-400">{t("fees.totalAmount")}</span>
                                 <span className="text-indigo-400 font-bold text-lg">₹{selectedAmountTotal.toLocaleString()}</span>
                             </div>
                         </div>
@@ -1923,11 +1929,11 @@ export default function StudentDashboardPage() {
                         <div className="flex gap-3">
                             <button onClick={() => setShowConfirmModal(false)} disabled={payProcessing}
                                 className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-100 text-ink font-medium rounded-xl transition-colors text-sm disabled:opacity-50">
-                                Cancel
+                                {tc("action.cancel")}
                             </button>
                             <button onClick={() => processPayment()} disabled={payProcessing}
                                 className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2">
-                                {payProcessing ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Processing...</> : "Confirm Pay"}
+                                {payProcessing ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> {t("fees.processing")}</> : t("fees.confirmPay")}
                             </button>
                         </div>
                     </div>
@@ -1939,13 +1945,13 @@ export default function StudentDashboardPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/60 backdrop-blur-sm">
                     <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
                         <div className="bg-slate-100 px-5 py-4 flex justify-between items-center">
-                            <h3 className="text-ink font-bold text-lg">Multiple Receipts</h3>
+                            <h3 className="text-ink font-bold text-lg">{t("fees.multipleReceipts")}</h3>
                             <button onClick={() => setShowReceiptsListModal(null)} className="text-slate-400 hover:text-ink transition-colors">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
                         <div className="p-5">
-                            <p className="text-slate-400 text-sm mb-4">You made multiple partial payments for {showReceiptsListModal.feeMonth}. Please select a receipt to view.</p>
+                            <p className="text-slate-400 text-sm mb-4">{t("fees.multipleReceiptsHint", { month: showReceiptsListModal.feeMonth })}</p>
                             
                             <div className="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
                                 {showReceiptsListModal.payments.map((p: any, idx: number) => (
@@ -1970,11 +1976,11 @@ export default function StudentDashboardPage() {
                                     >
                                         <div>
                                             <div className="text-ink font-medium text-sm mb-1">{p.receiptNumber}</div>
-                                            <div className="text-slate-500 text-xs">{new Date(p.paymentDate).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })} · {p.paymentMethod}</div>
+                                            <div className="text-slate-500 text-xs">{new Date(p.paymentDate).toLocaleDateString(intlLocale, { day: '2-digit', month: 'short', year: 'numeric' })} · {p.paymentMethod}</div>
                                         </div>
                                         <div className="text-right">
                                             <div className="text-indigo-400 font-bold text-sm group-hover:text-indigo-300">₹{Number(p.amountPaid).toLocaleString()}</div>
-                                            <div className="text-xs px-2 py-0.5 mt-1 bg-indigo-500/10 text-indigo-400 rounded inline-block">View &rarr;</div>
+                                            <div className="text-xs px-2 py-0.5 mt-1 bg-indigo-500/10 text-indigo-400 rounded inline-block">{tc("action.view")} &rarr;</div>
                                         </div>
                                     </button>
                                 ))}
@@ -2004,7 +2010,7 @@ export default function StudentDashboardPage() {
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg transition-colors"
                             >
                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                Download
+                                {tc("action.download")}
                             </a>
                             <button onClick={() => setViewerDoc(null)} className="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -2028,15 +2034,15 @@ export default function StudentDashboardPage() {
                         {/* Header */}
                         <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-200 shrink-0">
                             <div>
-                                <p className="text-ink font-bold text-base">{LEAVE_TYPE_LABELS[viewLeave.leaveType] ?? viewLeave.leaveType}</p>
+                                <p className="text-ink font-bold text-base">{leaveTypeLabel(viewLeave.leaveType)}</p>
                                 <p className="text-slate-400 text-xs mt-0.5">
-                                    {fmtDate(viewLeave.fromDate)}{viewLeave.fromDate !== viewLeave.toDate ? ` \u2192 ${fmtDate(viewLeave.toDate)}` : ""} &middot; {viewLeave.leaveDuration === "HALF_DAY" ? "Half Day" : "Full Day"}
+                                    {fmtDate(viewLeave.fromDate)}{viewLeave.fromDate !== viewLeave.toDate ? ` \u2192 ${fmtDate(viewLeave.toDate)}` : ""} &middot; {viewLeave.leaveDuration === "HALF_DAY" ? t("leaves.halfDay") : t("leaves.fullDay")}
                                 </p>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                                 <StatusChip
                                     pigment={LEAVE_STATUS_PIGMENT[viewLeave.status] ?? 'neutral'}
-                                    label={LEAVE_STATUS_LABELS[viewLeave.status] ?? viewLeave.status}
+                                    label={leaveStatusLabel(viewLeave.status)}
                                 />
                                 <button onClick={() => setViewLeave(null)} className="p-1 rounded-lg text-slate-400 hover:text-ink transition-colors">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -2048,7 +2054,7 @@ export default function StudentDashboardPage() {
                             {/* Reason */}
                             {viewLeave.reason && (
                                 <div>
-                                    <p className="text-slate-500 text-xs font-medium mb-1">Reason</p>
+                                    <p className="text-slate-500 text-xs font-medium mb-1">{t("leaves.reason")}</p>
                                     <p className="text-ink text-sm">{viewLeave.reason}</p>
                                 </div>
                             )}
@@ -2060,13 +2066,13 @@ export default function StudentDashboardPage() {
                                     onClick={() => { setReplyLeaveId(viewLeave.id); setReplyNote(""); setReplyFile(null); }}
                                     className="w-full px-3 py-2 text-xs font-medium rounded-xl border bg-orange-500/20 text-orange-300 border-orange-500/40 hover:bg-orange-500/30 transition-colors"
                                 >
-                                    💬 Reply to school
+                                    💬 {t("leaves.replyToSchool")}
                                 </button>
                             )}
                             {/* Attached documents */}
                             {viewLeave.documents && viewLeave.documents.length > 0 && (
                                 <div>
-                                    <p className="text-slate-500 text-xs font-medium mb-1.5">Attached documents</p>
+                                    <p className="text-slate-500 text-xs font-medium mb-1.5">{t("leaves.attachedDocs")}</p>
                                     <div className="space-y-1.5">
                                         {viewLeave.documents.map((doc: any) => (
                                             <button
@@ -2076,13 +2082,13 @@ export default function StudentDashboardPage() {
                                             >
                                                 <span className="shrink-0">{doc.mimeType === 'application/pdf' ? '\uD83D\uDCC4' : '\uD83D\uDDBC\uFE0F'}</span>
                                                 <span className="truncate">{doc.fileName}</span>
-                                                <span className="ml-auto shrink-0 text-slate-500">{doc.mimeType === 'application/pdf' ? 'PDF' : 'Image'}</span>
+                                                <span className="ml-auto shrink-0 text-slate-500">{doc.mimeType === 'application/pdf' ? 'PDF' : t("leaves.image")}</span>
                                             </button>
                                         ))}
                                     </div>
                                 </div>
                             )}
-                            <p className="text-slate-600 text-xs">Applied {new Date(viewLeave.createdAt).toLocaleDateString()}</p>
+                            <p className="text-slate-600 text-xs">{t("leaves.appliedOn", { date: new Date(viewLeave.createdAt).toLocaleDateString(intlLocale) })}</p>
                         </div>
                         {/* Footer — cancel button for PENDING */}
                         {viewLeave.status === "PENDING" && (
@@ -2091,7 +2097,7 @@ export default function StudentDashboardPage() {
                                     onClick={() => { setViewLeave(null); setCancelLeaveId(viewLeave.id); }}
                                     className="w-full py-2.5 text-sm font-medium text-red-400 border border-red-500/30 rounded-xl hover:bg-red-500/10 transition-colors"
                                 >
-                                    Cancel Leave
+                                    {t("leaves.cancelLeave")}
                                 </button>
                             </div>
                         )}
@@ -2104,17 +2110,17 @@ export default function StudentDashboardPage() {
                 <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
                     <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-5 w-full max-w-md shadow-2xl">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-ink font-bold text-base">Reply to School</h3>
+                            <h3 className="text-ink font-bold text-base">{t("leaves.replyToSchool")}</h3>
                             <button onClick={() => setReplyLeaveId(null)} className="p-1 rounded-lg text-slate-400 hover:text-ink transition-colors">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
-                        <p className="text-slate-400 text-xs mb-3">Write your reply below. You can also attach a document (optional).</p>
+                        <p className="text-slate-400 text-xs mb-3">{t("leaves.replyHint")}</p>
                         <textarea
                             value={replyNote}
                             onChange={e => setReplyNote(e.target.value)}
                             rows={4}
-                            placeholder="Type your reply here…"
+                            placeholder={t("leaves.replyPlaceholder")}
                             className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-ink placeholder-ink-muted/50 focus:outline-none focus:border-orange-500/60 resize-none mb-3"
                         />
                         {/* File attachment */}
@@ -2122,7 +2128,7 @@ export default function StudentDashboardPage() {
                             {replyFile ? (
                                 <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl">
                                     <span className="text-xs text-ink truncate flex-1">{replyFile.name}</span>
-                                    <button onClick={() => setReplyFile(null)} className="shrink-0 text-slate-500 hover:text-red-400 text-xs transition-colors">Remove</button>
+                                    <button onClick={() => setReplyFile(null)} className="shrink-0 text-slate-500 hover:text-red-400 text-xs transition-colors">{tc("action.remove")}</button>
                                 </div>
                             ) : (
                                 <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-400 hover:text-ink transition-colors">
@@ -2133,7 +2139,7 @@ export default function StudentDashboardPage() {
                                         onChange={e => { const f = e.target.files?.[0]; if (f) setReplyFile(f); e.target.value = ""; }}
                                     />
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-                                    Attach document (optional)
+                                    {t("leaves.attachOptional")}
                                 </label>
                             )}
                         </div>
@@ -2143,14 +2149,14 @@ export default function StudentDashboardPage() {
                                 disabled={replySending}
                                 className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-100 text-ink font-medium rounded-xl transition-colors text-sm disabled:opacity-50"
                             >
-                                Cancel
+                                {tc("action.cancel")}
                             </button>
                             <button
                                 onClick={handleReply}
                                 disabled={replySending || (!replyNote.trim() && !replyFile)}
                                 className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-500 text-white font-medium rounded-xl transition-colors text-sm disabled:opacity-50"
                             >
-                                {replySending ? "Sending…" : "Send Reply"}
+                                {replySending ? t("leaves.sending") : t("leaves.sendReply")}
                             </button>
                         </div>
                     </div>
@@ -2163,8 +2169,8 @@ export default function StudentDashboardPage() {
                     <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
                         <div className="mb-4 text-center">
                             <div className="w-12 h-12 bg-red-500/15 text-red-400 rounded-full flex items-center justify-center text-xl mx-auto mb-3">✕</div>
-                            <h3 className="text-ink font-bold text-lg">Cancel Leave</h3>
-                            <p className="text-slate-400 text-sm mt-1">Are you sure you want to cancel this leave request?</p>
+                            <h3 className="text-ink font-bold text-lg">{t("leaves.cancelLeave")}</h3>
+                            <p className="text-slate-400 text-sm mt-1">{t("leaves.cancelConfirm")}</p>
                         </div>
                         <div className="flex gap-3">
                             <button
@@ -2172,14 +2178,14 @@ export default function StudentDashboardPage() {
                                 disabled={cancelLeaving}
                                 className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-100 text-ink font-medium rounded-xl transition-colors text-sm disabled:opacity-50"
                             >
-                                Keep it
+                                {t("leaves.keepIt")}
                             </button>
                             <button
                                 onClick={handleCancelLeave}
                                 disabled={cancelLeaving}
                                 className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white font-medium rounded-xl transition-colors text-sm disabled:opacity-50"
                             >
-                                {cancelLeaving ? "Cancelling…" : "Yes, Cancel"}
+                                {cancelLeaving ? t("leaves.cancelling") : t("leaves.yesCancel")}
                             </button>
                         </div>
                     </div>
@@ -2251,14 +2257,16 @@ export default function StudentDashboardPage() {
 
 function StudentLibrarySection({ studentId }: { studentId: string }) {
     const { data, isLoading, error } = useLibraryIssuances(studentId);
+    const t = useTranslations("parent.student.library");
+    const locale = useLocale();
 
     const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
-        ISSUED:   { label: 'Issued',   color: 'text-blue-700 dark:text-blue-300',  bg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700' },
-        OVERDUE:  { label: 'Overdue',  color: 'text-red-700 dark:text-red-300',    bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700' },
-        RETURNED: { label: 'Returned', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700' },
+        ISSUED:   { label: t("status.issued"),   color: 'text-blue-700 dark:text-blue-300',  bg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700' },
+        OVERDUE:  { label: t("status.overdue"),  color: 'text-red-700 dark:text-red-300',    bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700' },
+        RETURNED: { label: t("status.returned"), color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700' },
     };
 
-    const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    const fmtDate = (d: string) => new Date(d).toLocaleDateString(INTL_LOCALE[locale as keyof typeof INTL_LOCALE], { day: 'numeric', month: 'short', year: 'numeric' });
 
     return (
         <div className="space-y-4">
@@ -2266,8 +2274,8 @@ function StudentLibrarySection({ studentId }: { studentId: string }) {
             <div className="flex items-center gap-3 rounded-xl border border-line bg-surface p-4 shadow-soft">
                 <div className="grid size-11 shrink-0 place-items-center rounded-lg bg-accent-success-tint text-accent-success-deep"><Library className="size-5.5" aria-hidden /></div>
                 <div>
-                    <h2 className="font-display text-[16px] leading-tight font-semibold text-ink">Library books</h2>
-                    <p className="text-[12.5px] text-ink-muted">Books currently issued or recently returned</p>
+                    <h2 className="font-display text-[16px] leading-tight font-semibold text-ink">{t("title")}</h2>
+                    <p className="text-[12.5px] text-ink-muted">{t("subtitle")}</p>
                 </div>
             </div>
 
@@ -2278,14 +2286,14 @@ function StudentLibrarySection({ studentId }: { studentId: string }) {
             ) : error ? (
                 <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-2xl p-8 text-center">
                     <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-surface-secondary text-ink-faint"><BookOpen className="size-6" aria-hidden /></div>
-                    <p className="text-ink font-semibold">Library not available</p>
-                    <p className="text-ink-muted text-sm mt-1">Library feature may not be enabled for your school.</p>
+                    <p className="text-ink font-semibold">{t("unavailable")}</p>
+                    <p className="text-ink-muted text-sm mt-1">{t("unavailableHint")}</p>
                 </div>
             ) : !data?.data?.length ? (
                 <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-2xl p-8 text-center">
                     <div className="mx-auto mb-3 grid size-14 place-items-center rounded-full bg-surface-secondary text-ink-faint"><BookOpen className="size-7" aria-hidden /></div>
-                    <p className="text-ink font-semibold text-lg">No books issued</p>
-                    <p className="text-ink-muted text-sm mt-1">You have no books currently issued or in recent history.</p>
+                    <p className="text-ink font-semibold text-lg">{t("empty")}</p>
+                    <p className="text-ink-muted text-sm mt-1">{t("emptyHint")}</p>
                 </div>
             ) : (
                 <div className="space-y-3">
@@ -2305,35 +2313,35 @@ function StudentLibrarySection({ studentId }: { studentId: string }) {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-start justify-between gap-2 flex-wrap">
-                                            <p className="font-semibold text-ink text-sm leading-tight">{item.book?.title ?? 'Unknown Book'}</p>
+                                            <p className="font-semibold text-ink text-sm leading-tight">{item.book?.title ?? t("unknownBook")}</p>
                                             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border shrink-0 ${cfg.color} ${cfg.bg}`}>{cfg.label}</span>
                                         </div>
                                         {item.book?.author && (
-                                            <p className="text-xs text-ink-muted mt-0.5">by {item.book.author}</p>
+                                            <p className="text-xs text-ink-muted mt-0.5">{t("byAuthor", { author: item.book.author })}</p>
                                         )}
                                         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
                                             <p className="text-xs text-ink-muted">
-                                                <span className="font-medium text-ink">Issued:</span> {fmtDate(item.issueDate)}
+                                                <span className="font-medium text-ink">{t("issuedLabel")}</span> {fmtDate(item.issueDate)}
                                             </p>
                                             <p className={`text-xs ${isOverdue ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-ink-muted'}`}>
-                                                <span className={`font-medium ${isOverdue ? '' : 'text-ink'}`}>Due:</span> {fmtDate(item.dueDate)}
+                                                <span className={`font-medium ${isOverdue ? '' : 'text-ink'}`}>{t("dueLabel")}</span> {fmtDate(item.dueDate)}
                                             </p>
                                             {item.returnDate && (
                                                 <p className="text-xs text-ink-muted">
-                                                    <span className="font-medium text-ink">Returned:</span> {fmtDate(item.returnDate)}
+                                                    <span className="font-medium text-ink">{t("returnedLabel")}</span> {fmtDate(item.returnDate)}
                                                 </p>
                                             )}
                                         </div>
                                         {isOverdue && (
                                             <div className="mt-2 flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 font-medium">
                                                 <span>⏰</span>
-                                                <span>{daysOverdue} day{daysOverdue !== 1 ? 's' : ''} overdue{hasLateFee ? ` · Late fee: ₹${item.lateFeeCharged}` : ''}</span>
+                                                <span>{t("daysOverdue", { count: daysOverdue })}{hasLateFee ? ` · ${t("lateFee", { amount: item.lateFeeCharged })}` : ''}</span>
                                             </div>
                                         )}
                                         {hasLateFee && item.status === 'RETURNED' && (
                                             <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
                                                 <IndianRupee className="size-3.5" aria-hidden />
-                                                <span>Late fee charged: ₹{item.lateFeeCharged} · Paid: ₹{item.lateFeePayment?.amountPaid ?? 0}</span>
+                                                <span>{t("lateFeeCharged", { charged: item.lateFeeCharged, paid: item.lateFeePayment?.amountPaid ?? 0 })}</span>
                                             </div>
                                         )}
                                     </div>
@@ -2342,7 +2350,7 @@ function StudentLibrarySection({ studentId }: { studentId: string }) {
                         );
                     })}
                     {data.total > data.data.length && (
-                        <p className="text-center text-sm text-ink-muted py-2">Showing {data.data.length} of {data.total} records</p>
+                        <p className="text-center text-sm text-ink-muted py-2">{t("showing", { shown: data.data.length, total: data.total })}</p>
                     )}
                 </div>
             )}

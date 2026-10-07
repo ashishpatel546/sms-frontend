@@ -1,0 +1,75 @@
+{
+  "meta": {
+    "title": "गृहकार्य"
+  },
+  "page": {
+    "title": "गृहकार्य",
+    "description": "कक्षा और सेक्शन के अनुसार विद्यार्थियों को गृहकार्य दें और उसे संभालें।",
+    "send": "गृहकार्य भेजें",
+    "selectClass": "— कक्षा चुनें —",
+    "selectSection": "— सेक्शन चुनें —",
+    "allDates": "सभी तिथियाँ",
+    "clearDate": "तिथि हटाएँ",
+    "selectPrompt": "गृहकार्य देखने के लिए कक्षा और सेक्शन चुनें।",
+    "loading": "गृहकार्य लोड हो रहा है...",
+    "noneForDate": "{date} के लिए कोई गृहकार्य नहीं है।",
+    "clearFilterHint": "सभी तिथियाँ देखने के लिए <clear>फ़िल्टर हटाएँ</clear>, या इस तिथि के लिए गृहकार्य भेजें।",
+    "noneForClass": "{className} — {section} के लिए कोई गृहकार्य नहीं मिला।",
+    "addFirstHint": "पहली प्रविष्टि जोड़ने के लिए \"गृहकार्य भेजें\" पर क्लिक करें।",
+    "viewWorksheet": "वर्कशीट देखें",
+    "sentBy": "{name} ने भेजा · {time}",
+    "editedBy": "{name} ने संपादित किया · {time}",
+    "lockedHint": "इसे केवल भेजने वाले या स्कूल एडमिन ही संपादित कर सकते हैं या हटा सकते हैं"
+  },
+  "send": {
+    "classSection": "{className} — सेक्शन {section}",
+    "yesterday": "बीता कल",
+    "today": "आज",
+    "tomorrow": "आने वाला कल",
+    "subjectOptional": "विषय (वैकल्पिक)",
+    "homework": "गृहकार्य",
+    "subjectPlaceholder": "जैसे गणित",
+    "messagePlaceholder": "गृहकार्य का विवरण लिखें...",
+    "removeFile": "फ़ाइल हटाएँ",
+    "attachOptional": "वर्कशीट जोड़ें (वैकल्पिक) · JPEG, PNG, WEBP, PDF · अधिकतम 5 MB",
+    "maxReached": "अधिकतम {max} विषय जोड़े जा चुके हैं",
+    "addSubject": "विषय जोड़ें",
+    "retention": "अपलोड की गई वर्कशीट <b>केवल 60 दिन</b> रखी जाती हैं, फिर गृहकार्य के साथ अपने आप हट जाती हैं।",
+    "pushNotice": "<b>{className} — सेक्शन {section}</b> के सभी अभिभावकों को पुश सूचना भेजी जाएगी।",
+    "sending": "भेजा जा रहा है..."
+  },
+  "edit": {
+    "title": "गृहकार्य संपादित करें",
+    "worksheetOptional": "वर्कशीट (वैकल्पिक)",
+    "replaceWorksheet": "वर्कशीट बदलें",
+    "replace": "बदलें",
+    "uploading": "अपलोड हो रहा है...",
+    "attach": "वर्कशीट जोड़ें · JPEG, PNG, WEBP, PDF · अधिकतम 5 MB",
+    "retention": "वर्कशीट केवल 60 दिन रखी जाती हैं।",
+    "saveChanges": "बदलाव सहेजें"
+  },
+  "confirm": {
+    "removeWorksheet": "वर्कशीट \"{name}\" हटाएँ?",
+    "delete": "{date} का \"{subject}\" हटाएँ?",
+    "homeworkFallback": "गृहकार्य"
+  },
+  "toast": {
+    "fileType": "केवल JPEG, PNG, WEBP और PDF फ़ाइलें ही मान्य हैं।",
+    "fileSize": "वर्कशीट 5 MB या उससे छोटी होनी चाहिए।",
+    "uploadFailed": "वर्कशीट अपलोड नहीं हो सकी",
+    "openFailed": "वर्कशीट खुल नहीं सकी।",
+    "needOneEntry": "संदेश के साथ कम से कम एक गृहकार्य जोड़ें।",
+    "sendFailed": "गृहकार्य नहीं भेजा जा सका",
+    "entryN": "प्रविष्टि {n}",
+    "sentUploadFailed": "गृहकार्य भेज दिया गया, लेकिन इनकी वर्कशीट अपलोड नहीं हो सकी: {subjects}। फिर से कोशिश करने के लिए प्रविष्टि संपादित करें।",
+    "sent": "गृहकार्य भेज दिया गया!",
+    "messageEmpty": "संदेश खाली नहीं हो सकता।",
+    "updateFailed": "अपडेट नहीं हो सका",
+    "updated": "गृहकार्य अपडेट हो गया।",
+    "uploaded": "वर्कशीट अपलोड हो गई।",
+    "worksheetRemoved": "वर्कशीट हटा दी गई।",
+    "removeFailed": "वर्कशीट हटाई नहीं जा सकी।",
+    "deleteFailed": "हटाया नहीं जा सका",
+    "deleted": "हटा दिया गया।"
+  }
+}

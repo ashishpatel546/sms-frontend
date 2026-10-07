@@ -139,8 +139,10 @@
   --color-iris-700: #5a34ab;
 
   /* ── Type: three roles, three faces ───────────────────────────────────── */
-  --font-display: var(--font-sora), 'Sora', ui-sans-serif, system-ui, sans-serif;
-  --font-sans: var(--font-figtree), 'Figtree', ui-sans-serif, system-ui, sans-serif;
+  /* Noto Devanagari/Bengali come after the Latin face: it renders Latin,
+     they pick up only the Hindi/Bengali characters it has no glyphs for. */
+  --font-display: var(--font-sora), 'Sora', var(--font-noto-devanagari), var(--font-noto-bengali), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-figtree), 'Figtree', var(--font-noto-devanagari), var(--font-noto-bengali), ui-sans-serif, system-ui, sans-serif;
   --font-mono:
     var(--font-plex-mono), 'IBM Plex Mono', ui-monospace, 'Cascadia Mono',
     monospace;
@@ -2563,4 +2565,21 @@
   .to-teal-600 {
     --tw-gradient-to: var(--accent-success);
   }
+}
+
+/* ── Hindi and Bengali ──────────────────────────────────────────────────────
+   The mono "register hand" (eyebrows, micro-labels, tabular figures) has no
+   Devanagari or Bengali glyphs, and its wide tracking pulls those scripts'
+   joined letters apart. In these languages the mono stack falls through to
+   Noto for the script, and tracking is dropped — uppercase does nothing to
+   these scripts, so spacing was the only thing carrying the style anyway.
+   Unlayered on purpose, so it wins over the tracking-* utilities. */
+:root:is(:lang(hi), :lang(bn)) {
+  --font-mono:
+    var(--font-plex-mono), 'IBM Plex Mono', var(--font-noto-devanagari),
+    var(--font-noto-bengali), ui-monospace, monospace;
+}
+
+:is(:lang(hi), :lang(bn)) :is(.eyebrow, .font-mono, .tabular, [class*='tracking-']) {
+  letter-spacing: normal;
 }

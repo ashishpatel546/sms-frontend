@@ -1,6 +1,7 @@
 'use client';
 
 import { Minus, Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PIGMENT_CLASS } from '@/components/ui/pigment';
 import type { QuickActionTile } from '@/lib/quickActions';
 
@@ -17,6 +18,7 @@ export function QuickActionPicker({
   pinned: string[];
   onToggle: (href: string) => void;
 }) {
+  const t = useTranslations('dashboard');
   return (
     <ul className="grid grid-cols-1 gap-2" role="list">
       {tiles.map(tile => {
@@ -45,8 +47,8 @@ export function QuickActionPicker({
               }`}
               aria-label={
                 isPinned
-                  ? `Remove ${tile.label} from the dashboard`
-                  : `Add ${tile.label} to the dashboard`
+                  ? t('quickActions.removeAria', { label: tile.label })
+                  : t('quickActions.addAria', { label: tile.label })
               }
             >
               {isPinned ? <Minus className="size-4" /> : <Plus className="size-4" />}

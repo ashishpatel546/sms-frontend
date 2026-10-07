@@ -13,6 +13,7 @@
  * what schools can draw.
  */
 
+import type { HelperMessage } from "@/i18n/helper-message";
 import type { BoundaryPoint } from "./hr-api";
 
 const EARTH_RADIUS_M = 6_371_000;
@@ -99,6 +100,29 @@ export function validateBoundary(ring: BoundaryPoint[]): string | null {
     return `That covers ${(area / 1_000_000).toFixed(1)}km² — zoom in and trace just the campus`;
   }
   return null;
+}
+
+/** Translatable form of validateBoundary (same checks, same order). */
+export function boundaryProblem(ring: BoundaryPoint[]): HelperMessage | null {
+  if (ring.length < 3) return { key: "boundaryTooFew" };
+  if (ring.length > MAX_BOUNDARY_VERTICES) {
+    return { key: "boundaryTooMany", values: { max: MAX_BOUNDARY_VERTICES } };
+  }
+  if (ringSelfIntersects(ring)) return { key: "boundaryCrosses" };
+  const area = ringAreaSqMetres(ring);
+  if (area < MIN_BOUNDARY_AREA_SQ_M) {
+    return { key: "boundaryTooSmall", values: { area: Math.round(area) } };
+  }
+  if (area > MAX_BOUNDARY_AREA_SQ_M) {
+    return { key: "boundaryTooLarge", values: { km: (area / 1_000_000).toFixed(1) } };
+  }
+  return null;
+}
+
+/** Translatable form of formatArea. */
+export function areaMessage(sqMetres: number, intlLocale?: string): HelperMessage {
+  if (sqMetres >= 10_000) return { key: "areaHectares", values: { value: (sqMetres / 10_000).toFixed(2) } };
+  return { key: "areaSqM", values: { value: Math.round(sqMetres).toLocaleString(intlLocale) } };
 }
 
 /** Area for display: square metres up close, hectares once that stops reading well. */

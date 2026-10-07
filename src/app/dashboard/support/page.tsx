@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { getUser } from "@/lib/auth";
+import { useRoleLabel } from "@/i18n/useRoleLabel";
 import QRCode from "react-qr-code";
 import QRCodeGen from "qrcode";
 import { Mail, MessageCircle, ChevronDown, ChevronUp, Printer } from "lucide-react";
@@ -15,8 +17,11 @@ import { buildInstallGuideHtml } from "@/lib/install-guide-html";
 const INSTALL_GUIDE_PREVIEW_SCALE = 0.55;
 
 export default function DashboardSupportPage() {
+  const t = useTranslations("support");
+  const locale = useLocale();
   const [activeTab, setActiveTab] = useState<"contact" | "faqs" | "install">("faqs");
   const [user, setUser] = useState<any>(null);
+  const roleLabel = useRoleLabel(user?.role);
 
   // Form State
   const [issue, setIssue] = useState("");
@@ -51,15 +56,22 @@ export default function DashboardSupportPage() {
       setUser(u);
     }
 
-    // Load FAQs
-    fetch('/faq.json')
-      .then(res => {
+    // Load FAQs — the translated file for hi/bn, the English one if that fails.
+    let cancelled = false;
+    const loadFaqFile = (url: string) =>
+      fetch(url).then(res => {
         if (!res.ok) throw new Error("Failed to load FAQs");
         return res.json();
-      })
-      .then(data => setFaqs(data))
+      });
+    const localized =
+      locale === "hi" || locale === "bn"
+        ? loadFaqFile(`/faq.${locale}.json`).catch(() => loadFaqFile('/faq.json'))
+        : loadFaqFile('/faq.json');
+    localized
+      .then(data => { if (!cancelled) setFaqs(data); })
       .catch(err => console.error("Error loading FAQs:", err));
-  }, []);
+    return () => { cancelled = true; };
+  }, [locale]);
 
   // Regenerate the handout when its tab is opened or an input it depends on
   // changes. Deferred until the tab is actually visited (not on page load)
@@ -89,6 +101,8 @@ export default function DashboardSupportPage() {
           logoUrl: logoDataUrl,
           contactPhone: includeContact ? schoolInfo.phone : null,
           contactEmail: includeContact ? schoolInfo.email : null,
+          t,
+          lang: locale,
         })
       );
     })();
@@ -96,7 +110,7 @@ export default function DashboardSupportPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, schoolInfo, includeLogo, includeContact]);
+  }, [activeTab, schoolInfo, includeLogo, includeContact, t, locale]);
 
   const printInstallGuide = async () => {
     const frameWindow = guideFrameRef.current?.contentWindow;
@@ -136,8 +150,8 @@ export default function DashboardSupportPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full">
       <div className="mb-8">
-        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Help & Support</h1>
-        <p className="text-slate-500 mt-2">Find answers in our FAQs or connect directly with our support team.</p>
+        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t("page.title")}</h1>
+        <p className="text-slate-500 mt-2">{t("page.subtitle")}</p>
       </div>
 
       {/* Tabs Layout */}
@@ -150,7 +164,7 @@ export default function DashboardSupportPage() {
               : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
           }`}
         >
-          Frequently Asked Questions
+          {t("tabs.faqs")}
         </button>
         <button
           onClick={() => setActiveTab("contact")}
@@ -160,7 +174,7 @@ export default function DashboardSupportPage() {
               : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
           }`}
         >
-          Contact Support
+          {t("tabs.contact")}
         </button>
         <button
           onClick={() => setActiveTab("install")}
@@ -170,7 +184,7 @@ export default function DashboardSupportPage() {
               : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
           }`}
         >
-          Install Guide
+          {t("tabs.install")}
         </button>
       </div>
 
@@ -180,11 +194,11 @@ export default function DashboardSupportPage() {
         {/* FAQs Section */}
         {activeTab === "faqs" && (
           <div className="p-6 md:p-8">
-            <h2 className="text-xl font-semibold text-slate-800 mb-6">Common Questions</h2>
+            <h2 className="text-xl font-semibold text-slate-800 mb-6">{t("faqs.title")}</h2>
             {faqs.length === 0 ? (
               <div className="text-center text-slate-500 py-12">
                 <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                Loading FAQs...
+                {t("faqs.loading")}
               </div>
             ) : (
               <div className="space-y-4 max-w-4xl">
@@ -222,14 +236,14 @@ export default function DashboardSupportPage() {
             
             <div className="mt-12 p-6 bg-blue-50 rounded-xl border border-blue-100 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
-                <h3 className="text-blue-900 font-semibold mb-1">Still need help?</h3>
-                <p className="text-blue-700/80 text-sm">If you couldn&apos;t find the answer you were looking for, our team is ready to assist you.</p>
+                <h3 className="text-blue-900 font-semibold mb-1">{t("faqs.stillNeedHelp")}</h3>
+                <p className="text-blue-700/80 text-sm">{t("faqs.stillNeedHelpBody")}</p>
               </div>
               <button 
                 onClick={() => setActiveTab("contact")}
                 className="shrink-0 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow-xs transition-colors"
               >
-                Contact Us
+                {t("faqs.contactUs")}
               </button>
             </div>
           </div>
@@ -241,7 +255,7 @@ export default function DashboardSupportPage() {
             {/* Left Contact Info */}
             <div className="md:w-5/12 bg-slate-50 p-6 md:p-8 border-b md:border-b-0 md:border-r border-slate-200 flex flex-col justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-slate-800 mb-6">Get in Touch</h2>
+                <h2 className="text-xl font-semibold text-slate-800 mb-6">{t("contact.title")}</h2>
                 
                 <div className="space-y-4">
                   <div className="flex items-start gap-4 p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
@@ -249,7 +263,7 @@ export default function DashboardSupportPage() {
                       <Mail size={20} />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Email Us</p>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">{t("contact.emailUs")}</p>
                       <a href={`mailto:${supportEmail}`} className="font-medium text-slate-800 hover:text-blue-600 transition-colors">
                         {supportEmail}
                       </a>
@@ -270,7 +284,7 @@ export default function DashboardSupportPage() {
 
               <div className="hidden md:flex flex-col items-center mt-12 bg-white p-6 rounded-xl border border-slate-200 shadow-xs">
                 <QRCode value={`https://wa.me/91${supportNumber}`} size={120} level="M" />
-                <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mt-4">Scan to Connect</p>
+                <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mt-4">{t("contact.scanToConnect")}</p>
               </div>
             </div>
 
@@ -280,27 +294,27 @@ export default function DashboardSupportPage() {
                 
                 {/* Prefilled Profile details summary */}
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Your Details</p>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">{t("contact.yourDetails")}</p>
                   <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-sm">
-                     <div className="text-slate-500">Name:</div>
+                     <div className="text-slate-500">{t("contact.name")}</div>
                      <div className="font-medium text-slate-800 text-right">{user?.firstName} {user?.lastName}</div>
-                     <div className="text-slate-500">Mobile:</div>
-                     <div className="font-medium text-slate-800 text-right">{user?.mobile || 'N/A'}</div>
-                     <div className="text-slate-500">Role:</div>
-                     <div className="font-medium text-slate-800 text-right capitalize">{user?.role?.replace("_", " ")}</div>
-                     <div className="text-slate-500">School:</div>
+                     <div className="text-slate-500">{t("contact.mobile")}</div>
+                     <div className="font-medium text-slate-800 text-right">{user?.mobile || t("contact.notAvailable")}</div>
+                     <div className="text-slate-500">{t("contact.role")}</div>
+                     <div className="font-medium text-slate-800 text-right capitalize">{roleLabel}</div>
+                     <div className="text-slate-500">{t("contact.school")}</div>
                      <div className="font-medium text-slate-800 text-right">{schoolName || '—'}</div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">How can we help you? <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t("contact.howCanWeHelp")} <span className="text-red-500">*</span></label>
                   <textarea
                     required
                     value={issue}
                     onChange={(e) => setIssue(e.target.value)}
                     rows={5}
-                    placeholder="Describe the issue you are facing or the question you have..."
+                    placeholder={t("contact.issuePlaceholder")}
                     className="w-full bg-white border border-slate-300 text-slate-900 placeholder-slate-400 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-transparent transition-shadow resize-none"
                   />
                 </div>
@@ -311,10 +325,10 @@ export default function DashboardSupportPage() {
                     className="w-full relative group overflow-hidden py-3.5 rounded-xl font-bold text-white bg-green-600 hover:bg-green-500 shadow-md transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
                   >
                     <MessageCircle size={20} />
-                    <span>Send via WhatsApp</span>
+                    <span>{t("contact.sendWhatsApp")}</span>
                   </button>
                   <p className="text-center text-xs text-slate-500 mt-3">
-                    Clicking this button will open WhatsApp with a pre-filled message including your details and issue description.
+                    {t("contact.sendHint")}
                   </p>
                 </div>
 
@@ -328,10 +342,9 @@ export default function DashboardSupportPage() {
           <div className="p-6 md:p-8">
             <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
               <div>
-                <h2 className="text-xl font-semibold text-slate-800 mb-1">Get the app on your phone</h2>
+                <h2 className="text-xl font-semibold text-slate-800 mb-1">{t("install.title")}</h2>
                 <p className="text-slate-500 text-sm max-w-xl">
-                  A one-page, printable handout with a QR code and home-screen install steps —
-                  hand it to a parent at the office, or attach it to a WhatsApp or email.
+                  {t("install.subtitle")}
                 </p>
               </div>
               <button
@@ -340,7 +353,7 @@ export default function DashboardSupportPage() {
                 className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg shadow-xs transition-colors"
               >
                 <Printer size={16} />
-                Print / Save as PDF
+                {t("install.print")}
               </button>
             </div>
 
@@ -353,9 +366,9 @@ export default function DashboardSupportPage() {
                   disabled={!schoolInfo?.logoUrl}
                   className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-40"
                 />
-                Include logo
+                {t("install.includeLogo")}
                 {!schoolInfo?.logoUrl && (
-                  <span className="text-xs text-slate-400">(none uploaded)</span>
+                  <span className="text-xs text-slate-400">{t("install.noneUploaded")}</span>
                 )}
               </label>
               <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
@@ -366,9 +379,9 @@ export default function DashboardSupportPage() {
                   disabled={!schoolInfo?.phone && !schoolInfo?.email}
                   className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-40"
                 />
-                Include office contact
+                {t("install.includeContact")}
                 {!schoolInfo?.phone && !schoolInfo?.email && (
-                  <span className="text-xs text-slate-400">(none on file)</span>
+                  <span className="text-xs text-slate-400">{t("install.noneOnFile")}</span>
                 )}
               </label>
             </div>
@@ -397,7 +410,7 @@ export default function DashboardSupportPage() {
                     <iframe
                       ref={guideFrameRef}
                       srcDoc={guideSrcDoc}
-                      title="Install guide preview"
+                      title={t("install.previewTitle")}
                       style={{ width: "210mm", height: "297mm", border: "none", background: "#fff", display: "block" }}
                     />
                   ) : (
@@ -405,7 +418,7 @@ export default function DashboardSupportPage() {
                       style={{ width: "210mm", height: "297mm" }}
                       className="flex items-center justify-center bg-white text-slate-400 text-sm"
                     >
-                      Preparing preview…
+                      {t("install.preparing")}
                     </div>
                   )}
                 </div>
@@ -413,9 +426,9 @@ export default function DashboardSupportPage() {
             </div>
 
             <p className="text-xs text-slate-500 mt-3">
-              In the print dialog, set <span className="text-slate-700 font-medium">Margins: None</span> and
-              switch off <span className="text-slate-700 font-medium">Headers and footers</span> — the sheet
-              carries its own margins.
+              {t.rich("install.printTip", {
+                b: (c) => <span className="text-slate-700 font-medium">{c}</span>,
+              })}
             </p>
           </div>
         )}

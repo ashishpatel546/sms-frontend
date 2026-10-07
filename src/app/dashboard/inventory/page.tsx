@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import useSWR from 'swr';
+import { useLocale, useTranslations } from 'next-intl';
 import toast, { Toaster } from 'react-hot-toast';
 import { AlertTriangle, Boxes, History, Package, Plus, Printer, RefreshCw, ScanBarcode, X } from 'lucide-react';
 
@@ -24,6 +25,7 @@ import {
   type InventoryItem,
   type InventoryItemPriceHistoryRow,
   type InventoryStockMovementRow,
+  type InventoryStockMovementType,
 } from '@/lib/inventory-api';
 
 import { PageBody, PageHeader, PageShell } from '@/components/ui/PageHeader';
@@ -38,10 +40,13 @@ import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { StatusChip } from '@/components/ui/StatusChip';
 import LabelPrintDialog from '@/components/inventory/LabelPrintDialog';
 import { useKeyboardWedge } from '@/components/inventory/useKeyboardWedge';
+import { INTL_LOCALE, type Locale } from '@/i18n/config';
 
 const PAGE_SIZE = 20;
 
 export default function InventoryItemsPage() {
+  const t = useTranslations('inventory.items');
+  const tc = useTranslations('common');
   const rbac = useRbac();
   const [search, setSearch] = React.useState('');
   const [categoryId, setCategoryId] = React.useState<number | ''>('');
@@ -76,9 +81,9 @@ export default function InventoryItemsPage() {
       setCatalogScanOpen(false);
       toast.success(found.name);
     } catch (err) {
-      toast.error(errorMessage(err, `No item found for "${code}"`));
+      toast.error(errorMessage(err, t('toast.notFound', { code })));
     }
-  }, []);
+  }, [t]);
 
   // A USB/Bluetooth gun works on this screen too, but only while no dialog is
   // open — a scan landing in the middle of an item form would be a menace.
@@ -87,33 +92,33 @@ export default function InventoryItemsPage() {
   const columns: Column<InventoryItem>[] = [
     {
       key: 'code',
-      header: 'Code',
+      header: t('col.code'),
       accessor: (row) => <span className="tabular font-mono text-[12px] text-ink-muted">{row.code}</span>,
       card: 'meta',
     },
     {
       key: 'name',
-      header: 'Item',
+      header: t('col.item'),
       accessor: (row) => row.name,
       sortable: true,
       card: 'title',
     },
     {
       key: 'category',
-      header: 'Category',
+      header: t('col.category'),
       accessor: (row) => row.category?.name ?? '—',
       card: 'meta',
     },
     {
       key: 'sellingPrice',
-      header: 'Price',
+      header: t('col.price'),
       align: 'right',
       accessor: (row) => <Money amount={row.sellingPrice} symbol />,
       card: 'field',
     },
     {
       key: 'stock',
-      header: 'Available / Total',
+      header: t('col.stock'),
       align: 'right',
       accessor: (row) => (
         <span className="inline-flex items-center gap-1.5">
@@ -121,7 +126,7 @@ export default function InventoryItemsPage() {
             {row.availableQty} / {row.totalQty}
           </span>
           {isLowStock(row) && (
-            <span title="Low stock">
+            <span title={t('lowStock')}>
               <AlertTriangle className="size-3.5 text-accent-warn-deep" />
             </span>
           )}
@@ -135,11 +140,11 @@ export default function InventoryItemsPage() {
       align: 'right',
       card: 'trailing',
       accessor: (row) =>
-        row.isActive ? null : <StatusChip status="INACTIVE" pigment="neutral" size="sm" />,
+        row.isActive ? null : <StatusChip status="INACTIVE" label={tc('status.inactive')} pigment="neutral" size="sm" />,
     },
     {
       key: 'actions',
-      header: 'Actions',
+      header: tc('action.actions'),
       align: 'right',
       // 'trailing', not 'hidden': hiding it left phones with no way to edit an
       // item, adjust stock or print a label — the whole row menu simply
@@ -149,18 +154,18 @@ export default function InventoryItemsPage() {
         <RowActionsMenu
           actions={[
             {
-              label: 'Edit',
+              label: tc('action.edit'),
               onSelect: () => {
                 setEditing(row);
                 setFormOpen(true);
               },
             },
             rbac.canManageInventory && {
-              label: 'Add / adjust stock',
+              label: t('menu.adjustStock'),
               onSelect: () => setStockItem(row),
             },
-            { label: 'Movements', onSelect: () => setMovementsItem(row) },
-            { label: 'Print label', onSelect: () => setLabelItems([row]) },
+            { label: t('menu.movements'), onSelect: () => setMovementsItem(row) },
+            { label: t('menu.printLabel'), onSelect: () => setLabelItems([row]) },
           ]}
         />
       ),
@@ -180,9 +185,9 @@ export default function InventoryItemsPage() {
     <PageShell>
       <Toaster position="top-center" />
       <PageHeader
-        section="Inventory"
-        title="Items"
-        description="School store catalog — books, uniforms, stationery and everything else you sell or lend."
+        section={t('section')}
+        title={t('title')}
+        description={t('description')}
         actions={
           <>
             <Button
@@ -190,7 +195,7 @@ export default function InventoryItemsPage() {
               disabled={selectedIds.size === 0}
               onClick={() => setLabelItems((data?.data ?? []).filter((i) => selectedIds.has(i.id)))}
             >
-              <Printer /> Print labels ({selectedIds.size})
+              <Printer /> {t('printLabels', { count: selectedIds.size })}
             </Button>
             <Button
               onClick={() => {
@@ -198,7 +203,7 @@ export default function InventoryItemsPage() {
                 setFormOpen(true);
               }}
             >
-              <Plus /> Add item
+              <Plus /> {t('addItem')}
             </Button>
           </>
         }
@@ -216,7 +221,7 @@ export default function InventoryItemsPage() {
             <SearchInput
               value={search}
               onValueChange={(v) => { setSearch(v); setPage(1); }}
-              placeholder="Search name, code or barcode…"
+              placeholder={t('searchPlaceholder')}
               className="max-w-none flex-1"
             />
             <Button
@@ -226,23 +231,23 @@ export default function InventoryItemsPage() {
               onClick={() => setCatalogScanOpen((open) => !open)}
               aria-pressed={catalogScanOpen}
             >
-              <ScanBarcode className="size-4" /> {catalogScanOpen ? 'Close' : 'Scan'}
+              <ScanBarcode className="size-4" /> {catalogScanOpen ? tc('action.close') : t('scan')}
             </Button>
           </div>
-          <FilterField label="Category" width="md">
+          <FilterField label={t('col.category')} width="md">
             <Select
               value={categoryId}
               onChange={(e) => { setCategoryId(e.target.value ? Number(e.target.value) : ''); setPage(1); }}
             >
-              <option value="">All categories</option>
+              <option value="">{t('allCategories')}</option>
               {categories?.filter((c) => c.isActive).map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </Select>
           </FilterField>
-          <FilterField label="Stock" width="md">
+          <FilterField label={t('stock')} width="md">
             <Checkbox
-              label="Low stock only"
+              label={t('lowStockOnly')}
               checked={lowStockOnly}
               onChange={(e) => { setLowStockOnly(e.target.checked); setPage(1); }}
             />
@@ -263,27 +268,27 @@ export default function InventoryItemsPage() {
           rowKey={(row) => row.id}
           isRowSelected={(row) => selectedIds.has(row.id)}
           onRowClick={(row) => toggleSelect(row.id)}
-          emptyMessage="No items yet — add your first one"
+          emptyMessage={t('empty')}
           toolbar={
             <>
               <Boxes className="size-4 text-ink-faint" />
-              <span className="font-display text-[15px] font-semibold text-ink">Catalog</span>
+              <span className="font-display text-[15px] font-semibold text-ink">{t('catalog')}</span>
               {data && <TableCount>{data.total}</TableCount>}
-              <span className="ml-auto text-[12px] text-ink-faint">Tap a row to select for label printing</span>
+              <span className="ml-auto text-[12px] text-ink-faint">{t('tapToSelect')}</span>
             </>
           }
           footer={
             data && data.total > PAGE_SIZE ? (
               <span className="text-[12.5px] text-ink-muted">
-                Page {page} of {Math.max(1, Math.ceil(data.total / PAGE_SIZE))}
+                {t('pageOf', { page, pages: Math.max(1, Math.ceil(data.total / PAGE_SIZE)) })}
               </span>
             ) : undefined
           }
         />
         {data && data.total > PAGE_SIZE && (
           <div className="mt-3 flex justify-end gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
-            <Button variant="outline" size="sm" disabled={page * PAGE_SIZE >= data.total} onClick={() => setPage((p) => p + 1)}>Next</Button>
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>{tc('action.previous')}</Button>
+            <Button variant="outline" size="sm" disabled={page * PAGE_SIZE >= data.total} onClick={() => setPage((p) => p + 1)}>{tc('action.next')}</Button>
           </div>
         )}
       </PageBody>
@@ -345,6 +350,8 @@ function ItemFormDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const t = useTranslations('inventory.itemForm');
+  const tc = useTranslations('common');
   const [name, setName] = React.useState(item?.name ?? '');
   const [categoryId, setCategoryId] = React.useState<number | ''>(item?.categoryId ?? '');
   const [code, setCode] = React.useState(item?.code ?? '');
@@ -386,7 +393,7 @@ function ItemFormDialog({
     if (existing) {
       setCategoryId(existing.id);
       cancelAddCategory();
-      toast(`"${existing.name}" already exists — selected it`);
+      toast(t('categoryExists', { name: existing.name }));
       return;
     }
     setSavingCategory(true);
@@ -394,9 +401,9 @@ function ItemFormDialog({
       const created = await onCreateCategory(name);
       if (created) setCategoryId(created.id);
       cancelAddCategory();
-      toast.success(`Category "${name}" added`);
+      toast.success(t('categoryAdded', { name }));
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not add the category'));
+      toast.error(errorMessage(err, t('categoryAddFailed')));
     } finally {
       setSavingCategory(false);
     }
@@ -445,8 +452,8 @@ function ItemFormDialog({
     if (codeCheck?.code !== trimmed) return { state: 'checking' };
     return codeCheck.available
       ? { state: 'ok' }
-      : { state: 'taken', reason: codeCheck.reason ?? 'Already in use' };
-  }, [code, codeCheck, item?.code]);
+      : { state: 'taken', reason: codeCheck.reason ?? t('codeInUse') };
+  }, [code, codeCheck, item?.code, t]);
 
   // Derived, not stored: MRP - discount computes the selling price live,
   // unless the operator has typed into the price field directly (then their
@@ -464,13 +471,13 @@ function ItemFormDialog({
   const handleScan = (value: string) => {
     setBarcode(value);
     setScanning(false);
-    toast.success(`Captured ${value}`);
+    toast.success(t('captured', { value }));
   };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!categoryId) { toast.error('Choose a category'); return; }
-    if (codeStatus.state === 'taken') { toast.error(`Item code is not available — ${codeStatus.reason}`); return; }
+    if (!categoryId) { toast.error(t('chooseCategory')); return; }
+    if (codeStatus.state === 'taken') { toast.error(t('codeNotAvailable', { reason: codeStatus.reason })); return; }
     const dto = {
       name,
       categoryId: Number(categoryId),
@@ -490,14 +497,14 @@ function ItemFormDialog({
     try {
       if (item) {
         await updateItem(item.id, dto);
-        toast.success('Item updated');
+        toast.success(t('updated'));
       } else {
         await createItem({ ...dto, openingQty: openingQty ? Number(openingQty) : undefined });
-        toast.success('Item created');
+        toast.success(t('created'));
       }
       onSaved();
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not save the item'));
+      toast.error(errorMessage(err, t('saveFailed')));
     } finally {
       setSaving(false);
     }
@@ -508,23 +515,23 @@ function ItemFormDialog({
       <DialogContent className="sm:max-w-lg">
         <form onSubmit={submit} className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{item ? 'Edit item' : 'Add item'}</DialogTitle>
+            <DialogTitle>{item ? t('editTitle') : t('addTitle')}</DialogTitle>
           </DialogHeader>
 
           <div className="mt-3 space-y-4">
             <FieldGrid>
-              <Field label="Name" required wide>
+              <Field label={tc('field.name')} required wide>
                 <Input value={name} onChange={(e) => setName(e.target.value)} required />
               </Field>
-              <Field label="Category" required>
+              <Field label={t('category')} required>
                 <div className="flex gap-1.5">
                   <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : '')} required>
-                    <option value="">Select…</option>
+                    <option value="">{tc('state.selectPlaceholder')}</option>
                     {categories.filter((c) => c.isActive).map((c) => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </Select>
-                  <Button type="button" variant="outline" size="icon" title="New category" onClick={() => setAddingCategory(true)}>
+                  <Button type="button" variant="outline" size="icon" title={t('newCategory')} onClick={() => setAddingCategory(true)}>
                     <Plus className="size-4" />
                   </Button>
                 </div>
@@ -545,11 +552,11 @@ function ItemFormDialog({
                             cancelAddCategory();
                           }
                         }}
-                        placeholder="New category name"
+                        placeholder={t('newCategoryName')}
                         autoFocus
                       />
                       <Button type="button" size="sm" disabled={!newCategoryName.trim() || savingCategory} onClick={() => void addCategory()}>
-                        {savingCategory ? 'Adding…' : 'Add'}
+                        {savingCategory ? t('adding') : tc('action.add')}
                       </Button>
                       {/* Opened by mistake is the common case — there has to be
                           a way out that isn't abandoning the whole item form. */}
@@ -557,25 +564,24 @@ function ItemFormDialog({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        title="Cancel"
-                        aria-label="Cancel adding a category"
+                        title={tc('action.cancel')}
+                        aria-label={t('cancelAddCategory')}
                         onClick={cancelAddCategory}
                       >
                         <X className="size-4" />
                       </Button>
                     </div>
                     <p className="mt-1 text-[12px] text-ink-muted">
-                      Adds a category to the school list and selects it for this item. An item belongs to
-                      one category.
+                      {t('categoryHint')}
                     </p>
                   </div>
                 )}
               </Field>
-              <Field label="Unit of measure" hint="What one counts in — pcs, box, set. Defaults to pcs.">
+              <Field label={t('unit')} hint={t('unitHint')}>
                 <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="pcs" />
               </Field>
               {!item && (
-                <Field label="Opening quantity" hint="How many you have in stock right now">
+                <Field label={t('openingQty')} hint={t('openingQtyHint')}>
                   <Input
                     type="number"
                     min="0"
@@ -587,16 +593,16 @@ function ItemFormDialog({
                 </Field>
               )}
               <Field
-                label="Item code"
+                label={t('code')}
                 required
                 hint={
                   codeStatus.state === 'checking'
-                    ? 'Checking availability…'
+                    ? t('codeChecking')
                     : codeStatus.state === 'ok'
-                      ? '✓ Available'
+                      ? t('codeAvailable')
                       : codeStatus.state === 'taken'
                         ? `✕ ${codeStatus.reason}`
-                        : 'Suggested — always editable'
+                        : t('codeSuggested')
                 }
               >
                 <div className="flex gap-1.5">
@@ -612,7 +618,7 @@ function ItemFormDialog({
                       type="button"
                       variant="outline"
                       size="icon"
-                      title="Suggest the next free code"
+                      title={t('suggestCode')}
                       onClick={() => fetchNextItemCode().then((r) => setCode(r.code)).catch(() => {})}
                     >
                       <RefreshCw className="size-4" />
@@ -621,8 +627,8 @@ function ItemFormDialog({
                 </div>
               </Field>
               <Field
-                label="Barcode"
-                hint="The code already printed on the product — the scanner reads barcodes and QR alike. Leave blank if it has none; we print our own label."
+                label={t('barcode')}
+                hint={t('barcodeHint')}
               >
                 <div className="flex gap-1.5">
                   <Input value={barcode} onChange={(e) => setBarcode(e.target.value)} />
@@ -642,25 +648,25 @@ function ItemFormDialog({
             )}
 
             <Panel>
-              <PanelHeader title="Pricing" description="MRP and a catalog discount compute the selling price — or set it directly." />
+              <PanelHeader title={t('pricing')} description={t('pricingHint')} />
               <PanelBody className="space-y-3">
                 <FieldGrid columns={3}>
-                  <Field label="MRP">
+                  <Field label={t('mrp')}>
                     <Input type="number" step="0.01" min="0" value={mrp} onChange={(e) => setMrp(e.target.value)} />
                   </Field>
-                  <Field label="Discount type">
+                  <Field label={t('discountType')}>
                     <Select value={discountType} onChange={(e) => setDiscountType(e.target.value)}>
-                      <option value="">None</option>
-                      <option value="PERCENT">Percent</option>
-                      <option value="FLAT">Flat amount</option>
+                      <option value="">{t('discountNone')}</option>
+                      <option value="PERCENT">{t('discountPercent')}</option>
+                      <option value="FLAT">{t('discountFlat')}</option>
                     </Select>
                   </Field>
-                  <Field label={discountType === 'PERCENT' ? 'Discount %' : 'Discount ₹'}>
+                  <Field label={discountType === 'PERCENT' ? t('discountPct') : t('discountRs')}>
                     <Input type="number" step="0.01" min="0" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)} disabled={!discountType} />
                   </Field>
                 </FieldGrid>
                 <FieldGrid columns={2}>
-                  <Field label="Selling price" required hint="Auto-computed from MRP − discount; edit to override">
+                  <Field label={t('sellingPrice')} required hint={t('sellingPriceHint')}>
                     <Input
                       type="number"
                       step="0.01"
@@ -670,7 +676,7 @@ function ItemFormDialog({
                       required
                     />
                   </Field>
-                  <Field label="Cost price" hint="Internal — not shown to buyers">
+                  <Field label={t('costPrice')} hint={t('costPriceHint')}>
                     <Input type="number" step="0.01" min="0" value={costPrice} onChange={(e) => setCostPrice(e.target.value)} />
                   </Field>
                 </FieldGrid>
@@ -678,19 +684,19 @@ function ItemFormDialog({
             </Panel>
 
             <FieldGrid>
-              <Field label="Reorder level" hint="Flag as low stock at or below this">
+              <Field label={t('reorderLevel')} hint={t('reorderLevelHint')}>
                 <Input type="number" min="0" value={reorderLevel} onChange={(e) => setReorderLevel(e.target.value)} />
               </Field>
             </FieldGrid>
 
-            <Field label="Description">
+            <Field label={tc('field.description')}>
               <Input value={description} onChange={(e) => setDescription(e.target.value)} />
             </Field>
           </div>
 
           <DialogFooter className="mt-4">
-            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? 'Saving…' : item ? 'Save changes' : 'Create item'}</Button>
+            <Button type="button" variant="ghost" onClick={onClose}>{tc('action.cancel')}</Button>
+            <Button type="submit" disabled={saving}>{saving ? tc('action.saving') : item ? t('saveChanges') : t('createItem')}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -718,6 +724,8 @@ function StockAdjustDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const t = useTranslations('inventory.stock');
+  const tc = useTranslations('common');
   const [type, setType] = React.useState<'PURCHASE' | 'ADJUSTMENT'>('PURCHASE');
   const [qty, setQty] = React.useState('');
   const [direction, setDirection] = React.useState<'in' | 'out'>('in');
@@ -727,14 +735,14 @@ function StockAdjustDialog({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const n = Number(qty);
-    if (!n || n <= 0) { toast.error('Enter a quantity'); return; }
+    if (!n || n <= 0) { toast.error(t('enterQty')); return; }
     setSaving(true);
     try {
       await adjustStock(item.id, { qtyDelta: direction === 'in' ? n : -n, type, note: note || undefined });
-      toast.success('Stock updated');
+      toast.success(t('updated'));
       onSaved();
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not update stock'));
+      toast.error(errorMessage(err, t('updateFailed')));
     } finally {
       setSaving(false);
     }
@@ -745,36 +753,36 @@ function StockAdjustDialog({
       <DialogContent>
         <form onSubmit={submit}>
           <DialogHeader>
-            <DialogTitle>Add / adjust stock — {item.name}</DialogTitle>
+            <DialogTitle>{t('title', { name: item.name })}</DialogTitle>
           </DialogHeader>
           <div className="mt-3 space-y-3">
             <p className="text-[12.5px] text-ink-muted">
-              Currently <Money amount={item.availableQty} /> available of <Money amount={item.totalQty} /> total.
+              {t.rich('current', { available: () => <Money amount={item.availableQty} />, total: () => <Money amount={item.totalQty} /> })}
             </p>
             <FieldGrid>
-              <Field label="Reason">
+              <Field label={t('reason')}>
                 <Select value={type} onChange={(e) => setType(e.target.value as 'PURCHASE' | 'ADJUSTMENT')}>
-                  <option value="PURCHASE">New purchase / restock</option>
-                  <option value="ADJUSTMENT">Correction after stock-take</option>
+                  <option value="PURCHASE">{t('reasonPurchase')}</option>
+                  <option value="ADJUSTMENT">{t('reasonAdjustment')}</option>
                 </Select>
               </Field>
-              <Field label="Direction">
+              <Field label={t('direction')}>
                 <Select value={direction} onChange={(e) => setDirection(e.target.value as 'in' | 'out')}>
-                  <option value="in">Add stock</option>
-                  <option value="out">Remove stock</option>
+                  <option value="in">{t('add')}</option>
+                  <option value="out">{t('remove')}</option>
                 </Select>
               </Field>
-              <Field label="Quantity" required>
+              <Field label={t('qty')} required>
                 <Input type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)} required />
               </Field>
             </FieldGrid>
-            <Field label="Note" hint="e.g. supplier invoice number">
+            <Field label={t('note')} hint={t('noteHint')}>
               <Input value={note} onChange={(e) => setNote(e.target.value)} />
             </Field>
           </div>
           <DialogFooter className="mt-4">
-            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Update stock'}</Button>
+            <Button type="button" variant="ghost" onClick={onClose}>{tc('action.cancel')}</Button>
+            <Button type="submit" disabled={saving}>{saving ? tc('action.saving') : t('submit')}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -785,6 +793,9 @@ function StockAdjustDialog({
 /* ── Movements + price history ───────────────────────────────────────── */
 
 function MovementsDialog({ item, onClose }: { item: InventoryItem; onClose: () => void }) {
+  const t = useTranslations('inventory.movements');
+  const tc = useTranslations('common');
+  const locale = useLocale() as Locale;
   const [tab, setTab] = React.useState<'movements' | 'prices'>('movements');
   const [page, setPage] = React.useState(1);
   const { data: movements } = useSWR(
@@ -808,14 +819,14 @@ function MovementsDialog({ item, onClose }: { item: InventoryItem; onClose: () =
             onClick={() => { setTab('movements'); setPage(1); }}
             className={`px-3 py-2 text-[13px] font-semibold ${tab === 'movements' ? 'border-b-2 border-brand text-brand' : 'text-ink-muted'}`}
           >
-            <History className="mr-1 inline size-3.5" /> Stock movements
+            <History className="mr-1 inline size-3.5" /> {t('tabMovements')}
           </button>
           <button
             type="button"
             onClick={() => { setTab('prices'); setPage(1); }}
             className={`px-3 py-2 text-[13px] font-semibold ${tab === 'prices' ? 'border-b-2 border-brand text-brand' : 'text-ink-muted'}`}
           >
-            <Package className="mr-1 inline size-3.5" /> Price history
+            <Package className="mr-1 inline size-3.5" /> {t('tabPrices')}
           </button>
         </div>
 
@@ -825,19 +836,19 @@ function MovementsDialog({ item, onClose }: { item: InventoryItem; onClose: () =
               {(movements?.data ?? []).map((m: InventoryStockMovementRow) => (
                 <li key={m.id} className="py-2 text-[13px]">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-ink">{m.type.replace(/_/g, ' ')}</span>
+                    <span className="font-semibold text-ink">{t.has(`type.${m.type}`) ? t(`type.${m.type}` as `type.${InventoryStockMovementType}`) : m.type.replace(/_/g, ' ')}</span>
                     <span className={m.qtyDelta >= 0 ? 'tabular text-accent-success-deep' : 'tabular text-accent-danger-deep'}>
                       {m.qtyDelta >= 0 ? '+' : ''}{m.qtyDelta}
                     </span>
                   </div>
                   <p className="text-[12px] text-ink-muted">
-                    Available {m.availableAfter} · Total {m.totalAfter} · {new Date(m.createdAt).toLocaleString('en-IN')}
+                    {t('after', { available: m.availableAfter, total: m.totalAfter })} · {new Date(m.createdAt).toLocaleString(INTL_LOCALE[locale])}
                     {m.note ? ` · ${m.note}` : ''}
                   </p>
                 </li>
               ))}
               {movements && movements.data.length === 0 && (
-                <p className="py-6 text-center text-[13px] text-ink-muted">No stock movements yet</p>
+                <p className="py-6 text-center text-[13px] text-ink-muted">{t('noMovements')}</p>
               )}
             </ul>
           ) : (
@@ -846,24 +857,24 @@ function MovementsDialog({ item, onClose }: { item: InventoryItem; onClose: () =
                 <li key={p.id} className="py-2 text-[13px]">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-ink"><Money amount={p.sellingPrice} symbol /></span>
-                    <span className="text-[12px] text-ink-muted">{new Date(p.createdAt).toLocaleString('en-IN')}</span>
+                    <span className="text-[12px] text-ink-muted">{new Date(p.createdAt).toLocaleString(INTL_LOCALE[locale])}</span>
                   </div>
                   <p className="text-[12px] text-ink-muted">
-                    {p.mrp != null ? `MRP ${p.mrp}` : 'No MRP'}
-                    {p.catalogDiscountType ? ` · ${p.catalogDiscountType === 'PERCENT' ? `${p.catalogDiscountValue}%` : `₹${p.catalogDiscountValue}`} off` : ''}
-                    {p.changedBy ? ` · by ${p.changedBy.firstName} ${p.changedBy.lastName}` : ''}
+                    {p.mrp != null ? t('mrp', { value: p.mrp }) : t('noMrp')}
+                    {p.catalogDiscountType ? ` · ${t('off', { value: p.catalogDiscountType === 'PERCENT' ? `${p.catalogDiscountValue}%` : `₹${p.catalogDiscountValue}` })}` : ''}
+                    {p.changedBy ? ` · ${t('by', { name: `${p.changedBy.firstName} ${p.changedBy.lastName}` })}` : ''}
                   </p>
                 </li>
               ))}
               {priceHistory && priceHistory.data.length === 0 && (
-                <p className="py-6 text-center text-[13px] text-ink-muted">No price changes recorded</p>
+                <p className="py-6 text-center text-[13px] text-ink-muted">{t('noPrices')}</p>
               )}
             </ul>
           )}
         </div>
 
         <DialogFooter className="mt-3">
-          <Button type="button" variant="ghost" onClick={onClose}>Close</Button>
+          <Button type="button" variant="ghost" onClick={onClose}>{tc('action.close')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import useSWR from 'swr';
+import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { PackageSearch, ScanLine, Search } from 'lucide-react';
 
@@ -58,11 +59,13 @@ interface Props {
 
 export default function ItemFinder({
   onPick,
-  submitLabel = 'Add',
-  scanLabel = 'Open camera scanner',
+  submitLabel,
+  scanLabel,
   autoFocus = false,
   className,
 }: Props) {
+  const t = useTranslations('inventory.finder');
+  const tc = useTranslations('common');
   const [tab, setTab] = React.useState<FinderTab>('code');
 
   const [code, setCode] = React.useState('');
@@ -117,7 +120,7 @@ export default function ItemFinder({
 
   const pick = async (item: InventoryItem, { fromScanner = false } = {}): Promise<void> => {
     if (item.availableQty <= 0) {
-      toast.error(`"${item.name}" is out of stock`);
+      toast.error(t('outOfStockToast', { name: item.name }));
       return;
     }
     const accepted = (await onPick(item)) !== false;
@@ -141,7 +144,7 @@ export default function ItemFinder({
       setCode('');
       await pick(item, opts);
     } catch {
-      toast.error(`No item found for "${value}"`);
+      toast.error(t('notFound', { code: value }));
     } finally {
       setLookingUp(false);
     }
@@ -199,8 +202,8 @@ export default function ItemFinder({
         value={tab}
         onValueChange={(v) => setTab(v)}
         options={[
-          { value: 'code', label: 'Scan / code', icon: <ScanLine /> },
-          { value: 'browse', label: 'Name / category', icon: <Search /> },
+          { value: 'code', label: t('tabCode'), icon: <ScanLine /> },
+          { value: 'browse', label: t('tabBrowse'), icon: <Search /> },
         ]}
         className="max-w-full"
       />
@@ -216,7 +219,7 @@ export default function ItemFinder({
             />
           ) : (
             <Button type="button" variant="outline" block onClick={() => setScannerOpen(true)}>
-              <ScanLine /> {scanLabel}
+              <ScanLine /> {scanLabel ?? t('openScanner')}
             </Button>
           )}
           {/* A div, not a form: this can sit inside another form (the issue
@@ -233,9 +236,9 @@ export default function ItemFinder({
                 e.preventDefault();
                 void submitCode(code);
               }}
-              placeholder="Type an item code, or scan with a USB/BT scanner"
+              placeholder={t('codePlaceholder')}
               autoFocus={autoFocus}
-              aria-label="Item code"
+              aria-label={t('itemCode')}
             />
             <Button
               type="button"
@@ -244,17 +247,17 @@ export default function ItemFinder({
                 void submitCode(code);
               }}
             >
-              {submitLabel}
+              {submitLabel ?? tc('action.add')}
             </Button>
           </div>
           <p className="text-[12px] text-ink-muted">
-            No code on the item?{' '}
+            {t('noCode')}{' '}
             <button
               type="button"
               onClick={() => setTab('browse')}
               className="cursor-pointer font-semibold text-brand underline-offset-2 hover:underline"
             >
-              Search by name or category
+              {t('searchByName')}
             </button>
           </p>
         </>
@@ -267,9 +270,9 @@ export default function ItemFinder({
                 setCategoryId(e.target.value);
                 setActiveIndex(0);
               }}
-              aria-label="Category"
+              aria-label={t('category')}
             >
-              <option value="">All categories</option>
+              <option value="">{t('allCategories')}</option>
               {categories
                 ?.filter((c) => c.isActive)
                 .map((c) => (
@@ -286,8 +289,8 @@ export default function ItemFinder({
                 setActiveIndex(0);
               }}
               onKeyDown={onSearchKeyDown}
-              placeholder="Type part of the item name…"
-              aria-label="Item name"
+              placeholder={t('namePlaceholder')}
+              aria-label={t('itemName')}
               role="combobox"
               aria-expanded={rows.length > 0}
               aria-controls={listboxId}
@@ -298,14 +301,14 @@ export default function ItemFinder({
 
           {!hasQuery ? (
             <p className="rounded-md border border-dashed border-line-strong px-3 py-4 text-center text-[12.5px] text-ink-muted">
-              Pick a category, or type part of the name — matching is partial and ignores case.
+              {t('hint')}
             </p>
           ) : isLoading && !results ? (
-            <p className="px-1 py-3 text-center text-[12.5px] text-ink-muted">Searching…</p>
+            <p className="px-1 py-3 text-center text-[12.5px] text-ink-muted">{t('searching')}</p>
           ) : rows.length === 0 ? (
             <p className="rounded-md border border-dashed border-line-strong px-3 py-4 text-center text-[12.5px] text-ink-muted">
               <PackageSearch aria-hidden className="mx-auto mb-1.5 size-4 text-ink-faint" />
-              No item matches this search
+              {t('noMatch')}
             </p>
           ) : (
             <>
@@ -313,7 +316,7 @@ export default function ItemFinder({
                 ref={listRef}
                 id={listboxId}
                 role="listbox"
-                aria-label="Matching items"
+                aria-label={t('matching')}
                 className="max-h-64 divide-y divide-line overflow-y-auto rounded-md border border-line"
               >
                 {rows.map((item, i) => {
@@ -347,7 +350,7 @@ export default function ItemFinder({
                           out ? 'text-accent-warn-deep' : 'text-ink-muted',
                         )}
                       >
-                        {out ? 'Out of stock' : `${item.availableQty} left`}
+                        {out ? t('outOfStock') : t('left', { count: item.availableQty })}
                       </span>
                     </li>
                   );
@@ -355,8 +358,7 @@ export default function ItemFinder({
               </ul>
               {results && results.total > rows.length && (
                 <p className="text-[12px] text-ink-muted">
-                  Showing the first {rows.length} of {results.total} matches — narrow the search to
-                  see the rest.
+                  {t('showingFirst', { shown: rows.length, total: results.total })}
                 </p>
               )}
             </>

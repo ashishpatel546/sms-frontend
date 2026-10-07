@@ -3,12 +3,18 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
 import { sortByName } from "@/lib/utils";
 
 export default function BulkPromotionsPage() {
+    const t = useTranslations("students.promotions");
+    const ts = useTranslations("students.enrollStatus");
+    const tc = useTranslations("common");
+    const statusLabel = (status: string) =>
+        ts.has(status as Parameters<typeof ts>[0]) ? ts(status as Parameters<typeof ts>[0]) : status;
     const router = useRouter();
     const readOnly = useReadOnlySession();
     const [sessions, setSessions] = useState<any[]>([]);
@@ -50,7 +56,7 @@ export default function BulkPromotionsPage() {
             if (sessRes.ok) setSessions(await sessRes.json());
             if (classRes.ok) setClasses(sortByName(await classRes.json()));
         } catch (error) {
-            toast.error("Failed to load initial data");
+            toast.error(t("loadFailed"));
         }
     };
 
@@ -80,7 +86,7 @@ export default function BulkPromotionsPage() {
 
     const handleSearch = async () => {
         if (!fromSessionId || !fromClassId) {
-            toast.error("Please select a Source Session and Class");
+            toast.error(t("selectSource"));
             return;
         }
 
@@ -100,7 +106,7 @@ export default function BulkPromotionsPage() {
                 setSelectedStudentIds([]); // reset selection
             }
         } catch (error) {
-            toast.error("Failed to search students");
+            toast.error(t("searchFailed"));
         } finally {
             setLoading(false);
         }
@@ -127,13 +133,13 @@ export default function BulkPromotionsPage() {
         setActionErrors([]);
 
         if (selectedStudentIds.length === 0) {
-            toast.error("Please select at least one student");
+            toast.error(t("selectOne"));
             return;
         }
 
         if (actionType === "PROMOTE") {
             if (!toSessionId || !toClassId || !toSectionId) {
-                toast.error("Please fill out all Destination fields");
+                toast.error(t("fillDestination"));
                 return;
             }
 
@@ -155,19 +161,19 @@ export default function BulkPromotionsPage() {
 
                 if (res.ok) {
                     const result = await res.json();
-                    toast.success(`Successfully promoted ${result.successful} students!`);
+                    toast.success(t("promoted", { count: result.successful }));
                     if (result.failed > 0) {
-                        toast.error(`Failed to promote ${result.failed} students.`);
+                        toast.error(t("promoteFailedCount", { count: result.failed }));
                         if (result.errors && result.errors.length > 0) {
                             setActionErrors(result.errors);
                         }
                     }
                     handleSearch();
                 } else {
-                    toast.error("Failed to execute bulk promotion");
+                    toast.error(t("promoteFailed"));
                 }
             } catch (error) {
-                toast.error("An error occurred during promotion");
+                toast.error(t("promoteError"));
             } finally {
                 setLoading(false);
             }
@@ -189,19 +195,19 @@ export default function BulkPromotionsPage() {
 
                 if (res.ok) {
                     const result = await res.json();
-                    toast.success(`Successfully processed exits for ${result.successful} students!`);
+                    toast.success(t("exited", { count: result.successful }));
                     if (result.failed > 0) {
-                        toast.error(`Failed to process exits for ${result.failed} students.`);
+                        toast.error(t("exitFailedCount", { count: result.failed }));
                         if (result.errors && result.errors.length > 0) {
                             setActionErrors(result.errors);
                         }
                     }
                     handleSearch();
                 } else {
-                    toast.error("Failed to execute bulk exit");
+                    toast.error(t("exitFailed"));
                 }
             } catch (error) {
-                toast.error("An error occurred during exit processing");
+                toast.error(t("exitError"));
             } finally {
                 setLoading(false);
             }
@@ -210,7 +216,7 @@ export default function BulkPromotionsPage() {
 
     return (
         <main className="p-4 max-w-7xl mx-auto">
-            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Bulk Student Promotions</h1>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t("title")}</h1>
 
             {/* Top Bar: Source Filters & Destination Settings */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -219,40 +225,40 @@ export default function BulkPromotionsPage() {
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                     <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
                         <span className="bg-slate-100 text-slate-600 w-6 h-6 rounded-full flex items-center justify-center text-sm mr-2">1</span>
-                        Select Source Class
+                        {t("sourceTitle")}
                     </h2>
                     <div className="grid grid-cols-3 gap-4">
                         <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-900">Academic Session</label>
+                            <label className="block mb-2 text-sm font-medium text-gray-900">{t("academicSession")}</label>
                             <select
                                 value={fromSessionId}
                                 onChange={(e) => setFromSessionId(e.target.value)}
                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                             >
-                                <option value="">Select Session...</option>
-                                {sessions.map(s => <option key={s.id} value={s.id}>{s.name} {s.isActive ? '(Active)' : ''}</option>)}
+                                <option value="">{t("selectSession")}</option>
+                                {sessions.map(s => <option key={s.id} value={s.id}>{s.name} {s.isActive ? t("activeSuffix") : ''}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-900">Class</label>
+                            <label className="block mb-2 text-sm font-medium text-gray-900">{tc("field.class")}</label>
                             <select
                                 value={fromClassId}
                                 onChange={handleFromClassChange}
                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                             >
-                                <option value="">Select Class...</option>
+                                <option value="">{t("selectClass")}</option>
                                 {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-900">Section</label>
+                            <label className="block mb-2 text-sm font-medium text-gray-900">{tc("field.section")}</label>
                             <select
                                 value={fromSectionId}
                                 onChange={(e) => setFromSectionId(e.target.value)}
                                 disabled={!fromClassId}
                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <option value="">Select Section...</option>
+                                <option value="">{t("selectSection")}</option>
                                 {fromSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
                         </div>
@@ -261,7 +267,7 @@ export default function BulkPromotionsPage() {
                         onClick={handleSearch}
                         className="mt-4 w-full text-white bg-slate-800 hover:bg-slate-900 focus:ring-4 focus:ring-slate-300 font-medium rounded-lg text-sm px-5 py-2.5"
                     >
-                        Load Students
+                        {t("loadStudents")}
                     </button>
                 </div>
 
@@ -270,20 +276,20 @@ export default function BulkPromotionsPage() {
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-lg font-semibold text-slate-800 flex items-center">
                             <span className="bg-amber-100 text-amber-700 w-6 h-6 rounded-full flex items-center justify-center text-sm mr-2">2</span>
-                            Action Settings
+                            {t("actionTitle")}
                         </h2>
                         <div className="flex bg-slate-100 p-1 rounded-lg">
                             <button
                                 onClick={() => setActionType("PROMOTE")}
                                 className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${actionType === "PROMOTE" ? "bg-white text-amber-700 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
                             >
-                                Promote
+                                {t("promote")}
                             </button>
                             <button
                                 onClick={() => setActionType("EXIT")}
                                 className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${actionType === "EXIT" ? "bg-white text-red-600 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
                             >
-                                Process Exits
+                                {t("processExits")}
                             </button>
                         </div>
                     </div>
@@ -291,36 +297,36 @@ export default function BulkPromotionsPage() {
                     {actionType === "PROMOTE" ? (
                         <div className="grid grid-cols-3 gap-4">
                             <div>
-                                <label className="block mb-2 text-sm font-medium text-gray-900">Target Session</label>
+                                <label className="block mb-2 text-sm font-medium text-gray-900">{t("targetSession")}</label>
                                 <select
                                     value={toSessionId}
                                     onChange={(e) => setToSessionId(e.target.value)}
                                     className="bg-amber-50 border border-amber-300 text-gray-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-2.5"
                                 >
-                                    <option value="">Select Session...</option>
+                                    <option value="">{t("selectSession")}</option>
                                     {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="block mb-2 text-sm font-medium text-gray-900">Promote To Class</label>
+                                <label className="block mb-2 text-sm font-medium text-gray-900">{t("toClass")}</label>
                                 <select
                                     value={toClassId}
                                     onChange={handleToClassChange}
                                     className="bg-amber-50 border border-amber-300 text-gray-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-2.5"
                                 >
-                                    <option value="">Select Class...</option>
+                                    <option value="">{t("selectClass")}</option>
                                     {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="block mb-2 text-sm font-medium text-gray-900">Assign Section</label>
+                                <label className="block mb-2 text-sm font-medium text-gray-900">{t("assignSection")}</label>
                                 <select
                                     value={toSectionId}
                                     onChange={(e) => setToSectionId(e.target.value)}
                                     disabled={!toClassId}
                                     className="bg-amber-50 border border-amber-300 text-gray-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <option value="">Select Section...</option>
+                                    <option value="">{t("selectSection")}</option>
                                     {toSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
                             </div>
@@ -328,16 +334,16 @@ export default function BulkPromotionsPage() {
                     ) : (
                         <div className="grid grid-cols-1 gap-4">
                             <div>
-                                <label className="block mb-2 text-sm font-medium text-gray-900">Exit Reason</label>
+                                <label className="block mb-2 text-sm font-medium text-gray-900">{t("exitReason")}</label>
                                 <select
                                     value={exitReason}
                                     onChange={(e) => setExitReason(e.target.value as any)}
                                     className="bg-red-50 border border-red-300 text-gray-900 text-sm rounded-lg focus:ring-red-500 focus:border-red-500 block w-full p-2.5"
                                 >
-                                    <option value="ALUMNI">Graduated (Alumni)</option>
-                                    <option value="WITHDRAWN">Left School (Withdrawn)</option>
+                                    <option value="ALUMNI">{t("exitAlumni")}</option>
+                                    <option value="WITHDRAWN">{t("exitWithdrawn")}</option>
                                 </select>
-                                <p className="mt-2 text-xs text-slate-500">This will mark the selected active students as inactive and set their enrollment status in the source session accordingly.</p>
+                                <p className="mt-2 text-xs text-slate-500">{t("exitHint")}</p>
                             </div>
                         </div>
                     )}
@@ -347,11 +353,11 @@ export default function BulkPromotionsPage() {
                         title={readOnly ? READ_ONLY_TITLE : undefined}
                         className={`mt-4 w-full text-white ${actionType === "PROMOTE" ? "bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300 focus:ring-amber-300" : "bg-red-600 hover:bg-red-700 disabled:bg-red-300 focus:ring-red-300"} disabled:cursor-not-allowed focus:ring-4 font-medium rounded-lg text-sm px-5 py-2.5 transition-colors`}
                     >
-                        {loading ? 'Processing...' : `Execute ${actionType === "PROMOTE" ? "Promotion" : "Exit"} for ${selectedStudentIds.length} Students`}
+                        {loading ? t("processing") : actionType === "PROMOTE" ? t("executePromote", { count: selectedStudentIds.length }) : t("executeExit", { count: selectedStudentIds.length })}
                     </button>
                     {actionErrors.length > 0 && (
                         <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg max-h-48 overflow-y-auto">
-                            <h3 className="text-sm font-semibold text-red-800 mb-2">The following issues occurred:</h3>
+                            <h3 className="text-sm font-semibold text-red-800 mb-2">{t("issues")}</h3>
                             <ul className="list-disc list-inside text-xs text-red-700 space-y-1">
                                 {actionErrors.map((err, idx) => (
                                     <li key={idx}>{err}</li>
@@ -367,9 +373,9 @@ export default function BulkPromotionsPage() {
                 <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
                     <h2 className="text-lg font-semibold text-slate-800 flex items-center">
                         <span className="bg-slate-200 text-slate-700 w-6 h-6 rounded-full flex items-center justify-center text-sm mr-2">3</span>
-                        Select Students
+                        {t("selectTitle")}
                     </h2>
-                    <span className="text-sm text-slate-500 font-medium">{students.length} students loaded</span>
+                    <span className="text-sm text-slate-500 font-medium">{t("loaded", { count: students.length })}</span>
                 </div>
 
                 <div className="overflow-x-auto max-h-150 overflow-y-auto">
@@ -386,18 +392,18 @@ export default function BulkPromotionsPage() {
                                         />
                                     </div>
                                 </th>
-                                <th scope="col" className="px-6 py-3">ID</th>
-                                <th scope="col" className="px-6 py-3">Student Name</th>
-                                <th scope="col" className="px-6 py-3">Class / Section</th>
-                                <th scope="col" className="px-6 py-3">Current Status</th>
-                                <th scope="col" className="px-6 py-3 text-right">Actions</th>
+                                <th scope="col" className="px-6 py-3">{t("col.id")}</th>
+                                <th scope="col" className="px-6 py-3">{t("col.name")}</th>
+                                <th scope="col" className="px-6 py-3">{t("col.classSection")}</th>
+                                <th scope="col" className="px-6 py-3">{t("col.status")}</th>
+                                <th scope="col" className="px-6 py-3 text-right">{tc("action.actions")}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {students.length === 0 ? (
                                 <tr>
                                     <td colSpan={4} className="px-6 py-8 text-center text-slate-500">
-                                        Please select a source session and class, then click "Load Students".
+                                        {t("emptyPrompt")}
                                     </td>
                                 </tr>
                             ) : (
@@ -437,7 +443,7 @@ export default function BulkPromotionsPage() {
                                                             currentEnrollment?.status === 'WITHDRAWN' ? 'bg-red-100 text-red-800' :
                                                                 'bg-slate-100 text-slate-800'
                                                     }`}>
-                                                    {currentEnrollment?.status || 'UNKNOWN'}
+                                                    {currentEnrollment?.status ? statusLabel(currentEnrollment.status) : t("unknown")}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-right">
@@ -448,7 +454,7 @@ export default function BulkPromotionsPage() {
                                                     }}
                                                     className="text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors"
                                                 >
-                                                    History
+                                                    {t("history")}
                                                 </button>
                                             </td>
                                         </tr>
@@ -467,14 +473,15 @@ export default function BulkPromotionsPage() {
                         <div className="flex justify-between items-center p-6 border-b border-slate-200">
                             <div>
                                 <h3 className="text-xl font-bold text-slate-800">
-                                    Promotion History
+                                    {t("historyTitle")}
                                 </h3>
                                 <p className="text-sm text-slate-500 mt-1">
-                                    {historyModalStudent.firstName} {historyModalStudent.lastName} (ID: #{historyModalStudent.id})
+                                    {t("historySubtitle", { name: [historyModalStudent.firstName, historyModalStudent.lastName].filter(Boolean).join(" "), id: historyModalStudent.id })}
                                 </p>
                             </div>
                             <button
                                 onClick={() => setHistoryModalStudent(null)}
+                                aria-label={tc("action.close")}
                                 className="text-slate-400 hover:text-slate-600 transition-colors"
                             >
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -485,7 +492,7 @@ export default function BulkPromotionsPage() {
                         <div className="p-6 overflow-y-auto">
                             {!historyModalStudent.enrollments || historyModalStudent.enrollments.length === 0 ? (
                                 <div className="text-center py-8 text-slate-500">
-                                    No enrollment history found for this student.
+                                    {t("noHistory")}
                                 </div>
                             ) : (
                                 <div className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-linear-to-b before:from-transparent before:via-slate-300 before:to-transparent">
@@ -513,13 +520,13 @@ export default function BulkPromotionsPage() {
                                                                     enrollment.status === 'WITHDRAWN' ? 'bg-red-100 text-red-700' :
                                                                         'bg-slate-100 text-slate-700'
                                                         }`}>
-                                                        {enrollment.status}
+                                                        {statusLabel(enrollment.status)}
                                                     </span>
                                                 </div>
                                                 <div className="text-sm text-slate-600">
-                                                    <p><span className="font-medium">Class:</span> {enrollment.class?.name || 'N/A'}</p>
-                                                    <p><span className="font-medium">Section:</span> {enrollment.section?.name || 'N/A'}</p>
-                                                    <p><span className="font-medium">Roll No:</span> {enrollment.rollNo || 'N/A'}</p>
+                                                    <p><span className="font-medium">{t("classLabel")}</span> {enrollment.class?.name || t("na")}</p>
+                                                    <p><span className="font-medium">{t("sectionLabel")}</span> {enrollment.section?.name || t("na")}</p>
+                                                    <p><span className="font-medium">{t("rollLabel")}</span> {enrollment.rollNo || t("na")}</p>
                                                 </div>
                                             </div>
                                         </div>

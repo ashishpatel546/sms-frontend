@@ -5,11 +5,16 @@ import { hrApi, DeviceRegistrationRow } from "@/lib/hr-api";
 import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 
 const PAGE_SIZE = 25;
 
 export default function DeviceRegistrationsPage() {
   const rbac = useRbac();
+  const t = useTranslations("hr.devices");
+  const tc = useTranslations("common");
+  const locale = useLocale() as Locale;
 
   const [rows, setRows]           = useState<DeviceRegistrationRow[]>([]);
   const [total, setTotal]         = useState(0);
@@ -39,11 +44,11 @@ export default function DeviceRegistrationsPage() {
       setTotal(res.total);
       setTotalPages(res.totalPages);
     } catch {
-      toast.error("Failed to load device registrations");
+      toast.error(t("loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [page, active, statusFilter]);
+  }, [page, active, statusFilter, t]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setPage(1); }, [active, statusFilter]);
@@ -59,31 +64,31 @@ export default function DeviceRegistrationsPage() {
     setGrantingId(staffId);
     try {
       await hrApi.attendance.webauthn.grantPermit(staffId);
-      toast.success(`Permit granted to ${name} (valid 48 h)`);
+      toast.success(t("permitGranted", { name }));
       load();
     } catch (e: any) {
-      toast.error(e?.info?.message ?? "Failed to grant permit");
+      toast.error(e?.info?.message ?? t("permitFailed"));
     } finally { setGrantingId(null); }
   };
 
   const handleDeleteDevice = async (biometricId: number, name: string) => {
-    if (!confirm(`Remove the registered device for ${name}? They will need to re-register.`)) return;
+    if (!confirm(t("removeConfirm", { name }))) return;
     setDeletingId(biometricId);
     try {
       await hrApi.attendance.webauthn.deleteCredential(biometricId);
-      toast.success(`Device removed for ${name}`);
+      toast.success(t("removed", { name }));
       load();
     } catch (e: any) {
-      toast.error(e?.info?.message ?? "Failed to remove device");
+      toast.error(e?.info?.message ?? t("removeFailed"));
     } finally { setDeletingId(null); }
   };
 
   const hasSearch = Object.values(active).some(Boolean) || statusFilter !== "all";
 
   const STATUS_OPTIONS = [
-    { value: "all",          label: "All",            activeClass: "bg-gray-700 border-gray-700 text-white" },
-    { value: "registered",   label: "✓ Registered",   activeClass: "bg-green-600 border-green-600 text-white" },
-    { value: "unregistered", label: "⚠ Not Registered", activeClass: "bg-amber-500 border-amber-500 text-white" },
+    { value: "all",          label: t("filterAll"),        activeClass: "bg-gray-700 border-gray-700 text-white" },
+    { value: "registered",   label: t("registeredBadge"),   activeClass: "bg-green-600 border-green-600 text-white" },
+    { value: "unregistered", label: t("notRegisteredBadge"), activeClass: "bg-amber-500 border-amber-500 text-white" },
   ] as const;
 
   return (
@@ -93,11 +98,11 @@ export default function DeviceRegistrationsPage() {
       {/* ── Header ─────────────────────────────────────────────────── */}
       <div>
         <Link href="/dashboard/hr/staff-attendance" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-2">
-          ← Staff Attendance
+          {t("back")}
         </Link>
-        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Device Registrations</h1>
+        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t("title")}</h1>
         <p className="text-sm text-gray-500 mt-0.5">
-          Track which staff have registered a device for biometric self check-in.
+          {t("subtitle")}
         </p>
       </div>
 
@@ -105,9 +110,9 @@ export default function DeviceRegistrationsPage() {
       {!loading && (
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {([
-            { key: "all",          label: "Total Staff",    value: total,                                                                         activeRing: "ring-gray-400 bg-gray-100",   numClass: "text-gray-800"   },
-            { key: "registered",   label: "Registered",     value: statusFilter === "registered" ? total : rows.filter(r => r.isRegistered).length,  activeRing: "ring-green-400 bg-green-100", numClass: "text-green-700"  },
-            { key: "unregistered", label: "Not Registered", value: statusFilter === "unregistered" ? total : rows.filter(r => !r.isRegistered).length, activeRing: "ring-amber-400 bg-amber-100", numClass: "text-amber-700"  },
+            { key: "all",          label: t("totalStaff"),    value: total,                                                                         activeRing: "ring-gray-400 bg-gray-100",   numClass: "text-gray-800"   },
+            { key: "registered",   label: t("registered"),     value: statusFilter === "registered" ? total : rows.filter(r => r.isRegistered).length,  activeRing: "ring-green-400 bg-green-100", numClass: "text-green-700"  },
+            { key: "unregistered", label: t("notRegistered"), value: statusFilter === "unregistered" ? total : rows.filter(r => !r.isRegistered).length, activeRing: "ring-amber-400 bg-amber-100", numClass: "text-amber-700"  },
           ] as const).map(({ key, label, value, activeRing, numClass }) => (
             <div
               key={key}
@@ -116,7 +121,7 @@ export default function DeviceRegistrationsPage() {
                 ${statusFilter === key ? `${activeRing} ring-2` : "bg-white border-gray-200 hover:bg-gray-50"}`}
             >
               <p className={`text-xl sm:text-2xl font-bold leading-none ${numClass}`}>{value}</p>
-              <p className="text-xs text-gray-500 mt-1 leading-tight">{label}{key !== "all" && statusFilter !== key ? <span className="hidden sm:inline"> (page)</span> : ""}</p>
+              <p className="text-xs text-gray-500 mt-1 leading-tight">{label}{key !== "all" && statusFilter !== key ? <span className="hidden sm:inline"> {t("pageSuffix")}</span> : ""}</p>
             </div>
           ))}
         </div>
@@ -130,10 +135,10 @@ export default function DeviceRegistrationsPage() {
         {/* 4-field grid: 1-col mobile → 2-col tablet → 4-col desktop */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { key: "name",         label: "Name",          type: "text",   placeholder: "e.g. Rahul"      },
-            { key: "mobile",       label: "Mobile Number", type: "tel",    placeholder: "e.g. 9876543210" },
-            { key: "employeeCode", label: "Employee Code", type: "number", placeholder: "e.g. 1024"       },
-            { key: "staffId",      label: "Staff ID",      type: "number", placeholder: "e.g. 17"         },
+            { key: "name",         label: tc("field.name"),     type: "text",   placeholder: t("namePlaceholder")   },
+            { key: "mobile",       label: t("mobileNumber"),   type: "tel",    placeholder: t("mobilePlaceholder") },
+            { key: "employeeCode", label: t("employeeCode"),   type: "number", placeholder: t("codePlaceholder")   },
+            { key: "staffId",      label: t("staffId"),        type: "number", placeholder: t("staffIdPlaceholder") },
           ].map(({ key, label, type, placeholder }) => (
             <div key={key}>
               <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
@@ -151,10 +156,10 @@ export default function DeviceRegistrationsPage() {
         {/* Buttons + status pills — flex-wrap so they stack on narrow screens */}
         <div className="flex flex-wrap items-center gap-2">
           <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg">
-            Search
+            {tc("action.search")}
           </button>
           <button type="button" onClick={clearSearch} className="border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg">
-            Clear
+            {tc("action.clear")}
           </button>
           {/* divider visible only when there's room */}
           <span className="hidden sm:inline text-gray-300">|</span>
@@ -175,10 +180,10 @@ export default function DeviceRegistrationsPage() {
 
       {/* ── Content ───────────────────────────────────────────────── */}
       {loading ? (
-        <div className="bg-white border border-gray-200 rounded-xl p-10 text-center text-sm text-gray-400">Loading…</div>
+        <div className="bg-white border border-gray-200 rounded-xl p-10 text-center text-sm text-gray-400">{tc("state.loading")}</div>
       ) : rows.length === 0 ? (
         <div className="bg-white border border-gray-200 rounded-xl p-10 text-center text-sm text-gray-400">
-          {hasSearch ? "No staff match your search / filter." : "No staff found."}
+          {hasSearch ? t("noMatch") : t("noStaff")}
         </div>
       ) : (
         <>
@@ -188,15 +193,15 @@ export default function DeviceRegistrationsPage() {
               <table className="min-w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Staff</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{t("staff")}</th>
                     {/* Employee Code + Mobile hidden on tablet, shown on laptop+ */}
-                    <th className="hidden lg:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Emp. Code</th>
-                    <th className="hidden lg:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Mobile</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Device</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Registered On</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                    <th className="hidden lg:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{t("empCode")}</th>
+                    <th className="hidden lg:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{tc("field.mobile")}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{t("device")}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{t("registeredOn")}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tc("field.status")}</th>
                     {rbac.canManageHR && (
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Actions</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{tc("action.actions")}</th>
                     )}
                   </tr>
                 </thead>
@@ -214,13 +219,13 @@ export default function DeviceRegistrationsPage() {
                       </td>
                       <td className="px-4 py-3 text-gray-500 tabular-nums text-xs whitespace-nowrap">
                         {row.registeredAt
-                          ? new Date(row.registeredAt).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })
+                          ? new Date(row.registeredAt).toLocaleDateString(INTL_LOCALE[locale], { day: "2-digit", month: "short", year: "numeric" })
                           : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-4 py-3">
                         {row.isRegistered
-                          ? <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 whitespace-nowrap">✓ Registered</span>
-                          : <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">⚠ Not Registered</span>}
+                          ? <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 whitespace-nowrap">{t("registeredBadge")}</span>
+                          : <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">{t("notRegisteredBadge")}</span>}
                       </td>
                       {rbac.canManageHR && (
                         <td className="px-4 py-3 text-right">
@@ -230,7 +235,7 @@ export default function DeviceRegistrationsPage() {
                               disabled={grantingId === row.staffId}
                               className="text-xs border border-indigo-300 text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap"
                             >
-                              {grantingId === row.staffId ? "Granting…" : "Grant Permit"}
+                              {grantingId === row.staffId ? t("granting") : t("grantPermit")}
                             </button>
                             {row.isRegistered && row.biometricId != null && (
                               <button
@@ -238,7 +243,7 @@ export default function DeviceRegistrationsPage() {
                                 disabled={deletingId === row.biometricId}
                                 className="text-xs border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap"
                               >
-                                {deletingId === row.biometricId ? "Removing…" : "Remove Device"}
+                                {deletingId === row.biometricId ? t("removing") : t("removeDevice")}
                               </button>
                             )}
                           </div>
@@ -260,23 +265,23 @@ export default function DeviceRegistrationsPage() {
                   <div className="min-w-0">
                     <p className="font-semibold text-gray-900 truncate">{row.name}</p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {row.employeeCode ? `Code #${row.employeeCode}` : "No code"}
+                      {row.employeeCode ? t("codeNo", { code: row.employeeCode }) : t("noCode")}
                       {row.mobile ? ` · ${row.mobile}` : ""}
                     </p>
                   </div>
                   {row.isRegistered
-                    ? <span className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 whitespace-nowrap">✓ Registered</span>
-                    : <span className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">⚠ Not Registered</span>}
+                    ? <span className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 whitespace-nowrap">{t("registeredBadge")}</span>
+                    : <span className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">{t("notRegisteredBadge")}</span>}
                 </div>
 
                 {/* Device info */}
                 {row.isRegistered && (
                   <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
                     <span>📱</span>
-                    <span className="font-medium text-gray-700">{row.deviceName || "Unnamed device"}</span>
+                    <span className="font-medium text-gray-700">{row.deviceName || t("unnamedDevice")}</span>
                     {row.registeredAt && (
                       <span className="text-gray-400">
-                        · {new Date(row.registeredAt).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })}
+                        · {new Date(row.registeredAt).toLocaleDateString(INTL_LOCALE[locale], { day: "2-digit", month: "short", year: "numeric" })}
                       </span>
                     )}
                   </div>
@@ -290,7 +295,7 @@ export default function DeviceRegistrationsPage() {
                       disabled={grantingId === row.staffId}
                       className="text-xs border border-indigo-300 text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
                     >
-                      {grantingId === row.staffId ? "Granting…" : "Grant Permit"}
+                      {grantingId === row.staffId ? t("granting") : t("grantPermit")}
                     </button>
                     {row.isRegistered && row.biometricId != null && (
                       <button
@@ -298,7 +303,7 @@ export default function DeviceRegistrationsPage() {
                         disabled={deletingId === row.biometricId}
                         className="text-xs border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
                       >
-                        {deletingId === row.biometricId ? "Removing…" : "Remove Device"}
+                        {deletingId === row.biometricId ? t("removing") : t("removeDevice")}
                       </button>
                     )}
                   </div>
@@ -310,21 +315,21 @@ export default function DeviceRegistrationsPage() {
           {/* ── Pagination ── */}
           {totalPages > 1 && (
             <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500 pt-1">
-              <span>{total} staff · page {page} of {totalPages}</span>
+              <span>{t("pagination", { total, page, totalPages })}</span>
               <div className="flex gap-2">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
                   className="border rounded-lg px-3 py-1.5 hover:bg-gray-50 disabled:opacity-40 transition-colors"
                 >
-                  ← Prev
+                  ← {tc("action.previous")}
                 </button>
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
                   className="border rounded-lg px-3 py-1.5 hover:bg-gray-50 disabled:opacity-40 transition-colors"
                 >
-                  Next →
+                  {tc("action.next")} →
                 </button>
               </div>
             </div>

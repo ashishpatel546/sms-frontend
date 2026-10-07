@@ -4,7 +4,9 @@
 "use no memo";
 
 import { useState, useEffect } from "react";
-import { hrApi, StaffAttendanceRecord, StaffBiometric, WebauthnPermitStatus, CheckOutReason, TodayAttendanceStatus } from "@/lib/hr-api";
+import { hrApi, StaffAttendanceRecord, StaffBiometric, WebauthnPermitStatus, CheckOutReason, TodayAttendanceStatus, type StaffAttendanceStatus, type AttendanceMethod } from "@/lib/hr-api";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 import {
   attendanceSettingsApi,
   previewCheckoutStatus,
@@ -18,11 +20,12 @@ import { todayLocalDate, formatTime } from "@/lib/utils";
 import {
   acquirePreciseFix,
   describeAccuracy,
-  explainFixError,
+  fixErrorMessage,
   GeolocationFixError,
   DEFAULT_TARGET_ACCURACY_M,
   type PreciseFix,
 } from "@/lib/geolocation";
+import { useHelperMessage } from "@/i18n/useHelperMessage";
 import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
 import { ATTENDANCE_TONE, attendanceCellClass } from "@/lib/attendanceColors";
 import { CHART_TOOLTIP } from "@/lib/chartTokens";
@@ -40,7 +43,8 @@ dayjs.extend(duration);
  */
 type AttendanceRow = StaffAttendanceRecord & { isLate?: boolean };
 
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTH_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const WEEKDAYS = ["su", "mo", "tu", "we", "th", "fr", "sa"] as const;
 const STATUS_STYLES: Record<string, string> = {
   PRESENT: "bg-green-100 text-green-700 border-green-200",
   LATE: "bg-amber-100 text-amber-700 border-amber-200",
@@ -105,6 +109,7 @@ type CheckInState = "idle" | "locating" | "authenticating" | "submitting" | "don
  * people standing at the gate walking in circles looking for a better spot.
  */
 function GpsPrecision({ accuracy, settling }: { accuracy: number | null; settling: boolean }) {
+  const t = useTranslations("hr.myAttendance");
   if (accuracy === null) return null;
 
   const good = accuracy <= DEFAULT_TARGET_ACCURACY_M;
@@ -117,7 +122,7 @@ function GpsPrecision({ accuracy, settling }: { accuracy: number | null; settlin
     <div className="mt-2">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[11px] text-gray-500">
-          {settling ? "Improving location precision…" : "Location precision"}
+          {settling ? t("improvingPrecision") : t("precision")}
         </span>
         <span
           className={`text-[11px] font-medium tabular-nums ${
@@ -129,11 +134,11 @@ function GpsPrecision({ accuracy, settling }: { accuracy: number | null; settlin
       </div>
       <div
         role="progressbar"
-        aria-label="Location precision"
+        aria-label={t("precision")}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(filled)}
-        aria-valuetext={`Accurate to ${describeAccuracy(accuracy)}`}
+        aria-valuetext={t("accurateTo", { accuracy: describeAccuracy(accuracy) })}
         className="mt-1 h-1 w-full rounded-full bg-gray-200 overflow-hidden"
       >
         <div
@@ -145,7 +150,7 @@ function GpsPrecision({ accuracy, settling }: { accuracy: number | null; settlin
       </div>
       {!usable && !settling && (
         <p className="text-[11px] text-red-700 mt-1">
-          Turn on Location/GPS and step outdoors, then try again.
+          {t("turnOnGps")}
         </p>
       )}
     </div>
@@ -153,6 +158,11 @@ function GpsPrecision({ accuracy, settling }: { accuracy: number | null; settlin
 }
 
 export default function MyAttendancePage() {
+  const helperText = useHelperMessage();
+  const t = useTranslations("hr");
+  const tm = useTranslations("hr.myAttendance");
+  const tc = useTranslations("common");
+  const locale = useLocale() as Locale;
   const [records, setRecords] = useState<AttendanceRow[]>([]);
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -276,7 +286,7 @@ export default function MyAttendancePage() {
         if (e?.status === 404 || e?.status === 403) {
           setRecords([]);
         } else {
-          toast.error("Failed to load attendance");
+          toast.error(tm("loadFailed"));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -320,7 +330,7 @@ export default function MyAttendancePage() {
 
   const handleRegisterDevice = async () => {
     setRegState("registering");
-    setRegMsg("Follow the prompt to scan your fingerprint or face…");
+    setRegMsg(tm("regFollowPrompt"));
     try {
       // Get or generate the device's ECDSA key pair from IndexedDB.
       // The private key is non-extractable — it never leaves this browser.
@@ -344,8 +354,8 @@ export default function MyAttendancePage() {
         deviceSignature,
       );
       setRegState("done");
-      setRegMsg("Device registered successfully! You can now use the kiosk.");
-      toast.success("Device registered for kiosk attendance");
+      setRegMsg(tm("regSuccess"));
+      toast.success(tm("regToast"));
       refreshBiometrics();
     } catch (e: any) {
       const info = e?.info ?? {};
@@ -353,33 +363,32 @@ export default function MyAttendancePage() {
         setRegState("error");
         setRegMsg(
           info.message ??
-          "Another staff profile is already registered on this device. " +
-          "That user must remove their device profile first before you can register here."
+          tm("deviceTaken")
         );
         return;
       }
-      const msg = info.message ?? e?.message ?? "Registration failed";
+      const msg = info.message ?? e?.message ?? tm("regFailed");
       setRegState("error");
       setRegMsg(msg);
     }
   };
 
   const handleDeleteBiometric = async (id: number) => {
-    if (!confirm("Remove this device? You will be given a registration permit so you can register a new device immediately.")) return;
+    if (!confirm(tm("removeConfirm"))) return;
     try {
       await hrApi.attendance.webauthn.deleteMyCredential(id);
       // Wipe the local ECDSA key pair — old identity is now invalid
       await clearDeviceKeyPair().catch(() => {});
-      toast.success("Device removed. You can now register a new device — a registration permit has been granted automatically.");
+      toast.success(tm("removed"));
       refreshBiometrics();
-    } catch { toast.error("Failed to remove device"); }
+    } catch { toast.error(t("devices.removeFailed")); }
   };
 
   const handleCheckIn = async () => {
-    if (!navigator.geolocation) { toast.error("Your browser does not support GPS location"); return; }
+    if (!navigator.geolocation) { toast.error(tm("noGps")); return; }
 
     setCheckInState("locating");
-    setCheckInMsg("Finding your location…");
+    setCheckInMsg(tm("finding"));
     setCheckInAccuracy(null);
 
     // Location and auth challenge in parallel — both are needed before the
@@ -403,27 +412,27 @@ export default function MyAttendancePage() {
       setCheckInState("error");
       setCheckInMsg(
         e instanceof GeolocationFixError
-          ? explainFixError(e)
-          : e?.info?.message ?? e?.message ?? "Preparation failed. Please try again."
+          ? helperText(fixErrorMessage(e))
+          : e?.info?.message ?? e?.message ?? tm("prepFailed")
       );
       return;
     }
 
     // Biometric prompt — proves this browser holds the enrolled private key
     setCheckInState("authenticating");
-    setCheckInMsg("Confirm your identity with fingerprint or face…");
+    setCheckInMsg(tm("confirmIdentity"));
     let assertion: any;
     try {
       assertion = await startAuthentication({ optionsJSON: challengeOpts });
     } catch (e: any) {
       setCheckInState("error");
-      setCheckInMsg("Biometric verification failed. Please use your registered device.");
+      setCheckInMsg(tm("bioFailed"));
       return;
     }
 
     // Submit with GPS + WebAuthn assertion together
     setCheckInState("submitting");
-    setCheckInMsg("Verifying location and marking attendance…");
+    setCheckInMsg(tm("verifyingMarking"));
     try {
       const localTime = new Date().toTimeString().slice(0, 8);
       const isoTime = new Date().toISOString();
@@ -438,7 +447,7 @@ export default function MyAttendancePage() {
       });
       setTodayRecord(record as any);
       setCheckInState("done");
-      setCheckInMsg(`Checked in as ${(record as any).status} at ${formatTime((record as any).checkInTime, localTime)}`);
+      setCheckInMsg(tm("checkedInAs", { status: t(`attendanceStatus.${(record as any).status as StaffAttendanceStatus}`), time: formatTime((record as any).checkInTime, localTime) }));
       setRefreshKey((k) => k + 1);
     } catch (e: any) {
       const info = e?.info;
@@ -450,15 +459,15 @@ export default function MyAttendancePage() {
       // tell where you are", and its message already says which. The old
       // fallback asserted the first for every failure, so someone standing at
       // the gate with a weak fix was told to move closer.
-      setCheckInMsg(info?.message ?? "Check-in failed. Please try again.");
+      setCheckInMsg(info?.message ?? tm("checkInFailed"));
     }
   };
 
   const handleCheckOut = async () => {
-    if (!navigator.geolocation) { toast.error("Your browser does not support GPS location"); return; }
+    if (!navigator.geolocation) { toast.error(tm("noGps")); return; }
 
     setCheckOutState("locating");
-    setCheckOutMsg("Finding your location…");
+    setCheckOutMsg(tm("finding"));
     setCheckOutAccuracy(null);
 
     let fix: PreciseFix;
@@ -475,25 +484,25 @@ export default function MyAttendancePage() {
       setCheckOutState("error");
       setCheckOutMsg(
         e instanceof GeolocationFixError
-          ? explainFixError(e)
-          : e?.info?.message ?? e?.message ?? "Preparation failed. Please try again."
+          ? helperText(fixErrorMessage(e))
+          : e?.info?.message ?? e?.message ?? tm("prepFailed")
       );
       return;
     }
 
     setCheckOutState("authenticating");
-    setCheckOutMsg("Confirm your identity with fingerprint or face…");
+    setCheckOutMsg(tm("confirmIdentity"));
     let assertion: any;
     try {
       assertion = await startAuthentication({ optionsJSON: challengeOpts });
     } catch {
       setCheckOutState("error");
-      setCheckOutMsg("Biometric verification failed. Please use your registered device.");
+      setCheckOutMsg(tm("bioFailed"));
       return;
     }
 
     setCheckOutState("submitting");
-    setCheckOutMsg("Recording check-out…");
+    setCheckOutMsg(tm("recordingCheckout"));
     try {
       const localTime = new Date().toTimeString().slice(0, 8);
       const isoTime = new Date().toISOString();
@@ -512,10 +521,10 @@ export default function MyAttendancePage() {
       });
       setTodayRecord(record as any);
       setCheckOutState("done");
-      setCheckOutMsg(`Checked out at ${formatTime((record as any).checkOutTime, localTime)}`);
+      setCheckOutMsg(tm("checkedOutAt", { time: formatTime((record as any).checkOutTime, localTime) }));
       setRefreshKey((k) => k + 1);
     } catch (e: any) {
-      const msg = e?.info?.message ?? "Check-out failed.";
+      const msg = e?.info?.message ?? tm("checkOutFailed");
       setCheckOutState("error");
       setCheckOutMsg(msg);
     }
@@ -586,34 +595,32 @@ export default function MyAttendancePage() {
   const presentPct = workingMarked > 0 ? Math.round((presentish / workingMarked) * 100) : 0;
 
   const pieData = [
-    { name: "Present", value: counts.PRESENT, fill: ATTENDANCE_TONE.PRESENT.fill },
-    { name: "Half Day", value: counts.HALF_DAY, fill: ATTENDANCE_TONE.HALF_DAY.fill },
-    { name: "Leave", value: counts.ON_LEAVE, fill: ATTENDANCE_TONE.LEAVE.fill },
-    { name: "Absent", value: counts.ABSENT, fill: ATTENDANCE_TONE.ABSENT.fill },
-    { name: "Holiday", value: counts.HOLIDAY, fill: ATTENDANCE_TONE.HOLIDAY.fill },
+    { name: t("attendanceStatus.PRESENT"), value: counts.PRESENT, fill: ATTENDANCE_TONE.PRESENT.fill },
+    { name: t("attendanceStatus.HALF_DAY"), value: counts.HALF_DAY, fill: ATTENDANCE_TONE.HALF_DAY.fill },
+    { name: t("calendar.leave"), value: counts.ON_LEAVE, fill: ATTENDANCE_TONE.LEAVE.fill },
+    { name: t("attendanceStatus.ABSENT"), value: counts.ABSENT, fill: ATTENDANCE_TONE.ABSENT.fill },
+    { name: t("attendanceStatus.HOLIDAY"), value: counts.HOLIDAY, fill: ATTENDANCE_TONE.HOLIDAY.fill },
   ].filter((d) => d.value > 0);
 
   return (
     <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
-      <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">My Attendance</h1>
+      <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{tm("title")}</h1>
 
       {/* ── Pending checkout banner — blocks new check-in ── */}
       {pendingCheckOut && (
         <div className="rounded-xl border-2 border-red-300 bg-red-50 p-4 flex flex-col gap-3">
           <div>
-            <p className="text-sm font-bold text-red-800">Unclosed Check-In from {pendingCheckOut.date}</p>
+            <p className="text-sm font-bold text-red-800">{tm("unclosedTitle", { date: pendingCheckOut.date })}</p>
             <p className="text-xs text-red-600 mt-0.5">
-              You checked in at {dayjs(pendingCheckOut.checkInTime).format('YYYY-MM-DD HH:mm:ss')} but never checked out.
-              Please resolve this before checking in today.
+              {tm("unclosedBody", { time: dayjs(pendingCheckOut.checkInTime).format('YYYY-MM-DD HH:mm:ss') })}
             </p>
           </div>
 
           <div className="flex items-start gap-2 bg-red-100 border border-red-300 rounded-lg px-3 py-2.5 text-xs text-red-800">
             <span className="shrink-0 mt-0.5">📞</span>
             <p>
-              Please <strong>contact HR or Admin</strong> to mark your checkout for{" "}
-              {pendingCheckOut.date}. You cannot check in again until this is resolved.
+              {t.rich("myAttendance.contactHr", { strong: (c) => <strong>{c}</strong>, date: pendingCheckOut.date })}
             </p>
           </div>
         </div>
@@ -627,32 +634,32 @@ export default function MyAttendancePage() {
       }`}>
         <div className="flex flex-col sm:flex-row sm:items-start gap-4">
           <div className="flex-1">
-            <p className="text-sm font-semibold text-gray-800 mb-0.5">Today — {new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</p>
+            <p className="text-sm font-semibold text-gray-800 mb-0.5">{tm("today", { date: new Date().toLocaleDateString(INTL_LOCALE[locale], { weekday: "long", day: "numeric", month: "long" }) })}</p>
             {todayRecord ? (
               <div className="flex flex-wrap items-center gap-2 mt-1">
-                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_STYLES[todayRecord.status] ?? "bg-gray-100"}`}>{todayRecord.status}</span>
+                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_STYLES[todayRecord.status] ?? "bg-gray-100"}`}>{t(`attendanceStatus.${todayRecord.status as StaffAttendanceStatus}`)}</span>
                 {todayRecord.isLate && (
                   <span
-                    title="You checked in after the school's late cutoff time"
+                    title={tm("lateTitle")}
                     className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700"
                   >
                     <Clock3 aria-hidden className="h-3 w-3" />
-                    Marked late
+                    {tm("markedLate")}
                   </span>
                 )}
-                <span className="text-xs text-gray-500">via {todayRecord.method}</span>
-                {todayRecord.checkInTime && <span className="text-xs text-gray-500">· in {formatTime(todayRecord.checkInTime)}</span>}
-                {todayRecord.checkOutTime && <span className="text-xs text-gray-500">out {formatTime(todayRecord.checkOutTime)}</span>}
+                <span className="text-xs text-gray-500">{tm("via", { method: t(`method.${todayRecord.method as AttendanceMethod}`) })}</span>
+                {todayRecord.checkInTime && <span className="text-xs text-gray-500">· {tm("inTime", { time: formatTime(todayRecord.checkInTime) })}</span>}
+                {todayRecord.checkOutTime && <span className="text-xs text-gray-500">{tm("outTime", { time: formatTime(todayRecord.checkOutTime) })}</span>}
               </div>
             ) : null}
             {todayRecord?.isLate && (
               <p className="text-xs text-amber-700 mt-1">
-                You were marked late today — this is tracked separately from your PRESENT/HALF_DAY/ABSENT status above.
+                {tm("lateNote")}
               </p>
             )}
             {!todayRecord && (
               <p className="text-xs text-gray-500 mt-1">
-                {checkInState === "idle" ? "You have not checked in yet." : checkInMsg}
+                {checkInState === "idle" ? tm("notCheckedIn") : checkInMsg}
               </p>
             )}
             {checkInState === "error" && <p className="text-xs text-red-600 mt-1">{checkInMsg}</p>}
@@ -671,11 +678,9 @@ export default function MyAttendancePage() {
           <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-800">
             <span className="text-base shrink-0 mt-0.5">🚫</span>
             <div>
-              <p className="font-semibold">This is not your registered device</p>
+              <p className="font-semibold">{tm("wrongDevice")}</p>
               <p className="mt-0.5 text-red-700">
-                Your biometric is linked to <strong>{biometrics[0]?.deviceName || "another device"}</strong>.
-                Self check-in and check-out must be done from that device.
-                If you&apos;re using a new device, register it from the <em>Device Registration</em> panel below.
+                {t.rich("myAttendance.wrongDeviceBody", { strong: (c) => <strong>{c}</strong>, em: (c) => <em>{c}</em>, device: biometrics[0]?.deviceName || tm("anotherDevice") })}
               </p>
             </div>
           </div>
@@ -685,15 +690,15 @@ export default function MyAttendancePage() {
         {!biometricsLoading && biometrics.length > 0 && !todayRecord && !pendingCheckOut && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-2">
-              <label className="text-xs font-medium text-gray-600">Status:</label>
+              <label className="text-xs font-medium text-gray-600">{tm("statusLabel")}</label>
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value as typeof selectedStatus)}
                 className="text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand/40"
               >
-                <option value="PRESENT">Present</option>
-                <option value="LATE">Late</option>
-                <option value="HALF_DAY">Half Day</option>
+                <option value="PRESENT">{t("attendanceStatus.PRESENT")}</option>
+                <option value="LATE">{t("attendanceStatus.LATE")}</option>
+                <option value="HALF_DAY">{t("attendanceStatus.HALF_DAY")}</option>
               </select>
             </div>
             <button
@@ -702,7 +707,7 @@ export default function MyAttendancePage() {
               className="shrink-0 flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow transition-colors"
             >
               {(checkInState === "locating" || checkInState === "authenticating" || checkInState === "submitting") ? <span className="animate-spin">⏳</span> : <span>📍</span>}
-              {checkInState === "locating" ? "Getting Location…" : checkInState === "authenticating" ? "Scanning…" : checkInState === "submitting" ? "Marking…" : checkInState === "error" ? "Retry Check-In" : "Check In Now"}
+              {checkInState === "locating" ? tm("gettingLocation") : checkInState === "authenticating" ? tm("scanning") : checkInState === "submitting" ? tm("marking") : checkInState === "error" ? tm("retryCheckIn") : tm("checkInNow")}
             </button>
           </div>
         )}
@@ -710,7 +715,7 @@ export default function MyAttendancePage() {
         {/* Not-registered notice — shown while loading is done but no device is enrolled */}
         {!biometricsLoading && biometrics.length === 0 && !todayRecord && !pendingCheckOut && (
           <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            📱 This device is not registered for your account. Register your device below to enable self check-in.
+            {tm("notRegisteredNotice")}
           </p>
         )}
 
@@ -718,16 +723,16 @@ export default function MyAttendancePage() {
         {!biometricsLoading && biometrics.length > 0 && todayRecord && !["ON_LEAVE", "HOLIDAY"].includes(todayRecord.status) && !todayRecord.checkOutTime && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-2">
-              <label className="text-xs font-medium text-gray-600">Reason:</label>
+              <label className="text-xs font-medium text-gray-600">{tm("reasonLabel")}</label>
               <select
                 value={checkOutReason}
                 onChange={(e) => setCheckOutReason(e.target.value as CheckOutReason)}
                 className="text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
               >
-                <option value="REGULAR">Regular checkout</option>
-                <option value="HALF_DAY">Half day</option>
-                <option value="EARLY_LEAVE">Early leave</option>
-                <option value="OVERTIME">Overtime</option>
+                <option value="REGULAR">{t("checkoutReason.REGULAR")}</option>
+                <option value="HALF_DAY">{t("checkoutReason.HALF_DAY")}</option>
+                <option value="EARLY_LEAVE">{t("checkoutReason.EARLY_LEAVE")}</option>
+                <option value="OVERTIME">{t("checkoutReason.OVERTIME")}</option>
               </select>
             </div>
             <button
@@ -736,10 +741,10 @@ export default function MyAttendancePage() {
               className="shrink-0 flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow transition-colors"
             >
               {(checkOutState === "locating" || checkOutState === "authenticating" || checkOutState === "submitting") ? <span className="animate-spin">⏳</span> : <span>📍</span>}
-              {checkOutState === "locating" ? "Getting Location…" : checkOutState === "authenticating" ? "Scanning…" : checkOutState === "submitting" ? "Recording…" : checkOutState === "error" ? "Retry Check-Out" : "Check Out Now"}
+              {checkOutState === "locating" ? tm("gettingLocation") : checkOutState === "authenticating" ? tm("scanning") : checkOutState === "submitting" ? tm("recording") : checkOutState === "error" ? tm("retryCheckOut") : tm("checkOutNow")}
             </button>
             <p className="text-[11px] text-gray-500 w-full sm:w-auto">
-              Status is decided automatically from hours worked — Present, Half Day or Absent — when you check out.
+              {tm("statusAuto")}
             </p>
           </div>
         )}
@@ -747,13 +752,13 @@ export default function MyAttendancePage() {
         {/* Fully checked out */}
         {todayRecord?.checkOutTime && (
           <div className="flex items-center gap-2 text-sm font-semibold text-accent-success-deep">
-            <CheckCircle2 className="size-4" aria-hidden /> Checked out
+            <CheckCircle2 className="size-4" aria-hidden /> {tm("checkedOut")}
           </div>
         )}
       </div>
 
       <div className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 leading-relaxed">
-        <strong>How check-in works:</strong> Click <em>Check In Now</em> and allow location access. The system verifies you are within the school's geo-fence zone and records your attendance. If your school has opened a bypass window, location check is skipped. You can also check in at the <strong>biometric kiosk</strong> — register your device below first.
+        {t.rich("myAttendance.howCheckIn", { strong: (c) => <strong>{c}</strong>, em: (c) => <em>{c}</em> })}
       </div>
 
       {/* ── Kiosk Device Registration ── */}
@@ -780,7 +785,7 @@ export default function MyAttendancePage() {
               <p className={`text-sm font-semibold ${
                 biometrics.length > 0 ? "text-green-900" : permitStatus.allowed ? "text-indigo-900" : "text-amber-900"
               }`}>
-                {biometrics.length > 0 ? `Kiosk Device: ${biometrics[0].deviceName || "Registered"}` : "Register Device for Kiosk"}
+                {biometrics.length > 0 ? tm("kioskDevice", { name: biometrics[0].deviceName || t("devices.registered") }) : tm("registerForKiosk")}
               </p>
               <p className={`text-xs mt-0.5 ${
                 biometrics.length > 0 ? "text-green-700"
@@ -788,10 +793,10 @@ export default function MyAttendancePage() {
                 : "text-amber-700"
               }`}>
                 {biometrics.length > 0
-                  ? `Registered ${new Date(biometrics[0].registeredAt).toLocaleDateString()} · Active for kiosk check-in`
+                  ? tm("registeredActive", { date: new Date(biometrics[0].registeredAt).toLocaleDateString(INTL_LOCALE[locale]) })
                   : permitStatus.allowed
-                  ? "Registration permitted — tap to set up this device"
-                  : "Not set up — ask HR to grant registration permission"}
+                  ? tm("regPermittedTap")
+                  : tm("notSetUp")}
               </p>
             </div>
           </div>
@@ -803,29 +808,29 @@ export default function MyAttendancePage() {
         {showRegPanel && (
           <div className="p-5 space-y-4 bg-white">
             <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-xs text-indigo-800 space-y-1">
-              <p><strong>How it works:</strong> Your biometric (fingerprint or face) is stored only on this device&apos;s secure chip — it never leaves. At the kiosk, enter your employee code and the device prompts your biometric to record attendance instantly.</p>
-              <p><strong>One device per person:</strong> Registering a new device automatically replaces any previous one, so only your current device works at the kiosk. This prevents shared-device abuse.</p>
+              <p>{t.rich("myAttendance.howItWorks", { strong: (c) => <strong>{c}</strong> })}</p>
+              <p>{t.rich("myAttendance.oneDevice", { strong: (c) => <strong>{c}</strong> })}</p>
             </div>
 
             {/* Registered device — shown on ALL devices including ones not registered */}
             {biometrics.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Your Registered Device</p>
+                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{tm("yourDevice")}</p>
                 {biometrics.map((b) => (
                   <div key={b.id} className="flex items-center justify-between border border-green-200 bg-green-50 rounded-xl px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-lg shrink-0">✓</div>
                       <div>
-                        <p className="text-sm font-semibold text-gray-800">{b.deviceName || "Unnamed Device"}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">Registered {new Date(b.registeredAt).toLocaleDateString()} · Kiosk check-in active</p>
+                        <p className="text-sm font-semibold text-gray-800">{b.deviceName || t("devices.unnamedDevice")}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{tm("registeredKioskActive", { date: new Date(b.registeredAt).toLocaleDateString(INTL_LOCALE[locale]) })}</p>
                       </div>
                     </div>
-                    <button onClick={() => handleDeleteBiometric(b.id)} className="text-red-500 hover:text-red-700 text-xs shrink-0 ml-3 border border-red-200 rounded px-2 py-1">Remove</button>
+                    <button onClick={() => handleDeleteBiometric(b.id)} className="text-red-500 hover:text-red-700 text-xs shrink-0 ml-3 border border-red-200 rounded px-2 py-1">{tc("action.remove")}</button>
                   </div>
                 ))}
                 {!permitStatus.allowed && (
                   <p className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-                    On a different device? Ask HR to grant a new registration permit — it will replace the entry above and make this device the active one.
+                    {tm("differentDevice")}
                   </p>
                 )}
               </div>
@@ -834,16 +839,16 @@ export default function MyAttendancePage() {
             {/* No staff profile */}
             {permitStatus.hasStaffProfile === false && (
               <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-xs text-gray-700">
-                <p className="font-semibold">Not available for this account</p>
-                <p className="mt-1">Biometric kiosk registration is for staff accounts only. Contact your administrator if this is incorrect.</p>
+                <p className="font-semibold">{tm("notAvailable")}</p>
+                <p className="mt-1">{tm("staffOnly")}</p>
               </div>
             )}
 
             {/* No device registered and no permit — prompt to ask HR */}
             {biometrics.length === 0 && permitStatus.hasStaffProfile !== false && !permitStatus.allowed && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-800">
-                <p className="font-semibold">Registration not yet permitted</p>
-                <p className="mt-1">Ask your HR admin to grant device registration permission. They can do this from <strong>HR → Staff Attendance → Biometrics</strong>.</p>
+                <p className="font-semibold">{tm("notPermitted")}</p>
+                <p className="mt-1">{t.rich("myAttendance.askHr", { strong: (c) => <strong>{c}</strong> })}</p>
               </div>
             )}
 
@@ -851,37 +856,37 @@ export default function MyAttendancePage() {
             {permitStatus.allowed && (
               <div className="space-y-3 border-t border-gray-100 pt-4">
                 <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                  {biometrics.length > 0 ? "Replace Device" : "Register This Device"}
+                  {biometrics.length > 0 ? tm("replaceDevice") : tm("registerThis")}
                 </p>
 
                 {/* PWA-only restriction banner */}
                 {inPwa === false && (
                   <div className="bg-amber-50 border border-amber-300 rounded-lg px-4 py-3 text-xs text-amber-900 space-y-2">
-                    <p className="font-semibold">📱 Install the app to register this device</p>
+                    <p className="font-semibold">{tm("installTitle")}</p>
                     <p>
-                      Device registration is only available from the <strong>installed School App</strong>, not a browser tab.
-                      This prevents fake attendance from untrusted devices.
+                      {t.rich("myAttendance.installBody", { strong: (c) => <strong>{c}</strong> })}
                     </p>
                     <div className="space-y-1 pt-1">
-                      <p className="font-semibold text-amber-800">How to install:</p>
-                      <p><strong>Android Chrome:</strong> tap ⋮ (menu) → <em>Add to Home Screen</em> → Install</p>
-                      <p><strong>iOS Safari:</strong> tap <em>Share</em> (⎙) → <em>Add to Home Screen</em> → Add</p>
+                      <p className="font-semibold text-amber-800">{tm("howInstall")}</p>
+                      <p>{t.rich("myAttendance.installAndroid", { strong: (c) => <strong>{c}</strong>, em: (c) => <em>{c}</em> })}</p>
+                      <p>{t.rich("myAttendance.installIos", { strong: (c) => <strong>{c}</strong>, em: (c) => <em>{c}</em> })}</p>
                     </div>
-                    <p className="text-amber-700">Once installed, open the app from your home screen and come back here.</p>
+                    <p className="text-amber-700">{tm("onceInstalled")}</p>
                   </div>
                 )}
                 {biometrics.length > 0 && (
                   <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 text-xs text-amber-800">
-                    ⚠ Registering will replace <strong>{biometrics[0]?.deviceName || "your current device"}</strong>. The old device will no longer work at the kiosk.
+                    {t.rich("myAttendance.willReplace", { strong: (c) => <strong>{c}</strong>, device: biometrics[0]?.deviceName || tm("currentDevice") })}
                   </div>
                 )}
                 <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  ✓ HR has permitted device registration
-                  {permitStatus.expiresAt && ` — expires ${new Date(permitStatus.expiresAt).toLocaleString()}`}.
+                  {permitStatus.expiresAt
+                    ? tm("hrPermittedExpires", { date: new Date(permitStatus.expiresAt).toLocaleString(INTL_LOCALE[locale]) })
+                    : tm("hrPermitted")}
                 </p>
                 <input
                   type="text"
-                  placeholder="Device name (e.g. My iPhone, Office Laptop)"
+                  placeholder={tm("deviceNamePlaceholder")}
                   value={deviceName}
                   onChange={(e) => setDeviceName(e.target.value)}
                   className="w-full border rounded-lg px-3 py-2 text-sm"
@@ -891,7 +896,7 @@ export default function MyAttendancePage() {
                   disabled={regState === "registering" || inPwa === false}
                   className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors"
                 >
-                  {regState === "registering" ? "Follow browser prompt…" : biometrics.length > 0 ? "Replace & Register This Device" : "Register This Device"}
+                  {regState === "registering" ? tm("followBrowser") : biometrics.length > 0 ? tm("replaceRegister") : tm("registerThis")}
                 </button>
                 {regMsg && (
                   <p className={`text-xs ${regState === "done" ? "text-green-600" : regState === "error" ? "text-red-600" : "text-blue-600"}`}>
@@ -907,7 +912,7 @@ export default function MyAttendancePage() {
       {/* Month/Year selector */}
       <div className="flex gap-3 items-center">
         <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="border rounded-lg px-3 py-2 text-sm">
-          {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+          {MONTH_NUMBERS.map((m) => <option key={m} value={m}>{new Date(2000, m - 1, 1).toLocaleDateString(INTL_LOCALE[locale], { month: "short" })}</option>)}
         </select>
         <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="border rounded-lg px-3 py-2 text-sm">
           {[now.getFullYear() - 1, now.getFullYear()].map((y) => <option key={y}>{y}</option>)}
@@ -926,7 +931,7 @@ export default function MyAttendancePage() {
                   <PieChart>
                     <Pie data={pieData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={3} dataKey="value" />
                     <Tooltip
-                      formatter={(val: any, name: any) => [`${val} days`, name]}
+                      formatter={(val: any, name: any) => [t("calendar.daysCount", { count: Number(val) }), name]}
                       wrapperStyle={{ zIndex: 10 }}
                       contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
                     />
@@ -934,26 +939,26 @@ export default function MyAttendancePage() {
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
                   <span className="text-slate-800 text-4xl font-black">{presentPct}%</span>
-                  <span className="text-slate-500 text-xs mt-1 uppercase tracking-widest font-bold">Present</span>
+                  <span className="text-slate-500 text-xs mt-1 uppercase tracking-widest font-bold">{t("attendanceStatus.PRESENT")}</span>
                 </div>
               </div>
             ) : (
               <div className="py-10 text-center">
-                <p className="text-slate-500 text-sm">No attendance data for this month yet.</p>
+                <p className="text-slate-500 text-sm">{tm("noData")}</p>
               </div>
             )}
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "Present", value: counts.PRESENT, color: "text-green-600", bg: "bg-green-50 border-green-100" },
+              { label: t("attendanceStatus.PRESENT"), value: counts.PRESENT, color: "text-green-600", bg: "bg-green-50 border-green-100" },
               // Overlay count (isLate), not one of the five status buckets above —
               // can overlap with Present/Half Day, so it won't sum to the month total.
-              { label: "Late arrivals", value: lateArrivalsCount, color: "text-yellow-600", bg: "bg-yellow-50 border-yellow-100" },
-              { label: "Half Day", value: counts.HALF_DAY, color: "text-purple-600", bg: "bg-purple-50 border-purple-100" },
-              { label: "Leave", value: counts.ON_LEAVE, color: "text-blue-600", bg: "bg-blue-50 border-blue-100" },
-              { label: "Absent", value: counts.ABSENT, color: "text-red-600", bg: "bg-red-50 border-red-100" },
-              { label: "Holiday", value: counts.HOLIDAY, color: "text-sky-600", bg: "bg-sky-50 border-sky-100" },
+              { label: t("calendar.lateArrivals"), value: lateArrivalsCount, color: "text-yellow-600", bg: "bg-yellow-50 border-yellow-100" },
+              { label: t("attendanceStatus.HALF_DAY"), value: counts.HALF_DAY, color: "text-purple-600", bg: "bg-purple-50 border-purple-100" },
+              { label: t("calendar.leave"), value: counts.ON_LEAVE, color: "text-blue-600", bg: "bg-blue-50 border-blue-100" },
+              { label: t("attendanceStatus.ABSENT"), value: counts.ABSENT, color: "text-red-600", bg: "bg-red-50 border-red-100" },
+              { label: t("attendanceStatus.HOLIDAY"), value: counts.HOLIDAY, color: "text-sky-600", bg: "bg-sky-50 border-sky-100" },
             ].map((item) => (
               <div key={item.label} className={`border rounded-xl p-3 text-center shadow-sm ${item.bg}`}>
                 <div className={`text-2xl font-black ${item.color} mb-1`}>{item.value}</div>
@@ -963,7 +968,7 @@ export default function MyAttendancePage() {
           </div>
 
           <div className="bg-slate-800 rounded-xl p-4 flex items-center justify-between text-white shadow-md">
-            <div className="font-medium text-sm text-slate-300 uppercase tracking-wider">Working Days Marked</div>
+            <div className="font-medium text-sm text-slate-300 uppercase tracking-wider">{t("calendar.workingMarked")}</div>
             <div className="text-2xl font-bold">{workingMarked}</div>
           </div>
         </div>
@@ -971,9 +976,9 @@ export default function MyAttendancePage() {
 
       {/* Records list */}
       {loading ? (
-        <p className="text-sm text-gray-500">Loading…</p>
+        <p className="text-sm text-gray-500">{tc("state.loading")}</p>
       ) : records.length === 0 ? (
-        <p className="text-sm text-gray-500">No attendance records for this period.</p>
+        <p className="text-sm text-gray-500">{tm("noRecords")}</p>
       ) : (
         <>
           {/* Mobile cards */}
@@ -984,16 +989,16 @@ export default function MyAttendancePage() {
                 <div key={r.date} className="bg-white border border-gray-200 rounded-xl p-4 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-gray-900 text-sm">{r.date}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{t(`attendanceStatus.${r.status as StaffAttendanceStatus}`)}</span>
                   </div>
                   <div className="text-xs text-gray-600 flex gap-4 flex-wrap items-center">
-                    <span><span className="text-gray-400">In: </span>{formatTime(r.checkInTime)}</span>
-                    <span><span className="text-gray-400">Out: </span>{formatTime(r.checkOutTime)}</span>
+                    <span><span className="text-gray-400">{tm("inLabel")} </span>{formatTime(r.checkInTime)}</span>
+                    <span><span className="text-gray-400">{tm("outLabel")} </span>{formatTime(r.checkOutTime)}</span>
                     {dur && <span className={DURATION_STYLES[r.status] ?? "text-gray-600"}>⏱ {dur}</span>}
-                    <span className="text-gray-400">{r.method}</span>
+                    <span className="text-gray-400">{t(`method.${r.method as AttendanceMethod}`)}</span>
                     {r.isLate && (
                       <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-px text-[10px] font-semibold text-amber-700">
-                        <Clock3 aria-hidden className="h-2.5 w-2.5" /> Late
+                        <Clock3 aria-hidden className="h-2.5 w-2.5" /> {t("attendanceStatus.LATE")}
                       </span>
                     )}
                   </div>
@@ -1007,12 +1012,12 @@ export default function MyAttendancePage() {
             <table className="min-w-full text-sm">
               <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
                 <tr>
-                  <th className="px-4 py-3 text-left">Date</th>
-                  <th className="px-4 py-3 text-left">Status</th>
-                  <th className="px-4 py-3 text-left">Method</th>
-                  <th className="px-4 py-3 text-left">Check-In</th>
-                  <th className="px-4 py-3 text-left">Check-Out</th>
-                  <th className="px-4 py-3 text-left">Duration</th>
+                  <th className="px-4 py-3 text-left">{tc("field.date")}</th>
+                  <th className="px-4 py-3 text-left">{tc("field.status")}</th>
+                  <th className="px-4 py-3 text-left">{tm("method")}</th>
+                  <th className="px-4 py-3 text-left">{tm("checkIn")}</th>
+                  <th className="px-4 py-3 text-left">{tm("checkOut")}</th>
+                  <th className="px-4 py-3 text-left">{tm("duration")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -1022,15 +1027,15 @@ export default function MyAttendancePage() {
                     <tr key={r.date} className="hover:bg-gray-50">
                       <td className="px-4 py-3">{r.date}</td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{r.status}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[r.status] ?? "bg-gray-100"}`}>{t(`attendanceStatus.${r.status as StaffAttendanceStatus}`)}</span>
                       </td>
-                      <td className="px-4 py-3 text-gray-500">{r.method}</td>
+                      <td className="px-4 py-3 text-gray-500">{t(`method.${r.method as AttendanceMethod}`)}</td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center gap-1.5">
                           {formatTime(r.checkInTime)}
                           {r.isLate && (
                             <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-px text-[10px] font-semibold text-amber-700">
-                              <Clock3 aria-hidden className="h-2.5 w-2.5" /> Late
+                              <Clock3 aria-hidden className="h-2.5 w-2.5" /> {t("attendanceStatus.LATE")}
                             </span>
                           )}
                         </span>
@@ -1059,13 +1064,16 @@ export default function MyAttendancePage() {
               </span>
               <div>
                 <h2 className="font-semibold text-gray-900">
-                  {checkoutPreview.status === "HALF_DAY" ? "This will mark you Half Day" : "This will mark you Absent"}
+                  {checkoutPreview.status === "HALF_DAY" ? tm("willMarkHalf") : tm("willMarkAbsent")}
                 </h2>
                 <p className="mt-1 text-sm text-gray-600">
-                  Only <strong className="tabular-nums">{checkoutPreview.hours.toFixed(1)}</strong> hour
-                  {checkoutPreview.hours === 1 ? "" : "s"} completed. Checking out now will mark today as{" "}
-                  <strong>{checkoutPreview.status === "HALF_DAY" ? "Half Day" : "Absent"}</strong>. Are you sure you
-                  want to check out?
+                  {t.rich("myAttendance.onlyHours", {
+                    hours: (c) => <strong className="tabular-nums">{c}</strong>,
+                    strong: (c) => <strong>{c}</strong>,
+                    value: checkoutPreview.hours.toFixed(1),
+                    count: checkoutPreview.hours,
+                    status: checkoutPreview.status === "HALF_DAY" ? t("attendanceStatus.HALF_DAY") : t("attendanceStatus.ABSENT"),
+                  })}
                 </p>
               </div>
             </div>
@@ -1074,13 +1082,13 @@ export default function MyAttendancePage() {
                 onClick={() => setShowCheckoutConfirm(false)}
                 className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
-                Cancel
+                {tc("action.cancel")}
               </button>
               <button
                 onClick={confirmCheckOut}
                 className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
               >
-                Check Out Anyway
+                {tm("checkOutAnyway")}
               </button>
             </div>
           </div>
@@ -1092,7 +1100,8 @@ export default function MyAttendancePage() {
 
 // ── Calendar block ─────────────────────────────────────────────────────────
 function CalendarBlock({ month, year, records, holidays }: { month: number; year: number; records: StaffAttendanceRecord[]; holidays: HolidayInfo[] }) {
-  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const t = useTranslations("hr");
+  const locale = useLocale() as Locale;
   const daysInMonth = new Date(year, month, 0).getDate();
   const firstDayOfMonth = new Date(year, month - 1, 1).getDay();
   const recordByDate = new Map(records.map((r) => [r.date, r]));
@@ -1104,10 +1113,10 @@ function CalendarBlock({ month, year, records, holidays }: { month: number; year
     const rec = recordByDate.get(dateStr);
     if (rec) {
       const late = (rec as AttendanceRow).isLate === true || rec.status === "LATE";
-      return { day, status: rec.status, date: dateStr, label: `${dateStr}: ${rec.status}${late ? " (late)" : ""}`, record: rec };
+      return { day, status: rec.status, date: dateStr, label: t(late ? "myAttendance.cellLate" : "myAttendance.cell", { date: dateStr, status: t(`attendanceStatus.${rec.status as StaffAttendanceStatus}`) }), record: rec };
     }
     const isSunday = new Date(year, month - 1, day).getDay() === 0;
-    if (isSunday) return { day, status: "SUNDAY", date: dateStr, label: `${dateStr}: Sunday (Weekly Off)`, record: undefined };
+    if (isSunday) return { day, status: "SUNDAY", date: dateStr, label: t("myAttendance.cellSunday", { date: dateStr }), record: undefined };
     const hol = findHolidayFor(dateStr, holidays);
     if (hol) return { day, status: "HOLIDAY", date: dateStr, label: `${dateStr}: ${hol.description}`, record: undefined };
     return { day, status: null, date: dateStr, label: dateStr, record: undefined };
@@ -1142,10 +1151,10 @@ function CalendarBlock({ month, year, records, holidays }: { month: number; year
 
   return (
     <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200">
-      <h4 className="text-slate-800 font-bold text-center mb-4">{monthNames[month - 1]} {year}</h4>
+      <h4 className="text-slate-800 font-bold text-center mb-4">{new Date(year, month - 1, 1).toLocaleDateString(INTL_LOCALE[locale], { month: "long", year: "numeric" })}</h4>
       <div className="grid grid-cols-7 gap-1 text-center mb-2">
-        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
-          <div key={d} className="text-slate-500 text-[10px] font-bold py-1 uppercase">{d}</div>
+        {WEEKDAYS.map((d) => (
+          <div key={d} className="text-slate-500 text-[10px] font-bold py-1 uppercase">{t(`weekdays.${d}`)}</div>
         ))}
       </div>
       <div className="grid grid-cols-7 gap-1.5">
@@ -1164,14 +1173,14 @@ function CalendarBlock({ month, year, records, holidays }: { month: number; year
         })}
       </div>
       <div className="flex flex-wrap justify-center gap-2 mt-4 text-[10px] font-medium text-slate-600">
-        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500" /> Present</span>
-        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-yellow-400" /> Late</span>
-        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-purple-500" /> Half</span>
-        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Leave</span>
-        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Absent</span>
-        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-sky-500" /> Holiday</span>
-        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-orange-100 border border-orange-200" /> Sunday</span>
-        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full" style={{ background: `linear-gradient(135deg, ${ATTENDANCE_TONE.PRESENT.fill} 50%, ${ATTENDANCE_TONE.LATE.fill} 50%)` }} /> Present + Late</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500" /> {t("attendanceStatus.PRESENT")}</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-yellow-400" /> {t("attendanceStatus.LATE")}</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-purple-500" /> {t("calendar.half")}</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> {t("calendar.leave")}</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> {t("attendanceStatus.ABSENT")}</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-sky-500" /> {t("attendanceStatus.HOLIDAY")}</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-orange-100 border border-orange-200" /> {t("myAttendance.sunday")}</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full" style={{ background: `linear-gradient(135deg, ${ATTENDANCE_TONE.PRESENT.fill} 50%, ${ATTENDANCE_TONE.LATE.fill} 50%)` }} /> {t("calendar.presentLate")}</span>
       </div>
     </div>
   );

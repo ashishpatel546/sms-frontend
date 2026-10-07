@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
+import { INTL_LOCALE, type Locale } from '@/i18n/config';
 import { API_BASE_URL } from '@/lib/api';
 import { authFetch } from '@/lib/auth';
 import { useRbac } from '@/lib/rbac';
@@ -15,17 +17,17 @@ interface Summary {
   suspendOn: string | null;
 }
 
-function rupees(paise: number): string {
-  return (paise / 100).toLocaleString('en-IN', {
+function rupees(paise: number, locale: Locale): string {
+  return (paise / 100).toLocaleString(INTL_LOCALE[locale], {
     style: 'currency',
     currency: 'INR',
     maximumFractionDigits: 2,
   });
 }
 
-function formatDate(value: string | null): string {
+function formatDate(value: string | null, locale: Locale): string {
   if (!value) return '';
-  return new Date(value).toLocaleDateString('en-IN', {
+  return new Date(value).toLocaleDateString(INTL_LOCALE[locale], {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -40,6 +42,8 @@ function formatDate(value: string | null): string {
  * see billing or act on it, and commercial terms are not staff business.
  */
 export default function BillingDueBanner() {
+  const t = useTranslations('dashboard');
+  const locale = useLocale() as Locale;
   const rbac = useRbac();
   const [summary, setSummary] = useState<Summary | null>(null);
 
@@ -85,8 +89,8 @@ export default function BillingDueBanner() {
           }`}
         >
           {overdue
-            ? `Payment overdue — ${rupees(summary.outstandingPaise)} due`
-            : `Payment due — ${rupees(summary.outstandingPaise)}`}
+            ? t('billing.overdueTitle', { amount: rupees(summary.outstandingPaise, locale) })
+            : t('billing.dueTitle', { amount: rupees(summary.outstandingPaise, locale) })}
         </p>
         <p
           className={`text-xs mt-0.5 ${
@@ -96,10 +100,10 @@ export default function BillingDueBanner() {
           }`}
         >
           {overdue && summary.suspendOn
-            ? `Please pay before ${formatDate(summary.suspendOn)} to avoid any interruption to your school's access.`
+            ? t('billing.payBefore', { date: formatDate(summary.suspendOn, locale) })
             : summary.nextDueDate
-              ? `Due by ${formatDate(summary.nextDueDate)}. Paying on time keeps everything running smoothly.`
-              : 'Please settle your outstanding invoice to avoid any inconvenience.'}
+              ? t('billing.dueBy', { date: formatDate(summary.nextDueDate, locale) })
+              : t('billing.settle')}
         </p>
       </div>
       <Link
@@ -110,7 +114,7 @@ export default function BillingDueBanner() {
             : 'bg-amber-600 hover:bg-amber-700'
         }`}
       >
-        Pay now
+        {t('billing.payNow')}
       </Link>
     </div>
   );

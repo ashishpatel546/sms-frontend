@@ -1,0 +1,84 @@
+{
+  "title": "विद्यार्थियों की छुट्टियाँ",
+  "type": {
+    "SICK_LEAVE": "बीमारी की छुट्टी",
+    "CASUAL_LEAVE": "आकस्मिक छुट्टी",
+    "OTHER_LEAVE": "अन्य छुट्टी"
+  },
+  "status": {
+    "PENDING": "लंबित",
+    "FIRST_APPROVED": "पहली स्वीकृति मिली",
+    "APPROVED": "स्वीकृत",
+    "REJECTED": "अस्वीकृत",
+    "CANCELLED": "रद्द"
+  },
+  "duration": {
+    "halfDay": "आधा दिन",
+    "fullDay": "पूरा दिन"
+  },
+  "sectionSuffix": " · सेक्शन {name}",
+  "dateRange": "{name} — {from} से {to} तक",
+  "drawer": {
+    "title": "छुट्टी #{id} का विवरण",
+    "leaveType": "छुट्टी का प्रकार",
+    "duration": "अवधि",
+    "reason": "कारण",
+    "awaitingFirst": "पहली स्वीकृति की प्रतीक्षा",
+    "awaitingFinal": "अंतिम स्वीकृति की प्रतीक्षा",
+    "documents": "दस्तावेज़",
+    "pdf": "PDF",
+    "image": "चित्र"
+  },
+  "reject": {
+    "title": "छुट्टी #{id} अस्वीकार करें",
+    "reasonLabel": "अस्वीकार करने का कारण",
+    "placeholder": "अस्वीकार करने का कारण लिखें...",
+    "rejecting": "अस्वीकार किया जा रहा है…",
+    "confirm": "छुट्टी अस्वीकार करें"
+  },
+  "requestDoc": {
+    "title": "जानकारी माँगें — छुट्टी #{id}",
+    "messageLabel": "अभिभावक के लिए संदेश",
+    "minChars": "(कम से कम 10 अक्षर)",
+    "placeholder": "उदा. कृपया बीमारी की पुष्टि करने वाला किसी पंजीकृत डॉक्टर का मेडिकल प्रमाणपत्र अपलोड करें।",
+    "sending": "भेजा जा रहा है…",
+    "send": "अनुरोध भेजें"
+  },
+  "list": {
+    "heading": "छुट्टी के अनुरोध",
+    "subtitle": "विद्यार्थियों के छुट्टी आवेदन देखें और प्रबंधित करें",
+    "allClasses": "सभी कक्षाएँ",
+    "allSections": "सभी सेक्शन",
+    "studentId": "विद्यार्थी ID",
+    "studentIdPlaceholder": "उदा. 101",
+    "allStatuses": "सभी स्थितियाँ",
+    "unapproved": "⏳ स्वीकृति बाकी (सक्रिय)",
+    "fromDate": "आरंभ तिथि",
+    "toDate": "अंतिम तिथि",
+    "empty": "छुट्टी का कोई अनुरोध नहीं मिला",
+    "colDates": "तिथियाँ",
+    "colDuration": "अवधि",
+    "colAppliedOn": "आवेदन तिथि",
+    "actionNeeded": "⚠ कार्रवाई ज़रूरी",
+    "rowsPerPage": "प्रति पेज पंक्तियाँ:",
+    "range": "{total} में से {from}–{to}",
+    "prev": "← पिछला",
+    "next": "अगला →"
+  },
+  "actions": {
+    "firstApprove": "पहली स्वीकृति दें",
+    "finalApprove": "अंतिम स्वीकृति दें",
+    "askInfo": "जानकारी माँगें",
+    "cancelLeave": "रद्द करें"
+  },
+  "toast": {
+    "loadFailed": "छुट्टी के अनुरोध लोड नहीं हो सके",
+    "actionFailed": "कार्रवाई नहीं हो सकी",
+    "firstApproved": "पहली स्वीकृति दे दी गई",
+    "fullyApproved": "छुट्टी पूरी तरह स्वीकृत — उपस्थिति अपडेट हो गई",
+    "rejected": "छुट्टी अस्वीकार कर दी गई",
+    "cancelled": "छुट्टी रद्द कर दी गई",
+    "messageSent": "अभिभावक को संदेश भेज दिया गया",
+    "docUrlFailed": "दस्तावेज़ का लिंक नहीं मिल सका"
+  }
+}
