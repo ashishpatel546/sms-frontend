@@ -10,6 +10,8 @@ import { useRbac } from "@/lib/rbac";
 import { authFetch } from "@/lib/auth";
 import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 import { SchoolLanguageCard } from "./SchoolLanguageCard";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE } from "@/i18n/config";
 
 type SettingsTab = 'system' | 'examination' | 'holidays';
 
@@ -21,6 +23,9 @@ function initialSettingsTab(): SettingsTab {
 }
 
 export default function SettingsPage() {
+    const t = useTranslations("settings");
+    const tc = useTranslations("common");
+    const locale = useLocale();
     const [activeTab, setActiveTab] = useState<SettingsTab>(initialSettingsTab);
     const rbac = useRbac();
     const readOnly = useReadOnlySession();
@@ -193,32 +198,32 @@ export default function SettingsPage() {
             });
 
             if (res.ok) {
-                toast.success(`Holiday ${editingHolidayId ? 'updated' : 'created'} successfully!`);
+                toast.success(editingHolidayId ? t("holidays.updated") : t("holidays.created"));
                 setShowHolidayModal(false);
                 mutateHolidays();
             } else {
                 const data = await res.json();
-                toast.error(data.message || "Failed to save holiday");
+                toast.error(data.message || t("holidays.saveFailed"));
             }
         } catch {
-            toast.error("Network error");
+            toast.error(t("page.networkError"));
         } finally {
             setIsSavingHoliday(false);
         }
     };
 
     const handleDeleteHoliday = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this holiday? This will also remove the holiday status from student attendance records for those dates.")) return;
+        if (!confirm(t("holidays.deleteConfirm"))) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/holidays/${id}`, { method: "DELETE" });
             if (res.ok) {
-                toast.success("Holiday deleted");
+                toast.success(t("holidays.deleted"));
                 mutateHolidays();
             } else {
-                toast.error("Failed to delete holiday");
+                toast.error(t("holidays.deleteFailed"));
             }
         } catch (_err) {
-            toast.error("Network error");
+            toast.error(t("page.networkError"));
         }
     };
 
@@ -245,17 +250,17 @@ export default function SettingsPage() {
                 })
             });
             if (res.ok) {
-                toast.success("Academic Session created!");
+                toast.success(t("sessions.created"));
                 setNewSessionName("");
                 setNewSessionStart("");
                 setNewSessionEnd("");
                 mutate();
             } else {
                 const data = await res.json();
-                toast.error(data.message || "Failed to create session");
+                toast.error(data.message || t("sessions.createFailed"));
             }
         } catch (_err) {
-            toast.error("Network error");
+            toast.error(t("page.networkError"));
         }
     };
 
@@ -278,11 +283,11 @@ export default function SettingsPage() {
                 body: JSON.stringify({ isActive: true })
             });
             if (res.ok) {
-                toast.success("Active session updated!");
+                toast.success(t("sessions.activeUpdated"));
                 mutate();
             }
         } catch (_err) {
-            toast.error("Network error");
+            toast.error(t("page.networkError"));
         }
     };
 
@@ -295,32 +300,32 @@ export default function SettingsPage() {
                 body: JSON.stringify({ title: newDesigTitle, description: newDesigDesc, isActive: true })
             });
             if (res.ok) {
-                toast.success("Designation created!");
+                toast.success(t("designations.created"));
                 setNewDesigTitle("");
                 setNewDesigDesc("");
                 mutateDesignations();
             } else {
                 const data = await res.json();
-                toast.error(data.message || "Failed to create designation");
+                toast.error(data.message || t("designations.createFailed"));
             }
         } catch (_err) {
-            toast.error("Network error");
+            toast.error(t("page.networkError"));
         }
     };
 
     const handleDeleteDesignation = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this designation?")) return;
+        if (!confirm(t("designations.deleteConfirm"))) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/designations/${id}`, { method: "DELETE" });
             if (res.ok) {
-                toast.success("Designation deleted");
+                toast.success(t("designations.deleted"));
                 mutateDesignations();
             } else {
                 const data = await res.json();
-                toast.error(data.message || "Failed to delete designation");
+                toast.error(data.message || t("designations.deleteFailed"));
             }
         } catch (_err) {
-            toast.error("Network error");
+            toast.error(t("page.networkError"));
         }
     };
 
@@ -334,22 +339,22 @@ export default function SettingsPage() {
                 body: JSON.stringify({ title: editDesigTitle, description: editDesigDesc })
             });
             if (res.ok) {
-                toast.success("Designation updated!");
+                toast.success(t("designations.updated"));
                 setEditingDesig(null);
                 mutateDesignations();
             } else {
                 const data = await res.json();
-                toast.error(data.message || "Failed to update designation");
+                toast.error(data.message || t("designations.updateFailed"));
             }
         } catch (_err) {
-            toast.error("Network error");
+            toast.error(t("page.networkError"));
         }
     };
 
     // --- Examination Setting Handlers ---
     const handleCreateCategory = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedExamSessionId) return toast.error("Select a session first");
+        if (!selectedExamSessionId) return toast.error(t("page.selectSessionFirst"));
 
         try {
             const res = await authFetch(`${API_BASE_URL}/exams/categories`, {
@@ -362,16 +367,16 @@ export default function SettingsPage() {
                 })
             });
             if (res.ok) {
-                toast.success("Exam Category created!");
+                toast.success(t("exam.categoryCreated"));
                 setNewCategoryName("");
                 setNewCategoryDesc("");
                 mutateCategories();
             } else {
                 const data = await res.json();
-                toast.error(data.message || "Failed to create category");
+                toast.error(data.message || t("exam.categoryCreateFailed"));
             }
         } catch (_err) {
-            toast.error("Network error");
+            toast.error(t("page.networkError"));
         }
     };
 
@@ -383,17 +388,17 @@ export default function SettingsPage() {
                 body: JSON.stringify({ isActive: !currentStatus })
             });
             if (res.ok) {
-                toast.success("Category status updated!");
+                toast.success(t("exam.categoryStatusUpdated"));
                 mutateCategories();
             }
         } catch (_err) {
-            toast.error("Network error");
+            toast.error(t("page.networkError"));
         }
     };
 
     const toggleFinalResultCategory = (id: number) => {
         if (id === selectedTargetCategoryId) {
-            toast.error("The Target Final Category cannot also be a contributing category.");
+            toast.error(t("exam.targetCannotContribute"));
             return;
         }
         setSelectedCategoryIds(prev =>
@@ -411,7 +416,7 @@ export default function SettingsPage() {
     };
 
     const handleSaveSettings = async () => {
-        if (!selectedExamSessionId) return toast.error("Select a session first");
+        if (!selectedExamSessionId) return toast.error(t("page.selectSessionFirst"));
 
         try {
             const res = await authFetch(`${API_BASE_URL}/exams/settings`, {
@@ -424,24 +429,24 @@ export default function SettingsPage() {
                 })
             });
             if (res.ok) {
-                toast.success("Exam settings updated!");
+                toast.success(t("exam.settingsUpdated"));
                 mutateSettings();
             }
         } catch (_err) {
-            toast.error("Network error");
+            toast.error(t("page.networkError"));
         }
     };
 
     const handleCreateGrading = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedGradingSessionId) return toast.error("Select a session first");
+        if (!selectedGradingSessionId) return toast.error(t("page.selectSessionFirst"));
 
         const parsedMin = parseFloat(newGradeMin);
         const parsedMax = parseFloat(newGradeMax);
-        if (isNaN(parsedMin) || isNaN(parsedMax)) return toast.error("Enter valid percentage values");
-        if (parsedMin < 0 || parsedMax < 0) return toast.error("Percentages cannot be negative");
-        if (parsedMax > 100) return toast.error("Percentages cannot exceed 100");
-        if (parsedMin >= parsedMax) return toast.error("Min % must be strictly less than Max %");
+        if (isNaN(parsedMin) || isNaN(parsedMax)) return toast.error(t("grading.invalidPercent"));
+        if (parsedMin < 0 || parsedMax < 0) return toast.error(t("grading.negativePercent"));
+        if (parsedMax > 100) return toast.error(t("grading.over100"));
+        if (parsedMin >= parsedMax) return toast.error(t("grading.minBelowMax"));
 
         try {
             const res = await authFetch(`${API_BASE_URL}/exams/grading-system`, {
@@ -456,7 +461,7 @@ export default function SettingsPage() {
                 })
             });
             if (res.ok) {
-                toast.success("Grading band created!");
+                toast.success(t("grading.created"));
                 setNewGradeName("");
                 setNewGradeMin("");
                 setNewGradeMax("");
@@ -464,24 +469,24 @@ export default function SettingsPage() {
                 mutateGradingSystems();
             } else {
                 const data = await res.json();
-                const errMsg = Array.isArray(data.message) ? data.message[0] : (data.message || "Failed to create grading");
+                const errMsg = Array.isArray(data.message) ? data.message[0] : (data.message || t("grading.createFailed"));
                 toast.error(errMsg);
             }
         } catch (_err) {
-            toast.error("Network error");
+            toast.error(t("page.networkError"));
         }
     };
 
     const handleDeleteGrading = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this grading band?")) return;
+        if (!confirm(t("grading.deleteConfirm"))) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/exams/grading-system/${id}`, { method: "DELETE" });
             if (res.ok) {
-                toast.success("Grading band deleted");
+                toast.success(t("grading.deleted"));
                 mutateGradingSystems();
             }
         } catch (_err) {
-            toast.error("Network error");
+            toast.error(t("page.networkError"));
         }
     };
 
@@ -495,7 +500,7 @@ export default function SettingsPage() {
         return (
             <main className="p-8 text-center">
                 <p className="text-sm text-ink-muted">
-                    Settings is visible to the school&rsquo;s admin and super admin only.
+                    {t("page.accessDenied")}
                 </p>
             </main>
         );
@@ -505,10 +510,11 @@ export default function SettingsPage() {
         <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-accent-edge bg-accent-tint px-4 py-3">
             <Eye className="w-4 h-4 mt-0.5 shrink-0 text-accent-deep" aria-hidden />
             <div className="min-w-0">
-                <p className="text-[13.5px] font-semibold text-accent-deep">View only</p>
+                <p className="text-[13.5px] font-semibold text-accent-deep">{t("page.viewOnly")}</p>
                 <p className="mt-0.5 text-[12.5px] leading-relaxed text-accent-deep/90">
-                    Academic sessions, designations, exam categories and the grading system are
-                    changed by a super admin. You can manage the <button type="button" onClick={() => setActiveTab('holidays')} className="underline underline-offset-2 font-semibold cursor-pointer">holiday calendar</button> here.
+                    {t.rich("page.viewOnlyBody", {
+                        link: (c) => <button type="button" onClick={() => setActiveTab('holidays')} className="underline underline-offset-2 font-semibold cursor-pointer">{c}</button>,
+                    })}
                 </p>
             </div>
         </div>
@@ -516,10 +522,10 @@ export default function SettingsPage() {
 
     return (
         <main className="p-4 flex-1 h-full overflow-y-auto w-full max-w-7xl mx-auto">
-            {error && <div className="p-4 text-red-600 mb-4 bg-red-50 rounded">Error loading sessions</div>}
+            {error && <div className="p-4 text-red-600 mb-4 bg-red-50 rounded">{t("page.loadSessionsError")}</div>}
             <Toaster position="top-right" />
             <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4 border-b pb-4 border-gray-200">
-                <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Settings</h1>
+                <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t("page.title")}</h1>
                 <div className="flex p-1 bg-slate-100 rounded-xl w-full md:w-fit shadow-inner border border-slate-200/60 overflow-x-auto">
                     <button
                         onClick={() => setActiveTab('system')}
@@ -530,7 +536,7 @@ export default function SettingsPage() {
                         }`}
                     >
                         <Settings2 className="w-4 h-4" />
-                        System Settings
+                        {t("page.tab.system")}
                     </button>
                     <button
                         onClick={() => setActiveTab('examination')}
@@ -541,7 +547,7 @@ export default function SettingsPage() {
                         }`}
                     >
                         <GraduationCap className="w-4 h-4" />
-                        Examination Settings
+                        {t("page.tab.examination")}
                     </button>
                     <button
                         onClick={() => setActiveTab('holidays')}
@@ -552,7 +558,7 @@ export default function SettingsPage() {
                         }`}
                     >
                         <CalendarDays className="w-4 h-4" />
-                        Holidays
+                        {t("page.tab.holidays")}
                     </button>
                 </div>
             </div>
@@ -565,42 +571,42 @@ export default function SettingsPage() {
 
                     {/* Academic Sessions panel */}
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                        <h2 className="text-xl font-bold mb-4 text-slate-800">Academic Sessions</h2>
+                        <h2 className="text-xl font-bold mb-4 text-slate-800">{t("sessions.title")}</h2>
 
                         {/* Create Session form — SUPER_ADMIN only; an ADMIN reads the table. */}
                         {rbac.canEditSettings && (
                             <form onSubmit={handleCreateSession} className="mb-8 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                                <h3 className="text-sm font-semibold text-slate-700 mb-3">Add New Session</h3>
+                                <h3 className="text-sm font-semibold text-slate-700 mb-3">{t("sessions.addNew")}</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                     <div>
-                                        <label className="block mb-1 text-xs font-medium text-gray-700">Session Name</label>
-                                        <input type="text" placeholder="e.g. 2026-2027" value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand" />
+                                        <label className="block mb-1 text-xs font-medium text-gray-700">{t("sessions.name")}</label>
+                                        <input type="text" placeholder={t("sessions.namePlaceholder")} value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand" />
                                     </div>
                                     <div>
-                                        <label className="block mb-1 text-xs font-medium text-gray-700">Start Date</label>
+                                        <label className="block mb-1 text-xs font-medium text-gray-700">{tc("field.startDate")}</label>
                                         <input type="date" value={newSessionStart} onChange={(e) => setNewSessionStart(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand" />
                                     </div>
                                     <div>
-                                        <label className="block mb-1 text-xs font-medium text-gray-700">End Date</label>
+                                        <label className="block mb-1 text-xs font-medium text-gray-700">{tc("field.endDate")}</label>
                                         <input type="date" value={newSessionEnd} onChange={(e) => setNewSessionEnd(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand" />
                                     </div>
                                 </div>
-                                <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">Create Session</button>
+                                <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">{t("sessions.create")}</button>
                             </form>
                         )}
 
                         {loading ? (
-                            <Loader text="Loading sessions..." />
+                            <Loader text={t("sessions.loading")} />
                         ) : (
                             <div className="relative overflow-x-auto rounded-lg border border-gray-200">
                                 <table className="w-full text-sm text-left text-gray-500">
                                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                                         <tr>
-                                            <th scope="col" className="px-4 py-3">ID</th>
-                                            <th scope="col" className="px-4 py-3">Name</th>
-                                            <th scope="col" className="px-4 py-3">Period</th>
-                                            <th scope="col" className="px-4 py-3 text-center">Status</th>
-                                            <th scope="col" className="px-4 py-3 text-right">Action</th>
+                                            <th scope="col" className="px-4 py-3">{t("page.id")}</th>
+                                            <th scope="col" className="px-4 py-3">{tc("field.name")}</th>
+                                            <th scope="col" className="px-4 py-3">{t("sessions.period")}</th>
+                                            <th scope="col" className="px-4 py-3 text-center">{tc("field.status")}</th>
+                                            <th scope="col" className="px-4 py-3 text-right">{t("page.action")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -609,26 +615,26 @@ export default function SettingsPage() {
                                                 <td className="px-4 py-3 font-mono text-xs text-gray-500">{s.id}</td>
                                                 <td className="px-4 py-3 font-semibold text-slate-800">{s.name}</td>
                                                 <td className="px-4 py-3 text-xs">
-                                                    {new Date(s.startDate).toLocaleDateString()} to {new Date(s.endDate).toLocaleDateString()}
+                                                    {t("sessions.periodRange", { start: new Date(s.startDate).toLocaleDateString(INTL_LOCALE[locale]), end: new Date(s.endDate).toLocaleDateString(INTL_LOCALE[locale]) })}
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
                                                     {s.isActive ? (
-                                                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-bold rounded uppercase">Active</span>
+                                                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-bold rounded uppercase">{tc("status.active")}</span>
                                                     ) : (
-                                                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded uppercase">Inactive</span>
+                                                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded uppercase">{tc("status.inactive")}</span>
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
                                                     {!s.isActive && rbac.canEditSettings && (
                                                         <button onClick={() => handleSetActive(s.id)} className="text-blue-600 hover:underline font-medium text-xs">
-                                                            Set Active
+                                                            {t("sessions.setActive")}
                                                         </button>
                                                     )}
                                                 </td>
                                             </tr>
                                         ))}
                                         {sessions.length === 0 && (
-                                            <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-500 italic">No academic sessions found.</td></tr>
+                                            <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-500 italic">{t("sessions.empty")}</td></tr>
                                         )}
                                     </tbody>
                                 </table>
@@ -638,22 +644,22 @@ export default function SettingsPage() {
 
                     {/* Staff Designations panel */}
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                        <h2 className="text-xl font-bold mb-4 text-slate-800">Staff Designations</h2>
+                        <h2 className="text-xl font-bold mb-4 text-slate-800">{t("designations.title")}</h2>
 
                         {rbac.canEditSettings && (
                             <form onSubmit={handleCreateDesignation} className="mb-8 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                                <h3 className="text-sm font-semibold text-slate-700 mb-3">Add Designation</h3>
+                                <h3 className="text-sm font-semibold text-slate-700 mb-3">{t("designations.add")}</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                     <div>
-                                        <label className="block mb-1 text-xs font-medium text-gray-700">Title (e.g. Principal)</label>
+                                        <label className="block mb-1 text-xs font-medium text-gray-700">{t("designations.titleLabel")}</label>
                                         <input type="text" value={newDesigTitle} onChange={(e) => setNewDesigTitle(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand" />
                                     </div>
                                     <div>
-                                        <label className="block mb-1 text-xs font-medium text-gray-700">Description</label>
+                                        <label className="block mb-1 text-xs font-medium text-gray-700">{tc("field.description")}</label>
                                         <input type="text" value={newDesigDesc} onChange={(e) => setNewDesigDesc(e.target.value)} className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand" />
                                     </div>
                                 </div>
-                                <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">Create Designation</button>
+                                <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">{t("designations.create")}</button>
                             </form>
                         )}
 
@@ -661,10 +667,10 @@ export default function SettingsPage() {
                         {editingDesig && (
                             <div className="fixed inset-0 z-60 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm">
                                 <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md animate-in zoom-in-95 duration-200">
-                                    <h3 className="text-lg font-bold mb-4 text-slate-800">Edit Designation</h3>
+                                    <h3 className="text-lg font-bold mb-4 text-slate-800">{t("designations.editTitle")}</h3>
                                     <form onSubmit={handleUpdateDesignation}>
                                         <div className="mb-4">
-                                            <label className="block mb-2 text-sm font-medium text-gray-900">Title</label>
+                                            <label className="block mb-2 text-sm font-medium text-gray-900">{t("designations.titleField")}</label>
                                             <input
                                                 type="text"
                                                 value={editDesigTitle}
@@ -674,7 +680,7 @@ export default function SettingsPage() {
                                             />
                                         </div>
                                         <div className="mb-6">
-                                            <label className="block mb-2 text-sm font-medium text-gray-900">Description</label>
+                                            <label className="block mb-2 text-sm font-medium text-gray-900">{tc("field.description")}</label>
                                             <input
                                                 type="text"
                                                 value={editDesigDesc}
@@ -688,7 +694,7 @@ export default function SettingsPage() {
                                                 onClick={() => setEditingDesig(null)}
                                                 className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                                             >
-                                                Cancel
+                                                {tc("action.cancel")}
                                             </button>
                                             <button
                                                 type="submit"
@@ -696,7 +702,7 @@ export default function SettingsPage() {
                                                 title={readOnly ? READ_ONLY_TITLE : undefined}
                                                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
-                                                Save Changes
+                                                {t("designations.saveChanges")}
                                             </button>
                                         </div>
                                     </form>
@@ -705,15 +711,15 @@ export default function SettingsPage() {
                         )}
 
                         {loadingDesignations ? (
-                            <Loader text="Loading designations..." />
+                            <Loader text={t("designations.loading")} />
                         ) : (
                             <div className="relative overflow-x-auto rounded-lg border border-gray-200">
                                 <table className="w-full text-sm text-left text-gray-500">
                                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                                         <tr>
-                                            <th scope="col" className="px-4 py-3">Title</th>
-                                            <th scope="col" className="px-4 py-3">Description</th>
-                                            <th scope="col" className="px-4 py-3 text-right">Action</th>
+                                            <th scope="col" className="px-4 py-3">{t("designations.titleField")}</th>
+                                            <th scope="col" className="px-4 py-3">{tc("field.description")}</th>
+                                            <th scope="col" className="px-4 py-3 text-right">{t("page.action")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -737,8 +743,8 @@ export default function SettingsPage() {
                                                                     style={{ top: dropdownPosition.top, left: dropdownPosition.left }}
                                                                 >
                                                                     <div className="py-1">
-                                                                        <button type="button" onClick={(e) => { e.stopPropagation(); setEditingDesig(d); setEditDesigTitle(d.title); setEditDesigDesc(d.description || ""); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Edit</button>
-                                                                        <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteDesignation(d.id); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Delete</button>
+                                                                        <button type="button" onClick={(e) => { e.stopPropagation(); setEditingDesig(d); setEditDesigTitle(d.title); setEditDesigDesc(d.description || ""); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{tc("action.edit")}</button>
+                                                                        <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteDesignation(d.id); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">{tc("action.delete")}</button>
                                                                     </div>
                                                                 </div>
                                                             )}
@@ -748,7 +754,7 @@ export default function SettingsPage() {
                                             </tr>
                                         ))}
                                         {designations.length === 0 && (
-                                            <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500 italic">No designations found.</td></tr>
+                                            <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500 italic">{t("designations.empty")}</td></tr>
                                         )}
                                     </tbody>
                                 </table>
@@ -764,17 +770,17 @@ export default function SettingsPage() {
                         {/* Exam Categories panel */}
                         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-                                <h2 className="text-xl font-bold text-slate-800">Exam Categories</h2>
+                                <h2 className="text-xl font-bold text-slate-800">{t("exam.categoriesTitle")}</h2>
                                 <div className="mt-2 sm:mt-0">
-                                    <label className="text-xs text-slate-500 mr-2 uppercase font-semibold">For Session:</label>
+                                    <label className="text-xs text-slate-500 mr-2 uppercase font-semibold">{t("exam.forSession")}</label>
                                     <select
                                         className="text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand p-1"
                                         value={selectedExamSessionId || ''}
                                         onChange={(e) => setSelectedExamSessionId(Number(e.target.value))}
                                     >
-                                        <option value="">Select Session</option>
+                                        <option value="">{t("exam.selectSession")}</option>
                                         {sessions.map((s: any) => (
-                                            <option key={s.id} value={s.id}>{s.name} {s.isActive && '(Active)'}</option>
+                                            <option key={s.id} value={s.id}>{s.isActive ? t("exam.sessionOption", { name: s.name }) : s.name}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -783,18 +789,18 @@ export default function SettingsPage() {
                             {/* Create category form — ADMIN+ only */}
                             {rbac.canEditSettings && (
                                 <form onSubmit={handleCreateCategory} className="mb-8 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                                    <h3 className="text-sm font-semibold text-slate-700 mb-3">Add New Exam Category</h3>
+                                    <h3 className="text-sm font-semibold text-slate-700 mb-3">{t("exam.addCategory")}</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                         <div>
-                                            <label className="block mb-1 text-xs font-medium text-gray-700">Name (e.g. SA1, Final)</label>
+                                            <label className="block mb-1 text-xs font-medium text-gray-700">{t("exam.categoryName")}</label>
                                             <input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand" />
                                         </div>
                                         <div>
-                                            <label className="block mb-1 text-xs font-medium text-gray-700">Description</label>
+                                            <label className="block mb-1 text-xs font-medium text-gray-700">{tc("field.description")}</label>
                                             <input type="text" value={newCategoryDesc} onChange={(e) => setNewCategoryDesc(e.target.value)} className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand" />
                                         </div>
                                     </div>
-                                    <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">Create Category</button>
+                                    <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">{t("exam.createCategory")}</button>
                                 </form>
                             )}
 
@@ -802,9 +808,9 @@ export default function SettingsPage() {
                                 <table className="w-full text-sm text-left text-gray-500">
                                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                                         <tr>
-                                            <th className="px-4 py-3">Name</th>
-                                            <th className="px-4 py-3 text-center">Status</th>
-                                            <th className="px-4 py-3 text-right">Action</th>
+                                            <th className="px-4 py-3">{tc("field.name")}</th>
+                                            <th className="px-4 py-3 text-center">{tc("field.status")}</th>
+                                            <th className="px-4 py-3 text-right">{t("page.action")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -813,22 +819,22 @@ export default function SettingsPage() {
                                                 <td className="px-4 py-3 font-semibold text-slate-800">{c.name}</td>
                                                 <td className="px-4 py-3 text-center">
                                                     {c.isActive ? (
-                                                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-bold rounded uppercase">Active</span>
+                                                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-bold rounded uppercase">{tc("status.active")}</span>
                                                     ) : (
-                                                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded uppercase">Inactive</span>
+                                                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded uppercase">{tc("status.inactive")}</span>
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
                                                     {rbac.canEditSettings && (
                                                         <button onClick={() => handleToggleCategory(c.id, c.isActive)} className="text-blue-600 hover:underline font-medium text-xs">
-                                                            {c.isActive ? 'Deactivate' : 'Activate'}
+                                                            {c.isActive ? t("exam.deactivate") : t("exam.activate")}
                                                         </button>
                                                     )}
                                                 </td>
                                             </tr>
                                         ))}
                                         {examCategories.length === 0 && (
-                                            <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500 italic">No exam categories found.</td></tr>
+                                            <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500 italic">{t("exam.noCategories")}</td></tr>
                                         )}
                                     </tbody>
                                 </table>
@@ -838,38 +844,38 @@ export default function SettingsPage() {
                         {/* Final Result Settings panel */}
                         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-                                <h2 className="text-xl font-bold text-slate-800">Final Result Settings</h2>
+                                <h2 className="text-xl font-bold text-slate-800">{t("exam.finalResultTitle")}</h2>
                                 <div className="mt-2 sm:mt-0">
-                                    <label className="text-xs text-slate-500 mr-2 uppercase font-semibold">For Session:</label>
+                                    <label className="text-xs text-slate-500 mr-2 uppercase font-semibold">{t("exam.forSession")}</label>
                                     <select
                                         className="text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand p-1"
                                         value={selectedExamSessionId || ''}
                                         onChange={(e) => setSelectedExamSessionId(Number(e.target.value))}
                                     >
-                                        <option value="">Select Session</option>
+                                        <option value="">{t("exam.selectSession")}</option>
                                         {sessions.map((s: any) => (
-                                            <option key={s.id} value={s.id}>{s.name} {s.isActive && '(Active)'}</option>
+                                            <option key={s.id} value={s.id}>{s.isActive ? t("exam.sessionOption", { name: s.name }) : s.name}</option>
                                         ))}
                                     </select>
                                 </div>
                             </div>
 
                             <div className="mb-6">
-                                <label className="block mb-2 text-sm font-semibold text-slate-700">Target Final Category</label>
+                                <label className="block mb-2 text-sm font-semibold text-slate-700">{t("exam.targetCategory")}</label>
                                 <select
                                     className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand p-2"
                                     value={selectedTargetCategoryId || ''}
                                     onChange={handleTargetCategoryChange}
                                 >
-                                    <option value="">-- None Configured --</option>
+                                    <option value="">{t("exam.noneConfigured")}</option>
                                     {examCategories.filter((c: any) => c.isActive).map((c: any) => (
                                         <option key={c.id} value={c.id}>{c.name}</option>
                                     ))}
                                 </select>
-                                <p className="text-xs text-slate-500 mt-1">This category's marks will be automatically generated by summing the contributing components.</p>
+                                <p className="text-xs text-slate-500 mt-1">{t("exam.targetHint")}</p>
                             </div>
 
-                            <p className="text-sm font-semibold text-slate-700 mb-3">Contributing Categories:</p>
+                            <p className="text-sm font-semibold text-slate-700 mb-3">{t("exam.contributing")}</p>
                             <div className="flex flex-col gap-2 mb-6">
                                 {examCategories.filter((c: any) => c.isActive).map((c: any) => {
                                     const isTarget = c.id === selectedTargetCategoryId;
@@ -882,16 +888,16 @@ export default function SettingsPage() {
                                                 disabled={isTarget}
                                                 className={`rounded ${isTarget ? 'text-gray-400 focus:ring-gray-400 cursor-not-allowed' : 'text-blue-600 focus:ring-brand/40'}`}
                                             />
-                                            <span>{c.name} {isTarget && <span className="text-xs italic font-normal text-slate-400">(Selected as Target)</span>}</span>
+                                            <span>{c.name} {isTarget && <span className="text-xs italic font-normal text-slate-400">{t("exam.selectedAsTarget")}</span>}</span>
                                         </label>
                                     );
                                 })}
                                 {examCategories.filter((c: any) => c.isActive).length === 0 && (
-                                    <span className="text-sm text-slate-500 italic">Please create and activate exam categories first.</span>
+                                    <span className="text-sm text-slate-500 italic">{t("exam.createCategoriesFirst")}</span>
                                 )}
                             </div>
                             {rbac.canEditSettings && (
-                                <button onClick={handleSaveSettings} className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition">Save Result Settings</button>
+                                <button onClick={handleSaveSettings} className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition">{t("exam.saveResultSettings")}</button>
                             )}
                         </div>
                     </div>
@@ -900,17 +906,17 @@ export default function SettingsPage() {
                     {/* Grading System Engine */}
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-                            <h2 className="text-xl font-bold text-slate-800">Grading System Rules</h2>
+                            <h2 className="text-xl font-bold text-slate-800">{t("grading.title")}</h2>
                             <div className="mt-2 sm:mt-0">
-                                <label className="text-xs text-slate-500 mr-2 uppercase font-semibold">For Session:</label>
+                                <label className="text-xs text-slate-500 mr-2 uppercase font-semibold">{t("exam.forSession")}</label>
                                 <select
                                     className="text-sm border-gray-300 rounded-md shadow-sm focus:ring-brand/40 focus:border-brand p-1"
                                     value={selectedGradingSessionId || ''}
                                     onChange={(e) => setSelectedGradingSessionId(Number(e.target.value))}
                                 >
-                                    <option value="">Select Session</option>
+                                    <option value="">{t("exam.selectSession")}</option>
                                     {sessions.map((s: any) => (
-                                        <option key={s.id} value={s.id}>{s.name} {s.isActive && '(Active)'}</option>
+                                        <option key={s.id} value={s.id}>{s.isActive ? t("exam.sessionOption", { name: s.name }) : s.name}</option>
                                     ))}
                                 </select>
                             </div>
@@ -919,18 +925,18 @@ export default function SettingsPage() {
                         {/* Add grading band form — ADMIN+ only */}
                         {rbac.canEditSettings && (
                             <form onSubmit={handleCreateGrading} className="mb-8 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                                <h3 className="text-sm font-semibold text-slate-700 mb-3">Add Grading Band</h3>
+                                <h3 className="text-sm font-semibold text-slate-700 mb-3">{t("grading.addBand")}</h3>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                                     <div>
-                                        <label className="block mb-1 text-[10px] uppercase font-bold text-gray-500">Grade (e.g. A+)</label>
+                                        <label className="block mb-1 text-[10px] uppercase font-bold text-gray-500">{t("grading.gradeLabel")}</label>
                                         <input type="text" value={newGradeName} onChange={(e) => setNewGradeName(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:ring-brand/40" />
                                     </div>
                                     <div>
-                                        <label className="block mb-1 text-[10px] uppercase font-bold text-gray-500">Min %</label>
+                                        <label className="block mb-1 text-[10px] uppercase font-bold text-gray-500">{t("grading.minPercent")}</label>
                                         <input type="number" step="0.01" min="0" max="100" value={newGradeMin} onChange={(e) => setNewGradeMin(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:ring-brand/40" />
                                     </div>
                                     <div>
-                                        <label className="block mb-1 text-[10px] uppercase font-bold text-gray-500">Max % <span className="text-[9px] font-normal lowercase">(excluding)</span></label>
+                                        <label className="block mb-1 text-[10px] uppercase font-bold text-gray-500">{t("grading.maxPercent")} <span className="text-[9px] font-normal lowercase">{t("grading.excluding")}</span></label>
                                         <input type="number" step="0.01" min="0" max="100" value={newGradeMax} onChange={(e) => setNewGradeMax(e.target.value)} required className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:ring-brand/40" />
                                     </div>
                                     <div className="flex items-center pt-5">
@@ -941,26 +947,26 @@ export default function SettingsPage() {
                                                 onChange={(e) => setNewGradeIsFail(e.target.checked)}
                                                 className="rounded text-red-600 focus:ring-red-500 h-4 w-4"
                                             />
-                                            <span className="text-red-600 font-bold">Is Fail?</span>
+                                            <span className="text-red-600 font-bold">{t("grading.isFail")}</span>
                                         </label>
                                     </div>
                                 </div>
-                                <button type="submit" disabled={!selectedGradingSessionId || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition disabled:bg-blue-300">Add Grade Band</button>
+                                <button type="submit" disabled={!selectedGradingSessionId || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition disabled:bg-blue-300">{t("grading.addBandButton")}</button>
                             </form>
                         )}
 
                         {!selectedGradingSessionId ? (
-                            <div className="py-8 text-center text-slate-500 italic">Please select an academic session above.</div>
+                            <div className="py-8 text-center text-slate-500 italic">{t("grading.selectSession")}</div>
                         ) : (
                             <div className="relative overflow-x-auto rounded-lg border border-gray-200">
                                 <table className="w-full text-sm text-left text-gray-500">
                                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                                         <tr>
-                                            <th className="px-4 py-3">Grade</th>
-                                            <th className="px-4 py-3 text-center">Min %</th>
-                                            <th className="px-4 py-3 text-center">Max % <span className="text-[10px] font-normal normal-case">(excluding)</span></th>
-                                            <th className="px-4 py-3 text-center">Effect</th>
-                                            <th className="px-4 py-3 text-right">Action</th>
+                                            <th className="px-4 py-3">{t("grading.grade")}</th>
+                                            <th className="px-4 py-3 text-center">{t("grading.minPercent")}</th>
+                                            <th className="px-4 py-3 text-center">{t("grading.maxPercent")} <span className="text-[10px] font-normal normal-case">{t("grading.excluding")}</span></th>
+                                            <th className="px-4 py-3 text-center">{t("grading.effect")}</th>
+                                            <th className="px-4 py-3 text-right">{t("page.action")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -971,22 +977,22 @@ export default function SettingsPage() {
                                                 <td className="px-4 py-3 text-center font-medium">{g.maxPercentage}%</td>
                                                 <td className="px-4 py-3 text-center">
                                                     {g.isFailGrade ? (
-                                                        <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded uppercase">Fail</span>
+                                                        <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded uppercase">{t("grading.fail")}</span>
                                                     ) : (
-                                                        <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded uppercase">Pass</span>
+                                                        <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded uppercase">{t("grading.pass")}</span>
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
                                                     {rbac.canEditSettings && (
                                                         <button onClick={() => handleDeleteGrading(g.id)} className="text-red-500 hover:text-red-700 hover:underline font-medium text-xs">
-                                                            Delete
+                                                            {tc("action.delete")}
                                                         </button>
                                                     )}
                                                 </td>
                                             </tr>
                                         ))}
                                         {gradingSystems.length === 0 && (
-                                            <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-500 italic">No grading systems defined for this session.</td></tr>
+                                            <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-500 italic">{t("grading.empty")}</td></tr>
                                         )}
                                     </tbody>
                                 </table>
@@ -1000,28 +1006,28 @@ export default function SettingsPage() {
             {activeTab === 'holidays' && (
                 <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-xl font-bold text-slate-800">School Holidays</h2>
+                        <h2 className="text-xl font-bold text-slate-800">{t("holidays.title")}</h2>
                         {rbac.canManageHolidays && (
                             <button
                                 onClick={() => handleOpenHolidayModal()}
                                 className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                             >
-                                <Plus className="w-4 h-4" /> Add Holiday
+                                <Plus className="w-4 h-4" /> {t("holidays.add")}
                             </button>
                         )}
                     </div>
 
                     {loadingHolidays ? (
-                        <div className="py-12"><Loader text="Loading holidays..." /></div>
+                        <div className="py-12"><Loader text={t("holidays.loading")} /></div>
                     ) : (
                         <div className="relative overflow-x-auto rounded-lg border border-gray-200">
                             <table className="w-full text-sm text-left text-gray-500">
                                 <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                                     <tr>
-                                        <th className="px-4 py-3">Description</th>
-                                        <th className="px-4 py-3">Date Range</th>
-                                        <th className="px-4 py-3">Applicability</th>
-                                        <th className="px-4 py-3 text-right">Actions</th>
+                                        <th className="px-4 py-3">{tc("field.description")}</th>
+                                        <th className="px-4 py-3">{t("holidays.dateRange")}</th>
+                                        <th className="px-4 py-3">{t("holidays.applicability")}</th>
+                                        <th className="px-4 py-3 text-right">{tc("action.actions")}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1029,13 +1035,13 @@ export default function SettingsPage() {
                                         <tr key={h.id} className="bg-white border-b hover:bg-gray-50">
                                             <td className="px-4 py-3 font-semibold text-slate-800">{h.description}</td>
                                             <td className="px-4 py-3 whitespace-nowrap">
-                                                {new Date(h.startDate).toLocaleDateString()}
-                                                {h.startDate !== h.endDate && ` - ${new Date(h.endDate).toLocaleDateString()}`}
+                                                {new Date(h.startDate).toLocaleDateString(INTL_LOCALE[locale])}
+                                                {h.startDate !== h.endDate && ` - ${new Date(h.endDate).toLocaleDateString(INTL_LOCALE[locale])}`}
                                             </td>
                                             <td className="px-4 py-3">
                                                 {h.isEntireSchool ? (
                                                     <span className="flex items-center gap-1 text-green-700 text-xs font-bold bg-green-100 px-2 py-1 rounded-full w-max">
-                                                        <CheckCircle2 className="w-3 h-3" /> Entire School
+                                                        <CheckCircle2 className="w-3 h-3" /> {t("holidays.entireSchool")}
                                                     </span>
                                                 ) : (
                                                     <div className="flex flex-wrap gap-1">
@@ -1060,14 +1066,14 @@ export default function SettingsPage() {
                                                         </button>
                                                     )}
                                                     {!rbac.canManageHolidays && (
-                                                        <span className="text-xs text-slate-400 italic">View only</span>
+                                                        <span className="text-xs text-slate-400 italic">{t("holidays.viewOnly")}</span>
                                                     )}
                                                 </div>
                                             </td>
                                         </tr>
                                     ))}
                                     {holidays.length === 0 && (
-                                        <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-500 italic">No holidays declared yet.</td></tr>
+                                        <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-500 italic">{t("holidays.empty")}</td></tr>
                                     )}
                                 </tbody>
                             </table>
@@ -1081,7 +1087,7 @@ export default function SettingsPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm">
                     <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6 border-b pb-4">
-                            <h2 className="text-2xl font-bold text-slate-800">{editingHolidayId ? 'Edit Holiday' : 'Add New Holiday'}</h2>
+                            <h2 className="text-2xl font-bold text-slate-800">{editingHolidayId ? t("holidays.editTitle") : t("holidays.addTitle")}</h2>
                             <button
                                 onClick={() => setShowHolidayModal(false)}
                                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -1092,12 +1098,12 @@ export default function SettingsPage() {
 
                         <form onSubmit={handleSaveHoliday} className="space-y-5">
                             <div>
-                                <label className="block mb-1.5 text-sm font-semibold text-gray-900">Description</label>
+                                <label className="block mb-1.5 text-sm font-semibold text-gray-900">{tc("field.description")}</label>
                                 <input
                                     type="text"
                                     value={holidayDesc}
                                     onChange={(e) => setHolidayDesc(e.target.value)}
-                                    placeholder="e.g. Summer Vacation, Diwali"
+                                    placeholder={t("holidays.descriptionPlaceholder")}
                                     className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-sky-500 focus:border-sky-500 block w-full p-2.5"
                                     required
                                 />
@@ -1105,7 +1111,7 @@ export default function SettingsPage() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block mb-1.5 text-sm font-semibold text-gray-900">Start Date</label>
+                                    <label className="block mb-1.5 text-sm font-semibold text-gray-900">{tc("field.startDate")}</label>
                                     <input
                                         type="date"
                                         value={holidayStart}
@@ -1115,7 +1121,7 @@ export default function SettingsPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block mb-1.5 text-sm font-semibold text-gray-900">End Date</label>
+                                    <label className="block mb-1.5 text-sm font-semibold text-gray-900">{tc("field.endDate")}</label>
                                     <input
                                         type="date"
                                         value={holidayEnd}
@@ -1135,8 +1141,8 @@ export default function SettingsPage() {
                                         className="w-5 h-5 text-sky-600 bg-white border-gray-300 rounded focus:ring-sky-500"
                                     />
                                     <div>
-                                        <span className="text-sm font-bold text-slate-800 block">Is this holiday for the Entire School?</span>
-                                        <span className="text-xs text-slate-500 block">Uncheck to select specific classes only.</span>
+                                        <span className="text-sm font-bold text-slate-800 block">{t("holidays.entireSchoolQuestion")}</span>
+                                        <span className="text-xs text-slate-500 block">{t("holidays.entireSchoolHint")}</span>
                                     </div>
                                 </label>
                             </div>
@@ -1144,13 +1150,13 @@ export default function SettingsPage() {
                             {!holidayIsEntireSchool && (
                                 <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
                                     <div className="flex justify-between items-center mb-3">
-                                        <label className="block text-sm font-semibold text-gray-900">Select Classes</label>
+                                        <label className="block text-sm font-semibold text-gray-900">{t("holidays.selectClasses")}</label>
                                         <button
                                             type="button"
                                             onClick={handleHolidaySelectAllClasses}
                                             className="text-xs text-sky-600 hover:text-sky-800 font-bold hover:underline"
                                         >
-                                            {holidayClassIds.length === classes.length ? 'Deselect All' : 'Select All'}
+                                            {holidayClassIds.length === classes.length ? t("holidays.deselectAll") : t("holidays.selectAll")}
                                         </button>
                                     </div>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 overflow-y-auto max-h-40">
@@ -1178,7 +1184,7 @@ export default function SettingsPage() {
                                     onClick={() => setShowHolidayModal(false)}
                                     className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:outline-none focus:ring-line-strong"
                                 >
-                                    Cancel
+                                    {tc("action.cancel")}
                                 </button>
                                 <button
                                     type="submit"
@@ -1186,7 +1192,7 @@ export default function SettingsPage() {
                                     title={readOnly ? READ_ONLY_TITLE : undefined}
                                     className="px-5 py-2 text-sm font-medium text-white bg-sky-600 rounded-lg hover:bg-sky-700 focus:ring-4 focus:outline-none focus:ring-sky-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                 >
-                                    {isSavingHoliday ? "Saving..." : (editingHolidayId ? "Update Holiday" : "Create Holiday")}
+                                    {isSavingHoliday ? tc("action.saving") : (editingHolidayId ? t("holidays.update") : t("holidays.create"))}
                                 </button>
                             </div>
                         </form>

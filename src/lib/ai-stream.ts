@@ -7,11 +7,26 @@ export interface SseUsage {
   credits_remaining: number;
 }
 
+/** Fallback error texts written by the frontend (server-sent messages are passed through as-is). */
+export interface StreamErrorMessages {
+  noBody: string;
+  serviceError: string;
+  unknown: string;
+}
+
+const DEFAULT_ERROR_MESSAGES: StreamErrorMessages = {
+  noBody: 'No response body',
+  serviceError: 'AI service error',
+  unknown: 'Unknown error',
+};
+
 export interface StreamOptions {
   onToken: (text: string) => void;
   onDone: (usage: SseUsage | null) => void;
   onError: (message: string) => void;
   signal?: AbortSignal;
+  /** Translated fallback error texts; English when omitted. */
+  errorMessages?: Partial<StreamErrorMessages>;
 }
 
 /**
@@ -29,6 +44,7 @@ export async function streamAiResponse(
   opts: StreamOptions,
 ): Promise<void> {
   const { onToken, onDone, onError, signal } = opts;
+  const errors = { ...DEFAULT_ERROR_MESSAGES, ...opts.errorMessages };
 
   try {
     const headers = await getAiHeaders();
@@ -54,7 +70,7 @@ export async function streamAiResponse(
 
     const reader = res.body?.getReader();
     if (!reader) {
-      onError('No response body');
+      onError(errors.noBody);
       return;
     }
 
@@ -89,7 +105,7 @@ export async function streamAiResponse(
             finished = true;
             break;
           } else if (event.type === 'error') {
-            onError(event.message ?? 'AI service error');
+            onError(event.message ?? errors.serviceError);
             return;
           }
         } catch {
@@ -104,6 +120,6 @@ export async function streamAiResponse(
       onDone(null);
       return;
     }
-    onError(err instanceof Error ? err.message : 'Unknown error');
+    onError(err instanceof Error ? err.message : errors.unknown);
   }
 }

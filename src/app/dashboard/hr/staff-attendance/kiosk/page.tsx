@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { hrApi } from "@/lib/hr-api";
+import { hrApi, type StaffAttendanceStatus } from "@/lib/hr-api";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 import { todayLocalDate } from "@/lib/utils";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
@@ -14,6 +16,8 @@ import {
 type KioskStep = "idle" | "entering" | "verifying" | "success" | "error";
 
 export default function AttendanceKioskPage() {
+  const t = useTranslations("hr");
+  const locale = useLocale() as Locale;
   const [step, setStep] = useState<KioskStep>("idle");
   const [employeeCode, setEmployeeCode] = useState("");
   const [showLookup, setShowLookup] = useState(false);
@@ -48,10 +52,10 @@ export default function AttendanceKioskPage() {
       const authResponse = await startAuthentication({ optionsJSON: options });
       const record = await hrApi.attendance.webauthn.verifyAuth(Number(employeeCode), authResponse, today);
       setLastRecord(record);
-      setMessage(`Attendance recorded — ${record.status}`);
+      setMessage(t("kiosk.recorded", { status: t(`attendanceStatus.${record.status as StaffAttendanceStatus}`) }));
       setStep("success");
     } catch (e: any) {
-      const msg = e?.info?.message ?? e?.message ?? "Authentication failed";
+      const msg = e?.info?.message ?? e?.message ?? t("kiosk.authFailed");
       setMessage(msg);
       setStep("error");
     }
@@ -72,26 +76,26 @@ export default function AttendanceKioskPage() {
         href="/dashboard/hr/staff-attendance"
         className="absolute top-4 left-4 text-white/70 hover:text-white text-sm flex items-center gap-1 transition-colors"
       >
-        ← Back to Attendance
+        {t("kiosk.back")}
       </Link>
 
       <div className="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-sm text-center space-y-6">
         <div>
-          <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Attendance Kiosk</h1>
-          <p className="text-sm text-gray-500 mt-1">{new Date().toLocaleString()}</p>
+          <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t("kiosk.title")}</h1>
+          <p className="text-sm text-gray-500 mt-1">{new Date().toLocaleString(INTL_LOCALE[locale])}</p>
         </div>
 
         {(step === "idle" || step === "entering") && (
           <>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Enter Your Employee Code</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t("kiosk.enterCode")}</label>
               <input
                 ref={inputRef}
                 type="number"
                 value={employeeCode}
                 onChange={(e) => { setEmployeeCode(e.target.value); setStep("entering"); }}
                 onKeyDown={(e) => e.key === "Enter" && handleAuthenticate()}
-                placeholder="e.g. 1001"
+                placeholder={t("kiosk.codePlaceholder")}
                 className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-2xl text-center tracking-widest focus:outline-none focus:border-brand"
                 autoComplete="off"
               />
@@ -101,10 +105,10 @@ export default function AttendanceKioskPage() {
               disabled={!employeeCode}
               className="w-full bg-blue-600 text-white py-3 rounded-xl text-lg font-semibold hover:bg-blue-700 disabled:opacity-40 transition-colors"
             >
-              Verify Identity →
+              {t("kiosk.verify")}
             </button>
             <p className="text-xs text-gray-400">
-              Type your employee code then press the button. Your browser will prompt for fingerprint, face, or a nearby phone scan to confirm your identity.
+              {t("kiosk.typeHint")}
             </p>
 
             {/* Lookup helper — resolve by Staff ID / mobile when the user doesn't remember their employee code */}
@@ -113,7 +117,7 @@ export default function AttendanceKioskPage() {
                 onClick={() => setShowLookup((v) => !v)}
                 className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
-                <span>Don't remember your employee code? Lookup by ID or mobile</span>
+                <span>{t("kiosk.lookupToggle")}</span>
                 <span className="text-gray-400">{showLookup ? "▲" : "▼"}</span>
               </button>
               {showLookup && (
@@ -124,7 +128,7 @@ export default function AttendanceKioskPage() {
                       setEmployeeCode(String(staff.employeeCode));
                       setStep("entering");
                       setShowLookup(false);
-                      toast.success(`Loaded ${staff.firstName} ${staff.lastName} (EMP-${staff.employeeCode})`);
+                      toast.success(t("kiosk.loaded", { name: `${staff.firstName} ${staff.lastName}`, code: String(staff.employeeCode) }));
                     }}
                   />
                 </div>
@@ -137,19 +141,19 @@ export default function AttendanceKioskPage() {
                 onClick={() => setShowHowItWorks((v) => !v)}
                 className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
-                <span>How does this work?</span>
+                <span>{t("kiosk.howTitle")}</span>
                 <span className="text-gray-400">{showHowItWorks ? "▲" : "▼"}</span>
               </button>
               {showHowItWorks && (
                 <div className="px-4 pb-4 text-xs text-gray-600 space-y-2 border-t border-gray-100">
-                  <p><strong>This kiosk uses WebAuthn</strong> — the same passwordless standard used by banks and Google. No fingerprint images are ever stored.</p>
+                  <p>{t.rich("kiosk.howIntro", { strong: (c) => <strong>{c}</strong> })}</p>
                   <ol className="list-decimal list-inside space-y-1">
-                    <li><strong>One-time setup:</strong> HR registers your employee code to your device's biometric (Face ID / fingerprint). A cryptographic key pair is created inside your device's secure chip — the private key never leaves it.</li>
-                    <li><strong>Daily check-in:</strong> Enter your employee code → the server sends a one-time challenge locked to <em>your specific credential</em> → your device asks for your biometric to sign it → attendance is recorded.</li>
-                    <li><strong>Security:</strong> Someone else typing your code cannot mark attendance — the challenge requires <em>your</em> private key on <em>your</em> device. Your phone can also act as the authenticator via Bluetooth / QR scan.</li>
+                    <li>{t.rich("kiosk.howSetup", { strong: (c) => <strong>{c}</strong> })}</li>
+                    <li>{t.rich("kiosk.howDaily", { strong: (c) => <strong>{c}</strong>, em: (c) => <em>{c}</em> })}</li>
+                    <li>{t.rich("kiosk.howSecurity", { strong: (c) => <strong>{c}</strong>, em: (c) => <em>{c}</em> })}</li>
                   </ol>
                   <p className="text-gray-400 pt-1">
-                    Haven't registered yet? Log in to the dashboard → <strong>My Attendance</strong> → <strong>Register Device for Kiosk</strong>.
+                    {t.rich("kiosk.howRegister", { strong: (c) => <strong>{c}</strong> })}
                   </p>
                 </div>
               )}
@@ -160,8 +164,8 @@ export default function AttendanceKioskPage() {
         {step === "verifying" && (
           <div className="space-y-4">
             <div className="w-16 h-16 mx-auto border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-lg font-medium text-gray-700">Verifying…</p>
-            <p className="text-sm text-gray-500">Please follow your browser's biometric prompt. If a QR code appears, scan it with your registered phone.</p>
+            <p className="text-lg font-medium text-gray-700">{t("kiosk.verifying")}</p>
+            <p className="text-sm text-gray-500">{t("kiosk.followPrompt")}</p>
           </div>
         )}
 
@@ -172,16 +176,16 @@ export default function AttendanceKioskPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <p className="text-xl font-bold text-green-700">Attendance Recorded!</p>
+            <p className="text-xl font-bold text-green-700">{t("kiosk.recordedTitle")}</p>
             <p className="text-sm text-gray-600">{message}</p>
             {lastRecord && (
               <div className="text-xs text-gray-500 space-y-1">
-                <div>Date: {lastRecord.date}</div>
-                <div>Status: {lastRecord.status}</div>
-                {lastRecord.checkInTime && <div>Check-In: {lastRecord.checkInTime}</div>}
+                <div>{t("kiosk.dateLine", { date: lastRecord.date })}</div>
+                <div>{t("kiosk.statusLine", { status: t(`attendanceStatus.${lastRecord.status as StaffAttendanceStatus}`) })}</div>
+                {lastRecord.checkInTime && <div>{t("kiosk.checkInLine", { time: lastRecord.checkInTime })}</div>}
               </div>
             )}
-            <p className="text-xs text-gray-400">Resetting in 4 seconds…</p>
+            <p className="text-xs text-gray-400">{t("kiosk.resetting")}</p>
           </div>
         )}
 
@@ -192,9 +196,9 @@ export default function AttendanceKioskPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </div>
-            <p className="text-xl font-bold text-red-700">Failed</p>
+            <p className="text-xl font-bold text-red-700">{t("failed")}</p>
             <p className="text-sm text-gray-600">{message}</p>
-            <p className="text-xs text-gray-400">Resetting in 4 seconds…</p>
+            <p className="text-xs text-gray-400">{t("kiosk.resetting")}</p>
           </div>
         )}
       </div>

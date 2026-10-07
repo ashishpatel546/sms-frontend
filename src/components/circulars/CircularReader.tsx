@@ -29,6 +29,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/Field';
 import { Note } from '@/components/ui/Panel';
 import { useRbac } from '@/lib/rbac';
+import { useLocale, useTranslations } from 'next-intl';
+import { INTL_LOCALE, type Locale } from '@/i18n/config';
 
 /**
  * THE READER — a circular, opened.
@@ -49,6 +51,10 @@ export function CircularReader({
   /** Called after an archive/restore so the list behind can refetch. */
   onChanged?: () => void;
 }) {
+  const t = useTranslations('circulars');
+  const tc = useTranslations('common');
+  const locale = useLocale() as Locale;
+  const intlLocale = INTL_LOCALE[locale];
   const rbac = useRbac();
   const [downloading, setDownloading] = React.useState(false);
   // Both archive and restore now change what the whole school sees AND what
@@ -92,7 +98,7 @@ export function CircularReader({
     try {
       await downloadCircularFile(circular.id, circular.fileName);
     } catch {
-      toast.error('Could not download the attachment.');
+      toast.error(t('reader.downloadFailed'));
     } finally {
       setDownloading(false);
     }
@@ -102,13 +108,11 @@ export function CircularReader({
     setWorking(true);
     try {
       await archiveCircular(circular.id, reason.trim() || undefined);
-      toast.success(
-        'Circular archived — hidden from the school and its notification withdrawn.',
-      );
+      toast.success(t('reader.archived'));
       onChanged?.();
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not archive the circular.');
+      toast.error(e instanceof Error && e.message ? e.message : t('reader.archiveFailed'));
     } finally {
       setWorking(false);
     }
@@ -118,13 +122,11 @@ export function CircularReader({
     setWorking(true);
     try {
       await restoreCircular(circular.id);
-      toast.success(
-        'Circular restored — the school can see it and has been notified again.',
-      );
+      toast.success(t('reader.restored'));
       onChanged?.();
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not restore the circular.');
+      toast.error(e instanceof Error && e.message ? e.message : t('reader.restoreFailed'));
     } finally {
       setWorking(false);
     }
@@ -148,7 +150,7 @@ export function CircularReader({
 
         <header className="flex shrink-0 items-start gap-3 border-b border-line px-4 py-3 sm:px-5 sm:py-4">
           <div className="min-w-0 flex-1">
-            <p className="eyebrow">Circular</p>
+            <p className="eyebrow">{t('reader.eyebrow')}</p>
             <h2
               id="circular-reader-title"
               className="mt-0.5 font-display text-[17px] leading-snug font-semibold text-ink sm:text-[20px]"
@@ -156,14 +158,14 @@ export function CircularReader({
               {circular.title}
             </h2>
             <p className="mt-1 text-[11.5px] text-ink-muted" suppressHydrationWarning>
-              {formatPublishedAt(circular.publishedAt)}
-              {circular.createdByName ? ` · Issued by ${circular.createdByName}` : ''}
+              {formatPublishedAt(circular.publishedAt, intlLocale)}
+              {circular.createdByName ? ` · ${t('card.issuedBy', { name: circular.createdByName })}` : ''}
             </p>
             {/* Staff only — see the note on CircularCard's `showAudience`. */}
             {rbac.seesAllCirculars && (
               <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-secondary px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.1em] text-ink-muted uppercase">
                 <Users className="size-3" aria-hidden />
-                Issued to {circularAudienceLabel(circular.audience)}
+                {t('reader.issuedTo', { audience: circularAudienceLabel(circular.audience, t) })}
               </p>
             )}
           </div>
@@ -171,7 +173,7 @@ export function CircularReader({
             ref={closeRef}
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={tc('action.close')}
             className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-md text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink focus-visible:ring-3 focus-visible:ring-brand/40 focus-visible:outline-none"
           >
             <X className="size-4" />
@@ -184,10 +186,10 @@ export function CircularReader({
               className="mb-4"
               pigment="attn"
               icon={<Archive />}
-              title="Archived — the school cannot see this"
+              title={t('reader.archivedNoteTitle')}
             >
-              Withdrawn on {formatPublishedAt(circular.archivedAt!)}.
-              {circular.archiveReason ? ` Reason: ${circular.archiveReason}` : ''}
+              {t('reader.withdrawnOn', { date: formatPublishedAt(circular.archivedAt!, intlLocale) })}
+              {circular.archiveReason ? ` ${t('reader.reason', { reason: circular.archiveReason })}` : ''}
             </Note>
           )}
           <p className="text-[14px] leading-relaxed whitespace-pre-line text-ink">
@@ -211,7 +213,7 @@ export function CircularReader({
                   frame, so the small screen gets a button that opens it. */}
               {fileError ? (
                 <p className="mt-3 rounded-lg border border-accent-danger-edge bg-accent-danger-tint px-3 py-2.5 text-[12.5px] text-accent-danger-deep">
-                  The attachment could not be loaded. Try downloading it instead.
+                  {t('reader.attachmentFailed')}
                 </p>
               ) : fileUrl ? (
                 <>
@@ -227,13 +229,13 @@ export function CircularReader({
                     className="mt-3 flex items-center justify-center gap-2 rounded-md border border-line-strong bg-surface px-3 py-2.5 text-[13.5px] font-semibold text-ink transition-colors hover:border-brand hover:bg-brand-tint hover:text-brand sm:hidden"
                   >
                     <ExternalLink className="size-4" aria-hidden />
-                    Open the PDF
+                    {t('reader.openPdf')}
                   </a>
                 </>
               ) : (
                 <div className="mt-3 flex items-center justify-center gap-2 rounded-lg border border-line bg-surface-secondary py-8 text-[12.5px] text-ink-muted sm:h-[55vh]">
                   <Loader2 className="size-4 animate-spin" aria-hidden />
-                  Loading the attachment…
+                  {t('reader.loadingAttachment')}
                 </div>
               )}
             </section>
@@ -242,7 +244,7 @@ export function CircularReader({
           {!circular.fileName && (
             <p className="mt-5 flex items-center gap-2 text-[12px] text-ink-faint">
               <FileText className="size-3.5" aria-hidden />
-              No attachment on this circular.
+              {t('reader.noAttachment')}
             </p>
           )}
         </div>
@@ -252,28 +254,22 @@ export function CircularReader({
             <div className="space-y-2.5">
               <p className="flex items-start gap-2 text-[12.5px] leading-relaxed text-ink">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0 text-accent-deep" aria-hidden />
-                <span>
-                  This withdraws the circular from every parent and staff
-                  member, and takes the notification announcing it back out of
-                  their feeds. The text is not changed and nothing is deleted —
-                  though a push already shown on someone&rsquo;s phone cannot
-                  be pulled back.
-                </span>
+                <span>{t('reader.archiveWarning')}</span>
               </p>
               <Input
                 value={reason}
                 onChange={(e) => setReason(e.target.value.slice(0, 300))}
                 maxLength={300}
-                placeholder="Reason (optional, kept for the audit trail)"
-                aria-label="Reason for archiving"
+                placeholder={t('reader.reasonPlaceholder')}
+                aria-label={t('reader.reasonAria')}
               />
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="destructive" onClick={() => void handleArchive()} disabled={working}>
                   {working ? <Loader2 className="animate-spin" /> : <Archive />}
-                  {working ? 'Archiving…' : 'Yes, archive it'}
+                  {working ? t('reader.archiving') : t('reader.confirmArchive')}
                 </Button>
                 <Button variant="ghost" onClick={() => setConfirming(null)} disabled={working}>
-                  Cancel
+                  {tc('action.cancel')}
                 </Button>
               </div>
             </div>
@@ -281,19 +277,15 @@ export function CircularReader({
             <div className="space-y-2.5">
               <p className="flex items-start gap-2 text-[12.5px] leading-relaxed text-ink">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0 text-accent-deep" aria-hidden />
-                <span>
-                  This puts the circular back in front of the school and
-                  announces it again — everyone is notified a second time,
-                  because archiving withdrew the first notification.
-                </span>
+                <span>{t('reader.restoreWarning')}</span>
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <Button onClick={() => void handleRestore()} disabled={working}>
                   {working ? <Loader2 className="animate-spin" /> : <ArchiveRestore />}
-                  {working ? 'Restoring…' : 'Yes, restore and notify'}
+                  {working ? t('reader.restoring') : t('reader.confirmRestore')}
                 </Button>
                 <Button variant="ghost" onClick={() => setConfirming(null)} disabled={working}>
-                  Cancel
+                  {tc('action.cancel')}
                 </Button>
               </div>
             </div>
@@ -302,21 +294,21 @@ export function CircularReader({
               {circular.fileName && (
                 <Button onClick={handleDownload} disabled={downloading}>
                   {downloading ? <Loader2 className="animate-spin" /> : <Download />}
-                  {downloading ? 'Downloading…' : 'Download PDF'}
+                  {downloading ? t('reader.downloading') : t('reader.downloadPdf')}
                 </Button>
               )}
               {rbac.canArchiveCirculars &&
                 (archived ? (
                   <Button variant="outline" onClick={() => setConfirming('restore')}>
-                    <ArchiveRestore /> Restore
+                    <ArchiveRestore /> {t('reader.restore')}
                   </Button>
                 ) : (
                   <Button variant="outline" onClick={() => setConfirming('archive')}>
-                    <Archive /> Archive
+                    <Archive /> {t('reader.archive')}
                   </Button>
                 ))}
               <Button variant="ghost" className="ml-auto" onClick={onClose}>
-                Close
+                {tc('action.close')}
               </Button>
             </div>
           )}

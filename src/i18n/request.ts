@@ -1,3 +1,4 @@
+import './latin-digits';
 import { cookies } from 'next/headers';
 import { getRequestConfig } from 'next-intl/server';
 import { LOCALE_COOKIE, isLocale, type Locale } from './config';

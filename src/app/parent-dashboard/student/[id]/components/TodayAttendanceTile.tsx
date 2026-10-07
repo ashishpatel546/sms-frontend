@@ -6,6 +6,7 @@ import {
   type AttendanceStatus,
 } from '@/lib/attendanceColors';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useTranslations } from 'next-intl';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Did my child reach school today?
@@ -44,10 +45,13 @@ export const TodayAttendanceTile = ({
   isLoading,
   onOpen,
 }: TodayAttendanceTileProps) => {
+  const t = useTranslations('parent.today');
+  const ta = useTranslations('attendance');
+  const tc = useTranslations('common');
   const tone = status ? ATTENDANCE_TONE[status] : null;
   const Icon = status ? STATUS_ICON[status] : HelpCircle;
   const ink = tone?.stamp ?? ATTENDANCE_NOT_MARKED.stamp;
-  const label = tone?.label ?? ATTENDANCE_NOT_MARKED.label;
+  const label = ta(tone?.labelKey ?? ATTENDANCE_NOT_MARKED.labelKey);
   const borderStyle = status ? 'border-solid' : ATTENDANCE_NOT_MARKED.border;
 
   const isRestDay = status === 'HOLIDAY' || status === 'SUNDAY';
@@ -55,10 +59,10 @@ export const TodayAttendanceTile = ({
   return (
     <button
       onClick={onOpen}
-      aria-label={`Today's attendance: ${label}. Open the attendance month.`}
+      aria-label={t('attendanceAria', { status: label })}
       className="flex min-h-33 w-full cursor-pointer flex-col items-center gap-1 rounded-xl border border-line bg-surface p-2.5 text-center shadow-soft transition-all hover:-translate-y-0.5 hover:border-brand-edge hover:shadow-raised focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
     >
-      <span className="eyebrow w-full text-left">Today</span>
+      <span className="eyebrow w-full text-left">{t("today")}</span>
 
       {isLoading ? (
         <Skeleton className="mt-2 h-13 w-20 rounded-lg" />
@@ -80,7 +84,7 @@ export const TodayAttendanceTile = ({
       )}
 
       <span className="mt-auto flex items-center gap-0.5 pt-1.5 text-[11px] font-semibold text-brand">
-        View
+        {tc('action.view')}
         <ChevronRight className="size-3.5" aria-hidden />
       </span>
     </button>

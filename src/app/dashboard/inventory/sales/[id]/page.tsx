@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useParams } from 'next/navigation';
 import useSWR from 'swr';
+import { useLocale, useTranslations } from 'next-intl';
 import toast, { Toaster } from 'react-hot-toast';
 import { HandCoins } from 'lucide-react';
 
@@ -12,7 +13,6 @@ import {
   fetchSale,
   waiveSaleBalance,
   PAYMENT_MODES,
-  PAYMENT_MODE_LABELS,
   type InventoryPaymentMode,
 } from '@/lib/inventory-api';
 import { PageBody, PageHeader, PageShell } from '@/components/ui/PageHeader';
@@ -23,8 +23,13 @@ import { Money } from '@/components/ui/Money';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AuthorizerPicker from '@/components/inventory/AuthorizerPicker';
+import { INTL_LOCALE, type Locale } from '@/i18n/config';
 
 export default function SaleDetailPage() {
+  const t = useTranslations('inventory.saleDetail');
+  const ti = useTranslations('inventory');
+  const tc = useTranslations('common');
+  const locale = useLocale() as Locale;
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
   const { data: sale, mutate } = useSWR(id ? `/inventory/sales/${id}` : null, () => fetchSale(id));
@@ -48,16 +53,16 @@ export default function SaleDetailPage() {
     <PageShell>
       <Toaster position="top-center" />
       <PageHeader
-        section="Inventory"
+        section={t('section')}
         backHref="/dashboard/inventory/sales"
         title={sale.receiptNumber}
-        description={new Date(sale.createdAt).toLocaleString('en-IN')}
-        meta={<StatusChip status={sale.status} size="md" />}
+        description={new Date(sale.createdAt).toLocaleString(INTL_LOCALE[locale])}
+        meta={<StatusChip status={sale.status} label={ti(`saleStatus.${sale.status}`)} size="md" />}
         actions={
           open ? (
             <>
-              <Button variant="outline" onClick={() => setCollecting(true)}><HandCoins /> Collect payment</Button>
-              <Button variant="destructive" onClick={() => setWaiving(true)}>Waive balance</Button>
+              <Button variant="outline" onClick={() => setCollecting(true)}><HandCoins /> {t('collect')}</Button>
+              <Button variant="destructive" onClick={() => setWaiving(true)}>{t('waive')}</Button>
             </>
           ) : undefined
         }
@@ -65,25 +70,25 @@ export default function SaleDetailPage() {
 
       <PageBody className="space-y-4">
         <Panel>
-          <PanelHeader title="Buyer" />
+          <PanelHeader title={t('buyer')} />
           <PanelBody>
             <DetailGrid columns={3}>
-              <Detail label="Name">{sale.buyerName}</Detail>
-              <Detail label="Type">{sale.buyerType}</Detail>
-              <Detail label="Mobile">{sale.buyerMobile ?? '—'}</Detail>
+              <Detail label={tc('field.name')}>{sale.buyerName}</Detail>
+              <Detail label={tc('field.type')}>{ti(`buyerType.${sale.buyerType}`)}</Detail>
+              <Detail label={tc('field.mobile')}>{sale.buyerMobile ?? '—'}</Detail>
             </DetailGrid>
           </PanelBody>
         </Panel>
 
         <Panel>
-          <PanelHeader title="Items" />
+          <PanelHeader title={t('items')} />
           <PanelBody className="p-0">
             <ul className="divide-y divide-line">
               {sale.lines.map((l) => (
                 <li key={l.id} className="flex items-center justify-between px-4 py-2.5 text-[13.5px]">
                   <div>
                     <p className="font-medium text-ink">{l.itemName}</p>
-                    <p className="text-[12px] text-ink-muted">{l.itemCode} · Qty {l.qty} · <Money amount={l.unitPrice} symbol /> each</p>
+                    <p className="text-[12px] text-ink-muted">{l.itemCode} · {t.rich('lineMeta', { qty: l.qty, price: () => <Money amount={l.unitPrice} symbol /> })}</p>
                   </div>
                   <Money amount={l.lineTotal} symbol />
                 </li>
@@ -93,17 +98,17 @@ export default function SaleDetailPage() {
         </Panel>
 
         <Panel>
-          <PanelHeader title="Money" />
+          <PanelHeader title={t('money')} />
           <PanelBody>
             <DetailGrid columns={4}>
-              <Detail label="Gross"><Money amount={sale.grossAmount} symbol /></Detail>
-              <Detail label="Discount"><Money amount={sale.discountAmount} symbol /></Detail>
-              <Detail label="Net"><Money amount={sale.netAmount} symbol /></Detail>
-              <Detail label="Balance"><Money amount={sale.balanceAmount} symbol tone={sale.balanceAmount > 0 ? 'owing' : 'settled'} /></Detail>
+              <Detail label={t('gross')}><Money amount={sale.grossAmount} symbol /></Detail>
+              <Detail label={t('discount')}><Money amount={sale.discountAmount} symbol /></Detail>
+              <Detail label={t('net')}><Money amount={sale.netAmount} symbol /></Detail>
+              <Detail label={t('balance')}><Money amount={sale.balanceAmount} symbol tone={sale.balanceAmount > 0 ? 'owing' : 'settled'} /></Detail>
             </DetailGrid>
             {sale.discountAmount > 0 && (
               <p className="mt-3 text-[12.5px] text-ink-muted">
-                Discount permitted by {sale.discountPermittedBy ? `${sale.discountPermittedBy.firstName} ${sale.discountPermittedBy.lastName}` : '—'}
+                {t('discountPermittedBy', { name: sale.discountPermittedBy ? `${sale.discountPermittedBy.firstName} ${sale.discountPermittedBy.lastName}` : '—' })}
                 {sale.discountReason ? ` — ${sale.discountReason}` : ''}
               </p>
             )}
@@ -111,19 +116,19 @@ export default function SaleDetailPage() {
         </Panel>
 
         <Panel>
-          <PanelHeader title="Payments" />
+          <PanelHeader title={t('payments')} />
           <PanelBody className="p-0">
             {sale.payments.length === 0 ? (
-              <p className="px-4 py-6 text-center text-[13.5px] text-ink-muted">No payments collected yet</p>
+              <p className="px-4 py-6 text-center text-[13.5px] text-ink-muted">{t('noPayments')}</p>
             ) : (
               <ul className="divide-y divide-line">
                 {sale.payments.map((p) => (
                   <li key={p.id} className="flex items-center justify-between px-4 py-2.5 text-[13.5px]">
                     <div>
-                      <p className="font-medium text-ink">{PAYMENT_MODE_LABELS[p.mode]}{p.reference ? ` · ${p.reference}` : ''}</p>
+                      <p className="font-medium text-ink">{ti(`paymentMode.${p.mode}`)}{p.reference ? ` · ${p.reference}` : ''}</p>
                       <p className="text-[12px] text-ink-muted">
-                        {new Date(p.createdAt).toLocaleString('en-IN')}
-                        {p.collectedBy ? ` · by ${p.collectedBy.firstName} ${p.collectedBy.lastName}` : ''}
+                        {new Date(p.createdAt).toLocaleString(INTL_LOCALE[locale])}
+                        {p.collectedBy ? ` · ${t('by', { name: `${p.collectedBy.firstName} ${p.collectedBy.lastName}` })}` : ''}
                       </p>
                     </div>
                     <Money amount={p.amount} symbol />
@@ -136,7 +141,7 @@ export default function SaleDetailPage() {
 
         {sale.waivers.length > 0 && (
           <Panel>
-            <PanelHeader title="Waived off" />
+            <PanelHeader title={t('waivedOff')} />
             <PanelBody className="p-0">
               <ul className="divide-y divide-line">
                 {sale.waivers.map((w) => (
@@ -146,8 +151,8 @@ export default function SaleDetailPage() {
                       <Money amount={w.amount} symbol tone="owing" />
                     </div>
                     <p className="text-[12px] text-ink-muted">
-                      {new Date(w.createdAt).toLocaleString('en-IN')}
-                      {w.permittedBy ? ` · permitted by ${w.permittedBy.firstName} ${w.permittedBy.lastName}` : ''}
+                      {new Date(w.createdAt).toLocaleString(INTL_LOCALE[locale])}
+                      {w.permittedBy ? ` · ${t('permittedBy', { name: `${w.permittedBy.firstName} ${w.permittedBy.lastName}` })}` : ''}
                     </p>
                   </li>
                 ))}
@@ -163,7 +168,7 @@ export default function SaleDetailPage() {
           onClose={() => setCollecting(false)}
           onSave={async (dto) => {
             await collectSalePayment(sale.id, dto);
-            toast.success('Payment recorded');
+            toast.success(t('paymentRecorded'));
             setCollecting(false);
             mutate();
           }}
@@ -176,7 +181,7 @@ export default function SaleDetailPage() {
           onClose={() => setWaiving(false)}
           onSave={async (dto) => {
             await waiveSaleBalance(sale.id, dto);
-            toast.success('Balance waived');
+            toast.success(t('waived'));
             setWaiving(false);
             mutate();
           }}
@@ -196,6 +201,9 @@ function CollectPaymentDialog({
   onSave: (dto: { amount: number; mode: InventoryPaymentMode; reference?: string; remarks?: string }) => Promise<void>;
 }) {
   const [amount, setAmount] = React.useState(String(balance));
+  const t = useTranslations('inventory.collect');
+  const ti = useTranslations('inventory');
+  const tc = useTranslations('common');
   const [mode, setMode] = React.useState<InventoryPaymentMode>('CASH');
   const [reference, setReference] = React.useState('');
   const [remarks, setRemarks] = React.useState('');
@@ -204,12 +212,12 @@ function CollectPaymentDialog({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const n = Number(amount);
-    if (!n || n <= 0 || n > balance) { toast.error('Enter a valid amount up to the balance due'); return; }
+    if (!n || n <= 0 || n > balance) { toast.error(t('invalidAmount')); return; }
     setSaving(true);
     try {
       await onSave({ amount: n, mode, reference: reference || undefined, remarks: remarks || undefined });
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not record the payment'));
+      toast.error(errorMessage(err, t('failed')));
     } finally {
       setSaving(false);
     }
@@ -219,27 +227,27 @@ function CollectPaymentDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <form onSubmit={submit}>
-          <DialogHeader><DialogTitle>Collect payment</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('title')}</DialogTitle></DialogHeader>
           <div className="mt-3 space-y-3">
-            <p className="text-[12.5px] text-ink-muted">Balance due: <Money amount={balance} symbol tone="owing" /></p>
-            <Field label="Amount" required>
+            <p className="text-[12.5px] text-ink-muted">{t.rich('balanceDue', { amount: () => <Money amount={balance} symbol tone="owing" /> })}</p>
+            <Field label={tc('field.amount')} required>
               <Input type="number" min="0.01" step="0.01" max={balance} value={amount} onChange={(e) => setAmount(e.target.value)} required />
             </Field>
-            <Field label="Mode">
+            <Field label={t('mode')}>
               <Select value={mode} onChange={(e) => setMode(e.target.value as InventoryPaymentMode)}>
-                {PAYMENT_MODES.map((m) => <option key={m} value={m}>{PAYMENT_MODE_LABELS[m]}</option>)}
+                {PAYMENT_MODES.map((m) => <option key={m} value={m}>{ti(`paymentMode.${m}`)}</option>)}
               </Select>
             </Field>
-            <Field label="Reference">
+            <Field label={t('reference')}>
               <Input value={reference} onChange={(e) => setReference(e.target.value)} />
             </Field>
-            <Field label="Remarks">
+            <Field label={tc('field.remarks')}>
               <Input value={remarks} onChange={(e) => setRemarks(e.target.value)} />
             </Field>
           </div>
           <DialogFooter className="mt-4">
-            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Record payment'}</Button>
+            <Button type="button" variant="ghost" onClick={onClose}>{tc('action.cancel')}</Button>
+            <Button type="submit" disabled={saving}>{saving ? tc('action.saving') : t('submit')}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -257,6 +265,8 @@ function WaiveDialog({
   onSave: (dto: { amount: number; reason: string; permittedByUserId: number }) => Promise<void>;
 }) {
   const [amount, setAmount] = React.useState(String(balance));
+  const t = useTranslations('inventory.waive');
+  const tc = useTranslations('common');
   const [reason, setReason] = React.useState('');
   const [permittedBy, setPermittedBy] = React.useState<number | null>(null);
   const [saving, setSaving] = React.useState(false);
@@ -264,14 +274,14 @@ function WaiveDialog({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const n = Number(amount);
-    if (!n || n <= 0 || n > balance) { toast.error('Enter a valid amount up to the balance due'); return; }
-    if (!reason.trim()) { toast.error('A reason is required'); return; }
-    if (!permittedBy) { toast.error('Select who permitted this waive-off'); return; }
+    if (!n || n <= 0 || n > balance) { toast.error(t('invalidAmount')); return; }
+    if (!reason.trim()) { toast.error(t('reasonRequired')); return; }
+    if (!permittedBy) { toast.error(t('selectPermitter')); return; }
     setSaving(true);
     try {
       await onSave({ amount: n, reason: reason.trim(), permittedByUserId: permittedBy });
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not waive the balance'));
+      toast.error(errorMessage(err, t('failed')));
     } finally {
       setSaving(false);
     }
@@ -281,22 +291,22 @@ function WaiveDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <form onSubmit={submit}>
-          <DialogHeader><DialogTitle>Waive balance</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('title')}</DialogTitle></DialogHeader>
           <div className="mt-3 space-y-3">
-            <p className="text-[12.5px] text-ink-muted">Balance due: <Money amount={balance} symbol tone="owing" /></p>
-            <Field label="Amount" required>
+            <p className="text-[12.5px] text-ink-muted">{t.rich('balanceDue', { amount: () => <Money amount={balance} symbol tone="owing" /> })}</p>
+            <Field label={tc('field.amount')} required>
               <Input type="number" min="0.01" step="0.01" max={balance} value={amount} onChange={(e) => setAmount(e.target.value)} required />
             </Field>
-            <Field label="Reason" required>
+            <Field label={t('reason')} required>
               <Input value={reason} onChange={(e) => setReason(e.target.value)} required />
             </Field>
-            <Field label="Permitted by" required>
-              <AuthorizerPicker value={permittedBy} onChange={(id) => setPermittedBy(id)} placeholder="Who authorized this waive-off?" />
+            <Field label={t('permittedBy')} required>
+              <AuthorizerPicker value={permittedBy} onChange={(id) => setPermittedBy(id)} placeholder={t('permittedByPlaceholder')} />
             </Field>
           </div>
           <DialogFooter className="mt-4">
-            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button type="submit" variant="destructive" disabled={saving}>{saving ? 'Saving…' : 'Waive balance'}</Button>
+            <Button type="button" variant="ghost" onClick={onClose}>{tc('action.cancel')}</Button>
+            <Button type="submit" variant="destructive" disabled={saving}>{saving ? tc('action.saving') : t('title')}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

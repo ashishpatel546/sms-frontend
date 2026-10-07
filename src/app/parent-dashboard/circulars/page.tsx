@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Toaster } from 'react-hot-toast';
 import { ChevronLeft } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 import { CircularFeed } from '@/components/circulars/CircularFeed';
 
@@ -14,6 +15,7 @@ import { CircularFeed } from '@/components/circulars/CircularFeed';
  * page belongs to the portal it lives in.
  */
 export default function ParentCircularsPage() {
+  const t = useTranslations('parent.circulars');
   return (
     <div className="mx-auto max-w-2xl space-y-4 px-4 py-6">
       <Toaster position="top-center" />
@@ -21,20 +23,20 @@ export default function ParentCircularsPage() {
       <div className="flex items-center gap-3">
         <Link
           href="/parent-dashboard"
-          aria-label="Back to home"
+          aria-label={t("backHome")}
           className="grid size-9 shrink-0 place-items-center rounded-xl bg-surface-secondary text-ink-muted transition-colors hover:text-brand"
         >
           <ChevronLeft className="size-4" aria-hidden />
         </Link>
         <div>
           <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-ink sm:text-[26px]">
-            Circulars
+            {t("title")}
           </h1>
-          <p className="text-xs text-ink-muted">Notices issued by the school</p>
+          <p className="text-xs text-ink-muted">{t("subtitle")}</p>
         </div>
       </div>
 
-      <CircularFeed emptyDescription="The school has not issued any circulars yet. When it does, they will appear here and you will be notified." />
+      <CircularFeed emptyDescription={t("emptyDescription")} />
     </div>
   );
 }

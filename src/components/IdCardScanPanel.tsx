@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   BadgeCheck,
   Ban,
@@ -43,6 +44,8 @@ interface IdCardScanPanelProps {
 }
 
 export default function IdCardScanPanel({ token, onDone, onCancel }: IdCardScanPanelProps) {
+  const t = useTranslations('idCards.scan');
+  const tc = useTranslations('common');
   const [result, setResult] = useState<IdCardVerifyResult | null>(null);
   const [error, setError] = useState('');
 
@@ -54,11 +57,13 @@ export default function IdCardScanPanel({ token, onDone, onCancel }: IdCardScanP
       })
       .catch((e: unknown) => {
         if (cancelled) return;
-        setError(e instanceof Error ? e.message : 'This card could not be verified');
+        setError(e instanceof Error ? e.message : t('verifyFailed'));
       });
     return () => {
       cancelled = true;
     };
+    // `t` is stable for a locale; the fallback text is not a reason to re-verify.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   if (error) {
@@ -68,14 +73,14 @@ export default function IdCardScanPanel({ token, onDone, onCancel }: IdCardScanP
           <XCircle className="h-10 w-10 text-red-400" aria-hidden />
         </div>
         <div>
-          <h2 className="mb-1 text-xl font-bold text-white">Not a valid ID card</h2>
+          <h2 className="mb-1 text-xl font-bold text-white">{t('invalidTitle')}</h2>
           <p className="text-sm text-red-400">{error}</p>
         </div>
         <button
           onClick={onCancel}
           className="rounded-xl bg-indigo-600 px-8 py-3 font-semibold text-white transition-all hover:bg-indigo-500"
         >
-          Back to scanner
+          {t('backToScanner')}
         </button>
       </div>
     );
@@ -85,47 +90,50 @@ export default function IdCardScanPanel({ token, onDone, onCancel }: IdCardScanP
     return (
       <div className="flex flex-col items-center gap-4 py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-        <p className="text-sm text-slate-400">Checking this card…</p>
+        <p className="text-sm text-slate-400">{t('checking')}</p>
       </div>
     );
   }
 
   const isStudent = result.type === 'STUDENT';
   const standing = isStudent
-    ? [result.className ? `Class ${result.className}` : null, result.section ? `Section ${result.section}` : null]
+    ? [
+        result.className ? t('standingClass', { name: result.className }) : null,
+        result.section ? t('standingSection', { name: result.section }) : null,
+      ]
         .filter(Boolean)
         .join(' · ')
-    : (result.designation ?? 'Staff');
+    : (result.designation ?? t('staff'));
 
   // The card's own fields, in the order a guard needs them. Blank values are
   // dropped rather than shown as dashes — a wall of "—" reads as broken.
   const details = (
     isStudent
       ? [
-          { label: 'Roll no', value: result.rollNo != null ? String(result.rollNo) : null },
-          { label: 'Blood group', value: result.bloodGroup },
-          { label: "Father's name", value: result.fathersName },
-          { label: "Mother's name", value: result.mothersName },
+          { label: t('field.rollNo'), value: result.rollNo != null ? String(result.rollNo) : null },
+          { label: t('field.bloodGroup'), value: result.bloodGroup },
+          { label: t('field.fathersName'), value: result.fathersName },
+          { label: t('field.mothersName'), value: result.mothersName },
           {
-            label: 'Guardian',
+            label: t('field.guardian'),
             value: result.guardianName
               ? result.guardianRelation
                 ? `${result.guardianName} (${result.guardianRelation})`
                 : result.guardianName
               : null,
           },
-          { label: 'Parent contact', value: result.mobile },
-          { label: 'Date of birth', value: formatIdCardDate(result.dob) },
+          { label: t('field.parentContact'), value: result.mobile },
+          { label: t('field.dob'), value: formatIdCardDate(result.dob) },
         ]
       : [
           {
-            label: 'Employee code',
+            label: t('field.employeeCode'),
             value: result.employeeCode != null ? String(result.employeeCode) : null,
           },
-          { label: 'Department', value: result.department },
-          { label: 'Blood group', value: result.bloodGroup },
-          { label: 'Contact', value: result.mobile },
-          { label: 'Date of birth', value: formatIdCardDate(result.dob) },
+          { label: t('field.department'), value: result.department },
+          { label: t('field.bloodGroup'), value: result.bloodGroup },
+          { label: t('field.contact'), value: result.mobile },
+          { label: t('field.dob'), value: formatIdCardDate(result.dob) },
         ]
   ).filter((d): d is { label: string; value: string } => Boolean(d.value) && d.value !== '—');
 
@@ -148,10 +156,10 @@ export default function IdCardScanPanel({ token, onDone, onCancel }: IdCardScanP
               aria-hidden
             />
           ),
-          headline: 'Valid card',
+          headline: t('validHeadline'),
           detail: isStudent
-            ? 'This student is on the current roll.'
-            : 'This member of staff is currently employed.',
+            ? t('validStudent')
+            : t('validStaff'),
         };
       case 'EXPIRED':
         return {
@@ -160,40 +168,43 @@ export default function IdCardScanPanel({ token, onDone, onCancel }: IdCardScanP
           icon: (
             <CalendarX className="h-5 w-5 shrink-0 text-amber-400" aria-hidden />
           ),
-          headline: 'Expired card',
+          headline: t('expiredHeadline'),
           detail:
             result.reason ??
-            'This card belongs to a previous session. The office must issue a fresh one.',
+            t('expiredDetail'),
         };
       case 'REVOKED':
         return {
           tone: 'bg-red-500/10 border-red-500/25 text-red-300',
           ring: 'ring-red-500/40',
           icon: <Ban className="h-5 w-5 shrink-0 text-red-400" aria-hidden />,
-          headline: 'Card revoked',
+          headline: t('revokedHeadline'),
           detail:
             result.reason ??
-            'The office cancelled this card and issued no replacement. Do not admit on it — send them to the office.',
+            t('revokedDetail'),
         };
       case 'REPLACED':
         return {
           tone: 'bg-red-500/10 border-red-500/25 text-red-300',
           ring: 'ring-red-500/40',
           icon: <Ban className="h-5 w-5 shrink-0 text-red-400" aria-hidden />,
-          headline: `Replaced — issue ${result.issueVersion} of ${result.currentVersion}`,
+          headline: t('replacedHeadline', {
+            issue: result.issueVersion,
+            current: result.currentVersion,
+          }),
           detail:
             result.reason ??
-            'A newer card was issued. Do not admit on this one — send them to the office.',
+            t('replacedDetail'),
         };
       default:
         return {
           tone: 'bg-amber-500/10 border-amber-500/25 text-amber-300',
           ring: 'ring-amber-500/40',
           icon: <Ban className="h-5 w-5 shrink-0 text-amber-400" aria-hidden />,
-          headline: 'Card no longer valid',
+          headline: t('inactiveHeadline'),
           detail: isStudent
-            ? 'This student has been deactivated. Do not admit on this card — send them to the office.'
-            : 'This person is no longer active on the staff roll. Send them to the office.',
+            ? t('inactiveStudent')
+            : t('inactiveStaff'),
         };
     }
   })();
@@ -236,7 +247,7 @@ export default function IdCardScanPanel({ token, onDone, onCancel }: IdCardScanP
               ) : (
                 <UserRound className="h-3 w-3" aria-hidden />
               )}
-              {isStudent ? 'Student' : 'Staff'}
+              {isStudent ? t('student') : t('staff')}
             </span>
             <h3 className="mt-1.5 truncate text-lg font-bold text-white">{result.name}</h3>
             <p className="mt-0.5 text-sm text-slate-400">{standing || '—'}</p>
@@ -263,8 +274,7 @@ export default function IdCardScanPanel({ token, onDone, onCancel }: IdCardScanP
 
         <p className="mt-3.5 flex items-start gap-1.5 border-t border-slate-800 pt-3 text-xs text-slate-500">
           <IdCard className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
-          Check the face against the photo. Nothing is recorded by a scan — this
-          only confirms who the card belongs to.
+          {t('faceCheck')}
         </p>
       </div>
 
@@ -273,14 +283,14 @@ export default function IdCardScanPanel({ token, onDone, onCancel }: IdCardScanP
           onClick={onCancel}
           className="flex-1 rounded-xl bg-slate-800 py-3 text-sm font-medium text-white transition-all hover:bg-slate-700"
         >
-          Back
+          {tc('action.back')}
         </button>
         <button
           onClick={onDone}
           className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition-all hover:bg-indigo-500"
         >
           <ScanLine className="h-4 w-4" aria-hidden />
-          Scan next card
+          {t('scanNext')}
         </button>
       </div>
     </div>

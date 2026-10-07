@@ -6,6 +6,7 @@ import Link from "next/link";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
+import { useTranslations } from "next-intl";
 
 type SectionRow = {
     /** undefined = newly added in this session (not yet saved) */
@@ -24,6 +25,8 @@ type PendingSection = {
 export default function EditClassPage() {
     const readOnly = useReadOnlySession();
     const router = useRouter();
+    const t = useTranslations("classes");
+    const tc = useTranslations("common");
     const params = useParams();
     const id = params?.id as string;
 
@@ -83,10 +86,10 @@ export default function EditClassPage() {
                 mapped.forEach((s) => { if (s.id) tMap[s.id] = s.teacherId; });
                 setOriginalTeacherMap(tMap);
             } else {
-                setError("Class not found");
+                setError(t("edit.notFound"));
             }
         } catch (err) {
-            setError("Failed to load data");
+            setError(t("edit.loadFailed"));
         } finally {
             setLoading(false);
         }
@@ -121,11 +124,11 @@ export default function EditClassPage() {
 
     const handleAddSection = async () => {
         if (pending.mode === "existing" && !pending.sectionId) {
-            setError("Please select an existing section or switch to 'Create new'.");
+            setError(t("edit.errSelectExisting"));
             return;
         }
         if (pending.mode === "new" && !pending.name.trim()) {
-            setError("Please enter a name for the new section.");
+            setError(t("edit.errNewName"));
             return;
         }
         setError("");
@@ -156,7 +159,7 @@ export default function EditClassPage() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(formData),
                 });
-                if (!res.ok) throw new Error("Failed to update class name");
+                if (!res.ok) throw new Error(t("edit.updateNameFailed"));
             }
 
             // 2. Remove unlinked sections (M2M unlink, not delete)
@@ -180,7 +183,7 @@ export default function EditClassPage() {
                         body: JSON.stringify(payload),
                     });
                     if (!createRes.ok) {
-                        throw new Error("Failed to link section to class");
+                        throw new Error(t("edit.linkFailed"));
                     }
                     const linked = await createRes.json();
                     if (sec.teacherId && linked?.id) {
@@ -209,21 +212,21 @@ export default function EditClassPage() {
             router.refresh();
         } catch (err: any) {
             console.error(err);
-            setError(err?.message ?? "Failed to update class. Please try again.");
+            setError(err?.message ?? t("edit.updateFailed"));
         } finally {
             setSaving(false);
         }
     };
 
-    if (loading) return <div className="p-4">Loading...</div>;
+    if (loading) return <div className="p-4">{tc("state.loading")}</div>;
 
     return (
         <main className="p-4 space-y-6">
             <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-slate-200">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-slate-800">Edit Class</h2>
+                    <h2 className="text-2xl font-bold text-slate-800">{t("edit.title")}</h2>
                     <Link href="/dashboard/classes" className="text-blue-600 hover:underline">
-                        &larr; Back to Classes
+                        {t("edit.back")}
                     </Link>
                 </div>
 
@@ -232,7 +235,7 @@ export default function EditClassPage() {
                 <form onSubmit={handleClassSubmit} className="mb-8">
                     {/* Class name */}
                     <div className="mb-6">
-                        <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-900">Class Name</label>
+                        <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-900">{t("form.className")}</label>
                         <input
                             type="text"
                             id="name"
@@ -246,20 +249,20 @@ export default function EditClassPage() {
 
                     {/* Sections */}
                     <div className="border-t pt-6 mb-6">
-                        <h3 className="text-lg font-bold mb-1 text-slate-800">Sections &amp; Class Teachers</h3>
+                        <h3 className="text-lg font-bold mb-1 text-slate-800">{t("edit.sectionsTitle")}</h3>
                         <p className="text-xs text-slate-500 mb-4">
-                            Section names are shared across classes. Remove a section to unlink it from this class without deleting it.
+                            {t("edit.sectionsHint")}
                         </p>
 
                         <div className="space-y-4 mb-6">
                             {sections.length === 0 ? (
-                                <p className="text-gray-500 italic">No sections linked to this class yet.</p>
+                                <p className="text-gray-500 italic">{t("edit.noneLinked")}</p>
                             ) : (
                                 sections.map((section, index) => (
                                     <div key={section.id ?? `new-${index}`} className="flex gap-4 items-end p-4 bg-gray-50 rounded border border-gray-100">
                                         {/* Section name (read-only) */}
                                         <div className="w-1/4">
-                                            <label className="block mb-1 text-xs text-gray-500">Section</label>
+                                            <label className="block mb-1 text-xs text-gray-500">{tc("field.section")}</label>
                                             <div className="bg-white border border-gray-200 text-gray-800 text-sm rounded-lg p-2.5 font-medium">
                                                 {section.name}
                                             </div>
@@ -267,13 +270,13 @@ export default function EditClassPage() {
 
                                         {/* Teacher picker */}
                                         <div className="flex-1">
-                                            <label className="block mb-1 text-xs text-gray-500">Class Teacher</label>
+                                            <label className="block mb-1 text-xs text-gray-500">{t("list.colClassTeacher")}</label>
                                             <select
                                                 value={section.teacherId}
                                                 onChange={(e) => handleTeacherChange(index, e.target.value)}
                                                 className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                             >
-                                                <option value="">Select Teacher</option>
+                                                <option value="">{t("form.selectTeacher")}</option>
                                                 {teachers.map((t: any) => (
                                                     <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>
                                                 ))}
@@ -285,7 +288,7 @@ export default function EditClassPage() {
                                             type="button"
                                             onClick={() => handleRemoveSection(index)}
                                             className="text-red-500 hover:text-red-700 p-2.5"
-                                            title="Remove section from this class"
+                                            title={t("edit.removeFromClass")}
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -303,11 +306,11 @@ export default function EditClassPage() {
                                 onClick={() => setShowAddPanel(true)}
                                 className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5"
                             >
-                                + Add Section
+                                {t("form.addSection")}
                             </button>
                         ) : (
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-                                <p className="text-sm font-medium text-blue-800">Add a section to this class</p>
+                                <p className="text-sm font-medium text-blue-800">{t("edit.addPanelTitle")}</p>
 
                                 {/* Mode toggle */}
                                 <div className="flex gap-2">
@@ -316,14 +319,14 @@ export default function EditClassPage() {
                                         onClick={() => setPending({ ...pending, mode: "existing", sectionId: undefined, name: "" })}
                                         className={`text-xs px-3 py-1.5 rounded ${pending.mode === "existing" ? "bg-blue-600 text-white" : "bg-white border border-gray-300 text-gray-600"}`}
                                     >
-                                        Select existing
+                                        {t("form.selectExisting")}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setPending({ ...pending, mode: "new", sectionId: undefined, name: "" })}
                                         className={`text-xs px-3 py-1.5 rounded ${pending.mode === "new" ? "bg-blue-600 text-white" : "bg-white border border-gray-300 text-gray-600"}`}
                                     >
-                                        Create new
+                                        {t("form.createNew")}
                                     </button>
                                 </div>
 
@@ -332,7 +335,7 @@ export default function EditClassPage() {
                                     <div className="w-1/3">
                                         {pending.mode === "existing" ? (
                                             <>
-                                                <label className="block mb-1 text-xs text-gray-500">Section</label>
+                                                <label className="block mb-1 text-xs text-gray-500">{tc("field.section")}</label>
                                                 <select
                                                     value={pending.sectionId ?? ""}
                                                     onChange={(e) => {
@@ -341,7 +344,7 @@ export default function EditClassPage() {
                                                     }}
                                                     className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"
                                                 >
-                                                    <option value="">Select section…</option>
+                                                    <option value="">{t("form.selectSection")}</option>
                                                     {availableToAdd.map((s) => (
                                                         <option key={s.id} value={s.id}>{s.name}</option>
                                                     ))}
@@ -349,13 +352,13 @@ export default function EditClassPage() {
                                             </>
                                         ) : (
                                             <>
-                                                <label className="block mb-1 text-xs text-gray-500">New Section Name</label>
+                                                <label className="block mb-1 text-xs text-gray-500">{t("form.newSectionName")}</label>
                                                 <input
                                                     type="text"
                                                     value={pending.name}
                                                     onChange={(e) => setPending({ ...pending, name: e.target.value })}
                                                     className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"
-                                                    placeholder="e.g. D"
+                                                    placeholder={t("edit.newSectionPlaceholder")}
                                                 />
                                             </>
                                         )}
@@ -363,13 +366,13 @@ export default function EditClassPage() {
 
                                     {/* Teacher */}
                                     <div className="flex-1">
-                                        <label className="block mb-1 text-xs text-gray-500">Class Teacher (optional)</label>
+                                        <label className="block mb-1 text-xs text-gray-500">{t("form.teacherOptional")}</label>
                                         <select
                                             value={pending.teacherId}
                                             onChange={(e) => setPending({ ...pending, teacherId: e.target.value })}
                                             className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"
                                         >
-                                            <option value="">Select Teacher</option>
+                                            <option value="">{t("form.selectTeacher")}</option>
                                             {teachers.map((t: any) => (
                                                 <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>
                                             ))}
@@ -383,14 +386,14 @@ export default function EditClassPage() {
                                         onClick={handleAddSection}
                                         className="text-white bg-green-600 hover:bg-green-700 font-medium rounded-lg text-sm px-4 py-2"
                                     >
-                                        Add
+                                        {tc("action.add")}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => { setShowAddPanel(false); setPending({ mode: "existing", name: "", teacherId: "" }); }}
                                         className="text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 font-medium rounded-lg text-sm px-4 py-2"
                                     >
-                                        Cancel
+                                        {tc("action.cancel")}
                                     </button>
                                 </div>
                             </div>
@@ -404,10 +407,10 @@ export default function EditClassPage() {
                             title={readOnly ? READ_ONLY_TITLE : undefined}
                             className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50"
                         >
-                            {saving ? 'Saving...' : 'Save Changes'}
+                            {saving ? tc("action.saving") : t("edit.saveChanges")}
                         </button>
                         <Link href="/dashboard/classes" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-line-strong font-medium rounded-lg text-sm px-5 py-2.5">
-                            Cancel
+                            {tc("action.cancel")}
                         </Link>
                     </div>
                 </form>

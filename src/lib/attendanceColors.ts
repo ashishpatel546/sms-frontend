@@ -50,8 +50,21 @@ interface AttendanceTone {
    * into a red block.
    */
   stamp: string;
+  /** English label, kept for callers that have not moved to `labelKey` yet. */
   label: string;
+  /** Translation key in the `attendance` namespace: `t(tone.labelKey)`. */
+  labelKey: AttendanceToneLabelKey;
 }
+
+export type AttendanceToneLabelKey =
+  | 'tone.present'
+  | 'tone.late'
+  | 'tone.halfDay'
+  | 'tone.leave'
+  | 'tone.absent'
+  | 'tone.holiday'
+  | 'tone.sunday'
+  | 'tone.notMarked';
 
 export const ATTENDANCE_TONE: Record<AttendanceStatus, AttendanceTone> = {
   PRESENT: {
@@ -62,6 +75,7 @@ export const ATTENDANCE_TONE: Record<AttendanceStatus, AttendanceTone> = {
     figure: 'text-sage-700 dark:text-sage-300',
     stamp: 'text-sage-700 dark:text-sage-300',
     label: 'Present',
+    labelKey: 'tone.present',
   },
   LATE: {
     // Dark text: marigold is bright enough that white on it fails contrast.
@@ -72,6 +86,7 @@ export const ATTENDANCE_TONE: Record<AttendanceStatus, AttendanceTone> = {
     figure: 'text-marigold-700 dark:text-marigold-300',
     stamp: 'text-marigold-700 dark:text-marigold-300',
     label: 'Late',
+    labelKey: 'tone.late',
   },
   HALF_DAY: {
     cell: 'bg-iris-500 border-iris-700 text-white',
@@ -81,6 +96,7 @@ export const ATTENDANCE_TONE: Record<AttendanceStatus, AttendanceTone> = {
     figure: 'text-iris-700 dark:text-iris-200',
     stamp: 'text-iris-700 dark:text-iris-300',
     label: 'Half day',
+    labelKey: 'tone.halfDay',
   },
   LEAVE: {
     cell: 'bg-lapis-500 border-lapis-600 text-white',
@@ -90,6 +106,7 @@ export const ATTENDANCE_TONE: Record<AttendanceStatus, AttendanceTone> = {
     figure: 'text-lapis-700 dark:text-lapis-300',
     stamp: 'text-lapis-700 dark:text-lapis-300',
     label: 'Leave',
+    labelKey: 'tone.leave',
   },
   ABSENT: {
     cell: 'bg-vermilion-600 border-vermilion-700 text-white',
@@ -99,6 +116,7 @@ export const ATTENDANCE_TONE: Record<AttendanceStatus, AttendanceTone> = {
     figure: 'text-vermilion-700 dark:text-vermilion-300',
     stamp: 'text-vermilion-700 dark:text-vermilion-300',
     label: 'Absent',
+    labelKey: 'tone.absent',
   },
   HOLIDAY: {
     cell: 'bg-brass-200 border-brass-300 text-brass-900',
@@ -108,6 +126,7 @@ export const ATTENDANCE_TONE: Record<AttendanceStatus, AttendanceTone> = {
     figure: 'text-brass-700 dark:text-brass-300',
     stamp: 'text-brass-700 dark:text-brass-300',
     label: 'Holiday',
+    labelKey: 'tone.holiday',
   },
   SUNDAY: {
     cell: 'bg-surface-inset border-line text-ink-faint',
@@ -117,6 +136,7 @@ export const ATTENDANCE_TONE: Record<AttendanceStatus, AttendanceTone> = {
     figure: 'text-ink-muted',
     stamp: 'text-ink-muted',
     label: 'Sunday',
+    labelKey: 'tone.sunday',
   },
 };
 
@@ -134,6 +154,7 @@ export const ATTENDANCE_NOT_MARKED = {
   stamp: 'text-ink-faint',
   border: 'border-dashed',
   label: 'Not marked',
+  labelKey: 'tone.notMarked',
 } as const;
 
 export function attendanceCellClass(status: string | null | undefined): string {

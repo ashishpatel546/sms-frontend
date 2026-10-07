@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import toast from 'react-hot-toast';
+import { useTranslations } from 'next-intl';
 import { Printer } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,8 @@ export default function LabelPrintDialog({
   items: InventoryItem[];
   onClose: () => void;
 }) {
+  const t = useTranslations('inventory.labels');
+  const tc = useTranslations('common');
   const [copies, setCopies] = React.useState<Record<number, number>>(
     () => Object.fromEntries(items.map((i) => [i.id, 1])),
   );
@@ -59,12 +62,12 @@ export default function LabelPrintDialog({
       const skipped = barcodeWanted ? unencodableCodes(labels) : [];
       await downloadInventoryLabelSheet(labels, format, (done, total) => setProgress({ done, total }));
       if (skipped.length > 0) {
-        toast(`${skipped.length} label${skipped.length === 1 ? '' : 's'} printed without a barcode — code not ASCII`);
+        toast(t('skipped', { count: skipped.length }));
       }
-      toast.success('Label sheet downloaded');
+      toast.success(t('downloaded'));
       onClose();
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not build the label sheet'));
+      toast.error(errorMessage(err, t('failed')));
     } finally {
       setBuilding(false);
       setProgress(null);
@@ -75,11 +78,11 @@ export default function LabelPrintDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Print labels</DialogTitle>
+          <DialogTitle>{t('title')}</DialogTitle>
         </DialogHeader>
 
         <div className="mt-3">
-          <p className="mb-1.5 text-[12.5px] font-medium text-ink-muted">Label format</p>
+          <p className="mb-1.5 text-[12.5px] font-medium text-ink-muted">{t('format')}</p>
           <div className="grid gap-2 sm:grid-cols-3">
             {LABEL_FORMAT_OPTIONS.map((option) => {
               const active = format === option.value;
@@ -95,8 +98,8 @@ export default function LabelPrintDialog({
                       : 'border-line text-ink-muted hover:border-line-strong'
                   }`}
                 >
-                  <span className="block text-[13px] font-medium text-ink">{option.label}</span>
-                  <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-muted">{option.hint}</span>
+                  <span className="block text-[13px] font-medium text-ink">{t(`formats.${option.value}.label`)}</span>
+                  <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-muted">{t(`formats.${option.value}.hint`)}</span>
                 </button>
               );
             })}
@@ -124,21 +127,19 @@ export default function LabelPrintDialog({
         </div>
 
         <p className="mt-3 text-[12.5px] text-ink-muted">
-          {totalRequested} label{totalRequested === 1 ? '' : 's'} · {sheets} A4 sheet
-          {sheets === 1 ? '' : 's'} ({labelsPerSheet(format)} per sheet)
+          {t('summary', { labels: totalRequested, sheets, perSheet: labelsPerSheet(format) })}
         </p>
         {barcodeWanted && nonAscii.length > 0 && (
           <p className="mt-1 text-[12.5px] text-amber-700">
-            {nonAscii.length} item code{nonAscii.length === 1 ? '' : 's'} cannot be encoded as a barcode
-            {blocked ? ' — choose a QR format instead.' : ' and will print QR-only.'}
+            {blocked ? t('nonAsciiBlocked', { count: nonAscii.length }) : t('nonAsciiQrOnly', { count: nonAscii.length })}
           </p>
         )}
 
         <DialogFooter className="mt-4">
-          <Button type="button" variant="ghost" onClick={onClose} disabled={building}>Cancel</Button>
+          <Button type="button" variant="ghost" onClick={onClose} disabled={building}>{tc('action.cancel')}</Button>
           <Button type="button" onClick={print} disabled={building || blocked}>
             <Printer />
-            {building ? (progress ? `Building ${progress.done}/${progress.total}…` : 'Building…') : 'Download PDF'}
+            {building ? (progress ? t('buildingProgress', { done: progress.done, total: progress.total }) : t('building')) : t('download')}
           </Button>
         </DialogFooter>
       </DialogContent>

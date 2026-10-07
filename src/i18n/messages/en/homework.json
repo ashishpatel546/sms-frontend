@@ -1,0 +1,75 @@
+{
+  "meta": {
+    "title": "Homework"
+  },
+  "page": {
+    "title": "Homework",
+    "description": "Manage and send homework to students by class and section.",
+    "send": "Send Homework",
+    "selectClass": "— Select Class —",
+    "selectSection": "— Select Section —",
+    "allDates": "All dates",
+    "clearDate": "Clear date",
+    "selectPrompt": "Select a class and section to view homework.",
+    "loading": "Loading homework...",
+    "noneForDate": "No homework for {date}.",
+    "clearFilterHint": "<clear>Clear filter</clear> to see all dates, or send homework for this date.",
+    "noneForClass": "No homework found for {className} — {section}.",
+    "addFirstHint": "Click \"Send Homework\" to add the first entry.",
+    "viewWorksheet": "View worksheet",
+    "sentBy": "Sent by {name} · {time}",
+    "editedBy": "Edited by {name} · {time}",
+    "lockedHint": "Only the sender or a school admin can edit or delete this"
+  },
+  "send": {
+    "classSection": "{className} — Section {section}",
+    "yesterday": "Yesterday",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "subjectOptional": "Subject (optional)",
+    "homework": "Homework",
+    "subjectPlaceholder": "e.g. Mathematics",
+    "messagePlaceholder": "Describe the homework task...",
+    "removeFile": "Remove file",
+    "attachOptional": "Attach worksheet (optional) · JPEG, PNG, WEBP, PDF · max 5 MB",
+    "maxReached": "Maximum {max} subjects reached",
+    "addSubject": "Add Subject",
+    "retention": "Uploaded worksheets are kept for <b>60 days only</b>, then deleted automatically along with the homework.",
+    "pushNotice": "A push notification will be sent to all parents of <b>{className} — Section {section}</b>.",
+    "sending": "Sending..."
+  },
+  "edit": {
+    "title": "Edit Homework",
+    "worksheetOptional": "Worksheet (optional)",
+    "replaceWorksheet": "Replace worksheet",
+    "replace": "Replace",
+    "uploading": "Uploading...",
+    "attach": "Attach worksheet · JPEG, PNG, WEBP, PDF · max 5 MB",
+    "retention": "Worksheets are kept for 60 days only.",
+    "saveChanges": "Save Changes"
+  },
+  "confirm": {
+    "removeWorksheet": "Remove worksheet \"{name}\"?",
+    "delete": "Delete \"{subject}\" for {date}?",
+    "homeworkFallback": "homework"
+  },
+  "toast": {
+    "fileType": "Only JPEG, PNG, WEBP, and PDF files are allowed.",
+    "fileSize": "Worksheet must be ≤ 5 MB.",
+    "uploadFailed": "Worksheet upload failed",
+    "openFailed": "Could not open worksheet.",
+    "needOneEntry": "Add at least one homework entry with a message.",
+    "sendFailed": "Failed to send homework",
+    "entryN": "entry {n}",
+    "sentUploadFailed": "Homework sent, but worksheet upload failed for: {subjects}. Edit the entry to retry.",
+    "sent": "Homework sent successfully!",
+    "messageEmpty": "Message cannot be empty.",
+    "updateFailed": "Update failed",
+    "updated": "Homework updated.",
+    "uploaded": "Worksheet uploaded.",
+    "worksheetRemoved": "Worksheet removed.",
+    "removeFailed": "Failed to remove worksheet.",
+    "deleteFailed": "Delete failed",
+    "deleted": "Deleted."
+  }
+}

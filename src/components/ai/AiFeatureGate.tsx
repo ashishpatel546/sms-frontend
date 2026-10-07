@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { API_BASE_URL } from '@/lib/api';
 import { authFetch } from '@/lib/auth';
 
 export function AiFeatureGate({ children }: { children: React.ReactNode }) {
+  const t = useTranslations('ai.schoolGate');
   const [status, setStatus] = useState<'loading' | 'enabled' | 'disabled' | 'error'>('loading');
 
   useEffect(() => {
@@ -34,9 +36,9 @@ export function AiFeatureGate({ children }: { children: React.ReactNode }) {
         <div className="w-16 h-16 rounded-full bg-violet-50 border border-violet-200 flex items-center justify-center text-3xl mb-5">
           🔒
         </div>
-        <h2 className="text-xl font-bold text-gray-800 mb-2">AI Features Not Enabled</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-2">{t('disabledTitle')}</h2>
         <p className="text-gray-500 text-sm max-w-sm">
-          AI features are not enabled for your school. Please contact your administrator or reach out to support to activate them.
+          {t('disabledBody')}
         </p>
       </div>
     );
@@ -45,7 +47,7 @@ export function AiFeatureGate({ children }: { children: React.ReactNode }) {
   if (status === 'error') {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
-        <p className="text-red-500">Failed to load feature status. Please refresh.</p>
+        <p className="text-red-500">{t('loadFailed')}</p>
       </div>
     );
   }

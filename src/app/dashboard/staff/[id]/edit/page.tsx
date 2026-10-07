@@ -7,14 +7,19 @@ import { API_BASE_URL } from "@/lib/api";
 import { Country, State, City } from "country-state-city";
 import { authFetch, getUser } from "@/lib/auth";
 import toast from "react-hot-toast";
+import { useTranslations } from "next-intl";
 import { useRbac } from "@/lib/rbac";
 import { sortByName } from "@/lib/utils";
-import { formatMobileInput, isValidMobile, MOBILE_ERROR } from "@/lib/mobile";
+import { formatMobileInput, isValidMobile } from "@/lib/mobile";
+import { useHelperMessage } from "@/i18n/useHelperMessage";
 import { PersonPhotosSection } from "@/components/person/PersonPhotosSection";
 import { PersonDocumentsSection } from "@/components/person/PersonDocumentsSection";
 import { personUserId } from "@/lib/person-documents-api";
 
 export default function EditStaffPage() {
+    const mobileError = useHelperMessage()({ key: "invalidMobile" });
+    const t = useTranslations("staff");
+    const tc = useTranslations("common");
     const router = useRouter();
     const params = useParams();
     const id = params?.id as string;
@@ -111,7 +116,7 @@ export default function EditStaffPage() {
                 authFetch(`${API_BASE_URL}/designations`)
             ]);
 
-            if (!teacherRes.ok) throw new Error("Failed to fetch staff details");
+            if (!teacherRes.ok) throw new Error(t("detail.fetchFailed"));
             const teacher = await teacherRes.json();
 
             if (teacher) {
@@ -173,14 +178,14 @@ export default function EditStaffPage() {
                 const activeAssignments = teacher.subjectAssignments?.filter((a: any) => a.isActive) || [];
                 setAssignments(activeAssignments);
             } else {
-                setError("Staff not found");
+                setError(t("edit.notFound"));
             }
 
             if (classesRes.ok) setClasses(sortByName(await classesRes.json()));
             if (subjectsRes.ok) setSubjects(await subjectsRes.json());
             if (desigRes.ok) setDesignations(await desigRes.json());
         } catch (_err) {
-            setError("Failed to load data");
+            setError(t("edit.loadFailed"));
         } finally {
             setLoading(false);
         }
@@ -236,12 +241,12 @@ export default function EditStaffPage() {
                 setFormData({ ...formData, designationId: newD.id });
                 setShowDesModal(false);
                 setNewDesTitle("");
-                toast.success("Designation created successfully");
+                toast.success(t("form.designationModal.created"));
             } else {
-                toast.error("Failed to create designation");
+                toast.error(t("form.designationModal.failed"));
             }
         } catch (_err) {
-            toast.error("Failed to create designation");
+            toast.error(t("form.designationModal.failed"));
         }
         setCreatingDes(false);
     };
@@ -251,11 +256,11 @@ export default function EditStaffPage() {
         setError("");
 
         if (!isValidMobile(formData.mobile)) {
-            setError(`Mobile: ${MOBILE_ERROR}`);
+            setError(t("form.mobileError", { error: mobileError }));
             return;
         }
         if (formData.alternateMobile && !isValidMobile(formData.alternateMobile)) {
-            setError(`Alternate Mobile: ${MOBILE_ERROR}`);
+            setError(t("form.alternateMobileError", { error: mobileError }));
             return;
         }
 
@@ -297,14 +302,14 @@ export default function EditStaffPage() {
 
             if (!res.ok) {
                 const errData = await res.json();
-                throw new Error(errData.message || "Failed to update staff");
+                throw new Error(errData.message || t("edit.updateFailed"));
             }
 
             router.push("/dashboard/staff");
             router.refresh();
         } catch (err: any) {
             console.error(err);
-            setError(err.message || "Failed to update staff. Please try again.");
+            setError(err.message || t("edit.updateFailedRetry"));
         } finally {
             setSaving(false);
         }
@@ -327,7 +332,7 @@ export default function EditStaffPage() {
 
             if (!res.ok) {
                 const errData = await res.json();
-                throw new Error(errData.message || "Failed to assign subject");
+                throw new Error(errData.message || t("edit.assignFailed"));
             }
 
             await fetchTeacherDetails();
@@ -336,27 +341,27 @@ export default function EditStaffPage() {
             setSelectedSubject("");
         } catch (err: any) {
             console.error(err);
-            setAssignError(err.message || "Failed to assign subject");
+            setAssignError(err.message || t("edit.assignFailed"));
         } finally {
             setAssignLoading(false);
         }
     };
 
     const handleUnassignSubject = async (assignmentId: number) => {
-        if (!confirm("Are you sure you want to unassign this subject?")) return;
+        if (!confirm(t("edit.unassignConfirm"))) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/staff/${id}/assignments/${assignmentId}`, {
                 method: "DELETE",
             });
-            if (!res.ok) throw new Error("Failed to unassign subject");
+            if (!res.ok) throw new Error(t("edit.unassignFailed"));
             await fetchTeacherDetails();
         } catch (err) {
             console.error(err);
-            alert("Failed to unassign subject");
+            alert(t("edit.unassignFailed"));
         }
     };
 
-    if (loading) return <div className="p-4">Loading...</div>;
+    if (loading) return <div className="p-4">{tc("state.loading")}</div>;
     if (error && !formData.firstName) return <div className="p-4 text-red-600">{error}</div>;
 
     const sectionsForClass = classes.find(c => c.id.toString() === selectedClass)?.sections || [];
@@ -365,9 +370,9 @@ export default function EditStaffPage() {
         <main className="p-4 sm:p-5 space-y-6">
             <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-slate-200">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-slate-800">Edit Staff</h2>
+                    <h2 className="text-2xl font-bold text-slate-800">{t("edit.title")}</h2>
                     <Link href="/dashboard/staff" className="text-blue-600 hover:underline">
-                        &larr; Back to Staff
+                        &larr; {t("edit.back")}
                     </Link>
                 </div>
 
@@ -380,38 +385,38 @@ export default function EditStaffPage() {
                 <form onSubmit={handleSubmit} className="space-y-8">
                     {/* ── BASIC INFORMATION ── */}
                     <div>
-                        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">Basic Information</h3>
+                        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">{t("form.basicInfo")}</h3>
                         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">First Name <span className="text-red-500">*</span></label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.firstName")} <span className="text-red-500">*</span></label>
                                 <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} required
                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                             </div>
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Last Name <span className="text-red-500">*</span></label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.lastName")} <span className="text-red-500">*</span></label>
                                 <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} required
                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                             </div>
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Gender</label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.gender")}</label>
                                 <select name="gender" value={formData.gender} onChange={handleChange} required
                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
-                                    <option value="">Select Gender</option>
-                                    <option value="Male">Male</option>
-                                    <option value="Female">Female</option>
-                                    <option value="Others">Others</option>
+                                    <option value="">{t("form.selectGender")}</option>
+                                    <option value="Male">{tc("field.male")}</option>
+                                    <option value="Female">{tc("field.female")}</option>
+                                    <option value="Others">{t("form.others")}</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Date of Birth</label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.dob")}</label>
                                 <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} required
                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                             </div>
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Blood Group</label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.bloodGroup")}</label>
                                 <select name="bloodGroup" value={formData.bloodGroup} onChange={handleChange}
                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
-                                    <option value="">Select Group</option>
+                                    <option value="">{t("form.selectGroup")}</option>
                                     <option value="A+">A+</option><option value="A-">A-</option>
                                     <option value="B+">B+</option><option value="B-">B-</option>
                                     <option value="O+">O+</option><option value="O-">O-</option>
@@ -419,7 +424,7 @@ export default function EditStaffPage() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Aadhaar Number <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.aadhaar")} <span className="text-gray-400 font-normal">{t("form.optional")}</span></label>
                                 <input type="text" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} maxLength={14}
                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                             </div>
@@ -428,29 +433,29 @@ export default function EditStaffPage() {
 
                     {/* ── CONTACT INFORMATION ── */}
                     <div>
-                        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">Contact Information</h3>
+                        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">{t("form.contactInfo")}</h3>
                         <div className="grid gap-4 sm:grid-cols-3">
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Email Address <span className="text-red-500">*</span></label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.emailAddress")} <span className="text-red-500">*</span></label>
                                 <input type="email" name="email" value={formData.email} onChange={handleChange} required readOnly
-                                    className="bg-gray-100 border border-gray-300 text-gray-600 text-sm rounded-lg block w-full p-2.5 cursor-not-allowed" title="Email cannot be changed" />
+                                    className="bg-gray-100 border border-gray-300 text-gray-600 text-sm rounded-lg block w-full p-2.5 cursor-not-allowed" title={t("form.emailLocked")} />
                             </div>
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Mobile <span className="text-red-500">*</span></label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.mobile")} <span className="text-red-500">*</span></label>
                                 <input type="tel" name="mobile" value={formData.mobile} onChange={handleChange} required
-                                    maxLength={10} inputMode="numeric" placeholder="10-digit number"
+                                    maxLength={10} inputMode="numeric" placeholder={t("form.mobilePlaceholder")}
                                     className={`bg-gray-50 border ${formData.mobile.length > 0 && !isValidMobile(formData.mobile) ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5`} />
                                 {formData.mobile.length > 0 && !isValidMobile(formData.mobile) && (
-                                    <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
+                                    <p className="mt-1 text-xs font-medium text-red-500">{mobileError}</p>
                                 )}
                             </div>
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Alternate Mobile <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.alternateMobile")} <span className="text-gray-400 font-normal">{t("form.optional")}</span></label>
                                 <input type="tel" name="alternateMobile" value={formData.alternateMobile} onChange={handleChange}
-                                    maxLength={10} inputMode="numeric" placeholder="10-digit number"
+                                    maxLength={10} inputMode="numeric" placeholder={t("form.mobilePlaceholder")}
                                     className={`bg-gray-50 border ${formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5`} />
                                 {formData.alternateMobile.length > 0 && !isValidMobile(formData.alternateMobile) && (
-                                    <p className="mt-1 text-xs font-medium text-red-500">{MOBILE_ERROR}</p>
+                                    <p className="mt-1 text-xs font-medium text-red-500">{mobileError}</p>
                                 )}
                             </div>
                         </div>
@@ -458,127 +463,127 @@ export default function EditStaffPage() {
 
                     {/* ── ADDRESS INFORMATION ── */}
                     <div>
-                        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">Address Information</h3>
+                        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">{t("form.addressInfo")}</h3>
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Country <span className="text-red-500">*</span></label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.country")} <span className="text-red-500">*</span></label>
                                 <select name="country" value={formData.address.country} onChange={handleAddressChange}
                                     className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
-                                    <option value="">Select Country</option>
+                                    <option value="">{t("form.selectCountry")}</option>
                                     {countries.map(c => <option key={c.isoCode} value={c.isoCode}>{c.name}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">State <span className="text-red-500">*</span></label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.state")} <span className="text-red-500">*</span></label>
                                 <select name="state" value={formData.address.state} onChange={handleAddressChange} disabled={!states.length}
                                     className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:opacity-50">
-                                    <option value="">Select State</option>
+                                    <option value="">{t("form.selectState")}</option>
                                     {states.map(s => <option key={s.isoCode} value={s.isoCode}>{s.name}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">City <span className="text-red-500">*</span></label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.city")} <span className="text-red-500">*</span></label>
                                 {cities.length > 0 ? (
                                     <select name="city" value={formData.address.city} onChange={handleAddressChange}
                                         className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
-                                        <option value="">Select City</option>
+                                        <option value="">{t("form.selectCity")}</option>
                                         {cities.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
                                     </select>
                                 ) : (
                                     <input type="text" name="city" value={formData.address.city} onChange={handleAddressChange}
-                                        placeholder="City name" disabled={!formData.address.state}
+                                        placeholder={t("form.cityPlaceholder")} disabled={!formData.address.state}
                                         className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 disabled:opacity-50" />
                                 )}
                             </div>
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Postal Code <span className="text-red-500">*</span></label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.postalCode")} <span className="text-red-500">*</span></label>
                                 <input type="text" name="postalCode" value={formData.address.postalCode} onChange={handleAddressChange}
-                                    placeholder="PIN code" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                                    placeholder={t("form.postalPlaceholder")} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
                             </div>
                             <div className="sm:col-span-2">
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Address Line 1 <span className="text-red-500">*</span></label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.addressLine1")} <span className="text-red-500">*</span></label>
                                 <input type="text" name="addressLine1" value={formData.address.addressLine1} onChange={handleAddressChange}
-                                    placeholder="Street address, Flat no, etc." className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                                    placeholder={t("form.addressLine1Placeholder")} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
                             </div>
                             <div className="sm:col-span-2">
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Address Line 2 <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.addressLine2")} <span className="text-gray-400 font-normal">{t("form.optional")}</span></label>
                                 <input type="text" name="addressLine2" value={formData.address.addressLine2} onChange={handleAddressChange}
-                                    placeholder="Apartment, suite, unit, etc." className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                                    placeholder={t("form.addressLine2Placeholder")} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
                             </div>
                             <div className="sm:col-span-2">
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Landmark <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.landmark")} <span className="text-gray-400 font-normal">{t("form.optional")}</span></label>
                                 <input type="text" name="landmark" value={formData.address.landmark} onChange={handleAddressChange}
-                                    placeholder="Near..." className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
+                                    placeholder={t("form.landmarkPlaceholder")} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" />
                             </div>
                         </div>
                     </div>
 
                     {/* ── DEMOGRAPHICS ── */}
                     <div>
-                        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">Demographics</h3>
+                        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">{t("form.demographics")}</h3>
                         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Category</label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.category")}</label>
                                 <select name="category" value={formData.category} onChange={handleChange} required
                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
-                                    <option value="">Select Category</option>
+                                    <option value="">{t("form.selectCategory")}</option>
                                     {["General", "SC", "ST", "OBC", "EWS"].map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Religion</label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.religion")}</label>
                                 <select name="religion" value={formData.religion} onChange={handleChange} required
                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
-                                    <option value="">Select Religion</option>
-                                    {["HINDU", "MUSLIM", "SIKH", "CHRISTIAN", "PARSI", "OTHERS"].map(r => (
-                                        <option key={r} value={r}>{r[0] + r.slice(1).toLowerCase()}</option>
+                                    <option value="">{t("form.selectReligion")}</option>
+                                    {(["HINDU", "MUSLIM", "SIKH", "CHRISTIAN", "PARSI", "OTHERS"] as const).map(r => (
+                                        <option key={r} value={r}>{t(`form.religionOption.${r}`)}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Father&apos;s Name <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.fathersName")} <span className="text-gray-400 font-normal">{t("form.optional")}</span></label>
                                 <input type="text" name="fathersName" value={formData.fathersName} onChange={handleChange}
-                                    placeholder="Father's name" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
+                                    placeholder={t("form.fathersNamePlaceholder")} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                             </div>
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Mother&apos;s Name <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.mothersName")} <span className="text-gray-400 font-normal">{t("form.optional")}</span></label>
                                 <input type="text" name="mothersName" value={formData.mothersName} onChange={handleChange}
-                                    placeholder="Mother's name" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
+                                    placeholder={t("form.mothersNamePlaceholder")} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                             </div>
                         </div>
                     </div>
 
                     {/* ── EMPLOYMENT DETAILS ── */}
                     <div>
-                        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">Employment Details</h3>
+                        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide border-b border-slate-200 pb-2 mb-4">{t("form.employment")}</h3>
                         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Staff Category <span className="text-red-500">*</span></label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.staffCategory")} <span className="text-red-500">*</span></label>
                                 <select name="staffCategory" value={formData.staffCategory} onChange={handleChange} required
                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
-                                    <option value="">Select Category</option>
-                                    <option value="Teaching Staff">Teaching Staff</option>
-                                    <option value="Management">Management</option>
-                                    <option value="Support Staff">Support Staff</option>
-                                    <option value="Admin Staff">Admin Staff</option>
+                                    <option value="">{t("form.selectCategory")}</option>
+                                    <option value="Teaching Staff">{t("staffCategory.teaching")}</option>
+                                    <option value="Management">{t("staffCategory.management")}</option>
+                                    <option value="Support Staff">{t("staffCategory.support")}</option>
+                                    <option value="Admin Staff">{t("staffCategory.admin")}</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Designation <span className="text-red-500">*</span></label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.designation")} <span className="text-red-500">*</span></label>
                                 <select name="designationId" value={String(formData.designationId)} onChange={handleChange} required
                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
-                                    <option value="">Select Designation</option>
+                                    <option value="">{t("form.selectDesignation")}</option>
                                     {designations.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
-                                    {isAdmin && <option value="CREATE_NEW" className="font-bold text-blue-600">+ Create New Designation</option>}
+                                    {isAdmin && <option value="CREATE_NEW" className="font-bold text-blue-600">{t("form.createDesignationOption")}</option>}
                                 </select>
                             </div>
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Joining Date <span className="text-red-500">*</span></label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.joiningDate")} <span className="text-red-500">*</span></label>
                                 <input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleChange} required
                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                             </div>
                             <div>
-                                <label className="block mb-1 text-sm font-medium text-gray-900">Exit Date</label>
+                                <label className="block mb-1 text-sm font-medium text-gray-900">{t("form.exitDate")}</label>
                                 <input type="date" name="exitDate" value={formData.exitDate} onChange={handleChange}
                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5" />
                             </div>
@@ -589,7 +594,7 @@ export default function EditStaffPage() {
                     <div className="flex items-center">
                         <input id="isActive" name="isActive" type="checkbox" checked={formData.isActive} onChange={handleChange}
                             className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-brand/40" />
-                        <label htmlFor="isActive" className="ml-2 text-sm font-medium text-gray-900">Account Active</label>
+                        <label htmlFor="isActive" className="ml-2 text-sm font-medium text-gray-900">{t("form.accountActive")}</label>
                     </div>
 
                     {/* Photos & documents — each saves on its own, not on submit. */}
@@ -597,14 +602,14 @@ export default function EditStaffPage() {
                         <div className="space-y-4">
                             <PersonPhotosSection
                                 kinds={["self"]}
-                                selfLabel="Staff photo"
+                                selfLabel={t("staffPhoto")}
                                 userId={userId}
                                 record={staffRecord}
                             />
                             <PersonDocumentsSection
                                 userId={userId}
                                 owners={["SELF"]}
-                                selfLabel="Own"
+                                selfLabel={t("detail.ownDocuments")}
                                 showTraceLink
                             />
                         </div>
@@ -612,10 +617,10 @@ export default function EditStaffPage() {
 
                     <div className="flex items-center space-x-4 border-t pt-6">
                         <button type="submit" disabled={saving} className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50">
-                            {saving ? 'Saving...' : 'Save Changes'}
+                            {saving ? tc('action.saving') : t('edit.saveChanges')}
                         </button>
                         <Link href="/dashboard/staff" className="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-line-strong font-medium rounded-lg text-sm px-5 py-2.5">
-                            Cancel
+                            {tc("action.cancel")}
                         </Link>
                     </div>
                 </form>
@@ -624,21 +629,21 @@ export default function EditStaffPage() {
             {/* Subject Assignments */}
             {formData.staffCategory === 'Teaching Staff' && (
             <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-slate-200">
-                <h3 className="text-xl font-bold mb-4 text-slate-800">Subject Assignments</h3>
+                <h3 className="text-xl font-bold mb-4 text-slate-800">{t("form.subjectAssignments")}</h3>
 
                 <div className="mb-6">
-                    <h4 className="font-semibold text-gray-700 mb-2">Current Assignments</h4>
+                    <h4 className="font-semibold text-gray-700 mb-2">{t("edit.currentAssignments")}</h4>
                     {assignments.length === 0 ? (
-                        <p className="text-gray-500 italic">No active subject assignments.</p>
+                        <p className="text-gray-500 italic">{t("detail.noAssignments")}</p>
                     ) : (
                         <div className="relative overflow-x-auto">
                             <table className="w-full text-sm text-left text-gray-500">
                                 <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                                     <tr>
-                                        <th scope="col" className="px-6 py-3">Subject</th>
-                                        <th scope="col" className="px-6 py-3">Class</th>
-                                        <th scope="col" className="px-6 py-3">Section</th>
-                                        <th scope="col" className="px-6 py-3">Action</th>
+                                        <th scope="col" className="px-6 py-3">{tc("field.subject")}</th>
+                                        <th scope="col" className="px-6 py-3">{tc("field.class")}</th>
+                                        <th scope="col" className="px-6 py-3">{tc("field.section")}</th>
+                                        <th scope="col" className="px-6 py-3">{t("edit.action")}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -653,7 +658,7 @@ export default function EditStaffPage() {
                                                     onClick={() => handleUnassignSubject(assignment.id)}
                                                     className="text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-xs px-3 py-1.5"
                                                 >
-                                                    Unassign
+                                                    {t("edit.unassign")}
                                                 </button>
                                             </td>
                                         </tr>
@@ -665,37 +670,37 @@ export default function EditStaffPage() {
                 </div>
 
                 <div className="border-t pt-6">
-                    <h4 className="font-semibold text-gray-700 mb-4">Assign New Subject</h4>
+                    <h4 className="font-semibold text-gray-700 mb-4">{t("edit.assignNew")}</h4>
                     <form onSubmit={handleAssignSubject} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                         <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-900">Class</label>
+                            <label className="block mb-2 text-sm font-medium text-gray-900">{tc("field.class")}</label>
                             <select value={selectedClass} onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection(""); }} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
-                                <option value="">Select Class</option>
+                                <option value="">{t("form.selectClass")}</option>
                                 {classes.map((c: any) => (
                                     <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
                             </select>
                         </div>
                         <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-900">Section</label>
+                            <label className="block mb-2 text-sm font-medium text-gray-900">{tc("field.section")}</label>
                             <select value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} disabled={!selectedClass} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5 disabled:opacity-50">
-                                <option value="">Select Section</option>
+                                <option value="">{t("form.selectSection")}</option>
                                 {sectionsForClass.map((s: any) => (
                                     <option key={s.id} value={s.id}>{s.name}</option>
                                 ))}
                             </select>
                         </div>
                         <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-900">Subject</label>
+                            <label className="block mb-2 text-sm font-medium text-gray-900">{tc("field.subject")}</label>
                             <select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5">
-                                <option value="">Select Subject</option>
+                                <option value="">{t("form.selectSubject")}</option>
                                 {subjects.map((s: any) => (
                                     <option key={s.id} value={s.id}>{s.name}</option>
                                 ))}
                             </select>
                         </div>
                         <button type="submit" disabled={assignLoading || !selectedClass || !selectedSection || !selectedSubject} className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50">
-                            {assignLoading ? 'Assigning...' : 'Assign'}
+                            {assignLoading ? t('edit.assigning') : t('edit.assign')}
                         </button>
                     </form>
                     {assignError && (
@@ -711,12 +716,12 @@ export default function EditStaffPage() {
             {showDesModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55">
                     <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-sm">
-                        <h3 className="text-lg font-bold mb-4">Create New Designation</h3>
+                        <h3 className="text-lg font-bold mb-4">{t("form.designationModal.title")}</h3>
                         <form onSubmit={handleCreateDesignation}>
-                            <input type="text" value={newDesTitle} onChange={e => setNewDesTitle(e.target.value)} placeholder="Designation Title (e.g. Principal)" className="w-full border p-2 rounded mb-4 focus:ring-2 focus:ring-brand/40 focus:outline-none" autoFocus required />
+                            <input type="text" value={newDesTitle} onChange={e => setNewDesTitle(e.target.value)} placeholder={t("form.designationModal.placeholder")} className="w-full border p-2 rounded mb-4 focus:ring-2 focus:ring-brand/40 focus:outline-none" autoFocus required />
                             <div className="flex justify-end gap-2">
-                                <button type="button" onClick={() => { setShowDesModal(false); setNewDesTitle(""); setFormData({...formData, designationId: ""}); }} className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
-                                <button type="submit" disabled={creatingDes} className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">{creatingDes ? "Creating..." : "Create"}</button>
+                                <button type="button" onClick={() => { setShowDesModal(false); setNewDesTitle(""); setFormData({...formData, designationId: ""}); }} className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300">{tc("action.cancel")}</button>
+                                <button type="submit" disabled={creatingDes} className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">{creatingDes ? t("form.creating") : tc("action.create")}</button>
                             </div>
                         </form>
                     </div>

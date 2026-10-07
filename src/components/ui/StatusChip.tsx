@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { PIGMENT_CLASS, humanizeStatus, pigmentFor, type Pigment } from './pigment';
 
@@ -13,6 +14,20 @@ interface StatusChipProps extends React.HTMLAttributes<HTMLSpanElement> {
   /** Hide the dot for very tight cells. Keep it wherever there's room. */
   hideDot?: boolean;
   icon?: React.ReactNode;
+}
+
+/**
+ * The status word for a chip given no label: the shared `common.status`
+ * translation when there is one (PAID → paid, HALF_DAY → halfDay), else the
+ * humanised code. Screens pass their own `label` for anything more specific.
+ */
+function useStatusWord(status: string | null | undefined): string {
+  const t = useTranslations('common.status');
+  if (!status) return humanizeStatus(status);
+  const key = String(status)
+    .toLowerCase()
+    .replace(/[_\s-]+([a-z])/g, (_, c: string) => c.toUpperCase()) as Parameters<typeof t>[0];
+  return t.has(key) ? t(key) : humanizeStatus(status);
 }
 
 /**
@@ -31,6 +46,7 @@ export function StatusChip({
 }: StatusChipProps) {
   const resolved = pigment ?? pigmentFor(status);
   const p = PIGMENT_CLASS[resolved];
+  const word = useStatusWord(status);
 
   return (
     <span
@@ -45,7 +61,7 @@ export function StatusChip({
       {icon
         ? <span className="shrink-0 [&_svg]:size-3">{icon}</span>
         : !hideDot && <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', p.dot)} />}
-      {label ?? humanizeStatus(status)}
+      {label ?? word}
     </span>
   );
 }
@@ -64,6 +80,7 @@ export function StatusCount({
 }: StatusChipProps & { count: number | string }) {
   const resolved = pigment ?? pigmentFor(status);
   const p = PIGMENT_CLASS[resolved];
+  const word = useStatusWord(status);
   return (
     <span
       className={cn(
@@ -75,7 +92,7 @@ export function StatusCount({
     >
       <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', p.dot)} />
       <span className="tabular font-semibold">{count}</span>
-      <span className="font-medium opacity-80">{label ?? humanizeStatus(status)}</span>
+      <span className="font-medium opacity-80">{label ?? word}</span>
     </span>
   );
 }

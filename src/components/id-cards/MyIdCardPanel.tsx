@@ -3,6 +3,7 @@
 import * as React from 'react';
 import useSWR from 'swr';
 import toast from 'react-hot-toast';
+import { useTranslations } from 'next-intl';
 import { Ban, Download, IdCard as IdCardIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ import { downloadSingleIdCardPdf } from '@/lib/id-card-pdf';
    ═══════════════════════════════════════════════════════════════════════════ */
 
 export function MyIdCardPanel({ className }: { className?: string }) {
+  const t = useTranslations('idCards');
   const { data, error, isLoading } = useSWR<{
     school: IdCardBranding;
     card: IdCardRow;
@@ -48,15 +50,15 @@ export function MyIdCardPanel({ className }: { className?: string }) {
         data.card,
         data.school,
       );
-      toast.success('Your ID card — front and back on one sheet');
+      toast.success(t('my.downloaded'));
       if (droppedImages) {
-        toast('Your photo could not be embedded — this prints with initials.', {
+        toast(t('my.photoDropped'), {
           icon: '⚠️',
           duration: 6000,
         });
       }
     } catch {
-      toast.error('Could not build the PDF. Please try again.');
+      toast.error(t('shared.buildFailed'));
     } finally {
       setBusy(false);
     }
@@ -78,11 +80,10 @@ export function MyIdCardPanel({ className }: { className?: string }) {
         <div className="border-line bg-surface-inset flex flex-col items-center gap-2 rounded-xl border px-6 py-10 text-center">
           <IdCardIcon className="text-ink-faint size-6" aria-hidden />
           <p className="text-ink text-[14px] font-medium">
-            No ID card is issued for your account
+            {t('my.noCardTitle')}
           </p>
           <p className="text-ink-muted max-w-sm text-[12.5px]">
-            Cards are issued to students and staff. If you think this is wrong,
-            ask the school office to check your profile.
+            {t('my.noCardBody')}
           </p>
         </div>
       </div>
@@ -104,14 +105,12 @@ export function MyIdCardPanel({ className }: { className?: string }) {
           />
           <div className="text-[12.5px] leading-relaxed">
             <p className="text-accent-danger-deep font-semibold">
-              This card has been cancelled
+              {t('my.cancelledTitle')}
             </p>
             <p className="text-ink-muted mt-1">
               {data.card.revokedReason
-                ? `Recorded reason: ${data.card.revokedReason}. `
-                : ''}
-              It will not be accepted at the gate and cannot be downloaded. Ask
-              the school office to issue a new one.
+                ? t('my.cancelledWithReason', { reason: data.card.revokedReason })
+                : t('my.cancelledNoReason')}
             </p>
           </div>
         </div>
@@ -125,10 +124,10 @@ export function MyIdCardPanel({ className }: { className?: string }) {
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={() => void download()} disabled={busy}>
           <Download className="size-3.5" aria-hidden />
-          {busy ? 'Preparing…' : 'Download my card'}
+          {busy ? t('my.preparing') : t('my.download')}
         </Button>
         <p className="text-ink-muted text-[11.5px]">
-          Prints at 85.6 × 54 mm — the standard card size.
+          {t('my.size')}
         </p>
       </div>
     </div>

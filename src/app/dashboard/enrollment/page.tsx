@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
+import { useTranslations } from "next-intl";
 import Table from "../../../components/Table";
 import { API_BASE_URL, fetcher } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
@@ -10,6 +11,8 @@ import { sortByName } from "@/lib/utils";
 import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 
 export default function EnrollmentPage() {
+    const t = useTranslations("students.enrollment");
+    const tc = useTranslations("common");
     const router = useRouter();
     const readOnly = useReadOnlySession();
     const [students, setStudents] = useState<any[]>([]);
@@ -183,7 +186,7 @@ export default function EnrollmentPage() {
         setSuccess("");
 
         if (!selectedStudent || !selectedClass || !selectedSection) {
-            setError("Please select student, class, and section.");
+            setError(t("selectAll"));
             setLoading(false);
             return;
         }
@@ -203,10 +206,10 @@ export default function EnrollmentPage() {
             });
 
             if (!res.ok) {
-                throw new Error("Failed to enroll student");
+                throw new Error(t("enrollFailed"));
             }
 
-            toast.success("Student enrollment updated successfully!");
+            toast.success(t("updated"));
             setShowEditModal(false);
             // Refresh the students list from server to reflect new enrollment
             const refreshRes = await authFetch(`${API_BASE_URL}/students`);
@@ -224,7 +227,7 @@ export default function EnrollmentPage() {
             }
 
         } catch {
-            setError("Failed to enroll student. Please try again.");
+            setError(t("enrollFailedRetry"));
         } finally {
             setLoading(false);
         }
@@ -247,7 +250,7 @@ export default function EnrollmentPage() {
 
             if (!res.ok) throw new Error("Bulk assign failed");
 
-            toast.success("Subjects assigned successfully!");
+            toast.success(t("subjectsAssigned"));
             setShowBulkModal(false);
             setBulkSubjects([]);
             setSelectedStudentIds([]); // Clear selection after success
@@ -263,7 +266,7 @@ export default function EnrollmentPage() {
                 }));
             }
         } catch {
-            toast.error("Failed to assign subjects in bulk.");
+            toast.error(t("bulkFailed"));
         } finally {
             setBulkLoading(false);
         }
@@ -301,18 +304,18 @@ export default function EnrollmentPage() {
                 />
             )
         },
-        { header: "ID", accessor: "id", className: "w-16", sortable: true, sortKey: "id" },
-        { header: "Name", render: (s: any) => `${s.firstName} ${s.lastName}`, sortable: true, sortKey: "firstName" },
-        { header: "Class / Section", render: (s: any) => s.class ? `${s.class.name} - ${s.section?.name}` : 'Not Assigned' },
+        { header: t("col.id"), accessor: "id", className: "w-16", sortable: true, sortKey: "id" },
+        { header: tc("field.name"), render: (s: any) => `${s.firstName} ${s.lastName}`, sortable: true, sortKey: "firstName" },
+        { header: t("col.classSection"), render: (s: any) => s.class ? `${s.class.name} - ${s.section?.name}` : t("notAssigned") },
         {
-            header: "Roll No",
+            header: tc("field.rollNo"),
             render: (s: any) => {
                 const activeEnrollment = s.enrollments?.find((e: any) => e.status === 'ACTIVE');
                 return activeEnrollment?.rollNo ?? '-';
             }
         },
         {
-            header: "Enrolled Subjects",
+            header: t("col.subjects"),
             render: (s: any) => (
                 <div className="flex flex-wrap gap-1">
                     {s.studentSubjects?.length > 0
@@ -321,13 +324,13 @@ export default function EnrollmentPage() {
                                 {(ss.subject || ss.extraSubject)?.name}
                             </span>
                         ))
-                        : <span className="text-gray-400 italic">None</span>
+                        : <span className="text-gray-400 italic">{t("none")}</span>
                     }
                 </div>
             )
         },
         {
-            header: "Action",
+            header: t("col.action"),
             render: (s: any) => (
                 <button
                     onClick={() => {
@@ -336,7 +339,7 @@ export default function EnrollmentPage() {
                     }}
                     className="font-medium text-blue-600 hover:underline"
                 >
-                    Edit Enrollment
+                    {t("editEnrollment")}
                 </button>
             )
         }
@@ -347,43 +350,43 @@ export default function EnrollmentPage() {
             <Toaster position="top-right" />
             <div className="max-w-6xl mx-auto">
                 <div className="bg-white p-8 rounded-lg shadow-sm border border-slate-200 mb-6">
-                    <h2 className="text-2xl font-bold mb-6 text-slate-800">Enrollment Management</h2>
+                    <h2 className="text-2xl font-bold mb-6 text-slate-800">{t("title")}</h2>
 
                     {/* Filter Controls */}
                     <div className="mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
                             <div>
-                                <label className="block mb-2 text-sm font-medium text-gray-900">Class</label>
+                                <label className="block mb-2 text-sm font-medium text-gray-900">{tc("field.class")}</label>
                                 <select
                                     value={filterClass}
                                     onChange={(e) => setFilterClass(e.target.value)}
                                     className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                 >
-                                    <option value="">All Classes</option>
+                                    <option value="">{t("allClasses")}</option>
                                     {classes.map((c: any) => (
                                         <option key={c.id} value={c.id}>{c.name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="block mb-2 text-sm font-medium text-gray-900">Section</label>
+                                <label className="block mb-2 text-sm font-medium text-gray-900">{tc("field.section")}</label>
                                 <select
                                     value={filterSection}
                                     onChange={(e) => setFilterSection(e.target.value)}
                                     className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                     disabled={!filterClass || loadingFilterSections}
                                 >
-                                    <option value="">{loadingFilterSections ? "Loading sections..." : "All Sections"}</option>
+                                    <option value="">{loadingFilterSections ? t("loadingSections") : t("allSections")}</option>
                                     {availableSections.map((s: any) => (
                                         <option key={s.id} value={s.id}>{s.name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="block mb-2 text-sm font-medium text-gray-900">Search</label>
+                                <label className="block mb-2 text-sm font-medium text-gray-900">{tc("action.search")}</label>
                                 <input
                                     type="text"
-                                    placeholder="ID, Name or Email"
+                                    placeholder={t("searchPlaceholder")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
@@ -396,7 +399,7 @@ export default function EnrollmentPage() {
                                 disabled={searchLoading}
                                 className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-brand/40 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 focus:outline-none"
                             >
-                                {searchLoading ? 'Searching...' : 'Search Students'}
+                                {searchLoading ? t("searching") : t("searchStudents")}
                             </button>
                         </div>
                     </div>
@@ -404,17 +407,17 @@ export default function EnrollmentPage() {
                     {/* Results Table */}
                     <div className="mb-8">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold text-slate-700">Student List</h3>
+                            <h3 className="text-lg font-semibold text-slate-700">{t("listTitle")}</h3>
                             {selectedStudentIds.length > 0 && (
                                 <div className="flex items-center gap-4">
                                     <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-                                        {selectedStudentIds.length} student(s) selected
+                                        {t("selected", { count: selectedStudentIds.length })}
                                     </span>
                                     <button
                                         onClick={() => setShowBulkModal(true)}
                                         className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2 focus:outline-none"
                                     >
-                                        Bulk Assign Subjects
+                                        {t("bulkAssign")}
                                     </button>
                                 </div>
                             )}
@@ -423,7 +426,7 @@ export default function EnrollmentPage() {
                             columns={columns}
                             data={filteredStudents}
                             loading={searchLoading}
-                            emptyMessage="Use filters and click Search to see students."
+                            emptyMessage={t("empty")}
                             defaultSortColumn="firstName"
                         />
                     </div>
@@ -433,7 +436,7 @@ export default function EnrollmentPage() {
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm">
                             <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
                                 <h3 className="text-xl font-bold mb-6 text-slate-800">
-                                    Edit Enrollment: <span className="text-blue-600">[#{studentData.id}] {studentData.firstName} {studentData.lastName}</span>
+                                    {t.rich("editTitle", { id: studentData.id, name: [studentData.firstName, studentData.lastName].filter(Boolean).join(" "), em: (c) => <span className="text-blue-600">{c}</span> })}
                                 </h3>
 
                                 {error && <div className="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50">{error}</div>}
@@ -442,7 +445,7 @@ export default function EnrollmentPage() {
                                     {!studentData.class ? (
                                         <div className="grid gap-6 mb-6 md:grid-cols-3">
                                             <div>
-                                                <label htmlFor="class" className="block mb-2 text-sm font-medium text-gray-900">Class</label>
+                                                <label htmlFor="class" className="block mb-2 text-sm font-medium text-gray-900">{tc("field.class")}</label>
                                                 <select
                                                     id="class"
                                                     value={selectedClass}
@@ -450,7 +453,7 @@ export default function EnrollmentPage() {
                                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                                     required
                                                 >
-                                                    <option value="">Choose a class</option>
+                                                    <option value="">{t("chooseClass")}</option>
                                                     {classes.map((cls: any) => (
                                                         <option key={cls.id} value={cls.id}>
                                                             {cls.name}
@@ -459,7 +462,7 @@ export default function EnrollmentPage() {
                                                 </select>
                                             </div>
                                             <div>
-                                                <label htmlFor="section" className="block mb-2 text-sm font-medium text-gray-900">Section</label>
+                                                <label htmlFor="section" className="block mb-2 text-sm font-medium text-gray-900">{tc("field.section")}</label>
                                                 <select
                                                     id="section"
                                                     value={selectedSection}
@@ -468,7 +471,7 @@ export default function EnrollmentPage() {
                                                     required
                                                     disabled={!selectedClass || loadingModalSections}
                                                 >
-                                                    <option value="">{loadingModalSections ? "Loading sections..." : "Choose a section"}</option>
+                                                    <option value="">{loadingModalSections ? t("loadingSections") : t("chooseSection")}</option>
                                                     {sections.map((section: any) => (
                                                         <option key={section.id} value={section.id}>
                                                             {section.name}
@@ -477,7 +480,7 @@ export default function EnrollmentPage() {
                                                 </select>
                                             </div>
                                             <div>
-                                                <label htmlFor="session" className="block mb-2 text-sm font-medium text-gray-900">Academic Session</label>
+                                                <label htmlFor="session" className="block mb-2 text-sm font-medium text-gray-900">{t("academicSession")}</label>
                                                 <select
                                                     id="session"
                                                     value={selectedSessionId}
@@ -485,10 +488,10 @@ export default function EnrollmentPage() {
                                                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                                                     required
                                                 >
-                                                    <option value="">Choose a session</option>
+                                                    <option value="">{t("chooseSession")}</option>
                                                     {academicSessions.map((session: any) => (
                                                         <option key={session.id} value={session.id}>
-                                                            {session.name} {session.isActive ? '(Current)' : ''}
+                                                            {session.name} {session.isActive ? t("currentSuffix") : ''}
                                                         </option>
                                                     ))}
                                                 </select>
@@ -498,28 +501,28 @@ export default function EnrollmentPage() {
                                         <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                                             <div className="flex flex-wrap gap-8">
                                                 <div>
-                                                    <span className="block text-xs font-bold text-gray-500 uppercase">Class</span>
+                                                    <span className="block text-xs font-bold text-gray-500 uppercase">{tc("field.class")}</span>
                                                     <span className="text-gray-900 font-medium">{studentData.class.name}</span>
                                                 </div>
                                                 <div>
-                                                    <span className="block text-xs font-bold text-gray-500 uppercase">Section</span>
+                                                    <span className="block text-xs font-bold text-gray-500 uppercase">{tc("field.section")}</span>
                                                     <span className="text-gray-900 font-medium">{studentData.section.name}</span>
                                                 </div>
                                                 <div>
-                                                    <span className="block text-xs font-bold text-gray-500 uppercase">Academic Session</span>
+                                                    <span className="block text-xs font-bold text-gray-500 uppercase">{t("academicSession")}</span>
                                                     <span className="text-gray-900 font-medium">
-                                                        {studentData.enrollments?.find((e: any) => e.status === 'ACTIVE')?.academicSession?.name || 'N/A'}
+                                                        {studentData.enrollments?.find((e: any) => e.status === 'ACTIVE')?.academicSession?.name || t("na")}
                                                     </span>
                                                 </div>
                                             </div>
                                             <p className="mt-2 text-xs text-yellow-700">
-                                                Class, Section, and Academic Session cannot be changed here. Use the "Bulk Promotion" page to change them.
+                                                {t("lockedHint")}
                                             </p>
                                         </div>
                                     )}
 
                                     <div className="mb-6">
-                                        <label className="block mb-2 text-sm font-medium text-gray-900">Subjects</label>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">{t("subjects")}</label>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 p-6 rounded-lg border border-gray-200">
                                             {subjects.map((subject: any) => (
                                                 <div key={subject.id} className="flex items-center">
@@ -537,7 +540,7 @@ export default function EnrollmentPage() {
                                                 </div>
                                             ))}
                                         </div>
-                                        <p className="mt-2 text-sm text-gray-500">Select all subjects that apply.</p>
+                                        <p className="mt-2 text-sm text-gray-500">{t("subjectsHint")}</p>
                                     </div>
 
                                     <div className="flex items-center justify-end space-x-4 border-t pt-4">
@@ -546,7 +549,7 @@ export default function EnrollmentPage() {
                                             onClick={() => setShowEditModal(false)}
                                             className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 transition-colors"
                                         >
-                                            Cancel
+                                            {tc("action.cancel")}
                                         </button>
                                         <button
                                             type="submit"
@@ -554,7 +557,7 @@ export default function EnrollmentPage() {
                                             title={readOnly ? READ_ONLY_TITLE : undefined}
                                             className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-brand/40 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50"
                                         >
-                                            {loading ? 'Saving Enrollment...' : 'Update Enrollment'}
+                                            {loading ? t("saving") : t("update")}
                                         </button>
                                     </div>
                                 </form>
@@ -567,12 +570,12 @@ export default function EnrollmentPage() {
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm">
                             <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                                 <h3 className="text-xl font-bold mb-6 text-slate-800">
-                                    Bulk Assign Subjects ({selectedStudentIds.length} students)
+                                    {t("bulkTitle", { count: selectedStudentIds.length })}
                                 </h3>
 
                                 <form onSubmit={handleBulkSubmit}>
                                     <div className="mb-6">
-                                        <label className="block mb-2 text-sm font-medium text-gray-900">Action Type</label>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">{t("actionType")}</label>
                                         <div className="flex space-x-4">
                                             <label className="flex items-center space-x-2">
                                                 <input
@@ -583,7 +586,7 @@ export default function EnrollmentPage() {
                                                     onChange={(e) => setBulkActionType(e.target.value as "ADD" | "REPLACE")}
                                                     className="text-blue-600 focus:ring-brand/40"
                                                 />
-                                                <span className="text-sm font-medium text-gray-900">Replace existing subjects</span>
+                                                <span className="text-sm font-medium text-gray-900">{t("replace")}</span>
                                             </label>
                                             <label className="flex items-center space-x-2">
                                                 <input
@@ -594,13 +597,13 @@ export default function EnrollmentPage() {
                                                     onChange={(e) => setBulkActionType(e.target.value as "ADD" | "REPLACE")}
                                                     className="text-blue-600 focus:ring-brand/40"
                                                 />
-                                                <span className="text-sm font-medium text-gray-900">Add to existing subjects</span>
+                                                <span className="text-sm font-medium text-gray-900">{t("addTo")}</span>
                                             </label>
                                         </div>
                                     </div>
 
                                     <div className="mb-6">
-                                        <label className="block mb-2 text-sm font-medium text-gray-900">Subjects</label>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">{t("subjects")}</label>
                                         <div className="grid grid-cols-2 gap-4 bg-gray-50 p-6 rounded-lg border border-gray-200">
                                             {subjects.map((subject: any) => (
                                                 <div key={subject.id} className="flex items-center">
@@ -633,7 +636,7 @@ export default function EnrollmentPage() {
                                             onClick={() => setShowBulkModal(false)}
                                             className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 transition-colors"
                                         >
-                                            Cancel
+                                            {tc("action.cancel")}
                                         </button>
                                         <button
                                             type="submit"
@@ -641,7 +644,7 @@ export default function EnrollmentPage() {
                                             title={readOnly ? READ_ONLY_TITLE : undefined}
                                             className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50"
                                         >
-                                            {bulkLoading ? 'Applying...' : 'Apply Subjects'}
+                                            {bulkLoading ? t("applying") : t("apply")}
                                         </button>
                                     </div>
                                 </form>

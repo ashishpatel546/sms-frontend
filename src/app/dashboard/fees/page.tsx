@@ -12,12 +12,18 @@ import ReceiptModal from "@/components/ReceiptModal";
 import { Settings, Layers, Wallet, BadgePercent } from "lucide-react";
 import { sortByName } from "@/lib/utils";
 import NumberInput from "@/components/ui/NumberInput";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 
 // Mirrors the backend `PaymentMethod` enum (fee_payment / fee_adjustment).
 // Ordered by how often the counter actually uses them.
-const PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'ONLINE', 'CHEQUE'];
+const PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'ONLINE', 'CHEQUE'] as const;
+type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 export default function FeesDashboardPage() {
+    const t = useTranslations("fees");
+    const tc = useTranslations("common");
+    const intl = INTL_LOCALE[useLocale() as Locale];
     const router = useRouter();
     const rbac = useRbac();
     const readOnly = useReadOnlySession();
@@ -27,10 +33,10 @@ export default function FeesDashboardPage() {
     // Role guard — redirect TEACHER away from fees
     useEffect(() => {
         if (mounted && !rbac.canAccessFees) {
-            toast.error("You don't have permission to access Fee Management.");
+            toast.error(t("toast.noPermission"));
             router.replace('/dashboard');
         }
-    }, [mounted, rbac.canAccessFees, router]);
+    }, [mounted, rbac.canAccessFees, router, t]);
 
     // --- Setup State ---
     const [categories, setCategories] = useState<any[]>([]);
@@ -273,12 +279,12 @@ export default function FeesDashboardPage() {
                     }
                 }
             } catch (err) {
-                toast.error("Failed to load setup data");
+                toast.error(t("toast.loadSetupFailed"));
             }
         };
         fetchSetupData();
         setMounted(true);
-    }, []);
+    }, [t]);
 
     // Refresh Setup Data helper
     const refreshSetupData = async () => {
@@ -308,11 +314,11 @@ export default function FeesDashboardPage() {
                 })
             });
             if (res.ok) {
-                toast.success("Global Settings Saved!");
+                toast.success(t("toast.settingsSaved"));
                 setGlobalSettings(await res.json());
             } else throw new Error("Failed to save settings");
         } catch (err) {
-            toast.error("Failed to save global settings");
+            toast.error(t("toast.settingsSaveFailed"));
         } finally {
             setSavingSettings(false);
         }
@@ -334,7 +340,7 @@ export default function FeesDashboardPage() {
                 })
             });
             if (res.ok) {
-                toast.success("Discount Category Created!");
+                toast.success(t("toast.discountCreated"));
                 setNewDiscountName("");
                 setNewDiscountValue("");
                 setNewDiscountLogicRef("");
@@ -342,7 +348,7 @@ export default function FeesDashboardPage() {
                 if (dRes.ok) setDiscounts(await dRes.json());
             } else throw new Error("Creation failed");
         } catch (err) {
-            toast.error("Failed to create discount");
+            toast.error(t("toast.discountCreateFailed"));
         }
     };
 
@@ -363,13 +369,13 @@ export default function FeesDashboardPage() {
                 })
             });
             if (res.ok) {
-                toast.success("Discount Category Updated!");
+                toast.success(t("toast.discountUpdated"));
                 setEditingDiscount(null);
                 const dRes = await authFetch(`${API_BASE_URL}/fees/discounts`);
                 if (dRes.ok) setDiscounts(await dRes.json());
-            } else throw new Error("Update failed");
+            } else throw new Error(t("toast.updateFailed"));
         } catch (err: any) {
-            toast.error(err.message || "Failed to update discount");
+            toast.error(err.message || t("toast.discountUpdateFailed"));
         }
     };
 
@@ -381,31 +387,31 @@ export default function FeesDashboardPage() {
                 body: JSON.stringify({ isActive: !currentStatus })
             });
             if (res.ok) {
-                toast.success(`Discount ${currentStatus ? 'deactivated' : 'activated'}!`);
+                toast.success(currentStatus ? t("toast.discountDeactivated") : t("toast.discountActivated"));
                 const dRes = await authFetch(`${API_BASE_URL}/fees/discounts`);
                 if (dRes.ok) setDiscounts(await dRes.json());
-            } else throw new Error("Status update failed");
+            } else throw new Error(t("toast.statusUpdateFailed"));
         } catch (err: any) {
-            toast.error(err.message || "Failed to update status");
+            toast.error(err.message || t("toast.statusUpdateFailed"));
         }
     };
 
     const handleDeleteDiscount = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this discount category?")) return;
+        if (!confirm(t("confirm.deleteDiscount"))) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/fees/discounts/${id}`, {
                 method: "DELETE"
             });
             if (res.ok) {
-                toast.success("Discount deleted!");
+                toast.success(t("toast.discountDeleted"));
                 const dRes = await authFetch(`${API_BASE_URL}/fees/discounts`);
                 if (dRes.ok) setDiscounts(await dRes.json());
             } else {
                 const errData = await res.json();
-                throw new Error(errData.message || "Deletion failed");
+                throw new Error(errData.message || t("toast.deleteFailed"));
             }
         } catch (err: any) {
-            toast.error(err.message || "Failed to delete discount");
+            toast.error(err.message || t("toast.discountDeleteFailed"));
         }
     };
 
@@ -419,14 +425,14 @@ export default function FeesDashboardPage() {
                 body: JSON.stringify({ name: newCategoryName, description: newCategoryDesc, type: newCategoryType })
             });
             if (res.ok) {
-                toast.success("Fee Category Created!");
+                toast.success(t("toast.categoryCreated"));
                 setNewCategoryName("");
                 setNewCategoryDesc("");
                 setNewCategoryType("REGULAR");
                 refreshSetupData();
             } else throw new Error("Creation failed");
         } catch (err) {
-            toast.error("Failed to create category");
+            toast.error(t("toast.categoryCreateFailed"));
         }
     };
 
@@ -441,12 +447,12 @@ export default function FeesDashboardPage() {
                 body: JSON.stringify({ name: editCategoryName, description: editCategoryDesc, type: editCategoryType })
             });
             if (res.ok) {
-                toast.success("Fee Category Updated!");
+                toast.success(t("toast.categoryUpdated"));
                 setEditingCategory(null);
                 refreshSetupData();
-            } else throw new Error("Update failed");
+            } else throw new Error(t("toast.updateFailed"));
         } catch (err: any) {
-            toast.error(err.message || "Failed to update category");
+            toast.error(err.message || t("toast.categoryUpdateFailed"));
         }
     };
 
@@ -458,29 +464,29 @@ export default function FeesDashboardPage() {
                 body: JSON.stringify({ isActive: !currentStatus })
             });
             if (res.ok) {
-                toast.success(`Category ${currentStatus ? 'deactivated' : 'activated'}!`);
+                toast.success(currentStatus ? t("toast.categoryDeactivated") : t("toast.categoryActivated"));
                 refreshSetupData();
-            } else throw new Error("Status update failed");
+            } else throw new Error(t("toast.statusUpdateFailed"));
         } catch (err: any) {
-            toast.error(err.message || "Failed to update status");
+            toast.error(err.message || t("toast.statusUpdateFailed"));
         }
     };
 
     const handleDeleteCategory = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this category?")) return;
+        if (!confirm(t("confirm.deleteCategory"))) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/fees/categories/${id}`, {
                 method: "DELETE"
             });
             if (res.ok) {
-                toast.success("Category deleted!");
+                toast.success(t("toast.categoryDeleted"));
                 refreshSetupData();
             } else {
                 const errData = await res.json();
-                throw new Error(errData.message || "Deletion failed");
+                throw new Error(errData.message || t("toast.deleteFailed"));
             }
         } catch (err: any) {
-            toast.error(err.message || "Failed to delete category");
+            toast.error(err.message || t("toast.categoryDeleteFailed"));
         }
     };
 
@@ -502,7 +508,7 @@ export default function FeesDashboardPage() {
                 })
             });
             if (res.ok) {
-                toast.success("Fee Structure Created!");
+                toast.success(t("toast.structureCreated"));
                 setFormAmount("");
                 // Reset to all-checked for the next structure creation
                 setFormApplicableDiscountIds(discounts.filter(d => d.isActive !== false).map((d: any) => d.id));
@@ -510,10 +516,10 @@ export default function FeesDashboardPage() {
                 refreshSetupData();
             } else {
                 const errData = await res.json();
-                throw new Error(errData.message || "Creation failed");
+                throw new Error(errData.message || t("toast.createFailed"));
             }
         } catch (err: any) {
-            toast.error(err.message || "Failed to create structure");
+            toast.error(err.message || t("toast.structureCreateFailed"));
         }
     };
 
@@ -534,33 +540,33 @@ export default function FeesDashboardPage() {
                 })
             });
             if (res.ok) {
-                toast.success("Fee Structure Updated!");
+                toast.success(t("toast.structureUpdated"));
                 setEditingStructure(null);
                 refreshSetupData();
             } else {
                 const errData = await res.json();
-                throw new Error(errData.message || "Failed to update");
+                throw new Error(errData.message || t("toast.updateFailed"));
             }
         } catch (err: any) {
-            toast.error(err.message || "Failed to update structure");
+            toast.error(err.message || t("toast.structureUpdateFailed"));
         }
     };
 
     const handleDeleteStructure = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this fee structure?")) return;
+        if (!confirm(t("confirm.deleteStructure"))) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/fees/structures/${id}`, {
                 method: "DELETE"
             });
             if (res.ok) {
-                toast.success("Fee Structure deleted!");
+                toast.success(t("toast.structureDeleted"));
                 refreshSetupData();
             } else {
                 const errData = await res.json();
-                throw new Error(errData.message || "Deletion failed");
+                throw new Error(errData.message || t("toast.deleteFailed"));
             }
         } catch (err: any) {
-            toast.error(err.message || "Failed to delete structure");
+            toast.error(err.message || t("toast.structureDeleteFailed"));
         }
     };
 
@@ -595,10 +601,10 @@ export default function FeesDashboardPage() {
                     setSearchFormTotal(Array.isArray(data) ? data.length : 0);
                 }
             } else {
-                toast.error("Failed to fetch students");
+                toast.error(t("toast.fetchStudentsFailed"));
             }
         } catch (error) {
-            toast.error("An error occurred while fetching students");
+            toast.error(t("toast.fetchStudentsError"));
         } finally {
             setIsSearchingStudents(false);
         }
@@ -666,13 +672,13 @@ export default function FeesDashboardPage() {
                     setSelectedMonths([]);
                 }
             } catch (err) {
-                toast.error("Failed to load student fees");
+                toast.error(t("toast.loadStudentFeesFailed"));
             } finally {
                 setLoadingCollection(false);
             }
         };
         fetchStudentFees();
-    }, [selectedStudentId, collectionYear]);
+    }, [selectedStudentId, collectionYear, t]);
 
     // Handle class change to update sections dropdown
     useEffect(() => {
@@ -710,7 +716,7 @@ export default function FeesDashboardPage() {
                 })
             });
             if (res.ok) {
-                toast.success("Special Fee applied successfully!");
+                toast.success(t("toast.specialFeeApplied"));
                 // Clear form but keep student selected
                 setApplyOtherFeeCategoryId("");
                 setApplyOtherFeeAmount("");
@@ -719,7 +725,7 @@ export default function FeesDashboardPage() {
                 throw new Error("Failed to apply fee");
             }
         } catch (err) {
-            toast.error("Error applying fee");
+            toast.error(t("toast.applyFeeError"));
         } finally {
             setApplyingOtherFee(false);
         }
@@ -749,7 +755,7 @@ export default function FeesDashboardPage() {
                 }
             }
         } catch {
-            toast.error("Failed to load fee details");
+            toast.error(t("toast.loadFeeDetailsFailed"));
         } finally {
             setLoadingFeeDetails(false);
             setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
@@ -764,13 +770,13 @@ export default function FeesDashboardPage() {
                 method: 'DELETE'
             });
             if (res.ok) {
-                toast.success("Optional fee removed successfully");
+                toast.success(t("toast.optionalFeeRemoved"));
                 setFeeDetailsOptionalFees(prev => prev.filter((f: any) => f.id !== feeId));
             } else {
                 throw new Error("Failed to remove fee");
             }
         } catch {
-            toast.error("Failed to remove fee");
+            toast.error(t("toast.removeFeeFailed"));
         } finally {
             setRemovingFeeId(null);
         }
@@ -854,7 +860,7 @@ export default function FeesDashboardPage() {
 
             if (res.ok) {
                 await res.json(); // consume response
-                toast.success("Payment successful!");
+                toast.success(t("toast.paymentSuccess"));
 
                 // Refresh fee details so the month cards update immediately
                 const feesRes = await authFetch(`${API_BASE_URL}/fees/student/${selectedStudentId}?academicYear=${collectionYear}`);
@@ -869,10 +875,10 @@ export default function FeesDashboardPage() {
 
             } else {
                 const errData = await res.json();
-                throw new Error(errData.message || "Payment failed");
+                throw new Error(errData.message || t("toast.paymentFailed"));
             }
         } catch (err: any) {
-            toast.error(err.message || "Failed to process payment");
+            toast.error(err.message || t("toast.paymentProcessFailed"));
         } finally {
             setLoadingCollection(false);
         }
@@ -901,7 +907,7 @@ export default function FeesDashboardPage() {
         if (readOnly) return;
         if (!selectedStudentId || !adjFeeMonth) return;
         if (adjType === 'WAIVE_OFF' && !adjPermittedByUserId) {
-            toast.error('Please select who permitted this waive-off.');
+            toast.error(t("toast.selectPermittedBy"));
             return;
         }
         setSubmittingAdj(true);
@@ -922,7 +928,7 @@ export default function FeesDashboardPage() {
                 body: JSON.stringify(body)
             });
             if (res.ok) {
-                toast.success(adjType === 'REFUND' ? "Refund processed successfully!" : "Fee waived off successfully!");
+                toast.success(adjType === 'REFUND' ? t("toast.refundDone") : t("toast.waiveOffDone"));
                 setAdjModalOpen(false);
                 // Clear the waived month from selection so the card is no longer highlighted
                 if (adjType === 'WAIVE_OFF') {
@@ -936,10 +942,10 @@ export default function FeesDashboardPage() {
                 if (feesRes.ok) setStudentFeeDetails(await feesRes.json());
             } else {
                 const errData = await res.json();
-                throw new Error(errData.message || "Adjustment failed");
+                throw new Error(errData.message || t("toast.adjustmentFailed"));
             }
         } catch (err: any) {
-            toast.error(err.message || "Failed to process adjustment");
+            toast.error(err.message || t("toast.adjustmentProcessFailed"));
         } finally {
             setSubmittingAdj(false);
         }
@@ -959,20 +965,50 @@ export default function FeesDashboardPage() {
     };
 
     const handleRevertWaiveOff = async (adjustmentId: number) => {
-        if (!confirm("Are you sure you want to revert this waive-off? The outstanding balance will be restored.")) return;
+        if (!confirm(t("confirm.revertWaiveOff"))) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/fees/adjustment/${adjustmentId}`, { method: "DELETE" });
             if (res.ok) {
-                toast.success("Waive-off reverted successfully!");
+                toast.success(t("toast.waiveOffReverted"));
                 setPaymentHistoryData(null);
                 const feesRes = await authFetch(`${API_BASE_URL}/fees/student/${selectedStudentId}?academicYear=${collectionYear}`);
                 if (feesRes.ok) setStudentFeeDetails(await feesRes.json());
             } else {
                 const errData = await res.json();
-                throw new Error(errData.message || "Failed to revert waive-off");
+                throw new Error(errData.message || t("toast.revertFailed"));
             }
         } catch (err: any) {
-            toast.error(err.message || "Failed to revert waive-off");
+            toast.error(err.message || t("toast.revertFailed"));
+        }
+    };
+
+    // Display label for a payment method enum; unknown values are shown as sent.
+    const paymentMethodLabel = (method: string) =>
+        (PAYMENT_METHODS as readonly string[]).includes(method) ? t(`method.${method as PaymentMethod}`) : method;
+
+    // Display label for a fee frequency enum; unknown values are shown as sent.
+    const frequencyLabel = (frequency: string) => {
+        switch (frequency) {
+            case 'MONTHLY':
+            case 'ONE_TIME':
+            case 'ANNUALLY':
+            case 'QUARTERLY':
+            case 'HALF_YEARLY':
+                return t(`frequency.${frequency}`);
+            default: return frequency;
+        }
+    };
+
+    // Display label for a fee status enum; unknown values are shown as sent.
+    const feeStatusLabel = (status: string) => {
+        switch (status) {
+            case 'PAID': return tc("status.paid");
+            case 'PARTIAL': return tc("status.partial");
+            case 'UNPAID': return tc("status.unpaid");
+            case 'PENDING': return tc("status.pending");
+            case 'OVERDUE': return tc("status.overdue");
+            case 'WAIVED': return t("status.waived");
+            default: return status;
         }
     };
 
@@ -989,7 +1025,7 @@ export default function FeesDashboardPage() {
             <Toaster position="top-right" />
 
 
-            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Fee Management</h1>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t("page.title")}</h1>
 
             {/* Receipt Modal */}
             {receiptData && (
@@ -1035,35 +1071,35 @@ export default function FeesDashboardPage() {
                 <div className="fixed inset-0 z-100 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm no-print">
                     <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-lg font-bold text-slate-800">Payment History — {paymentHistoryData.label}</h2>
+                            <h2 className="text-lg font-bold text-slate-800">{t("history.title", { label: paymentHistoryData.label })}</h2>
                             <button onClick={() => setPaymentHistoryData(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                             </button>
                         </div>
                         <div className="mb-4 grid grid-cols-2 gap-3 text-sm bg-slate-50 p-3 rounded-lg">
-                            <div><span className="text-gray-500">Total Due:</span> <span className="font-semibold">₹{Number(paymentHistoryData.totalDue || 0).toFixed(2)}</span></div>
-                            <div><span className="text-gray-500">Total Paid:</span> <span className="font-semibold text-green-700">₹{Number(paymentHistoryData.totalPaid || 0).toFixed(2)}</span></div>
+                            <div><span className="text-gray-500">{t("history.totalDue")}</span> <span className="font-semibold">₹{Number(paymentHistoryData.totalDue || 0).toFixed(2)}</span></div>
+                            <div><span className="text-gray-500">{t("history.totalPaid")}</span> <span className="font-semibold text-green-700">₹{Number(paymentHistoryData.totalPaid || 0).toFixed(2)}</span></div>
                             {(paymentHistoryData.excess ?? 0) > 0 ? (
-                                <div><span className="text-gray-500">Excess Paid:</span> <span className="font-semibold text-green-600">₹{Number(paymentHistoryData.excess).toFixed(2)}</span></div>
+                                <div><span className="text-gray-500">{t("history.excessPaid")}</span> <span className="font-semibold text-green-600">₹{Number(paymentHistoryData.excess).toFixed(2)}</span></div>
                             ) : (
-                                <div><span className="text-gray-500">Balance:</span> <span className={`font-semibold ${paymentHistoryData.outstanding > 0 ? 'text-red-600' : 'text-green-700'}`}>₹{Number(paymentHistoryData.outstanding || 0).toFixed(2)}</span></div>
+                                <div><span className="text-gray-500">{t("history.balance")}</span> <span className={`font-semibold ${paymentHistoryData.outstanding > 0 ? 'text-red-600' : 'text-green-700'}`}>₹{Number(paymentHistoryData.outstanding || 0).toFixed(2)}</span></div>
                             )}
-                            <div><span className="text-gray-500">Status:</span> <span className={`font-bold uppercase text-xs px-2 py-0.5 rounded ${paymentHistoryData.status === 'PAID' ? 'bg-green-100 text-green-800' : paymentHistoryData.status === 'PARTIAL' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>{paymentHistoryData.status}</span></div>
+                            <div><span className="text-gray-500">{t("history.status")}</span> <span className={`font-bold uppercase text-xs px-2 py-0.5 rounded ${paymentHistoryData.status === 'PAID' ? 'bg-green-100 text-green-800' : paymentHistoryData.status === 'PARTIAL' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>{feeStatusLabel(paymentHistoryData.status)}</span></div>
                         </div>
                         {paymentHistoryData.payments?.length > 0 ? (
                             <div>
-                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Payments Made</p>
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">{t("history.paymentsMade")}</p>
                                 <div className="space-y-2 max-h-64 overflow-y-auto">
                                     {paymentHistoryData.payments.map((p: any, idx: number) => (
                                         <div key={idx} className="flex justify-between items-center text-sm bg-green-50 border border-green-100 p-3 rounded-lg">
                                             <div>
-                                                <p className="font-medium text-slate-800">₹{Number(p.amountPaid).toFixed(2)} <span className="text-xs text-gray-500">({p.paymentMethod})</span></p>
-                                                <p className="text-xs text-gray-500">{new Date(p.paymentDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                                                <p className="text-xs text-gray-400">Receipt: {p.receiptNumber}</p>
+                                                <p className="font-medium text-slate-800">₹{Number(p.amountPaid).toFixed(2)} <span className="text-xs text-gray-500">({paymentMethodLabel(p.paymentMethod)})</span></p>
+                                                <p className="text-xs text-gray-500">{new Date(p.paymentDate).toLocaleDateString(intl, { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                                <p className="text-xs text-gray-400">{t("history.receipt", { number: p.receiptNumber })}</p>
                                                 {p.gatewayPaymentId && (
                                                     <p className="text-xs text-blue-500 font-mono mt-0.5">
-                                                        Gateway: {p.gatewayPaymentId}
-                                                        <button onClick={() => navigator.clipboard.writeText(p.gatewayPaymentId)} className="ml-1.5 text-gray-400 hover:text-blue-600" title="Copy payment ID">⧉</button>
+                                                        {t("history.gateway", { id: p.gatewayPaymentId })}
+                                                        <button onClick={() => navigator.clipboard.writeText(p.gatewayPaymentId)} className="ml-1.5 text-gray-400 hover:text-blue-600" title={t("history.copyPaymentId")}>⧉</button>
                                                     </p>
                                                 )}
                                             </div>
@@ -1108,38 +1144,38 @@ export default function FeesDashboardPage() {
                                                 }}
                                                 className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                                             >
-                                                View Receipt
+                                                {t("history.viewReceipt")}
                                             </button>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         ) : (
-                            <p className="text-sm text-gray-500 italic">No payments recorded yet.</p>
+                            <p className="text-sm text-gray-500 italic">{t("history.noPayments")}</p>
                         )}
                         {paymentHistoryData.adjustments?.length > 0 && (
                             <div className="mt-4">
-                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Fee Adjustments</p>
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">{t("history.adjustments")}</p>
                                 <div className="space-y-2 max-h-40 overflow-y-auto">
                                     {paymentHistoryData.adjustments.map((a: any, idx: number) => (
                                         <div key={idx} className={`flex justify-between items-start text-sm p-3 rounded-lg border ${a.type === 'REFUND' ? 'bg-orange-50 border-orange-100' : 'bg-purple-50 border-purple-100'}`}>
                                             <div className="flex-1">
                                                 <p className={`font-medium ${a.type === 'REFUND' ? 'text-orange-800' : 'text-purple-800'}`}>
-                                                    <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded mr-1.5 ${a.type === 'REFUND' ? 'bg-orange-200 text-orange-700' : 'bg-purple-200 text-purple-700'}`}>{a.type === 'REFUND' ? 'Refund' : 'Waived'}</span>
+                                                    <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded mr-1.5 ${a.type === 'REFUND' ? 'bg-orange-200 text-orange-700' : 'bg-purple-200 text-purple-700'}`}>{a.type === 'REFUND' ? t("history.refund") : t("history.waived")}</span>
                                                     ₹{Number(a.amount).toFixed(2)}
-                                                    {a.type === 'REFUND' && a.paymentMethod && <span className="text-xs text-gray-500 ml-1">({a.paymentMethod})</span>}
+                                                    {a.type === 'REFUND' && a.paymentMethod && <span className="text-xs text-gray-500 ml-1">({paymentMethodLabel(a.paymentMethod)})</span>}
                                                 </p>
-                                                <p className="text-xs text-gray-500">{new Date(a.adjustedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                                                {a.reason && <p className="text-xs text-gray-400">Reason: {a.reason}</p>}
-                                                {a.createdByName && <p className="text-xs text-gray-400">By: {a.createdByName}</p>}
+                                                <p className="text-xs text-gray-500">{new Date(a.adjustedAt).toLocaleDateString(intl, { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                                {a.reason && <p className="text-xs text-gray-400">{t("history.reason", { reason: a.reason })}</p>}
+                                                {a.createdByName && <p className="text-xs text-gray-400">{t("history.by", { name: a.createdByName })}</p>}
                                             </div>
                                             {rbac.isAdmin && a.type === 'WAIVE_OFF' && a.id && (
                                                 <button
                                                     onClick={() => handleRevertWaiveOff(a.id)}
                                                     className="ml-2 shrink-0 text-[10px] text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded px-2 py-1 transition-colors"
-                                                    title="Revert this waive-off"
+                                                    title={t("history.revertHint")}
                                                 >
-                                                    ↩ Revert
+                                                    {t("history.revert")}
                                                 </button>
                                             )}
                                         </div>
@@ -1164,7 +1200,7 @@ export default function FeesDashboardPage() {
                                     }}
                                     className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
                                 >
-                                    Collect Remaining ₹{Number(paymentHistoryData.outstanding).toFixed(2)}
+                                    {t("receipt.collectRemaining", { amount: Number(paymentHistoryData.outstanding).toFixed(2) })}
                                 </button>
                             )}
                             {rbac.isAdmin && (paymentHistoryData.excess ?? 0) > 0 && (
@@ -1172,7 +1208,7 @@ export default function FeesDashboardPage() {
                                     onClick={() => { openAdjModal(paymentHistoryData.monthKey, 'REFUND'); setPaymentHistoryData(null); }}
                                     className="px-4 py-2 bg-orange-100 text-orange-700 text-sm border border-orange-200 rounded hover:bg-orange-200 transition-colors"
                                 >
-                                    Issue Refund (₹{Number(paymentHistoryData.excess).toFixed(2)} excess)
+                                    {t("receipt.issueRefund", { amount: Number(paymentHistoryData.excess).toFixed(2) })}
                                 </button>
                             )}
                             {rbac.isAdmin && paymentHistoryData.outstanding > 0 && (
@@ -1180,10 +1216,10 @@ export default function FeesDashboardPage() {
                                     onClick={() => { openAdjModal(paymentHistoryData.monthKey, 'WAIVE_OFF'); setPaymentHistoryData(null); }}
                                     className="px-4 py-2 bg-purple-100 text-purple-700 text-sm border border-purple-200 rounded hover:bg-purple-200 transition-colors"
                                 >
-                                    Waive Off Dues
+                                    {t("history.waiveOffDues")}
                                 </button>
                             )}
-                            <button onClick={() => setPaymentHistoryData(null)} className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 transition-colors ml-auto">Close</button>
+                            <button onClick={() => setPaymentHistoryData(null)} className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 transition-colors ml-auto">{tc("action.close")}</button>
                         </div>
                     </div>
                 </div>
@@ -1198,12 +1234,12 @@ export default function FeesDashboardPage() {
                                 {adjType === 'REFUND' ? (
                                     <>
                                         <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
-                                        Issue Refund
+                                        {t("adj.issueRefund")}
                                     </>
                                 ) : (
                                     <>
                                         <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                        Waive Off Dues
+                                        {t("history.waiveOffDues")}
                                     </>
                                 )}
                             </h2>
@@ -1213,39 +1249,37 @@ export default function FeesDashboardPage() {
                         </div>
                         <div className="mb-4">
                             <span className={`text-xs font-semibold uppercase px-2 py-1 rounded ${adjType === 'REFUND' ? 'bg-orange-100 text-orange-700' : 'bg-purple-100 text-purple-700'}`}>
-                                {adjType === 'REFUND' ? 'Refund — return excess collected payment' : 'Waive Off — write off pending outstanding dues'}
+                                {adjType === 'REFUND' ? t("adj.refundHint") : t("adj.waiveHint")}
                             </span>
                         </div>
                         <form onSubmit={handleIssueAdjustment} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-900 mb-1">Fee Month / Period</label>
+                                <label className="block text-sm font-medium text-gray-900 mb-1">{t("adj.feeMonth")}</label>
                                 <select
                                     value={adjFeeMonth}
                                     onChange={(e) => setAdjFeeMonth(e.target.value)}
                                     required
                                     className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-brand/40 focus:border-brand"
                                 >
-                                    <option value="">Select month...</option>
+                                    <option value="">{t("adj.selectMonth")}</option>
                                     {studentFeeDetails?.oneTimeFees && (
                                         adjType === 'REFUND'
                                             ? (studentFeeDetails.oneTimeFees.excess ?? 0) > 0
                                             : (studentFeeDetails.oneTimeFees.outstanding ?? 0) > 0
                                     ) && (
                                         <option value={studentFeeDetails.oneTimeFees.monthKey}>
-                                            {studentFeeDetails.oneTimeFees.label}
                                             {adjType === 'REFUND'
-                                                ? ` (Excess: ₹${Number(studentFeeDetails.oneTimeFees.excess).toFixed(2)})`
-                                                : ` (Outstanding: ₹${Number(studentFeeDetails.oneTimeFees.outstanding).toFixed(2)})`}
+                                                ? t("adj.optionExcess", { label: studentFeeDetails.oneTimeFees.label, amount: Number(studentFeeDetails.oneTimeFees.excess).toFixed(2) })
+                                                : t("adj.optionOutstanding", { label: studentFeeDetails.oneTimeFees.label, amount: Number(studentFeeDetails.oneTimeFees.outstanding).toFixed(2) })}
                                         </option>
                                     )}
                                     {(studentFeeDetails?.monthlyBreakdown || [])
                                         .filter((m: any) => adjType === 'REFUND' ? (m.excess ?? 0) > 0 : (m.outstanding ?? 0) > 0)
                                         .map((m: any) => (
                                             <option key={m.monthKey} value={m.monthKey}>
-                                                {m.monthName}
                                                 {adjType === 'REFUND'
-                                                    ? ` (Excess: ₹${Number(m.excess).toFixed(2)})`
-                                                    : ` (Outstanding: ₹${Number(m.outstanding).toFixed(2)})`}
+                                                    ? t("adj.optionExcess", { label: m.monthName, amount: Number(m.excess).toFixed(2) })
+                                                    : t("adj.optionOutstanding", { label: m.monthName, amount: Number(m.outstanding).toFixed(2) })}
                                             </option>
                                         ))
                                     }
@@ -1260,8 +1294,8 @@ export default function FeesDashboardPage() {
                                 return (
                                     <div>
                                         <label className="block text-sm font-medium text-gray-900 mb-1">
-                                            Amount (₹)
-                                            {maxAmt > 0 && <span className="ml-2 text-xs text-gray-500 font-normal">max ₹{maxAmt.toFixed(2)}</span>}
+                                            {t("adj.amount")}
+                                            {maxAmt > 0 && <span className="ml-2 text-xs text-gray-500 font-normal">{t("adj.max", { amount: maxAmt.toFixed(2) })}</span>}
                                         </label>
                                         <input
                                             type="number" step="0.01" min="0.01" max={maxAmt > 0 ? maxAmt : undefined}
@@ -1269,19 +1303,19 @@ export default function FeesDashboardPage() {
                                             onChange={(e) => setAdjAmount(e.target.value)}
                                             required
                                             className="bg-gray-50 border-2 border-gray-200 rounded-lg block w-full p-2.5 focus:ring-brand/40 focus:border-brand font-bold text-lg"
-                                            placeholder="Enter amount"
+                                            placeholder={t("adj.enterAmount")}
                                         />
                                     </div>
                                 );
                             })()}
                             {adjType === 'REFUND' && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-900 mb-1">Refund Method</label>
+                                    <label className="block text-sm font-medium text-gray-900 mb-1">{t("adj.refundMethod")}</label>
                                     <div className="grid grid-cols-3 gap-2">
                                         {PAYMENT_METHODS.map(method => (
                                             <label key={method} className={`flex items-center justify-center p-2.5 border rounded-lg cursor-pointer transition-all text-xs font-medium ${adjPaymentMethod === method ? 'border-orange-500 bg-orange-50 text-orange-700 ring-1 ring-orange-500' : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-600'}`}>
                                                 <input type="radio" name="adjPaymentMethod" value={method} checked={adjPaymentMethod === method} onChange={(e) => setAdjPaymentMethod(e.target.value)} className="sr-only" />
-                                                {method}
+                                                {paymentMethodLabel(method)}
                                             </label>
                                         ))}
                                     </div>
@@ -1289,7 +1323,7 @@ export default function FeesDashboardPage() {
                             )}
                             <div>
                                 <label className="block text-sm font-medium text-gray-900 mb-1">
-                                    Reason
+                                    {t("adj.reason")}
                                     {adjType === 'WAIVE_OFF' && <span className="text-red-500 ml-1">*</span>}
                                 </label>
                                 <input
@@ -1298,15 +1332,15 @@ export default function FeesDashboardPage() {
                                     onChange={(e) => setAdjReason(e.target.value)}
                                     required={adjType === 'WAIVE_OFF'}
                                     className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-brand/40 focus:border-brand"
-                                    placeholder={adjType === 'REFUND' ? 'e.g. Overpayment, Error correction...' : 'Reason for waiving dues (required)'}
+                                    placeholder={adjType === 'REFUND' ? t("adj.refundReasonPlaceholder") : t("adj.waiveReasonPlaceholder")}
                                 />
                             </div>
                             {/* Permitted By — required for WAIVE_OFF */}
                             {adjType === 'WAIVE_OFF' && (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-900 mb-1">
-                                        Permitted By <span className="text-red-500">*</span>
-                                        <span className="ml-1 text-xs text-gray-400 font-normal">Search staff by name</span>
+                                        {t("adj.permittedBy")} <span className="text-red-500">*</span>
+                                        <span className="ml-1 text-xs text-gray-400 font-normal">{t("adj.searchStaff")}</span>
                                     </label>
                                     {adjPermittedByUserId ? (
                                         <div className="flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2">
@@ -1323,7 +1357,7 @@ export default function FeesDashboardPage() {
                                                 value={adjPermittedBySearch}
                                                 onChange={(e) => searchPermittedBy(e.target.value)}
                                                 className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-purple-500 focus:border-purple-500"
-                                                placeholder="Type name to search..."
+                                                placeholder={t("adj.typeName")}
                                                 autoComplete="off"
                                             />
                                             {adjPermittedByResults.length > 0 && (
@@ -1356,10 +1390,10 @@ export default function FeesDashboardPage() {
                             )}
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" disabled={submittingAdj || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className={`flex-1 text-white py-2.5 rounded-lg font-bold transition-colors disabled:opacity-50 ${adjType === 'REFUND' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-purple-600 hover:bg-purple-700'}`}>
-                                    {submittingAdj ? 'Processing...' : adjType === 'REFUND' ? 'Confirm Refund' : 'Confirm Waive Off'}
+                                    {submittingAdj ? t("adj.processing") : adjType === 'REFUND' ? t("adj.confirmRefund") : t("adj.confirmWaive")}
                                 </button>
                                 <button type="button" onClick={() => setAdjModalOpen(false)} className="px-5 py-2.5 bg-gray-100 text-gray-700 border border-gray-200 rounded-lg font-medium hover:bg-gray-200 transition-colors">
-                                    Cancel
+                                    {tc("action.cancel")}
                                 </button>
                             </div>
                         </form>
@@ -1380,7 +1414,7 @@ export default function FeesDashboardPage() {
                             }`}
                         >
                             <Settings className="w-4 h-4" />
-                            Fee Setup (Admin)
+                            {t("tabs.setup")}
                         </button>
                     )}
                     {rbac.canConfigureFees && (
@@ -1393,7 +1427,7 @@ export default function FeesDashboardPage() {
                             }`}
                         >
                             <Layers className="w-4 h-4" />
-                            Manage Structures
+                            {t("tabs.structures")}
                         </button>
                     )}
                     <button
@@ -1405,7 +1439,7 @@ export default function FeesDashboardPage() {
                         }`}
                     >
                         <Wallet className="w-4 h-4" />
-                        Fee Collection
+                        {t("tabs.collection")}
                     </button>
                     <button
                         onClick={() => setActiveTab('APPLY_DISCOUNTS')}
@@ -1416,7 +1450,7 @@ export default function FeesDashboardPage() {
                         }`}
                     >
                         <BadgePercent className="w-4 h-4" />
-                        Apply Fee Discounts
+                        {t("tabs.applyDiscounts")}
                     </button>
                     <button
                         onClick={() => setActiveTab('APPLY_OTHER_FEE')}
@@ -1427,7 +1461,7 @@ export default function FeesDashboardPage() {
                         }`}
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                        Apply Other Fee
+                        {t("tabs.applyOtherFee")}
                     </button>
                     <button
                         onClick={() => setActiveTab('FEE_DETAILS')}
@@ -1438,13 +1472,13 @@ export default function FeesDashboardPage() {
                         }`}
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-                        Fee Details
+                        {t("tabs.feeDetails")}
                     </button>
                 </div>
                 <div className="w-full md:w-auto">
                     <Link href="/dashboard/fees/reports" className="w-full md:w-auto px-4 py-2 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors shadow-sm inline-flex items-center justify-center gap-2">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                        View Fee Reports
+                        {t("tabs.viewReports")}
                     </Link>
                 </div>
             </div>
@@ -1454,10 +1488,10 @@ export default function FeesDashboardPage() {
                 <div className="space-y-6 no-print animate-in fade-in duration-300">
                     {/* Global Configuration */}
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                        <h2 className="text-xl font-bold mb-4 text-slate-800">Global Configuration</h2>
+                        <h2 className="text-xl font-bold mb-4 text-slate-800">{t("setup.globalConfig")}</h2>
                         <form onSubmit={handleSaveSettings} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
                             <div>
-                                <label className="block mb-2 text-sm font-medium text-gray-900">Monthly Due Date (Day)</label>
+                                <label className="block mb-2 text-sm font-medium text-gray-900">{t("setup.dueDay")}</label>
                                 <NumberInput
                                     min={1} max={28}
                                     value={globalSettings.feeDueDate}
@@ -1466,10 +1500,10 @@ export default function FeesDashboardPage() {
                                     className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand"
                                     required
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Day of the month (e.g., 15th)</p>
+                                <p className="text-xs text-gray-500 mt-1">{t("setup.dueDayHint")}</p>
                             </div>
                             <div>
-                                <label className="block mb-2 text-sm font-medium text-gray-900">Late Fee Per Day ($)</label>
+                                <label className="block mb-2 text-sm font-medium text-gray-900">{t("setup.lateFeePerDay")}</label>
                                 <NumberInput
                                     step="0.01"
                                     value={globalSettings.lateFeePerDay}
@@ -1478,11 +1512,11 @@ export default function FeesDashboardPage() {
                                     className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand"
                                     required
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Applied daily if overdue</p>
+                                <p className="text-xs text-gray-500 mt-1">{t("setup.lateFeeHint")}</p>
                             </div>
                             <div>
                                 <button type="submit" disabled={savingSettings || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-white bg-green-600 hover:bg-green-700 transition-colors py-2.5 px-6 rounded text-sm w-full font-medium disabled:opacity-50">
-                                    {savingSettings ? 'Saving...' : 'Save Configuration'}
+                                    {savingSettings ? tc("action.saving") : t("setup.saveConfig")}
                                 </button>
                             </div>
                         </form>
@@ -1491,34 +1525,34 @@ export default function FeesDashboardPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Create Category */}
                         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                            <h2 className="text-xl font-bold mb-4 text-slate-800">1. Add Fee Category</h2>
+                            <h2 className="text-xl font-bold mb-4 text-slate-800">{t("setup.addCategory")}</h2>
                             <form onSubmit={handleCreateCategory}>
                                 <div className="mb-4">
-                                    <label className="block mb-2 text-sm font-medium text-gray-900">Category Name</label>
-                                    <input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="e.g. Curriculum Activity" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required />
+                                    <label className="block mb-2 text-sm font-medium text-gray-900">{t("setup.categoryName")}</label>
+                                    <input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder={t("setup.categoryNamePlaceholder")} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required />
                                 </div>
                                 <div className="mb-4">
-                                    <label className="block mb-2 text-sm font-medium text-gray-900">Description</label>
+                                    <label className="block mb-2 text-sm font-medium text-gray-900">{tc("field.description")}</label>
                                     <input type="text" value={newCategoryDesc} onChange={(e) => setNewCategoryDesc(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" />
                                 </div>
                                 <div className="mb-4">
-                                    <label className="block mb-2 text-sm font-medium text-gray-900">Type</label>
+                                    <label className="block mb-2 text-sm font-medium text-gray-900">{tc("field.type")}</label>
                                     <select value={newCategoryType} onChange={(e) => setNewCategoryType(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required>
-                                        <option value="REGULAR">Regular (class-wide fee)</option>
-                                        <option value="ADD_ON">Add-On (individual student fee)</option>
+                                        <option value="REGULAR">{t("setup.typeRegular")}</option>
+                                        <option value="ADD_ON">{t("setup.typeAddOn")}</option>
                                     </select>
                                 </div>
-                                <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-white bg-indigo-600 hover:bg-indigo-700 transition-colors py-2 px-4 rounded text-sm w-full font-medium disabled:opacity-50 disabled:cursor-not-allowed">Create Category</button>
+                                <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-white bg-indigo-600 hover:bg-indigo-700 transition-colors py-2 px-4 rounded text-sm w-full font-medium disabled:opacity-50 disabled:cursor-not-allowed">{t("setup.createCategory")}</button>
                             </form>
 
                             {/* Category Edit Modal */}
                             {editingCategory && (
                                 <div className="fixed inset-0 z-60 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm">
                                     <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md animate-in zoom-in-95 duration-200">
-                                        <h3 className="text-lg font-bold mb-4 text-slate-800">Edit Fee Category</h3>
+                                        <h3 className="text-lg font-bold mb-4 text-slate-800">{t("setup.editCategory")}</h3>
                                         <form onSubmit={handleUpdateCategory}>
                                             <div className="mb-4">
-                                                <label className="block mb-2 text-sm font-medium text-gray-900">Category Name</label>
+                                                <label className="block mb-2 text-sm font-medium text-gray-900">{t("setup.categoryName")}</label>
                                                 <input
                                                     type="text"
                                                     value={editCategoryName}
@@ -1528,7 +1562,7 @@ export default function FeesDashboardPage() {
                                                 />
                                             </div>
                                             <div className="mb-4">
-                                                <label className="block mb-2 text-sm font-medium text-gray-900">Description</label>
+                                                <label className="block mb-2 text-sm font-medium text-gray-900">{tc("field.description")}</label>
                                                 <input
                                                     type="text"
                                                     value={editCategoryDesc}
@@ -1537,15 +1571,15 @@ export default function FeesDashboardPage() {
                                                 />
                                             </div>
                                             <div className="mb-6">
-                                                <label className="block mb-2 text-sm font-medium text-gray-900">Type</label>
+                                                <label className="block mb-2 text-sm font-medium text-gray-900">{tc("field.type")}</label>
                                                 <select
                                                     value={editCategoryType}
                                                     onChange={(e) => setEditCategoryType(e.target.value)}
                                                     className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand"
                                                     required
                                                 >
-                                                    <option value="REGULAR">Regular (class-wide fee)</option>
-                                                    <option value="ADD_ON">Add-On (individual student fee)</option>
+                                                    <option value="REGULAR">{t("setup.typeRegular")}</option>
+                                                    <option value="ADD_ON">{t("setup.typeAddOn")}</option>
                                                 </select>
                                             </div>
                                             <div className="flex gap-3 justify-end">
@@ -1554,7 +1588,7 @@ export default function FeesDashboardPage() {
                                                     onClick={() => setEditingCategory(null)}
                                                     className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                                                 >
-                                                    Cancel
+                                                    {tc("action.cancel")}
                                                 </button>
                                                 <button
                                                     type="submit"
@@ -1562,7 +1596,7 @@ export default function FeesDashboardPage() {
                                                     title={readOnly ? READ_ONLY_TITLE : undefined}
                                                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
-                                                    Save Changes
+                                                    {t("setup.saveChanges")}
                                                 </button>
                                             </div>
                                         </form>
@@ -1570,15 +1604,15 @@ export default function FeesDashboardPage() {
                                 </div>
                             )}
 
-                            <h3 className="text-sm font-bold mt-6 mb-2 text-slate-800">Existing Categories:</h3>
+                            <h3 className="text-sm font-bold mt-6 mb-2 text-slate-800">{t("setup.existingCategories")}</h3>
                             <div className="relative border border-gray-200 rounded-lg max-h-100">
                                 <table className="w-full text-sm text-left text-gray-500">
                                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10">
                                         <tr>
-                                            <th className="px-4 py-2">Name</th>
-                                            <th className="px-4 py-2">Type</th>
-                                            <th className="px-4 py-2">Status</th>
-                                            <th className="px-4 py-2 text-right">Actions</th>
+                                            <th className="px-4 py-2">{tc("field.name")}</th>
+                                            <th className="px-4 py-2">{tc("field.type")}</th>
+                                            <th className="px-4 py-2">{tc("field.status")}</th>
+                                            <th className="px-4 py-2 text-right">{tc("action.actions")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1590,12 +1624,12 @@ export default function FeesDashboardPage() {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className={`px-2 py-1 rounded text-xs font-semibold ${c.type === 'ADD_ON' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
-                                                        {c.type === 'ADD_ON' ? 'Add-On' : 'Regular'}
+                                                        {c.type === 'ADD_ON' ? t("setup.addOn") : t("setup.regular")}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className={`px-2 py-1 rounded text-xs font-semibold ${c.isActive !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                        {c.isActive !== false ? 'Active' : 'Inactive'}
+                                                        {c.isActive !== false ? tc("status.active") : tc("status.inactive")}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
@@ -1613,11 +1647,11 @@ export default function FeesDashboardPage() {
                                                                 style={{ top: dropdownPosition.top, left: dropdownPosition.left }}
                                                             >
                                                                 <div className="py-1">
-                                                                    <button type="button" onClick={(e) => { e.stopPropagation(); setEditingCategory(c); setEditCategoryName(c.name); setEditCategoryDesc(c.description || ""); setEditCategoryType(c.type || "REGULAR"); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Edit</button>
+                                                                    <button type="button" onClick={(e) => { e.stopPropagation(); setEditingCategory(c); setEditCategoryName(c.name); setEditCategoryDesc(c.description || ""); setEditCategoryType(c.type || "REGULAR"); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{tc("action.edit")}</button>
                                                                     <button type="button" onClick={(e) => { e.stopPropagation(); handleToggleCategoryStatus(c.id, c.isActive !== false); setOpenDropdownId(null); }} className={`block w-full text-left px-4 py-2 text-sm ${c.isActive !== false ? 'text-orange-600' : 'text-green-600'} hover:bg-gray-100`}>
-                                                                        {c.isActive !== false ? 'Deactivate' : 'Activate'}
+                                                                        {c.isActive !== false ? t("setup.deactivate") : t("setup.activate")}
                                                                     </button>
-                                                                    <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteCategory(c.id); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Delete</button>
+                                                                    <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteCategory(c.id); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">{tc("action.delete")}</button>
                                                                 </div>
                                                             </div>
                                                         )}
@@ -1625,7 +1659,7 @@ export default function FeesDashboardPage() {
                                                 </td>
                                             </tr>
                                         ))}
-                                        {categories.length === 0 && <tr><td colSpan={4} className="px-4 py-4 text-center">No categories found.</td></tr>}
+                                        {categories.length === 0 && <tr><td colSpan={4} className="px-4 py-4 text-center">{t("setup.noCategories")}</td></tr>}
                                     </tbody>
                                 </table>
                             </div>
@@ -1633,44 +1667,44 @@ export default function FeesDashboardPage() {
 
                         {/* Assign Structure */}
                         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                            <h2 className="text-xl font-bold mb-4 text-slate-800">2. Assign Fee Structure to Class</h2>
+                            <h2 className="text-xl font-bold mb-4 text-slate-800">{t("setup.assignStructure")}</h2>
                             <form onSubmit={handleCreateStructure}>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                     <div>
-                                        <label className="block mb-2 text-sm font-medium text-gray-900">Class</label>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">{tc("field.class")}</label>
                                         <select value={formClassId} onChange={(e) => setFormClassId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required>
-                                            <option value="">Select</option>
+                                            <option value="">{t("setup.select")}</option>
                                             {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block mb-2 text-sm font-medium text-gray-900">Category</label>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">{t("setup.category")}</label>
                                         <select value={formCategoryId} onChange={(e) => setFormCategoryId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required>
-                                            <option value="">Select</option>
+                                            <option value="">{t("setup.select")}</option>
                                             {regularCategories.filter(c => c.isActive !== false).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                         </select>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                                     <div>
-                                        <label className="block mb-2 text-sm font-medium text-gray-900">Amount (₹)</label>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">{t("adj.amount")}</label>
                                         <input type="number" step="0.01" value={formAmount} onChange={(e) => setFormAmount(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required />
                                     </div>
                                     <div>
-                                        <label className="block mb-2 text-sm font-medium text-gray-900">Frequency</label>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">{t("setup.frequency")}</label>
                                         <select value={formFrequency} onChange={(e) => setFormFrequency(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required>
-                                            <option value="MONTHLY">Monthly</option>
-                                            <option value="ONE_TIME">One Time</option>
-                                            <option value="ANNUALLY">Annually</option>
-                                            <option value="QUARTERLY">Quarterly</option>
-                                            <option value="HALF_YEARLY">Half Yearly</option>
+                                            <option value="MONTHLY">{t("frequency.MONTHLY")}</option>
+                                            <option value="ONE_TIME">{t("frequency.ONE_TIME")}</option>
+                                            <option value="ANNUALLY">{t("frequency.ANNUALLY")}</option>
+                                            <option value="QUARTERLY">{t("frequency.QUARTERLY")}</option>
+                                            <option value="HALF_YEARLY">{t("frequency.HALF_YEARLY")}</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block mb-2 text-sm font-medium text-gray-900">Academic Year</label>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">{tc("field.academicYear")}</label>
                                         <select value={formAcademicYear} onChange={(e) => setFormAcademicYear(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required>
-                                            <option value="">Select Year</option>
-                                            {sessions.map((s: any) => <option key={s.id} value={s.name}>{s.name} {s.isActive ? '(Current)' : ''}</option>)}
+                                            <option value="">{t("setup.selectYear")}</option>
+                                            {sessions.map((s: any) => <option key={s.id} value={s.name}>{s.name} {s.isActive ? t("setup.current") : ''}</option>)}
                                         </select>
                                     </div>
                                 </div>
@@ -1679,8 +1713,8 @@ export default function FeesDashboardPage() {
                                 {discounts.filter(d => d.isActive !== false).length > 0 && (
                                     <div className="mb-4">
                                         <label className="block mb-1 text-sm font-medium text-gray-900">
-                                            Applicable Discounts
-                                            <span className="ml-2 text-xs font-normal text-gray-500">(Only checked discounts will apply to this fee)</span>
+                                            {t("setup.applicableDiscounts")}
+                                            <span className="ml-2 text-xs font-normal text-gray-500">{t("setup.applicableDiscountsHint")}</span>
                                         </label>
                                         <div className="border border-gray-200 rounded-lg p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                                             {discounts.filter(d => d.isActive !== false).map(d => (
@@ -1712,55 +1746,55 @@ export default function FeesDashboardPage() {
                                             checked={formIsLateFeeApplicable}
                                             onChange={(e) => setFormIsLateFeeApplicable(e.target.checked)}
                                         />
-                                        <span className="text-sm font-medium text-gray-900">Apply Late Fee</span>
-                                        <span className="text-xs text-gray-500">(Uncheck to disable late fee penalty for this fee category)</span>
+                                        <span className="text-sm font-medium text-gray-900">{t("setup.applyLateFee")}</span>
+                                        <span className="text-xs text-gray-500">{t("setup.applyLateFeeHint")}</span>
                                     </label>
                                 </div>
 
-                                <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-white bg-indigo-600 hover:bg-indigo-700 transition-colors py-2 px-4 rounded text-sm w-full font-medium disabled:opacity-50 disabled:cursor-not-allowed">Define Structure</button>
+                                <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-white bg-indigo-600 hover:bg-indigo-700 transition-colors py-2 px-4 rounded text-sm w-full font-medium disabled:opacity-50 disabled:cursor-not-allowed">{t("setup.defineStructure")}</button>
                             </form>
                         </div>
                     </div>
 
                     {/* Manage Discounts */}
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                        <h2 className="text-xl font-bold mb-4 text-slate-800">3. Manage Discount Categories</h2>
+                        <h2 className="text-xl font-bold mb-4 text-slate-800">{t("setup.manageDiscounts")}</h2>
                         <form onSubmit={handleCreateDiscount} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-end mb-6">
                             <div className="col-span-2">
-                                <label className="block mb-2 text-sm font-medium text-gray-900">Discount Name</label>
-                                <input type="text" value={newDiscountName} onChange={(e) => setNewDiscountName(e.target.value)} placeholder="e.g. Sibling Discount" className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required />
+                                <label className="block mb-2 text-sm font-medium text-gray-900">{t("setup.discountName")}</label>
+                                <input type="text" value={newDiscountName} onChange={(e) => setNewDiscountName(e.target.value)} placeholder={t("setup.discountNamePlaceholder")} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required />
                             </div>
                             <div className="col-span-1">
-                                <label className="block mb-2 text-sm font-medium text-gray-900">Value Type</label>
+                                <label className="block mb-2 text-sm font-medium text-gray-900">{t("setup.valueType")}</label>
                                 <select value={newDiscountType} onChange={(e) => setNewDiscountType(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required>
-                                    <option value="FLAT">Flat Amount ($)</option>
-                                    <option value="PERCENTAGE">Percentage (%)</option>
+                                    <option value="FLAT">{t("setup.flatAmount")}</option>
+                                    <option value="PERCENTAGE">{t("setup.percentage")}</option>
                                 </select>
                             </div>
                             <div className="col-span-1">
-                                <label className="block mb-2 text-sm font-medium text-gray-900">Value</label>
+                                <label className="block mb-2 text-sm font-medium text-gray-900">{t("setup.value")}</label>
                                 <input type="number" step="0.01" value={newDiscountValue} onChange={(e) => setNewDiscountValue(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required />
                             </div>
                             <div className="col-span-1">
-                                <label className="block mb-2 text-sm font-medium text-gray-900">Application</label>
+                                <label className="block mb-2 text-sm font-medium text-gray-900">{t("setup.application")}</label>
                                 <select value={newDiscountAppType} onChange={(e) => setNewDiscountAppType(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" required>
-                                    <option value="MANUAL">Manual</option>
-                                    <option value="AUTO">Auto</option>
+                                    <option value="MANUAL">{t("setup.manual")}</option>
+                                    <option value="AUTO">{t("setup.auto")}</option>
                                 </select>
                             </div>
                             {newDiscountAppType === 'AUTO' && (
                                 <div className="col-span-1">
-                                    <label className="block mb-2 text-sm font-medium text-gray-900">Logic Ref</label>
+                                    <label className="block mb-2 text-sm font-medium text-gray-900">{t("setup.logicRef")}</label>
                                     <select value={newDiscountLogicRef} onChange={(e) => setNewDiscountLogicRef(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand">
-                                        <option value="">(None)</option>
-                                        <option value="SIBLING">Sibling</option>
-                                        <option value="GIRL">Girl Student</option>
-                                        <option value="EWS">EWS Category</option>
+                                        <option value="">{t("setup.none")}</option>
+                                        <option value="SIBLING">{t("setup.logic.SIBLING")}</option>
+                                        <option value="GIRL">{t("setup.logic.GIRL")}</option>
+                                        <option value="EWS">{t("setup.logic.EWS")}</option>
                                     </select>
                                 </div>
                             )}
                             <div className="col-span-6 md:col-span-1">
-                                <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-white bg-indigo-600 hover:bg-indigo-700 transition-colors py-2.5 px-6 rounded text-sm w-full font-medium disabled:opacity-50 disabled:cursor-not-allowed">Create</button>
+                                <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="text-white bg-indigo-600 hover:bg-indigo-700 transition-colors py-2.5 px-6 rounded text-sm w-full font-medium disabled:opacity-50 disabled:cursor-not-allowed">{tc("action.create")}</button>
                             </div>
                         </form>
 
@@ -1768,46 +1802,46 @@ export default function FeesDashboardPage() {
                         {editingDiscount && (
                             <div className="fixed inset-0 z-60 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm">
                                 <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl animate-in zoom-in-95 duration-200">
-                                    <h3 className="text-lg font-bold mb-4 text-slate-800">Edit Discount Category</h3>
+                                    <h3 className="text-lg font-bold mb-4 text-slate-800">{t("setup.editDiscount")}</h3>
                                     <form onSubmit={handleUpdateDiscount}>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                             <div>
-                                                <label className="block mb-2 text-sm font-medium text-gray-900">Discount Name</label>
+                                                <label className="block mb-2 text-sm font-medium text-gray-900">{t("setup.discountName")}</label>
                                                 <input type="text" value={editDiscountName} onChange={(e) => setEditDiscountName(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required />
                                             </div>
                                             <div>
-                                                <label className="block mb-2 text-sm font-medium text-gray-900">Value Type</label>
+                                                <label className="block mb-2 text-sm font-medium text-gray-900">{t("setup.valueType")}</label>
                                                 <select value={editDiscountType} onChange={(e) => setEditDiscountType(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required>
-                                                    <option value="FLAT">Flat Amount ($)</option>
-                                                    <option value="PERCENTAGE">Percentage (%)</option>
+                                                    <option value="FLAT">{t("setup.flatAmount")}</option>
+                                                    <option value="PERCENTAGE">{t("setup.percentage")}</option>
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className="block mb-2 text-sm font-medium text-gray-900">Value</label>
+                                                <label className="block mb-2 text-sm font-medium text-gray-900">{t("setup.value")}</label>
                                                 <input type="number" step="0.01" value={editDiscountValue} onChange={(e) => setEditDiscountValue(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required />
                                             </div>
                                             <div>
-                                                <label className="block mb-2 text-sm font-medium text-gray-900">Application</label>
+                                                <label className="block mb-2 text-sm font-medium text-gray-900">{t("setup.application")}</label>
                                                 <select value={editDiscountAppType} onChange={(e) => setEditDiscountAppType(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required>
-                                                    <option value="MANUAL">Manual</option>
-                                                    <option value="AUTO">Auto</option>
+                                                    <option value="MANUAL">{t("setup.manual")}</option>
+                                                    <option value="AUTO">{t("setup.auto")}</option>
                                                 </select>
                                             </div>
                                             {editDiscountAppType === 'AUTO' && (
                                                 <div>
-                                                    <label className="block mb-2 text-sm font-medium text-gray-900">Logic Ref</label>
+                                                    <label className="block mb-2 text-sm font-medium text-gray-900">{t("setup.logicRef")}</label>
                                                     <select value={editDiscountLogicRef} onChange={(e) => setEditDiscountLogicRef(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
-                                                        <option value="">(None)</option>
-                                                        <option value="SIBLING">Sibling</option>
-                                                        <option value="GIRL">Girl Student</option>
-                                                        <option value="EWS">EWS Category</option>
+                                                        <option value="">{t("setup.none")}</option>
+                                                        <option value="SIBLING">{t("setup.logic.SIBLING")}</option>
+                                                        <option value="GIRL">{t("setup.logic.GIRL")}</option>
+                                                        <option value="EWS">{t("setup.logic.EWS")}</option>
                                                     </select>
                                                 </div>
                                             )}
                                         </div>
                                         <div className="flex gap-3 justify-end mt-6">
-                                            <button type="button" onClick={() => setEditingDiscount(null)} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Cancel</button>
-                                            <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">Save Changes</button>
+                                            <button type="button" onClick={() => setEditingDiscount(null)} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">{tc("action.cancel")}</button>
+                                            <button type="submit" disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">{t("setup.saveChanges")}</button>
                                         </div>
                                     </form>
                                 </div>
@@ -1818,30 +1852,30 @@ export default function FeesDashboardPage() {
                             <table className="w-full text-sm text-left text-gray-500">
                                 <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                                     <tr>
-                                        <th className="px-6 py-3">Discount Name</th>
-                                        <th className="px-6 py-3">Type</th>
-                                        <th className="px-6 py-3">Value</th>
-                                        <th className="px-6 py-3">Status</th>
-                                        <th className="px-6 py-3">Auto Menu</th>
-                                        <th className="px-6 py-3">Actions</th>
+                                        <th className="px-6 py-3">{t("setup.discountName")}</th>
+                                        <th className="px-6 py-3">{tc("field.type")}</th>
+                                        <th className="px-6 py-3">{t("setup.value")}</th>
+                                        <th className="px-6 py-3">{tc("field.status")}</th>
+                                        <th className="px-6 py-3">{t("setup.autoMenu")}</th>
+                                        <th className="px-6 py-3">{tc("action.actions")}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {discounts.map(d => (
                                         <tr key={d.id} className={`bg-white border-b hover:bg-gray-50 ${d.isActive === false ? 'opacity-60' : ''}`}>
                                             <td className="px-6 py-4 font-medium text-gray-900">{d.name}</td>
-                                            <td className="px-6 py-4">{d.type}</td>
-                                            <td className="px-6 py-4">{d.type === 'PERCENTAGE' ? `${d.value}%` : `$${d.value}`}</td>
+                                            <td className="px-6 py-4">{d.type === 'PERCENTAGE' ? t("setup.percentage") : d.type === 'FLAT' ? t("setup.flatAmount") : d.type}</td>
+                                            <td className="px-6 py-4">{d.type === 'PERCENTAGE' ? `${d.value}%` : `₹${d.value}`}</td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-2 py-1 rounded text-xs font-semibold ${d.isActive !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                    {d.isActive !== false ? 'Active' : 'Inactive'}
+                                                    {d.isActive !== false ? tc("status.active") : tc("status.inactive")}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-2 py-1 rounded text-xs font-semibold ${d.applicationType === 'AUTO' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
-                                                    {d.applicationType || 'MANUAL'}
+                                                    {(d.applicationType || 'MANUAL') === 'AUTO' ? t("setup.auto") : (d.applicationType || 'MANUAL') === 'MANUAL' ? t("setup.manual") : d.applicationType}
                                                 </span>
-                                                {d.applicationType === 'AUTO' && <p className="text-xs text-gray-500 mt-1">Ref: {d.logicReference}</p>}
+                                                {d.applicationType === 'AUTO' && <p className="text-xs text-gray-500 mt-1">{t("setup.ref", { ref: d.logicReference })}</p>}
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="relative inline-block text-left">
@@ -1858,11 +1892,11 @@ export default function FeesDashboardPage() {
                                                             style={{ top: dropdownPosition.top, left: dropdownPosition.left }}
                                                         >
                                                             <div className="py-1">
-                                                                <button type="button" onClick={(e) => { e.stopPropagation(); setEditingDiscount(d); setEditDiscountName(d.name); setEditDiscountType(d.type); setEditDiscountValue(d.value.toString()); setEditDiscountAppType(d.applicationType); setEditDiscountLogicRef(d.logicReference || ""); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Edit</button>
+                                                                <button type="button" onClick={(e) => { e.stopPropagation(); setEditingDiscount(d); setEditDiscountName(d.name); setEditDiscountType(d.type); setEditDiscountValue(d.value.toString()); setEditDiscountAppType(d.applicationType); setEditDiscountLogicRef(d.logicReference || ""); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{tc("action.edit")}</button>
                                                                 <button type="button" onClick={(e) => { e.stopPropagation(); handleToggleDiscountStatus(d.id, d.isActive !== false); setOpenDropdownId(null); }} className={`block w-full text-left px-4 py-2 text-sm ${d.isActive !== false ? 'text-orange-600' : 'text-green-600'} hover:bg-gray-100`}>
-                                                                    {d.isActive !== false ? 'Deactivate' : 'Activate'}
+                                                                    {d.isActive !== false ? t("setup.deactivate") : t("setup.activate")}
                                                                 </button>
-                                                                <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteDiscount(d.id); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Delete</button>
+                                                                <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteDiscount(d.id); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">{tc("action.delete")}</button>
                                                             </div>
                                                         </div>
                                                     )}
@@ -1871,7 +1905,7 @@ export default function FeesDashboardPage() {
                                         </tr>
                                     ))}
                                     {discounts.length === 0 && (
-                                        <tr><td colSpan={6} className="px-6 py-4 text-center">No discounts found.</td></tr>
+                                        <tr><td colSpan={6} className="px-6 py-4 text-center">{t("setup.noDiscounts")}</td></tr>
                                     )}
                                 </tbody>
                             </table>
@@ -1885,14 +1919,14 @@ export default function FeesDashboardPage() {
                 <div className="space-y-6 no-print animate-in fade-in duration-300">
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold text-slate-800">Manage Fee Structures</h2>
+                            <h2 className="text-xl font-bold text-slate-800">{t("structures.title")}</h2>
                             <div className="w-64">
                                 <select
                                     value={structureSearchClassId}
                                     onChange={(e) => setStructureSearchClassId(e.target.value)}
                                     className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand"
                                 >
-                                    <option value="">Filter by Class (All)</option>
+                                    <option value="">{t("structures.filterClass")}</option>
                                     {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
                             </div>
@@ -1902,13 +1936,13 @@ export default function FeesDashboardPage() {
                             <table className="w-full text-sm text-left text-gray-500">
                                 <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                                     <tr>
-                                        <th scope="col" className="px-6 py-3">Class</th>
-                                        <th scope="col" className="px-6 py-3">Category</th>
-                                        <th scope="col" className="px-6 py-3">Amount (₹)</th>
-                                        <th scope="col" className="px-6 py-3">Frequency</th>
-                                        <th scope="col" className="px-6 py-3">Academic Year</th>
-                                        <th scope="col" className="px-6 py-3">Applicable Discounts</th>
-                                        <th scope="col" className="px-6 py-3 text-right">Actions</th>
+                                        <th scope="col" className="px-6 py-3">{tc("field.class")}</th>
+                                        <th scope="col" className="px-6 py-3">{t("setup.category")}</th>
+                                        <th scope="col" className="px-6 py-3">{t("adj.amount")}</th>
+                                        <th scope="col" className="px-6 py-3">{t("setup.frequency")}</th>
+                                        <th scope="col" className="px-6 py-3">{tc("field.academicYear")}</th>
+                                        <th scope="col" className="px-6 py-3">{t("setup.applicableDiscounts")}</th>
+                                        <th scope="col" className="px-6 py-3 text-right">{tc("action.actions")}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1919,7 +1953,7 @@ export default function FeesDashboardPage() {
                                                 <td className="px-6 py-4 font-medium text-gray-900">{s.class.name}</td>
                                                 <td className="px-6 py-4">{s.feeCategory.name}</td>
                                                 <td className="px-6 py-4">₹{s.amount}</td>
-                                                <td className="px-6 py-4">{s.frequency || 'MONTHLY'}</td>
+                                                <td className="px-6 py-4">{frequencyLabel(s.frequency || 'MONTHLY')}</td>
                                                 <td className="px-6 py-4">{s.academicYear}</td>
                                                 <td className="px-6 py-4">
                                                     {s.applicableDiscounts && s.applicableDiscounts.length > 0 ? (
@@ -1929,7 +1963,7 @@ export default function FeesDashboardPage() {
                                                             ))}
                                                         </div>
                                                     ) : (
-                                                        <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded-full">No Discounts</span>
+                                                        <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded-full">{t("structures.noDiscounts")}</span>
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
@@ -1947,8 +1981,8 @@ export default function FeesDashboardPage() {
                                                                 style={{ top: dropdownPosition.top, left: dropdownPosition.left }}
                                                             >
                                                                 <div className="py-1">
-                                                                    <button type="button" onClick={(e) => { e.stopPropagation(); setEditingStructure(s); setEditAmount(s.amount.toString()); setEditFrequency(s.frequency || 'MONTHLY'); setEditYear(s.academicYear); setEditApplicableDiscountIds((s.applicableDiscounts || []).map((d: any) => d.id)); setEditIsLateFeeApplicable(s.isLateFeeApplicable !== false); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Edit</button>
-                                                                    <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteStructure(s.id); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Delete</button>
+                                                                    <button type="button" onClick={(e) => { e.stopPropagation(); setEditingStructure(s); setEditAmount(s.amount.toString()); setEditFrequency(s.frequency || 'MONTHLY'); setEditYear(s.academicYear); setEditApplicableDiscountIds((s.applicableDiscounts || []).map((d: any) => d.id)); setEditIsLateFeeApplicable(s.isLateFeeApplicable !== false); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{tc("action.edit")}</button>
+                                                                    <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteStructure(s.id); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">{tc("action.delete")}</button>
                                                                 </div>
                                                             </div>
                                                         )}
@@ -1960,7 +1994,7 @@ export default function FeesDashboardPage() {
                                 </tbody>
                             </table>
                             {structures.filter(s => !structureSearchClassId || s.class.id.toString() === structureSearchClassId).length === 0 && (
-                                <div className="text-center py-8 text-gray-500">No fee structures found for this selection.</div>
+                                <div className="text-center py-8 text-gray-500">{t("structures.empty")}</div>
                             )}
                         </div>
                     </div>
@@ -1969,13 +2003,17 @@ export default function FeesDashboardPage() {
                     {editingStructure && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm">
                             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md animate-in zoom-in-95 duration-200">
-                                <h3 className="text-lg font-bold mb-4 text-slate-800">Edit Fee Structure</h3>
+                                <h3 className="text-lg font-bold mb-4 text-slate-800">{t("structures.edit")}</h3>
                                 <p className="text-sm text-gray-600 mb-4">
-                                    Updating <span className="font-semibold">{editingStructure.feeCategory.name}</span> for <span className="font-semibold">{editingStructure.class.name}</span>.
+                                    {t.rich("structures.updating", {
+                                        category: editingStructure.feeCategory.name,
+                                        class: editingStructure.class.name,
+                                        b: (chunks) => <span className="font-semibold">{chunks}</span>,
+                                    })}
                                 </p>
                                 <form onSubmit={handleUpdateStructure}>
                                     <div className="mb-4">
-                                        <label className="block mb-2 text-sm font-medium text-gray-900">Amount (₹)</label>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">{t("adj.amount")}</label>
                                         <input
                                             type="number" step="0.01"
                                             value={editAmount}
@@ -1985,30 +2023,30 @@ export default function FeesDashboardPage() {
                                         />
                                     </div>
                                     <div className="mb-4">
-                                        <label className="block mb-2 text-sm font-medium text-gray-900">Frequency</label>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">{t("setup.frequency")}</label>
                                         <select
                                             value={editFrequency}
                                             onChange={(e) => setEditFrequency(e.target.value)}
                                             className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand"
                                             required
                                         >
-                                            <option value="MONTHLY">Monthly</option>
-                                            <option value="ONE_TIME">One Time</option>
-                                            <option value="ANNUALLY">Annually</option>
-                                            <option value="QUARTERLY">Quarterly</option>
-                                            <option value="HALF_YEARLY">Half Yearly</option>
+                                            <option value="MONTHLY">{t("frequency.MONTHLY")}</option>
+                                            <option value="ONE_TIME">{t("frequency.ONE_TIME")}</option>
+                                            <option value="ANNUALLY">{t("frequency.ANNUALLY")}</option>
+                                            <option value="QUARTERLY">{t("frequency.QUARTERLY")}</option>
+                                            <option value="HALF_YEARLY">{t("frequency.HALF_YEARLY")}</option>
                                         </select>
                                     </div>
                                     <div className="mb-6">
-                                        <label className="block mb-2 text-sm font-medium text-gray-900">Academic Year</label>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">{tc("field.academicYear")}</label>
                                         <select
                                             value={editYear}
                                             onChange={(e) => setEditYear(e.target.value)}
                                             className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand"
                                             required
                                         >
-                                            <option value="">Select Year</option>
-                                            {sessions.map((s: any) => <option key={s.id} value={s.name}>{s.name} {s.isActive ? '(Current)' : ''}</option>)}
+                                            <option value="">{t("setup.selectYear")}</option>
+                                            {sessions.map((s: any) => <option key={s.id} value={s.name}>{s.name} {s.isActive ? t("setup.current") : ''}</option>)}
                                         </select>
                                     </div>
 
@@ -2016,8 +2054,8 @@ export default function FeesDashboardPage() {
                                     {discounts.filter(d => d.isActive !== false).length > 0 && (
                                         <div className="mb-6">
                                             <label className="block mb-1 text-sm font-medium text-gray-900">
-                                                Applicable Discounts
-                                                <span className="ml-2 text-xs font-normal text-gray-500">(Uncheck all = no restriction)</span>
+                                                {t("setup.applicableDiscounts")}
+                                                <span className="ml-2 text-xs font-normal text-gray-500">{t("structures.uncheckAllHint")}</span>
                                             </label>
                                             <div className="border border-gray-200 rounded-lg p-3 grid grid-cols-2 gap-2">
                                                 {discounts.filter(d => d.isActive !== false).map(d => (
@@ -2048,8 +2086,8 @@ export default function FeesDashboardPage() {
                                                 checked={editIsLateFeeApplicable}
                                                 onChange={(e) => setEditIsLateFeeApplicable(e.target.checked)}
                                             />
-                                            <span className="text-sm font-medium text-gray-900">Apply Late Fee</span>
-                                            <span className="text-xs text-gray-500">(Uncheck to disable late fee penalty for this fee category)</span>
+                                            <span className="text-sm font-medium text-gray-900">{t("setup.applyLateFee")}</span>
+                                            <span className="text-xs text-gray-500">{t("setup.applyLateFeeHint")}</span>
                                         </label>
                                     </div>
                                     <div className="flex gap-3 justify-end">
@@ -2058,7 +2096,7 @@ export default function FeesDashboardPage() {
                                             onClick={() => setEditingStructure(null)}
                                             className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                                         >
-                                            Cancel
+                                            {tc("action.cancel")}
                                         </button>
                                         <button
                                             type="submit"
@@ -2066,7 +2104,7 @@ export default function FeesDashboardPage() {
                                             title={readOnly ? READ_ONLY_TITLE : undefined}
                                             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            Save Changes
+                                            {t("setup.saveChanges")}
                                         </button>
                                     </div>
                                 </form>
@@ -2082,7 +2120,7 @@ export default function FeesDashboardPage() {
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 mb-6 relative z-20">
                         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                             <div className="w-full md:w-1/2">
-                                <label className="block mb-2 text-sm font-medium text-gray-900">Search Student by Name or Admission No.</label>
+                                <label className="block mb-2 text-sm font-medium text-gray-900">{t("collection.searchLabel")}</label>
                                 <input
                                     type="text"
                                     value={searchQuery}
@@ -2090,7 +2128,7 @@ export default function FeesDashboardPage() {
                                         setSearchQuery(e.target.value);
                                         if (selectedStudentId) setSelectedStudentId(""); // Clear selection if typing
                                     }}
-                                    placeholder="Search e.g., 'John' or admission no."
+                                    placeholder={t("collection.searchPlaceholder")}
                                     className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-3 transition-colors focus:ring-brand/40 focus:border-brand shadow-sm"
                                 />
 
@@ -2098,7 +2136,7 @@ export default function FeesDashboardPage() {
                                 {searchQuery && !selectedStudentId && (
                                     <ul className="absolute z-30 mt-1 w-full md:w-1/2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                                         {isSearchingCollection ? (
-                                            <li className="px-4 py-3 text-sm text-gray-500">Searching...</li>
+                                            <li className="px-4 py-3 text-sm text-gray-500">{t("collection.searching")}</li>
                                         ) : collectionSearchResults.length > 0 ? (
                                             collectionSearchResults.map(s => {
                                                 const enr = s.enrollments?.find((e: any) => e.status === 'ACTIVE') || s.enrollments?.[0];
@@ -2106,7 +2144,7 @@ export default function FeesDashboardPage() {
                                                 const sectionNameStr = enr?.section?.name || s.section?.name;
                                                 const classSection = [classNameStr, sectionNameStr].filter(Boolean).join(' - ');
                                                 const rollNo = enr?.rollNo;
-                                                const line2 = [s.admissionNumber ? `Adm# ${s.admissionNumber}` : null, classSection || null, rollNo ? `Roll ${rollNo}` : null].filter(Boolean).join(' · ');
+                                                const line2 = [s.admissionNumber ? t("collection.admNo", { number: s.admissionNumber }) : null, classSection || null, rollNo ? t("collection.roll", { roll: rollNo }) : null].filter(Boolean).join(' · ');
                                                 const parents = [s.fathersName, s.mothersName].filter(Boolean).join(' / ');
                                                 const line3 = [parents || null, s.mobile || null].filter(Boolean).join(' · ');
                                                 return (
@@ -2122,7 +2160,7 @@ export default function FeesDashboardPage() {
                                                 );
                                             })
                                         ) : (
-                                            <li className="px-4 py-3 text-sm text-gray-500">No students found matching your search.</li>
+                                            <li className="px-4 py-3 text-sm text-gray-500">{t("collection.noMatch")}</li>
                                         )}
                                     </ul>
                                 )}
@@ -2130,17 +2168,17 @@ export default function FeesDashboardPage() {
 
                             {/* Top Right: Collection Year Setting */}
                             <div className="w-full md:w-1/4">
-                                <label className="block mb-2 text-sm font-bold text-amber-700">Academic Year Filter</label>
+                                <label className="block mb-2 text-sm font-bold text-amber-700">{t("collection.yearFilter")}</label>
                                 <select
                                     value={collectionYear}
                                     onChange={(e) => setCollectionYear(e.target.value)}
                                     className="bg-amber-50 border border-amber-300 text-amber-900 text-sm font-semibold rounded-lg block w-full p-2.5 transition-colors focus:ring-amber-500 focus:border-amber-500 shadow-sm"
                                 >
                                     {sessions.map(s => (
-                                        <option key={s.id} value={s.name}>{s.name} {s.isActive ? '(Current)' : ''}</option>
+                                        <option key={s.id} value={s.name}>{s.name} {s.isActive ? t("setup.current") : ''}</option>
                                     ))}
                                 </select>
-                                <p className="text-xs text-amber-600 mt-1">Changes the dynamic fee ledger.</p>
+                                <p className="text-xs text-amber-600 mt-1">{t("collection.yearFilterHint")}</p>
                             </div>
                         </div>
                     </div>
@@ -2149,9 +2187,9 @@ export default function FeesDashboardPage() {
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in slide-in-from-bottom-2 duration-300 relative z-10">
                             {/* Left: Fee Period Grid */}
                             <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                                <h2 className="text-xl font-bold mb-4 text-slate-800">Fee Overview</h2>
-                                {loadingCollection && <div className="text-sm text-gray-500 animate-pulse">Loading fees...</div>}
-                                {!loadingCollection && !studentFeeDetails && <div className="text-sm text-gray-500 p-4 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-center h-32">Select a student to view fee details.</div>}
+                                <h2 className="text-xl font-bold mb-4 text-slate-800">{t("collection.overview")}</h2>
+                                {loadingCollection && <div className="text-sm text-gray-500 animate-pulse">{t("collection.loadingFees")}</div>}
+                                {!loadingCollection && !studentFeeDetails && <div className="text-sm text-gray-500 p-4 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-center h-32">{t("collection.selectStudent")}</div>}
 
                                 {studentFeeDetails && (
                                     <div className="space-y-4">
@@ -2164,7 +2202,7 @@ export default function FeesDashboardPage() {
                                             const hasHistory = (ot.payments?.length > 0) || (ot.adjustments?.length > 0);
                                             return (
                                                 <div>
-                                                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">One-Time & Annual Fees</p>
+                                                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">{t("collection.oneTimeFees")}</p>
                                                     <div
                                                         onClick={() => {
                                                             if (canPayOT) {
@@ -2209,7 +2247,7 @@ export default function FeesDashboardPage() {
                                                                     <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                                                                 )}
                                                                 <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded whitespace-nowrap ${ot.status === 'PAID' ? 'bg-green-100 text-green-800' : ot.status === 'PARTIAL' ? 'bg-yellow-100 text-yellow-800' : 'bg-purple-100 text-purple-800'}`}>
-                                                                    {ot.status}
+                                                                    {feeStatusLabel(ot.status)}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -2220,16 +2258,16 @@ export default function FeesDashboardPage() {
                                                                     <span>₹{c.amount}</span>
                                                                 </div>
                                                             ))}
-                                                            {ot.discount > 0 && <div className="flex justify-between text-green-600"><span>Disc:</span><span>-₹{Number(ot.discount).toFixed(2)}</span></div>}
+                                                            {ot.discount > 0 && <div className="flex justify-between text-green-600"><span>{t("collection.disc")}</span><span>-₹{Number(ot.discount).toFixed(2)}</span></div>}
                                                             {ot.totalPaid > 0 && (
                                                                 <div className="flex justify-between text-green-700 font-medium">
-                                                                    <span>Paid:</span>
+                                                                    <span>{t("collection.paid")}</span>
                                                                     <span>₹{Number(ot.totalPaid).toFixed(2)}</span>
                                                                 </div>
                                                             )}
                                                             <div className={`border-t border-slate-200 pt-1 mt-1 font-semibold leading-snug ${ot.outstanding > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                                                <span className="block text-[10px] font-medium opacity-80">{ot.outstanding > 0 ? 'Balance Due' : 'Balance'}</span>
-                                                                <span className="block">₹{Number(ot.outstanding).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                                                <span className="block text-[10px] font-medium opacity-80">{ot.outstanding > 0 ? t("collection.balanceDue") : t("collection.balance")}</span>
+                                                                <span className="block">₹{Number(ot.outstanding).toLocaleString(intl, { minimumFractionDigits: 2 })}</span>
                                                             </div>
                                                         </div>
                                                         {/* ── PARTIAL card action buttons (matching monthly fees behaviour) ── */}
@@ -2272,7 +2310,7 @@ export default function FeesDashboardPage() {
                                                                         className="col-span-2 text-[10px] text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded px-2 py-1 text-center transition-colors flex items-center justify-center gap-1"
                                                                     >
                                                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                                                                        View Receipt
+                                                                        {t("history.viewReceipt")}
                                                                     </button>
                                                                 )}
                                                                 {/* Collect Remaining */}
@@ -2286,7 +2324,7 @@ export default function FeesDashboardPage() {
                                                                         }}
                                                                         className="text-[10px] text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded px-2 py-1 text-center transition-colors"
                                                                     >
-                                                                        Collect ₹{Number(ot.outstanding).toFixed(0)}
+                                                                        {t("collection.collectAmount", { amount: Number(ot.outstanding).toFixed(0) })}
                                                                     </button>
                                                                 )}
                                                                 {/* Waive Off — admin only */}
@@ -2298,7 +2336,7 @@ export default function FeesDashboardPage() {
                                                                         }}
                                                                         className="text-[10px] text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded px-2 py-1 text-center transition-colors"
                                                                     >
-                                                                        Waive Off
+                                                                        {t("collection.waiveOff")}
                                                                     </button>
                                                                 )}
                                                                 {/* Revert Waive Off — admin only */}
@@ -2312,7 +2350,7 @@ export default function FeesDashboardPage() {
                                                                             }}
                                                                             className="col-span-2 text-[10px] text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded px-2 py-1 text-center transition-colors"
                                                                         >
-                                                                            ↩ Revert Last Waive Off
+                                                                            {t("collection.revertLastWaive")}
                                                                         </button>
                                                                     );
                                                                 })()}
@@ -2330,7 +2368,7 @@ export default function FeesDashboardPage() {
                                                                         }}
                                                                         className="w-full text-[10px] text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded px-2 py-1 text-center transition-colors"
                                                                     >
-                                                                        ↩ Revert Last Waive Off
+                                                                        {t("collection.revertLastWaive")}
                                                                     </button>
                                                                 </div>
                                                             );
@@ -2346,7 +2384,7 @@ export default function FeesDashboardPage() {
                                         })()}
                                         {/* Monthly Fee Calendar */}
                                         <div>
-                                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Monthly Fees</p>
+                                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">{t("collection.monthlyFees")}</p>
                                             <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3">
                                         {(studentFeeDetails.feePeriods ?? studentFeeDetails.monthlyBreakdown).map((period: any) => {
                                             // Support both feePeriods objects and legacy monthlyBreakdown objects
@@ -2433,7 +2471,7 @@ export default function FeesDashboardPage() {
                                                     {/* Period size badge for non-monthly periods */}
                                                     {periodSize > 1 && (
                                                         <div className="absolute -top-2 -left-2 bg-indigo-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide shadow-sm">
-                                                            {periodSize === 3 ? 'Q' : periodSize === 6 ? 'H' : 'A'}
+                                                            {periodSize === 3 ? t("collection.badgeQuarterly") : periodSize === 6 ? t("collection.badgeHalfYearly") : t("collection.badgeAnnual")}
                                                         </div>
                                                     )}
                                                     <div className="flex items-start gap-1 mb-2">
@@ -2447,7 +2485,7 @@ export default function FeesDashboardPage() {
                                                                     status === 'PARTIAL' ? 'bg-yellow-100 text-yellow-800' :
                                                                         'bg-slate-100 text-slate-800'
                                                                 }`}>
-                                                                {status}
+                                                                {feeStatusLabel(status)}
                                                             </span>
                                                         </div>
                                                     </div>
@@ -2455,14 +2493,14 @@ export default function FeesDashboardPage() {
                                                         {/* Previous credit from overpayment */}
                                                         {previousBalance > 0 && (
                                                             <div className="flex justify-between text-teal-600 font-medium">
-                                                                <span>Credit (prev):</span>
+                                                                <span>{t("collection.creditPrev")}</span>
                                                                 <span>₹{previousBalance.toFixed(2)}</span>
                                                             </div>
                                                         )}
                                                         {/* Previous deficit carry-forward from underpayment */}
                                                         {previousBalance < 0 && (
                                                             <div className="flex justify-between text-orange-600 font-medium">
-                                                                <span>Prev Unpaid:</span>
+                                                                <span>{t("collection.prevUnpaid")}</span>
                                                                 <span>+₹{Math.abs(previousBalance).toFixed(2)}</span>
                                                             </div>
                                                         )}
@@ -2493,31 +2531,31 @@ export default function FeesDashboardPage() {
                                                                             </div>
                                                                         ))
                                                                     ) : (
-                                                                        <div className="flex justify-between"><span>Base:</span> <span>₹{pBase}</span></div>
+                                                                        <div className="flex justify-between"><span>{t("collection.base")}</span> <span>₹{pBase}</span></div>
                                                                     )}
-                                                                    {pDisc > 0 && <div className="flex justify-between text-green-600"><span>Disc:</span> <span>-₹{pDisc}</span></div>}
-                                                                    {pLate > 0 && <div className="flex justify-between text-red-600"><span>Late Fee:</span> <span>+₹{pLate}</span></div>}
+                                                                    {pDisc > 0 && <div className="flex justify-between text-green-600"><span>{t("collection.disc")}</span> <span>-₹{pDisc}</span></div>}
+                                                                    {pLate > 0 && <div className="flex justify-between text-red-600"><span>{t("collection.lateFee")}</span> <span>+₹{pLate}</span></div>}
                                                                     {periodTotalPaid > 0 && (
                                                                         <div className="flex justify-between text-green-700 font-medium">
-                                                                            <span>Paid:</span>
+                                                                            <span>{t("collection.paid")}</span>
                                                                             <span>₹{Number(periodTotalPaid).toFixed(2)}</span>
                                                                         </div>
                                                                     )}
                                                                     <div className="border-t border-slate-200 pt-1 mt-1 space-y-0.5">
                                                                         {excess > 0 && (
                                                                             <div className="flex justify-between font-semibold text-green-700">
-                                                                                <span>Excess Paid:</span>
+                                                                                <span>{t("history.excessPaid")}</span>
                                                                                 <span>₹{Number(excess).toFixed(2)}</span>
                                                                             </div>
                                                                         )}
                                                                         {outstanding > 0 ? (
                                                                             <div className="font-semibold text-red-600 leading-snug">
-                                                                                <span className="block text-[10px] font-medium opacity-80">Balance Due</span>
-                                                                                <span className="block">₹{Number(outstanding).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                                                                <span className="block text-[10px] font-medium opacity-80">{t("collection.balanceDue")}</span>
+                                                                                <span className="block">₹{Number(outstanding).toLocaleString(intl, { minimumFractionDigits: 2 })}</span>
                                                                             </div>
                                                                         ) : (excess === 0 && status !== 'UNPAID') ? (
                                                                             <div className="flex justify-between font-semibold text-green-600">
-                                                                                <span>Balance:</span>
+                                                                                <span>{t("history.balance")}</span>
                                                                                 <span>₹0.00</span>
                                                                             </div>
                                                                         ) : null}
@@ -2568,7 +2606,7 @@ export default function FeesDashboardPage() {
                                                                     className="col-span-2 text-[10px] text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded px-2 py-1 text-center transition-colors flex items-center justify-center gap-1"
                                                                 >
                                                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                                                                    View Receipt
+                                                                    {t("history.viewReceipt")}
                                                                 </button>
                                                             )}
                                                             {/* Collect Remaining */}
@@ -2586,7 +2624,7 @@ export default function FeesDashboardPage() {
                                                                     }}
                                                                     className="text-[10px] text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded px-2 py-1 text-center transition-colors"
                                                                 >
-                                                                    Collect ₹{Number(outstanding).toFixed(0)}
+                                                                    {t("collection.collectAmount", { amount: Number(outstanding).toFixed(0) })}
                                                                 </button>
                                                             )}
                                                             {/* Waive Off — admin only */}
@@ -2598,7 +2636,7 @@ export default function FeesDashboardPage() {
                                                                     }}
                                                                     className="text-[10px] text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded px-2 py-1 text-center transition-colors"
                                                                 >
-                                                                    Waive Off
+                                                                    {t("collection.waiveOff")}
                                                                 </button>
                                                             )}
                                                             {/* Revert Waive Off — admin only, shown when prior waive-offs exist */}
@@ -2610,7 +2648,7 @@ export default function FeesDashboardPage() {
                                                                     }}
                                                                     className="col-span-2 text-[10px] text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded px-2 py-1 text-center transition-colors"
                                                                 >
-                                                                    ↩ Revert Last Waive Off
+                                                                    {t("collection.revertLastWaive")}
                                                                 </button>
                                                             )}
                                                         </div>
@@ -2625,13 +2663,13 @@ export default function FeesDashboardPage() {
                                                                 }}
                                                                 className="w-full text-[10px] text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded px-2 py-1 text-center transition-colors"
                                                             >
-                                                                ↩ Revert Last Waive Off
+                                                                {t("collection.revertLastWaive")}
                                                             </button>
                                                         </div>
                                                     )}
                                                     {/* PAID card: selected indicator */}
                                                     {canPay && status !== 'PARTIAL' && isSelected && (
-                                                        <div className="mt-2 text-[10px] text-blue-600 text-center font-medium">✓ Selected for payment</div>
+                                                        <div className="mt-2 text-[10px] text-blue-600 text-center font-medium">{t("collection.selectedForPayment")}</div>
                                                     )}
                                                     {isSelected && (
                                                         <div className="absolute -top-2 -right-2 bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-sm">
@@ -2654,16 +2692,16 @@ export default function FeesDashboardPage() {
 
                             {/* Right: Payment Form */}
                             <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 h-fit sticky top-6">
-                                <h2 className="text-xl font-bold mb-4 text-slate-800">Collect Payment</h2>
+                                <h2 className="text-xl font-bold mb-4 text-slate-800">{t("collection.collectPayment")}</h2>
                                 {selectedMonths.length === 0 ? (
                                     <div className="text-sm text-gray-500 italic flex flex-col h-48 items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-white/50">
                                         <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
-                                        Select pending months from the left grid to collect payment.
+                                        {t("collection.selectMonthsHint")}
                                     </div>
                                 ) : (
                                     <form onSubmit={handleCollectPayment} className="bg-white p-5 shadow-md border border-gray-200 rounded-lg animate-in zoom-in-95 duration-200">
                                         <div className="mb-4">
-                                            <label className="block mb-2 text-sm font-medium text-gray-900">Selected Period</label>
+                                            <label className="block mb-2 text-sm font-medium text-gray-900">{t("collection.selectedPeriod")}</label>
                                             <div className="bg-gray-100 border border-gray-300 text-sm rounded-lg block w-full p-2.5 text-gray-600 font-medium wrap-break-word">
                                                 {(() => {
                                                     const matchedPeriod = studentFeeDetails?.feePeriods?.find((fp: any) =>
@@ -2711,14 +2749,14 @@ export default function FeesDashboardPage() {
                                             return (
                                                 <div className="mb-4">
                                                     <div className="flex justify-between items-center mb-2">
-                                                        <label className="text-sm font-bold text-blue-700">Amount Paying (₹)</label>
-                                                        <span className="text-xs text-gray-500 font-medium">Total Balance: ₹{totalBalance.toFixed(2)}</span>
+                                                        <label className="text-sm font-bold text-blue-700">{t("collection.amountPaying")}</label>
+                                                        <span className="text-xs text-gray-500 font-medium">{t("collection.totalBalance", { amount: totalBalance.toFixed(2) })}</span>
                                                     </div>
                                                     <input
                                                         type="number" step="0.01"
                                                         value={payAmount}
                                                         onChange={(e) => setPayAmount(e.target.value)}
-                                                        placeholder={`Recommended: ${totalBalance.toFixed(2)}`}
+                                                        placeholder={t("collection.recommended", { amount: totalBalance.toFixed(2) })}
                                                         className="bg-blue-50 border-2 border-blue-200 rounded-lg block w-full p-2.5 focus:ring-brand/40 focus:border-brand text-lg font-bold text-blue-900 transition-colors"
                                                         required
                                                     />
@@ -2727,33 +2765,33 @@ export default function FeesDashboardPage() {
                                                         onClick={() => setPayAmount(totalBalance.toFixed(2))}
                                                         className="mt-2 text-xs text-blue-600 hover:text-blue-800 hover:underline font-medium"
                                                     >
-                                                        Fill Total Balance
+                                                        {t("collection.fillTotal")}
                                                     </button>
                                                 </div>
                                             );
                                         })()}
 
                                         <div className="mb-5 text-sm font-medium">
-                                            <label className="block mb-3 text-gray-900">Payment Method</label>
+                                            <label className="block mb-3 text-gray-900">{t("receipt.paymentMethod")}</label>
                                             <div className="grid grid-cols-3 gap-2 sm:gap-3">
                                                 {PAYMENT_METHODS.map(method => (
                                                     <label key={method} className={`flex items-center justify-center p-3 border rounded-lg cursor-pointer transition-all ${payMethod === method ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500' : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-600'}`}>
                                                         <input type="radio" name="payMethod" value={method} checked={payMethod === method} onChange={(e) => setPayMethod(e.target.value)} className="sr-only" />
-                                                        <span className="font-medium text-xs">{method}</span>
+                                                        <span className="font-medium text-xs">{paymentMethodLabel(method)}</span>
                                                     </label>
                                                 ))}
                                             </div>
                                         </div>
                                         <div className="mb-6">
-                                            <label className="block mb-2 text-sm font-medium text-gray-900">Remarks/Ref No.</label>
-                                            <input type="text" value={payRemarks} onChange={(e) => setPayRemarks(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" placeholder="Optional transaction ID..." />
+                                            <label className="block mb-2 text-sm font-medium text-gray-900">{t("collection.remarksRef")}</label>
+                                            <input type="text" value={payRemarks} onChange={(e) => setPayRemarks(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 transition-colors focus:ring-brand/40 focus:border-brand" placeholder={t("collection.optionalTxnId")} />
                                         </div>
                                         <div className="flex gap-3">
                                             <button type="submit" disabled={loadingCollection || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="flex-1 text-white bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-bold disabled:opacity-50 transition-colors shadow-sm">
-                                                Confirm Payment
+                                                {t("collection.confirmPayment")}
                                             </button>
                                             <button type="button" onClick={() => setSelectedMonths([])} className="px-5 py-3 bg-gray-100 text-gray-700 border border-gray-200 rounded-lg font-medium hover:bg-gray-200 transition-colors">
-                                                Clear Selection
+                                                {t("collection.clearSelection")}
                                             </button>
                                         </div>
                                         {/* Issue Refund / Waive Off shortcuts */}
@@ -2770,7 +2808,7 @@ export default function FeesDashboardPage() {
                                                             onClick={() => openAdjModal(excessMonth.monthKey, 'REFUND')}
                                                             className="w-full py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors"
                                                         >
-                                                            Issue Refund (Excess Paid)
+                                                            {t("collection.issueRefundExcess")}
                                                         </button>
                                                     )}
                                                     {rbac.isAdmin && outstandingMonth && (
@@ -2779,7 +2817,7 @@ export default function FeesDashboardPage() {
                                                             onClick={() => openAdjModal(outstandingMonth.monthKey, 'WAIVE_OFF')}
                                                             className="w-full py-2 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors"
                                                         >
-                                                            Waive Off Outstanding Dues
+                                                            {t("collection.waiveOffOutstanding")}
                                                         </button>
                                                     )}
                                                 </div>
@@ -2799,33 +2837,33 @@ export default function FeesDashboardPage() {
                     {/* Shared Advanced Student Search */}
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 mb-6 relative z-20">
                         <h2 className="text-xl font-bold mb-4 text-slate-800">
-                            {activeTab === 'APPLY_DISCOUNTS' ? 'Find Students to Apply Discounts'
-                                : activeTab === 'APPLY_OTHER_FEE' ? 'Find Students to Apply Special Fee'
-                                : 'Find Student to View Fee Details'}
+                            {activeTab === 'APPLY_DISCOUNTS' ? t("search.titleDiscounts")
+                                : activeTab === 'APPLY_OTHER_FEE' ? t("search.titleOtherFee")
+                                : t("search.titleDetails")}
                         </h2>
                         <form onSubmit={handleSearchFormStudents} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-4">
-                            <input type="text" placeholder="Student ID" value={searchFormId} onChange={e => setSearchFormId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-brand/40 focus:border-brand" />
-                            <input type="text" placeholder="First Name" value={searchFormFirstName} onChange={e => setSearchFormFirstName(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-brand/40 focus:border-brand" />
-                            <input type="text" placeholder="Last Name" value={searchFormLastName} onChange={e => setSearchFormLastName(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-brand/40 focus:border-brand" />
-                            <input type="text" placeholder="Mobile" value={searchFormMobile} onChange={e => setSearchFormMobile(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-brand/40 focus:border-brand" />
+                            <input type="text" placeholder={t("search.studentId")} value={searchFormId} onChange={e => setSearchFormId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-brand/40 focus:border-brand" />
+                            <input type="text" placeholder={t("search.firstName")} value={searchFormFirstName} onChange={e => setSearchFormFirstName(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-brand/40 focus:border-brand" />
+                            <input type="text" placeholder={t("search.lastName")} value={searchFormLastName} onChange={e => setSearchFormLastName(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-brand/40 focus:border-brand" />
+                            <input type="text" placeholder={tc("field.mobile")} value={searchFormMobile} onChange={e => setSearchFormMobile(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-brand/40 focus:border-brand" />
                             
                             <select value={searchFormClassId} onChange={e => setSearchFormClassId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-brand/40 focus:border-brand">
-                                <option value="">Class (All)</option>
+                                <option value="">{t("search.classAll")}</option>
                                 {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                             <select value={searchFormSectionId} onChange={e => setSearchFormSectionId(e.target.value)} disabled={!searchFormClassId} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-brand/40 focus:border-brand">
-                                <option value="">Section (All)</option>
+                                <option value="">{t("search.sectionAll")}</option>
                                 {searchFormSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
                             <select value={searchFormSessionId} onChange={e => setSearchFormSessionId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg block p-2.5 focus:ring-brand/40 focus:border-brand">
-                                <option value="">Session (All)</option>
+                                <option value="">{t("search.sessionAll")}</option>
                                 {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
 
                             <div className="lg:col-span-7 flex justify-end gap-2">
-                                <button type="button" onClick={() => { setSearchFormId(""); setSearchFormFirstName(""); setSearchFormLastName(""); setSearchFormMobile(""); setSearchFormClassId(""); setSearchFormSectionId(""); setSearchFormSessionId(""); setHasSearchFormSearched(false); setSearchFormStudentsList([]); }} className="text-gray-700 bg-white border border-gray-300 font-medium rounded-lg text-sm px-4 py-2 hover:bg-gray-50 transition-colors">Clear</button>
+                                <button type="button" onClick={() => { setSearchFormId(""); setSearchFormFirstName(""); setSearchFormLastName(""); setSearchFormMobile(""); setSearchFormClassId(""); setSearchFormSectionId(""); setSearchFormSessionId(""); setHasSearchFormSearched(false); setSearchFormStudentsList([]); }} className="text-gray-700 bg-white border border-gray-300 font-medium rounded-lg text-sm px-4 py-2 hover:bg-gray-50 transition-colors">{tc("action.clear")}</button>
                                 <button type="submit" disabled={isSearchingStudents} className="text-white bg-blue-600 font-medium rounded-lg text-sm px-6 py-2 hover:bg-blue-700 transition-colors disabled:opacity-50">
-                                    {isSearchingStudents ? 'Searching...' : 'Search'}
+                                    {isSearchingStudents ? t("collection.searching") : tc("action.search")}
                                 </button>
                             </div>
                         </form>
@@ -2835,20 +2873,20 @@ export default function FeesDashboardPage() {
                                 <table className="w-full text-sm text-left text-gray-500 relative">
                                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10 shadow-sm">
                                         <tr>
-                                            <th className="px-4 py-3">ID</th>
-                                            <th className="px-4 py-3">Name</th>
-                                            <th className="px-4 py-3">Class/Section</th>
-                                            <th className="px-4 py-3">Mobile</th>
-                                            <th className="px-4 py-3 text-right">Action</th>
+                                            <th className="px-4 py-3">{t("search.id")}</th>
+                                            <th className="px-4 py-3">{tc("field.name")}</th>
+                                            <th className="px-4 py-3">{t("search.classSection")}</th>
+                                            <th className="px-4 py-3">{tc("field.mobile")}</th>
+                                            <th className="px-4 py-3 text-right">{t("search.action")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {searchFormStudentsList.length > 0 ? (
                                             searchFormStudentsList.map((s: any) => {
                                                 const enr = s.enrollments?.find((e: any) => e.status === 'ACTIVE') || s.enrollments?.[0];
-                                                const classNameStr = enr?.class?.name || s.class?.name || 'N/A';
-                                                const sectionNameStr = enr?.section?.name || s.section?.name || 'N/A';
-                                                const mobile = s.user?.mobile || s.mobile || 'N/A';
+                                                const classNameStr = enr?.class?.name || s.class?.name || t("search.na");
+                                                const sectionNameStr = enr?.section?.name || s.section?.name || t("search.na");
+                                                const mobile = s.user?.mobile || s.mobile || t("search.na");
                                                 return (
                                                     <tr key={s.id} className="bg-white border-b hover:bg-slate-50 last:border-0 transition-colors">
                                                         <td className="px-4 py-3 font-medium text-gray-900">{s.id}</td>
@@ -2879,7 +2917,7 @@ export default function FeesDashboardPage() {
                                                                 }}
                                                                 className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 font-semibold rounded hover:bg-blue-100 transition-colors border border-blue-100"
                                                             >
-                                                                {activeTab === 'FEE_DETAILS' ? 'View Details' : 'Select'}
+                                                                {activeTab === 'FEE_DETAILS' ? t("search.viewDetails") : t("setup.select")}
                                                             </button>
                                                         </td>
                                                     </tr>
@@ -2888,7 +2926,7 @@ export default function FeesDashboardPage() {
                                         ) : (
                                             <tr>
                                                 <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
-                                                    {isSearchingStudents ? 'Loading...' : 'No students found matching filters.'}
+                                                    {isSearchingStudents ? tc("state.loading") : t("search.noMatch")}
                                                 </td>
                                             </tr>
                                         )}
@@ -2899,14 +2937,14 @@ export default function FeesDashboardPage() {
                             {searchFormTotal > SEARCH_PAGE_SIZE && (
                                 <div className="flex items-center justify-between mt-3 px-1">
                                     <p className="text-xs text-gray-500">
-                                        Showing {(searchFormPage - 1) * SEARCH_PAGE_SIZE + 1}–{Math.min(searchFormPage * SEARCH_PAGE_SIZE, searchFormTotal)} of {searchFormTotal} students
+                                        {t("search.showing", { from: (searchFormPage - 1) * SEARCH_PAGE_SIZE + 1, to: Math.min(searchFormPage * SEARCH_PAGE_SIZE, searchFormTotal), total: searchFormTotal })}
                                     </p>
                                     <div className="flex gap-1">
                                         <button
                                             disabled={searchFormPage <= 1 || isSearchingStudents}
                                             onClick={(e) => handleSearchFormStudents(e as any, searchFormPage - 1)}
                                             className="px-3 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                                        >← Prev</button>
+                                        >{t("search.prev")}</button>
                                         <span className="px-3 py-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded font-semibold">
                                             {searchFormPage} / {Math.ceil(searchFormTotal / SEARCH_PAGE_SIZE)}
                                         </span>
@@ -2914,7 +2952,7 @@ export default function FeesDashboardPage() {
                                             disabled={searchFormPage >= Math.ceil(searchFormTotal / SEARCH_PAGE_SIZE) || isSearchingStudents}
                                             onClick={(e) => handleSearchFormStudents(e as any, searchFormPage + 1)}
                                             className="px-3 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                                        >Next →</button>
+                                        >{t("search.next")}</button>
                                     </div>
                                 </div>
                             )}
@@ -2924,8 +2962,8 @@ export default function FeesDashboardPage() {
                     {/* APPLY_DISCOUNTS specific content */}
                     {activeTab === 'APPLY_DISCOUNTS' && applyDiscountStudentId && (
                         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 animate-in slide-in-from-bottom-2 duration-300 relative z-10 w-full md:w-2/3">
-                            <h2 className="text-xl font-bold mb-4 text-slate-800">Assign Fee Discounts</h2>
-                            <p className="text-sm text-gray-600 mb-6">Select which discounts should apply to this student's monthly fee structure. Note: Only Admin users can modify these assignments.</p>
+                            <h2 className="text-xl font-bold mb-4 text-slate-800">{t("discounts.title")}</h2>
+                            <p className="text-sm text-gray-600 mb-6">{t("discounts.intro")}</p>
 
                             <form onSubmit={async (e) => {
                                 e.preventDefault();
@@ -2938,21 +2976,21 @@ export default function FeesDashboardPage() {
                                         body: JSON.stringify({ discountIds: selectedDiscountsToApply })
                                     });
                                     if (res.ok) {
-                                        toast.success("Discounts applied successfully!");
+                                        toast.success(t("toast.discountsApplied"));
                                         // Refresh student query
                                         handleSearchFormStudents(e); 
                                     } else {
                                         throw new Error("Failed to apply discounts");
                                     }
                                 } catch (err) {
-                                    toast.error("Error applying discounts");
+                                    toast.error(t("toast.applyDiscountsError"));
                                 } finally {
                                     setApplyingDiscounts(false);
                                 }
                             }}>
                                 <div className="space-y-4 mb-6 max-h-96 overflow-y-auto p-4 border rounded-lg bg-slate-50">
                                     {discounts.length === 0 ? (
-                                        <div className="text-sm text-gray-500">No discount categories exist. Create them in Fee Setup first.</div>
+                                        <div className="text-sm text-gray-500">{t("discounts.none")}</div>
                                     ) : (
                                         discounts.map(d => {
                                             const isSelected = selectedDiscountsToApply.includes(d.id);
@@ -2982,12 +3020,12 @@ export default function FeesDashboardPage() {
                                                     <div className="ml-4 flex-1">
                                                         <span className="block text-sm font-semibold text-gray-900">{d.name}</span>
                                                         <span className="block text-xs text-gray-500 mt-0.5">
-                                                            {d.type === 'PERCENTAGE' ? `${d.value}% Off Base Fee` : `$${d.value} Flat Off Base Fee`}
-                                                            {d.applicationType === 'AUTO' && <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold">AUTO: {d.logicReference}</span>}
+                                                            {d.type === 'PERCENTAGE' ? t("discounts.percentOff", { value: d.value }) : t("discounts.flatOff", { value: d.value })}
+                                                            {d.applicationType === 'AUTO' && <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold">{t("discounts.autoRef", { ref: d.logicReference })}</span>}
                                                         </span>
                                                         {isSelected && !isWhitelisted && (
                                                             <span className="block text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2">
-                                                                ⚠ Not enabled on any fee structure for this student's class — it won't reduce the balance. Enable it under Fee Setup → Structures.
+                                                                {t("discounts.notEnabled")}
                                                             </span>
                                                         )}
                                                     </div>
@@ -3004,7 +3042,7 @@ export default function FeesDashboardPage() {
                                         title={readOnly ? READ_ONLY_TITLE : undefined}
                                         className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-brand/40 font-medium rounded-lg text-sm px-6 py-2.5 transition-colors disabled:opacity-50"
                                     >
-                                        {applyingDiscounts ? 'Saving...' : 'Save Discount Assignments'}
+                                        {applyingDiscounts ? tc("action.saving") : t("discounts.save")}
                                     </button>
                                 </div>
                             </form>
@@ -3014,59 +3052,59 @@ export default function FeesDashboardPage() {
                     {/* APPLY_OTHER_FEE specific content */}
                     {activeTab === 'APPLY_OTHER_FEE' && applyOtherFeeStudentId && (
                         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 animate-in slide-in-from-bottom-2 duration-300 relative z-10 w-full">
-                            <h2 className="text-xl font-bold mb-4 text-slate-800">Assign Special & Optional Fee</h2>
-                            <p className="text-sm text-gray-600 mb-6">Assign a custom fee amount and frequency distinctively to <span className="font-semibold text-blue-700">{applyOtherFeeStudentName}</span> (ID: {applyOtherFeeStudentId}). Note: Optional fees do not undergo discounts automatically unless specified directly.</p>
+                            <h2 className="text-xl font-bold mb-4 text-slate-800">{t("otherFee.title")}</h2>
+                            <p className="text-sm text-gray-600 mb-6">{t.rich("otherFee.intro", { name: applyOtherFeeStudentName, id: applyOtherFeeStudentId, b: (chunks) => <span className="font-semibold text-blue-700">{chunks}</span> })}</p>
 
                             <form onSubmit={handleApplyOtherFeeSubmit}>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                     <div>
-                                        <label className="block mb-2 text-sm font-medium text-gray-900">Fee Category</label>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">{t("otherFee.category")}</label>
                                         <select
                                             value={applyOtherFeeCategoryId}
                                             onChange={(e) => setApplyOtherFeeCategoryId(e.target.value)}
                                             required
                                             className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-brand/40 focus:border-brand"
                                         >
-                                            <option value="">Select Category...</option>
+                                            <option value="">{t("otherFee.selectCategory")}</option>
                                             {addOnCategories.filter(c => c.isActive !== false).map(c => (
                                                 <option key={c.id} value={c.id}>{c.name}</option>
                                             ))}
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block mb-2 text-sm font-medium text-gray-900">Amount (₹)</label>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">{t("adj.amount")}</label>
                                         <input
                                             type="number" step="0.01" min="0" required
                                             value={applyOtherFeeAmount}
                                             onChange={(e) => setApplyOtherFeeAmount(e.target.value)}
-                                            placeholder="e.g. 500"
+                                            placeholder={t("otherFee.amountPlaceholder")}
                                             className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-brand/40 focus:border-brand"
                                         />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                     <div>
-                                        <label className="block mb-2 text-sm font-medium text-gray-900">Frequency</label>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">{t("setup.frequency")}</label>
                                         <select
                                             value={applyOtherFeeFrequency}
                                             onChange={(e) => setApplyOtherFeeFrequency(e.target.value)}
                                             required
                                             className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-brand/40 focus:border-brand"
                                         >
-                                            <option value="MONTHLY">Monthly</option>
-                                            <option value="QUARTERLY">Quarterly</option>
-                                            <option value="HALF_YEARLY">Half Yearly</option>
-                                            <option value="ANNUALLY">Annually</option>
-                                            <option value="ONE_TIME">One Time</option>
+                                            <option value="MONTHLY">{t("frequency.MONTHLY")}</option>
+                                            <option value="QUARTERLY">{t("frequency.QUARTERLY")}</option>
+                                            <option value="HALF_YEARLY">{t("frequency.HALF_YEARLY")}</option>
+                                            <option value="ANNUALLY">{t("frequency.ANNUALLY")}</option>
+                                            <option value="ONE_TIME">{t("frequency.ONE_TIME")}</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block mb-2 text-sm font-medium text-gray-900">Remarks / Description</label>
+                                        <label className="block mb-2 text-sm font-medium text-gray-900">{t("otherFee.remarks")}</label>
                                         <input
                                             type="text"
                                             value={applyOtherFeeDescription}
                                             onChange={(e) => setApplyOtherFeeDescription(e.target.value)}
-                                            placeholder="e.g. Transport fees for Route 4"
+                                            placeholder={t("otherFee.remarksPlaceholder")}
                                             className="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5 focus:ring-brand/40 focus:border-brand"
                                         />
                                     </div>
@@ -3079,7 +3117,7 @@ export default function FeesDashboardPage() {
                                         title={readOnly ? READ_ONLY_TITLE : undefined}
                                         className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-brand/40 font-medium rounded-lg text-sm px-6 py-2.5 transition-colors disabled:opacity-50"
                                     >
-                                        {applyingOtherFee ? 'Applying...' : 'Apply Special Fee'}
+                                        {applyingOtherFee ? t("otherFee.applying") : t("otherFee.apply")}
                                     </button>
                                 </div>
                             </form>
@@ -3094,7 +3132,7 @@ export default function FeesDashboardPage() {
                     {loadingFeeDetails ? (
                         <div className="bg-white p-8 rounded-lg shadow-sm border border-slate-200 text-center">
                             <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-3"></div>
-                            <p className="text-gray-500 text-sm">Loading fee details for {feeDetailsStudentName}...</p>
+                            <p className="text-gray-500 text-sm">{t("details.loading", { name: feeDetailsStudentName })}</p>
                         </div>
                     ) : (() => {
                             // 1. Core Summary Calculations
@@ -3121,25 +3159,25 @@ export default function FeesDashboardPage() {
                                             </div>
                                             <div className="text-center md:text-left flex-1">
                                                 <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
-                                                    <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-widest rounded-full border border-blue-500/20">Student Profile</span>
-                                                    <span className="px-2 py-0.5 bg-green-500/10 text-green-400 text-[10px] font-bold uppercase tracking-widest rounded-full border border-green-500/20">Active</span>
+                                                    <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-widest rounded-full border border-blue-500/20">{t("details.profile")}</span>
+                                                    <span className="px-2 py-0.5 bg-green-500/10 text-green-400 text-[10px] font-bold uppercase tracking-widest rounded-full border border-green-500/20">{tc("status.active")}</span>
                                                 </div>
                                                 <h3 className="text-3xl font-black text-white tracking-tight">{feeDetailsStudentName}</h3>
                                                 <div className="flex items-center justify-center md:justify-start gap-4 mt-2 text-slate-400 text-sm">
                                                     <span className="flex items-center gap-1.5 font-medium">
                                                         <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                                                        ID: <span className="text-slate-200">{feeDetailsStudentId}</span>
+                                                        {t.rich("details.id", { id: feeDetailsStudentId, v: (chunks) => <span className="text-slate-200">{chunks}</span> })}
                                                     </span>
                                                     <span className="flex items-center gap-1.5 font-medium">
                                                         <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                                        Session: <span className="text-slate-200">{collectionYear}</span>
+                                                        {t.rich("details.session", { session: collectionYear, v: (chunks) => <span className="text-slate-200">{chunks}</span> })}
                                                     </span>
                                                 </div>
                                             </div>
                                             <div className="mt-4 md:mt-0 flex flex-col items-center md:items-end">
-                                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Total Balance Due</p>
+                                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">{t("details.totalBalanceDue")}</p>
                                                 <p className="text-4xl font-black text-white drop-shadow-sm">
-                                                    ₹{Number(balanceDue).toLocaleString('en-IN')}
+                                                    ₹{Number(balanceDue).toLocaleString(intl)}
                                                 </p>
                                             </div>
                                         </div>
@@ -3149,25 +3187,25 @@ export default function FeesDashboardPage() {
                                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                                         {[
                                             { 
-                                                label: "Annual Liability", 
+                                                label: t("details.annualLiability"), 
                                                 value: annualLiability, 
                                                 icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m.599-1c.532-.1 1.01-.304 1.43-.591m-1.43.591c-1.01 0-2.08-.402-2.599-1M9.401 13c-.532.1-1.01.304-1.43.591m1.43-.591c.532.1 1.01.304 1.43.591", 
                                                 color: "blue" 
                                             },
                                             { 
-                                                label: "Amount Paid", 
+                                                label: t("details.amountPaid"), 
                                                 value: amountPaid, 
                                                 icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z", 
                                                 color: "green" 
                                             },
                                             { 
-                                                label: "Monthly Recurring", 
+                                                label: t("details.monthlyRecurring"), 
                                                 value: monthlyRecurring,
                                                 icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15", 
                                                 color: "indigo" 
                                             },
                                             { 
-                                                label: "Pending Months", 
+                                                label: t("details.pendingMonths"), 
                                                 value: pendingMonthsCount,
                                                 isCurrency: false,
                                                 icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z", 
@@ -3180,7 +3218,7 @@ export default function FeesDashboardPage() {
                                                 </div>
                                                 <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{stat.label}</p>
                                                 <p className="text-xl font-black text-slate-900 mt-0.5">
-                                                    {stat.isCurrency === false ? stat.value : `₹${Number(stat.value || 0).toLocaleString('en-IN')}`}
+                                                    {stat.isCurrency === false ? stat.value : `₹${Number(stat.value || 0).toLocaleString(intl)}`}
                                                 </p>
                                             </div>
                                         ))}
@@ -3192,13 +3230,13 @@ export default function FeesDashboardPage() {
                                             <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
                                                 <h4 className="font-bold text-slate-800 flex items-center gap-2">
                                                     <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                                                    Standard Class Fees
+                                                    {t("details.standardFees")}
                                                 </h4>
-                                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Recurring</span>
+                                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{t("details.recurring")}</span>
                                             </div>
                                             <div className="p-5">
                                                 {!feeDetailsFull ? (
-                                                    <p className="text-sm text-gray-400 italic">Finding fees...</p>
+                                                    <p className="text-sm text-gray-400 italic">{t("details.finding")}</p>
                                                 ) : (
                                                     <div className="space-y-4">
                                                         <ul className="space-y-3">
@@ -3210,10 +3248,10 @@ export default function FeesDashboardPage() {
                                                                         </div>
                                                                         <div>
                                                                             <span className="text-sm font-semibold text-slate-700">{cat.categoryName}</span>
-                                                                            <span className="text-[10px] text-slate-400 block uppercase tracking-tight leading-none mt-0.5">{cat.frequency}</span>
+                                                                            <span className="text-[10px] text-slate-400 block uppercase tracking-tight leading-none mt-0.5">{cat.frequency ? frequencyLabel(cat.frequency) : cat.frequency}</span>
                                                                         </div>
                                                                     </div>
-                                                                    <span className="text-sm font-black text-slate-900 bg-slate-50 px-3 py-1 rounded-lg">₹{Number(cat.amount).toLocaleString('en-IN')}</span>
+                                                                    <span className="text-sm font-black text-slate-900 bg-slate-50 px-3 py-1 rounded-lg">₹{Number(cat.amount).toLocaleString(intl)}</span>
                                                                 </li>
                                                             ))}
                                                         </ul>
@@ -3227,9 +3265,9 @@ export default function FeesDashboardPage() {
                                             <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
                                                 <h4 className="font-bold text-slate-800 flex items-center gap-2">
                                                     <div className="w-1.5 h-1.5 bg-orange-600 rounded-full"></div>
-                                                    Special/Opted Fees
+                                                    {t("details.specialFees")}
                                                 </h4>
-                                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Custom</span>
+                                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{t("details.custom")}</span>
                                             </div>
                                             <div className="p-5">
                                                 {feeDetailsOptionalFees.length === 0 ? (
@@ -3237,17 +3275,17 @@ export default function FeesDashboardPage() {
                                                         <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mb-3">
                                                             <svg className="w-6 h-6 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                                         </div>
-                                                        <p className="text-xs text-slate-400 italic">No extra fees opted by student.</p>
+                                                        <p className="text-xs text-slate-400 italic">{t("details.noExtra")}</p>
                                                     </div>
                                                 ) : (
                                                     <ul className="space-y-3">
                                                         {feeDetailsOptionalFees.map((fee: any) => (
                                                             <li key={fee.id} className="flex items-start justify-between p-3 rounded-xl bg-orange-50/50 border border-orange-100/50 hover:bg-orange-50 hover:border-orange-200 transition-all gap-3">
                                                                 <div className="flex-1 min-w-0">
-                                                                    <span className="font-bold text-sm text-slate-800 block truncate">{fee.feeCategory?.name || 'Category'}</span>
+                                                                    <span className="font-bold text-sm text-slate-800 block truncate">{fee.feeCategory?.name || t("setup.category")}</span>
                                                                     <div className="flex items-center gap-2 mt-1">
-                                                                        <span className="text-xs font-black text-orange-700">₹{Number(fee.amount).toLocaleString('en-IN')}</span>
-                                                                        <span className="text-[10px] text-orange-400 font-bold uppercase tracking-tighter">· {fee.frequency?.replace('_', ' ')}</span>
+                                                                        <span className="text-xs font-black text-orange-700">₹{Number(fee.amount).toLocaleString(intl)}</span>
+                                                                        <span className="text-[10px] text-orange-400 font-bold uppercase tracking-tighter">· {fee.frequency ? frequencyLabel(fee.frequency) : fee.frequency}</span>
                                                                     </div>
                                                                 </div>
                                                                 {rbac.canConfigureFees && (
@@ -3256,7 +3294,7 @@ export default function FeesDashboardPage() {
                                                                         disabled={removingFeeId === fee.id}
                                                                         className="shrink-0 text-[10px] px-3 py-1.5 text-red-600 border border-red-200 bg-white rounded-lg hover:bg-red-50 transition-all font-black uppercase tracking-tighter shadow-sm"
                                                                     >
-                                                                        {removingFeeId === fee.id ? 'Wait...' : 'Unlink'}
+                                                                        {removingFeeId === fee.id ? t("details.wait") : t("details.unlink")}
                                                                     </button>
                                                                 )}
                                                             </li>
@@ -3271,13 +3309,13 @@ export default function FeesDashboardPage() {
                                             <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
                                                 <h4 className="font-bold text-slate-800 flex items-center gap-2">
                                                     <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
-                                                    Benefit Summary
+                                                    {t("details.benefitSummary")}
                                                 </h4>
-                                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Discounts</span>
+                                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{t("details.discounts")}</span>
                                             </div>
                                             <div className="p-5">
                                                 {feeDetailsDiscounts.length === 0 ? (
-                                                    <p className="text-sm text-slate-400 italic text-center py-4">No active scholarships or discounts assigned.</p>
+                                                    <p className="text-sm text-slate-400 italic text-center py-4">{t("details.noDiscounts")}</p>
                                                 ) : (
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                         {feeDetailsDiscounts.map((sd: any) => {
@@ -3289,15 +3327,15 @@ export default function FeesDashboardPage() {
                                                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path></svg>
                                                                         </div>
                                                                         <div>
-                                                                            <span className="font-bold text-sm text-slate-800 block leading-tight">{sd.discountCategory?.name || 'Discount'}</span>
+                                                                            <span className="font-bold text-sm text-slate-800 block leading-tight">{sd.discountCategory?.name || t("receipt.discount")}</span>
                                                                             <span className="text-[10px] text-green-600 font-black uppercase tracking-widest mt-0.5">
-                                                                                {sd.discountCategory?.type === 'PERCENTAGE' ? `${sd.discountCategory.value}% Scholarship` : `Monthly Relief`}
+                                                                                {sd.discountCategory?.type === 'PERCENTAGE' ? t("details.scholarship", { value: sd.discountCategory.value }) : t("details.monthlyRelief")}
                                                                             </span>
                                                                         </div>
                                                                     </div>
                                                                     <div className="text-right">
                                                                         <span className="text-lg font-black text-green-700">-{calculatedSaving > 0 ? `₹${calculatedSaving}` : '₹0'}</span>
-                                                                        <span className="block text-[10px] text-green-400 font-bold uppercase tracking-tighter">Savings / month</span>
+                                                                        <span className="block text-[10px] text-green-400 font-bold uppercase tracking-tighter">{t("details.savingsPerMonth")}</span>
                                                                     </div>
                                                                 </div>
                                                             );

@@ -11,10 +11,11 @@ import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 import { useRbac } from "@/lib/rbac";
 import { useFeatureFlag } from "@/lib/useSchoolFeatures";
 import { AiAssistantAccess } from "./AiAssistantAccess";
+import { useTranslations } from "next-intl";
 import {
     RoleChip,
     RoleManagerDialog,
-    roleLabel,
+    useRoleLabeler,
     type RoleManagerUser,
 } from "./RoleManagerDialog";
 
@@ -31,6 +32,9 @@ const ALL_ROLES = ["SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "HR_ADMIN", "LIBRARIAN",
 const NO_EXTRA_ROLES = ["PARENT", "STUDENT"];
 
 export default function AdminPanel() {
+    const t = useTranslations("admin");
+    const tc = useTranslations("common");
+    const roleLabel = useRoleLabeler();
     const router = useRouter();
     const currentUser = getUser();
     const { canAccessAdminPanel } = useRbac();
@@ -107,16 +111,16 @@ export default function AdminPanel() {
             });
 
             if (res.ok) {
-                toast.success("School setup executed successfully!");
+                toast.success(t("setup.success"));
                 setSetupFile(null);
                 setIsConfirmingSetup(false);
                 setSetupTimer(0);
             } else {
                 const d = await res.json();
-                toast.error(d.message || "Failed to execute setup.");
+                toast.error(d.message || t("setup.failed"));
             }
         } catch (error) {
-            toast.error("An error occurred during setup execution.");
+            toast.error(t("setup.error"));
         } finally {
             setSetupLoading(false);
         }
@@ -247,36 +251,36 @@ export default function AdminPanel() {
     }, [users]);
 
     const handleResetPassword = async (userId: number, name: string) => {
-        if (!confirm(`Reset password for ${name} to default?\n\nThey will be logged out everywhere and must change the password at next login.`)) return;
+        if (!confirm(t("panel.confirmReset", { name }))) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/users/${userId}/reset-password`, { method: "PATCH", headers: authHeaders });
             if (res.ok) {
                 const d = await res.json().catch(() => null);
-                toast.success(d?.message || "Password reset. User must change on next login.");
+                toast.success(d?.message || t("panel.resetDone"));
             } else {
                 const d = await res.json().catch(() => null);
-                toast.error(d?.message ? `Reset failed: ${d.message}` : `Failed to reset password (HTTP ${res.status})`);
+                toast.error(d?.message ? t("panel.resetFailedMessage", { message: d.message }) : t("panel.resetFailedHttp", { status: res.status }));
             }
-        } catch { toast.error("Failed to reset password — network error"); }
+        } catch { toast.error(t("panel.resetNetwork")); }
     };
 
     const handleToggleStatus = async (userId: number, isActive: boolean, name: string) => {
-        if (!confirm(`${isActive ? "Deactivate" : "Activate"} ${name}?`)) return;
+        if (!confirm(isActive ? t("panel.confirmDeactivate", { name }) : t("panel.confirmActivate", { name }))) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/users/${userId}/toggle-status`, { method: "PATCH", headers: authHeaders });
-            if (res.ok) { toast.success("Status updated!"); fetchUsers(page); }
-            else toast.error("Failed to update status");
-        } catch { toast.error("Failed to update status"); }
+            if (res.ok) { toast.success(t("panel.statusUpdated")); fetchUsers(page); }
+            else toast.error(t("panel.statusFailed"));
+        } catch { toast.error(t("panel.statusFailed")); }
     };
 
     const handleDeleteUser = async (userId: number, name: string) => {
-        if (!confirm(`Delete account for ${name}?\n\nThis is permanent and cannot be undone.`)) return;
+        if (!confirm(t("panel.confirmDelete", { name }))) return;
         try {
             const res = await authFetch(`${API_BASE_URL}/users/${userId}`, { method: "DELETE", headers: authHeaders });
             const data = await res.json();
-            if (res.ok) { toast.success(data.message || "Account deleted."); fetchUsers(page); }
-            else toast.error(data.message || "Failed to delete account");
-        } catch { toast.error("Failed to delete account"); }
+            if (res.ok) { toast.success(data.message || t("panel.deleted")); fetchUsers(page); }
+            else toast.error(data.message || t("panel.deleteFailed"));
+        } catch { toast.error(t("panel.deleteFailed")); }
     };
 
     const handleViewProfile = async (user: any) => {
@@ -308,20 +312,20 @@ export default function AdminPanel() {
                             </svg>
                         </div>
                         <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">
-                            {isSuperAdmin ? "Super Admin Panel" : "Admin Panel"}
+                            {isSuperAdmin ? t("panel.titleSuper") : t("panel.title")}
                         </h1>
                     </div>
-                    <p className="text-slate-500 text-sm ml-11">Manage users, roles, and staff accounts</p>
+                    <p className="text-slate-500 text-sm ml-11">{t("panel.subtitle")}</p>
                 </div>
             </div>
 
             {/* Tabs */}
             <div className="flex flex-wrap gap-1 bg-slate-100 rounded-xl p-1 mb-6 w-fit">
                 {([
-                    ["users", "👥 Users & Roles"],
-                    ["add-staff", "➕ Add Staff"],
-                    ...(assistantEnabled && isSuperAdmin ? [["ai-assistant", "✨ AI Assistant"]] : []),
-                    ...(isSuperAdmin ? [["school-setup", "🏫 School Setup"]] : []),
+                    ["users", t("panel.tab.users")],
+                    ["add-staff", t("panel.tab.addStaff")],
+                    ...(assistantEnabled && isSuperAdmin ? [["ai-assistant", t("panel.tab.aiAssistant")]] : []),
+                    ...(isSuperAdmin ? [["school-setup", t("panel.tab.schoolSetup")]] : []),
                 ] as [Tab, string][]).map(([tab, label]) => (
                     <button key={tab} onClick={() => setActiveTab(tab)}
                         className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === tab ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
@@ -344,7 +348,7 @@ export default function AdminPanel() {
                                 </svg>
                                 <input
                                     type="text" value={searchName} onChange={e => setSearchName(e.target.value)}
-                                    placeholder="Search by name..."
+                                    placeholder={t("panel.searchName")}
                                     className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
                                 />
                             </div>
@@ -354,7 +358,7 @@ export default function AdminPanel() {
                                 </svg>
                                 <input
                                     type="text" value={searchEmail} onChange={e => setSearchEmail(e.target.value)}
-                                    placeholder="Search by email..."
+                                    placeholder={t("panel.searchEmail")}
                                     className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
                                 />
                             </div>
@@ -364,7 +368,7 @@ export default function AdminPanel() {
                                 </svg>
                                 <input
                                     type="text" value={searchMobile} onChange={e => setSearchMobile(e.target.value)}
-                                    placeholder="Search by mobile..."
+                                    placeholder={t("panel.searchMobile")}
                                     className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
                                 />
                             </div>
@@ -372,7 +376,7 @@ export default function AdminPanel() {
                                 value={searchRole} onChange={e => setSearchRole(e.target.value)}
                                 className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/40"
                             >
-                                <option value="">All Roles</option>
+                                <option value="">{t("panel.allRoles")}</option>
                                 {ALL_ROLES.map(r => (
                                     <option key={r} value={r}>{roleLabel(r)}</option>
                                 ))}
@@ -381,7 +385,7 @@ export default function AdminPanel() {
                                 value={searchDesignation} onChange={e => setSearchDesignation(e.target.value)}
                                 className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/40"
                             >
-                                <option value="">All Designations</option>
+                                <option value="">{t("panel.allDesignations")}</option>
                                 {designations.map(d => (
                                     <option key={d.id} value={String(d.id)}>{d.title}</option>
                                 ))}
@@ -394,18 +398,18 @@ export default function AdminPanel() {
                                     >
                                         <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${showAllUsers ? "left-5" : "left-0.5"}`} />
                                     </div>
-                                    Show all users
+                                    {t("panel.showAllUsers")}
                                 </label>
                             </div>
                         </div>
                         <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
                             <p className="text-xs text-slate-500">
-                                {showAllUsers ? "Showing all users" : "Showing staff only (Admin/Teacher) • "}
-                                <span className="font-medium text-slate-700">{total} results</span>
+                                {showAllUsers ? t("panel.showingAll") : t("panel.showingStaff")}
+                                <span className="font-medium text-slate-700">{t("panel.results", { count: total })}</span>
                             </p>
                             <button onClick={() => { setSearchName(""); setSearchEmail(""); setSearchRole(""); setSearchMobile(""); setSearchDesignation(""); setShowAllUsers(false); setPage(1); fetchUsers(1); }}
                                 className="text-xs text-indigo-500 hover:text-indigo-700 font-medium">
-                                Clear filters
+                                {t("panel.clearFilters")}
                             </button>
                         </div>
                     </div>
@@ -419,8 +423,8 @@ export default function AdminPanel() {
                         ) : users.length === 0 ? (
                             <div className="text-center py-16 text-slate-400">
                                 <div className="text-4xl mb-3">🔍</div>
-                                <p className="font-medium">No users found</p>
-                                <p className="text-sm mt-1">Try adjusting your search filters</p>
+                                <p className="font-medium">{t("panel.noUsers")}</p>
+                                <p className="text-sm mt-1">{t("panel.adjustFilters")}</p>
                             </div>
                         ) : (
                             // On a phone the six columns cannot honestly fit, so the table
@@ -431,12 +435,12 @@ export default function AdminPanel() {
                                 <table className="w-full min-w-208 text-sm text-left">
                                     <thead className="bg-slate-50 text-xs text-slate-500 uppercase tracking-wide">
                                         <tr>
-                                            <th className="px-4 py-3 whitespace-nowrap">Name</th>
-                                            <th className="px-4 py-3 whitespace-nowrap">Email / Mobile</th>
-                                            <th className="px-4 py-3 whitespace-nowrap">Role</th>
-                                            <th className="px-4 py-3 whitespace-nowrap">Designation</th>
-                                            <th className="px-4 py-3 whitespace-nowrap">Status</th>
-                                            <th className="px-4 py-3 text-right whitespace-nowrap">Actions</th>
+                                            <th className="px-4 py-3 whitespace-nowrap">{tc("field.name")}</th>
+                                            <th className="px-4 py-3 whitespace-nowrap">{t("panel.column.emailMobile")}</th>
+                                            <th className="px-4 py-3 whitespace-nowrap">{t("panel.column.role")}</th>
+                                            <th className="px-4 py-3 whitespace-nowrap">{t("panel.column.designation")}</th>
+                                            <th className="px-4 py-3 whitespace-nowrap">{tc("field.status")}</th>
+                                            <th className="px-4 py-3 text-right whitespace-nowrap">{tc("action.actions")}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -450,7 +454,7 @@ export default function AdminPanel() {
                                                         <div>
                                                             <span className="font-medium text-slate-800">{user.firstName} {user.lastName}</span>
                                                             {user.mustChangePassword && (
-                                                                <span className="ml-2 inline-flex whitespace-nowrap px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 rounded">pw pending</span>
+                                                                <span className="ml-2 inline-flex whitespace-nowrap px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 rounded">{t("panel.pwPending")}</span>
                                                             )}
                                                         </div>
                                                     </div>
@@ -465,7 +469,7 @@ export default function AdminPanel() {
                                                     <button
                                                         type="button"
                                                         onClick={() => setRoleEditorUser(user)}
-                                                        title={`Manage roles for ${user.firstName} ${user.lastName}`}
+                                                        title={t("panel.manageRolesFor", { name: `${user.firstName} ${user.lastName}` })}
                                                         className="group -mx-1 -my-0.5 flex max-w-56 cursor-pointer flex-wrap items-center gap-1 rounded-lg px-1 py-0.5 text-left transition-colors hover:bg-brand-tint/60 focus-visible:ring-3 focus-visible:ring-brand/30 focus-visible:outline-none"
                                                     >
                                                         <RoleChip role={user.role} primary />
@@ -473,7 +477,7 @@ export default function AdminPanel() {
                                                             <RoleChip key={r} role={r} />
                                                         ))}
                                                         <span className="text-ink-faint group-hover:text-brand text-[11px] font-semibold opacity-0 transition-opacity group-hover:opacity-100">
-                                                            Edit
+                                                            {tc("action.edit")}
                                                         </span>
                                                     </button>
                                                 </td>
@@ -494,7 +498,7 @@ export default function AdminPanel() {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className={`inline-flex whitespace-nowrap px-2 py-0.5 text-xs rounded-full font-medium ${user.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-                                                        {user.isActive ? "Active" : "Inactive"}
+                                                        {user.isActive ? tc("status.active") : tc("status.inactive")}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
@@ -503,7 +507,7 @@ export default function AdminPanel() {
                                                             <button
                                                                 onClick={() => setOpenDropdownId(openDropdownId === user.id ? null : user.id)}
                                                                 className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors text-lg font-bold leading-none"
-                                                                title="Actions">
+                                                                title={tc("action.actions")}>
                                                                 &#8942;
                                                             </button>
                                                             {openDropdownId === user.id && (
@@ -511,26 +515,26 @@ export default function AdminPanel() {
                                                                     <button
                                                                         onClick={() => handleViewProfile(user)}
                                                                         className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
-                                                                        👁 View Profile
+                                                                        {t("panel.menu.viewProfile")}
                                                                     </button>
                                                                     <button
                                                                         onClick={() => { setOpenDropdownId(null); setRoleEditorUser(user); }}
                                                                         className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
-                                                                        🎫 Manage Roles
+                                                                        {t("panel.menu.manageRoles")}
                                                                     </button>
                                                                     <button
                                                                         onClick={() => { setOpenDropdownId(null); handleResetPassword(user.id, `${user.firstName} ${user.lastName}`); }}
                                                                         disabled={readOnly}
                                                                         title={readOnly ? READ_ONLY_TITLE : undefined}
                                                                         className="w-full text-left px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                                                                        🔑 Reset Password
+                                                                        {t("panel.menu.resetPassword")}
                                                                     </button>
                                                                     <button
                                                                         onClick={() => { setOpenDropdownId(null); handleToggleStatus(user.id, user.isActive, `${user.firstName} ${user.lastName}`); }}
                                                                         disabled={readOnly}
                                                                         title={readOnly ? READ_ONLY_TITLE : undefined}
                                                                         className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed ${user.isActive ? "text-orange-700" : "text-green-700"}`}>
-                                                                        {user.isActive ? "🔒 Deactivate" : "Activate"}
+                                                                        {user.isActive ? t("panel.menu.deactivate") : t("panel.menu.activate")}
                                                                     </button>
                                                                     {isSuperAdmin && (
                                                                         <>
@@ -540,7 +544,7 @@ export default function AdminPanel() {
                                                                                 disabled={readOnly}
                                                                                 title={readOnly ? READ_ONLY_TITLE : undefined}
                                                                                 className="w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 font-medium disabled:opacity-50 disabled:cursor-not-allowed">
-                                                                                🗑 Delete Account
+                                                                                {t("panel.menu.deleteAccount")}
                                                                             </button>
                                                                         </>
                                                                     )}
@@ -561,7 +565,7 @@ export default function AdminPanel() {
                     {!loading && total > 0 && (
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 pt-4 border-t border-slate-200">
                             <div className="flex items-center gap-2 text-sm text-slate-600">
-                                <span>Rows per page:</span>
+                                <span>{t("panel.rowsPerPage")}</span>
                                 <select
                                     value={pageSize}
                                     onChange={handlePageSizeChange}
@@ -572,7 +576,7 @@ export default function AdminPanel() {
                                     ))}
                                 </select>
                                 <span className="ml-2 text-slate-500">
-                                    {Math.min((page - 1) * pageSize + 1, total)}–{Math.min(page * pageSize, total)} of {total}
+                                    {t("panel.range", { from: Math.min((page - 1) * pageSize + 1, total), to: Math.min(page * pageSize, total), total })}
                                 </span>
                             </div>
                             <div className="flex items-center gap-1">
@@ -581,7 +585,7 @@ export default function AdminPanel() {
                                     disabled={page === 1}
                                     className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                 >
-                                    ← Prev
+                                    {t("panel.prev")}
                                 </button>
                                 {getPageNumbers().map((p, idx) =>
                                     p === '...' ? (
@@ -601,7 +605,7 @@ export default function AdminPanel() {
                                     disabled={page === totalPages || totalPages === 0}
                                     className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                 >
-                                    Next →
+                                    {t("panel.next")}
                                 </button>
                             </div>
                         </div>
@@ -612,9 +616,9 @@ export default function AdminPanel() {
             {/* ─── ADD STAFF TAB ─── */}
             {activeTab === "add-staff" && (
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 max-w-4xl">
-                    <h2 className="font-bold text-slate-800 text-lg mb-1">Add New Staff Member</h2>
+                    <h2 className="font-bold text-slate-800 text-lg mb-1">{t("panel.addStaffTitle")}</h2>
                     <p className="text-slate-500 text-sm mb-6">
-                        Staff will be assigned the default password and must change it on first login.
+                        {t("panel.addStaffHint")}
                     </p>
 
                     <AddStaffForm
@@ -631,16 +635,18 @@ export default function AdminPanel() {
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 max-w-4xl">
                     <h2 className="font-bold text-rose-600 flex items-center gap-2 text-lg mb-1">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                        School Setup Automation
+                        {t("setup.title")}
                     </h2>
                     <p className="text-slate-500 text-sm mb-6">
-                        Upload a <code className="bg-slate-100 px-1 py-0.5 rounded text-rose-500">school-setup.json</code> file to automatically initialize the academic session, fee categories, designations, grades, and classes. 
-                        <strong> This action should only be performed once on a fresh setup.</strong>
+                        {t.rich("setup.body", {
+                            code: (c) => <code className="bg-slate-100 px-1 py-0.5 rounded text-rose-500">{c}</code>,
+                            b: (c) => <strong>{c}</strong>,
+                        })}
                     </p>
                     
                     <div className="space-y-6">
                         <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 hover:bg-slate-50 transition-colors">
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Select Setup File</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">{t("setup.selectFile")}</label>
                             <input 
                                 type="file" 
                                 accept=".json"
@@ -657,20 +663,20 @@ export default function AdminPanel() {
 
                         {setupTimer > 0 ? (
                             <button disabled className="w-full sm:w-auto px-6 py-3 bg-rose-400 text-white rounded-xl font-bold shadow-sm opacity-50 cursor-not-allowed">
-                                Proceeding in {setupTimer}s...
+                                {t("setup.proceeding", { seconds: setupTimer })}
                             </button>
                         ) : isConfirmingSetup ? (
                             <div className="flex flex-wrap items-center gap-3">
                                 <button onClick={executeSchoolSetup} disabled={!setupFile || setupLoading || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="w-full sm:w-auto px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all shadow-sm disabled:opacity-50 flex justify-center items-center gap-2">
-                                    {setupLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Confirm Execution"}
+                                    {setupLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t("setup.confirm")}
                                 </button>
                                 <button onClick={() => { setIsConfirmingSetup(false); setSetupTimer(0); }} className="w-full sm:w-auto px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all disabled:opacity-50">
-                                    Cancel
+                                    {tc("action.cancel")}
                                 </button>
                             </div>
                         ) : (
                             <button onClick={() => { setIsConfirmingSetup(true); setSetupTimer(5); }} disabled={!setupFile || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="w-full sm:w-auto px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all shadow-sm disabled:opacity-50 focus:ring-4 focus:ring-rose-100">
-                                Execute Setup
+                                {t("setup.execute")}
                             </button>
                         )}
                     </div>
@@ -682,7 +688,7 @@ export default function AdminPanel() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 p-4">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between p-6 border-b border-slate-100">
-                            <h3 className="text-lg font-bold text-slate-800">User Profile</h3>
+                            <h3 className="text-lg font-bold text-slate-800">{t("profile.title")}</h3>
                             <button onClick={() => { setViewModalUser(null); setViewModalStaff(null); }}
                                 className="p-2 rounded-lg hover:bg-slate-100 text-slate-500">
                                 ✕
@@ -711,14 +717,14 @@ export default function AdminPanel() {
                                     </div>
                                     <div className="grid grid-cols-2 gap-3 text-sm">
                                         {[
-                                            ["Email", viewModalUser.email],
-                                            ["Mobile", viewModalUser.mobile],
-                                            ["Gender", viewModalUser.gender],
-                                            ["Date of Birth", viewModalUser.dateOfBirth],
-                                            ["Blood Group", viewModalUser.bloodGroup],
-                                            ["Category", viewModalUser.category],
-                                            ["Religion", viewModalUser.religion],
-                                            ["Status", viewModalUser.isActive ? "Active" : "Inactive"],
+                                            [tc("field.email"), viewModalUser.email],
+                                            [tc("field.mobile"), viewModalUser.mobile],
+                                            [tc("field.gender"), viewModalUser.gender],
+                                            [tc("field.dob"), viewModalUser.dateOfBirth],
+                                            [t("profile.bloodGroup"), viewModalUser.bloodGroup],
+                                            [t("profile.category"), viewModalUser.category],
+                                            [t("profile.religion"), viewModalUser.religion],
+                                            [tc("field.status"), viewModalUser.isActive ? tc("status.active") : tc("status.inactive")],
                                         ].map(([label, val]) => val ? (
                                             <div key={label}>
                                                 <p className="text-xs text-slate-400 uppercase tracking-wide">{label}</p>
@@ -729,14 +735,14 @@ export default function AdminPanel() {
                                     {viewModalStaff && (
                                         <>
                                             <hr className="border-slate-100" />
-                                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Employment</p>
+                                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("profile.employment")}</p>
                                             <div className="grid grid-cols-2 gap-3 text-sm">
                                                 {[
-                                                    ["Staff Category", viewModalStaff.staffCategory],
-                                                    ["Designation", viewModalStaff.designation?.title],
-                                                    ["Employee Code", viewModalStaff.employeeCode],
-                                                    ["Department", viewModalStaff.department],
-                                                    ["Joining Date", viewModalStaff.joiningDate],
+                                                    [t("profile.staffCategory"), viewModalStaff.staffCategory],
+                                                    [t("profile.designation"), viewModalStaff.designation?.title],
+                                                    [t("profile.employeeCode"), viewModalStaff.employeeCode],
+                                                    [t("profile.department"), viewModalStaff.department],
+                                                    [t("profile.joiningDate"), viewModalStaff.joiningDate],
                                                 ].map(([label, val]) => val ? (
                                                     <div key={label}>
                                                         <p className="text-xs text-slate-400 uppercase tracking-wide">{label}</p>
@@ -749,7 +755,7 @@ export default function AdminPanel() {
                                                     <Link href={`/dashboard/staff/${viewModalStaff.id}/edit`}
                                                         onClick={() => { setViewModalUser(null); setViewModalStaff(null); }}
                                                         className="text-indigo-600 hover:text-indigo-800 text-sm font-medium underline">
-                                                        Open full staff profile →
+                                                        {t("profile.openFull")}
                                                     </Link>
                                                 </div>
                                             )}

@@ -1,4 +1,5 @@
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -39,14 +40,16 @@ interface LoaderProps {
  * globals.css was quietly remapping them; a component this widely used should
  * not depend on that.
  */
-export function Loader({ text = "Loading…", fullScreen = false }: LoaderProps) {
+export function Loader({ text, fullScreen = false }: LoaderProps) {
+    const tc = useTranslations("common");
+    const caption = text ?? tc("state.loading");
     const content = (
         <div
             role="status"
             className="flex flex-col items-center justify-center space-y-3 p-8"
         >
             <Loader2 className="size-7 animate-spin text-brand" aria-hidden />
-            <span className="text-[13px] font-medium text-ink-muted">{text}</span>
+            <span className="text-[13px] font-medium text-ink-muted">{caption}</span>
         </div>
     );
 

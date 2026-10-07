@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { ImageIcon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Panel, PanelBody, PanelHeader } from '@/components/ui/Panel';
 import { hasPhotoFor, type PhotoKind } from '@/lib/person-documents-api';
 import { PersonPhotoField, type StagedPhoto } from './PersonPhotoField';
@@ -15,13 +16,6 @@ import { PersonPhotoField, type StagedPhoto } from './PersonPhotoField';
  */
 
 export type StagedPhotos = Partial<Record<PhotoKind, StagedPhoto | null>>;
-
-const DEFAULT_LABELS: Record<PhotoKind, string> = {
-  self: 'Photo',
-  father: "Father's photo",
-  mother: "Mother's photo",
-  guardian: "Guardian's photo",
-};
 
 interface PersonPhotosSectionProps {
   /** Which slots to show, in display order. */
@@ -58,9 +52,16 @@ export function PersonPhotosSection({
   disabled = false,
   disabledReason,
   readOnly = false,
-  title = 'Photos',
+  title,
   description,
 }: PersonPhotosSectionProps) {
+  const t = useTranslations('students.photo');
+  const DEFAULT_LABELS: Record<PhotoKind, string> = {
+    self: t('kind.self'),
+    father: t('kind.father'),
+    mother: t('kind.mother'),
+    guardian: t('kind.guardian'),
+  };
   const labels: Record<PhotoKind, string> = {
     ...DEFAULT_LABELS,
     self: selfLabel ?? DEFAULT_LABELS.self,
@@ -75,8 +76,8 @@ export function PersonPhotosSection({
   const defaultDescription = readOnly
     ? undefined
     : userId === null
-      ? 'Cropped to the 3:4 ratio the ID cards print at. Uploads when you save the record.'
-      : 'Cropped to the 3:4 ratio the ID cards print at. Large phone photos are resized here — no need to shrink them first.';
+      ? t('sectionHintStaging')
+      : t('sectionHintLive');
 
   return (
     <Panel>
@@ -84,7 +85,7 @@ export function PersonPhotosSection({
         title={
           <span className="inline-flex items-center gap-2">
             <ImageIcon aria-hidden className="size-4 text-ink-faint" />
-            {title}
+            {title ?? t('sectionTitle')}
           </span>
         }
         description={description ?? defaultDescription}

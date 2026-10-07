@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Pencil, TrendingUp } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
@@ -25,6 +26,9 @@ import { PersonDocumentsSection } from "@/components/person/PersonDocumentsSecti
 import { personUserId } from "@/lib/person-documents-api";
 
 export default function ViewStudentPage() {
+    const t = useTranslations("students.detail");
+    const f = useTranslations("students.form");
+    const tc = useTranslations("common");
     const params = useParams();
     const id = params?.id as string;
     const rbac = useRbac();
@@ -39,7 +43,7 @@ export default function ViewStudentPage() {
         const fetchData = async () => {
             try {
                 const res = await authFetch(`${API_BASE_URL}/students/${id}`);
-                if (!res.ok) throw new Error("Failed to fetch student details");
+                if (!res.ok) throw new Error(t("fetchFailed"));
                 const data = await res.json();
                 setStudent(data);
 
@@ -55,18 +59,18 @@ export default function ViewStudentPage() {
                     }
                 }
             } catch (err: any) {
-                setError(err.message || "Failed to load student details");
+                setError(err.message || t("loadFailed"));
             } finally {
                 setLoading(false);
             }
         };
         fetchData();
-    }, [id]);
+    }, [id, t]);
 
     if (loading) {
         return (
             <div className="flex min-h-[60vh] items-center justify-center">
-                <div className="font-medium text-ink-muted">Loading student details…</div>
+                <div className="font-medium text-ink-muted">{t("loading")}</div>
             </div>
         );
     }
@@ -76,11 +80,11 @@ export default function ViewStudentPage() {
             <PageShell>
                 <Panel>
                     <EmptyState
-                        title="Student not found"
-                        description={error || "This student record could not be loaded."}
+                        title={t("notFound")}
+                        description={error || t("notFoundBody")}
                         action={
                             <Button variant="outline" render={<Link href="/dashboard/students" />}>
-                                Back to students
+                                {t("back")}
                             </Button>
                         }
                     />
@@ -96,12 +100,12 @@ export default function ViewStudentPage() {
 
     return (
         <ProfileShell
-            section="Academics · Students"
-            title={[student.firstName, student.lastName].filter(Boolean).join(" ") || "Student"}
-            subtitle={`Student ID: ${student.id}`}
+            section={t("section")}
+            title={[student.firstName, student.lastName].filter(Boolean).join(" ") || tc("field.student")}
+            subtitle={t("studentId", { id: student.id })}
             status={student.isActive ? "ACTIVE" : "INACTIVE"}
             backHref="/dashboard/students"
-            backLabel="Back to students"
+            backLabel={t("back")}
             actions={rbac.canManageStudents && (
                 <>
                     <Button
@@ -111,7 +115,7 @@ export default function ViewStudentPage() {
                         render={<Link href={`/dashboard/students/${student.id}/promote`} />}
                     >
                         <TrendingUp />
-                        Promote
+                        {t("promote")}
                     </Button>
                     <Button
                         disabled={readOnly}
@@ -119,7 +123,7 @@ export default function ViewStudentPage() {
                         render={<Link href={`/dashboard/students/${student.id}/edit`} />}
                     >
                         <Pencil />
-                        Edit student
+                        {t("editStudent")}
                     </Button>
                 </>
             )}
@@ -127,93 +131,93 @@ export default function ViewStudentPage() {
             <PersonPhotosSection
                 readOnly
                 kinds={["self", "father", "mother", "guardian"]}
-                selfLabel="Student photo"
+                selfLabel={f("studentPhoto")}
                 userId={userId}
                 record={student}
-                title="Photos on file"
+                title={t("photosOnFile")}
             />
 
-            <ProfileSection title="Basic information" cols={3}>
-                <ReadField label="First name" value={student.firstName} />
-                <ReadField label="Last name" value={student.lastName} />
-                <ReadField label="Gender" value={student.gender} />
-                <ReadField label="Date of birth" value={formatDate(student.dateOfBirth)} />
-                <ReadField label="Blood group" value={student.bloodGroup} />
-                <ReadField label="Aadhaar number" value={student.aadhaarNumber} />
-                <ReadField label="PEN" value={student.pen} />
-                <ReadField label="APAR ID" value={student.aparId} />
-                <ReadField label="ABHA ID" value={student.abhaId} />
+            <ProfileSection title={t("basicInfo")} cols={3}>
+                <ReadField label={f("firstName")} value={student.firstName} />
+                <ReadField label={f("lastName")} value={student.lastName} />
+                <ReadField label={tc("field.gender")} value={student.gender} />
+                <ReadField label={tc("field.dob")} value={formatDate(student.dateOfBirth)} />
+                <ReadField label={t("bloodGroup")} value={student.bloodGroup} />
+                <ReadField label={t("aadhaarNumber")} value={student.aadhaarNumber} />
+                <ReadField label={t("pen")} value={student.pen} />
+                <ReadField label={f("aparId")} value={student.aparId} />
+                <ReadField label={f("abhaId")} value={student.abhaId} />
             </ProfileSection>
 
-            <ProfileSection title="Contact information" cols={3}>
-                <ReadField label="Email" value={student.email} />
-                <ReadField label="Mobile number" value={student.mobile} />
-                <ReadField label="Alternate mobile" value={student.alternateMobile} />
+            <ProfileSection title={t("contactInfo")} cols={3}>
+                <ReadField label={tc("field.email")} value={student.email} />
+                <ReadField label={t("mobileNumber")} value={student.mobile} />
+                <ReadField label={t("alternateMobile")} value={student.alternateMobile} />
             </ProfileSection>
 
-            <ProfileSection title="Address details" cols={3}>
-                <ReadField label="Address line 1" value={address.addressLine1} span="full" />
-                <ReadField label="Address line 2" value={address.addressLine2} span="full" />
-                <ReadField label="Landmark" value={address.landmark} />
-                <ReadField label="City" value={address.city} />
-                <ReadField label="State" value={address.state} />
-                <ReadField label="Postal code" value={address.postalCode} />
-                <ReadField label="Country" value={address.country} />
+            <ProfileSection title={t("addressDetails")} cols={3}>
+                <ReadField label={f("addressLine1")} value={address.addressLine1} span="full" />
+                <ReadField label={f("addressLine2")} value={address.addressLine2} span="full" />
+                <ReadField label={f("landmark")} value={address.landmark} />
+                <ReadField label={f("city")} value={address.city} />
+                <ReadField label={f("state")} value={address.state} />
+                <ReadField label={f("postalCode")} value={address.postalCode} />
+                <ReadField label={f("country")} value={address.country} />
             </ProfileSection>
 
-            <ProfileSection title="Father's details" cols={3}>
-                <ReadField label="Name" value={student.fathersName} />
-                <ReadField label="Aadhaar" value={student.fatherAadhaarNumber} />
-                <ReadField label="PAN" value={student.fatherPan} />
-                <ReadField label="Occupation" value={student.fatherOccupation} />
-                <ReadField label="Annual income" value={formatMoney(student.fatherIncome)} />
+            <ProfileSection title={t("fathersDetails")} cols={3}>
+                <ReadField label={tc("field.name")} value={student.fathersName} />
+                <ReadField label={t("aadhaar")} value={student.fatherAadhaarNumber} />
+                <ReadField label={t("pan")} value={student.fatherPan} />
+                <ReadField label={t("occupation")} value={student.fatherOccupation} />
+                <ReadField label={t("annualIncome")} value={formatMoney(student.fatherIncome)} />
             </ProfileSection>
 
-            <ProfileSection title="Mother's details" cols={3}>
-                <ReadField label="Name" value={student.mothersName} />
-                <ReadField label="Aadhaar" value={student.motherAadhaarNumber} />
-                <ReadField label="PAN" value={student.motherPan} />
-                <ReadField label="Occupation" value={student.motherOccupation} />
-                <ReadField label="Annual income" value={formatMoney(student.motherIncome)} />
+            <ProfileSection title={t("mothersDetails")} cols={3}>
+                <ReadField label={tc("field.name")} value={student.mothersName} />
+                <ReadField label={t("aadhaar")} value={student.motherAadhaarNumber} />
+                <ReadField label={t("pan")} value={student.motherPan} />
+                <ReadField label={t("occupation")} value={student.motherOccupation} />
+                <ReadField label={t("annualIncome")} value={formatMoney(student.motherIncome)} />
             </ProfileSection>
 
             {hasGuardian && (
-                <ProfileSection title="Guardian" cols={3}>
-                    <ReadField label="Name" value={student.guardianName} />
-                    <ReadField label="Relation" value={student.guardianRelation} />
-                    <ReadField label="Phone" value={student.guardianPhone} />
+                <ProfileSection title={f("guardian")} cols={3}>
+                    <ReadField label={tc("field.name")} value={student.guardianName} />
+                    <ReadField label={t("relation")} value={student.guardianRelation} />
+                    <ReadField label={t("phone")} value={student.guardianPhone} />
                 </ProfileSection>
             )}
 
             {sibling && (
-                <ProfileSection title="Linked sibling" cols={3}>
+                <ProfileSection title={t("linkedSibling")} cols={3}>
                     <ReadField
-                        label="Name"
+                        label={tc("field.name")}
                         value={
                             <Link
                                 href={`/dashboard/students/${sibling.id}`}
                                 className="font-semibold text-brand hover:underline"
                             >
-                                {[sibling.firstName, sibling.lastName].filter(Boolean).join(" ")} (ID: {sibling.id})
+                                {t("siblingName", { name: [sibling.firstName, sibling.lastName].filter(Boolean).join(" "), id: sibling.id })}
                             </Link>
                         }
                     />
-                    <ReadField label="Gender" value={sibling.gender} />
+                    <ReadField label={tc("field.gender")} value={sibling.gender} />
                     <ReadField
-                        label="Status"
+                        label={tc("field.status")}
                         value={<StatusChip status={sibling.isActive ? "ACTIVE" : "INACTIVE"} />}
                     />
                 </ProfileSection>
             )}
 
-            <ProfileSection title="Demographics" cols={3}>
-                <ReadField label="Category" value={student.category} />
-                <ReadField label="Religion" value={student.religion} />
+            <ProfileSection title={f("demographics")} cols={3}>
+                <ReadField label={f("category")} value={student.category} />
+                <ReadField label={f("religion")} value={student.religion} />
             </ProfileSection>
 
             {activeDiscounts.length > 0 && (
                 <Panel>
-                    <PanelHeader title="Applied fee discounts" />
+                    <PanelHeader title={t("appliedDiscounts")} />
                     <PanelBody>
                         <ul className="grid gap-3 sm:grid-cols-2">
                             {activeDiscounts.map((sd: any) => {
@@ -229,7 +233,7 @@ export default function ViewStudentPage() {
                                                 {disc.name}
                                             </span>
                                             <span className="eyebrow text-[10px]">
-                                                {disc.applicationType} discount
+                                                {t("discountType", { type: disc.applicationType })}
                                             </span>
                                         </span>
                                         <span className="shrink-0 font-semibold text-accent-success-deep">
@@ -247,13 +251,13 @@ export default function ViewStudentPage() {
                 <PersonDocumentsSection
                     userId={userId}
                     owners={["SELF", "FATHER", "MOTHER", "GUARDIAN"]}
-                    selfLabel="Student"
+                    selfLabel={tc("field.student")}
                     showTraceLink
                     disabled={!rbac.canManageStudents || readOnly}
                     disabledReason={
                         readOnly
                             ? READ_ONLY_TITLE
-                            : "Only sub admins and above can change what the school holds."
+                            : t("documentsLocked")
                     }
                 />
             )}

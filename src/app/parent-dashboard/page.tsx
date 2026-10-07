@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, Hash, School, Users } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
@@ -16,6 +17,8 @@ import { usePullToRefresh } from "@/components/ui/PullToRefresh";
 
 export default function ParentDashboardPage() {
     const router = useRouter();
+    const t = useTranslations("parent.home");
+    const tp = useTranslations("product");
     const [students, setStudents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -25,7 +28,7 @@ export default function ParentDashboardPage() {
             const res = await authFetch(`${API_BASE_URL}/parent/my-students`, {
                 headers: { Authorization: `Bearer ${getToken()}` },
             });
-            if (!res.ok) throw new Error("Failed to load students");
+            if (!res.ok) throw new Error(t("loadFailed"));
             const data = await res.json();
             // If there is exactly one student, go straight to their dashboard.
             // The query string rides along — a push notification (e.g. a new
@@ -39,11 +42,11 @@ export default function ParentDashboardPage() {
             setError("");
             setStudents(data);
         } catch (err: any) {
-            setError(err.message || "Failed to load students");
+            setError(err.message || t("loadFailed"));
         } finally {
             setLoading(false);
         }
-    }, [router]);
+    }, [router, t]);
 
     useEffect(() => {
         fetchStudents();
@@ -66,9 +69,9 @@ export default function ParentDashboardPage() {
     if (loading) return (
         <PageShell measure="reading">
             <PageHeader
-                section="Parent portal"
+                section={tp("module.parentPortal")}
                 title={<Skeleton className="h-6 w-44 max-w-[70%] sm:h-7" />}
-                description="Open a record to see attendance, fees, homework and results."
+                description={t("description")}
             />
             <PageBody stagger={false}>
                 <ChildGridSkeleton count={2} />
@@ -79,9 +82,9 @@ export default function ParentDashboardPage() {
     return (
         <PageShell measure="reading">
             <PageHeader
-                section="Parent portal"
-                title={students.length > 1 ? "Your children" : "Your child"}
-                description="Open a record to see attendance, fees, homework and results."
+                section={tp("module.parentPortal")}
+                title={students.length > 1 ? t("titleMany") : t("titleOne")}
+                description={t("description")}
             />
 
             <PageBody>
@@ -98,8 +101,8 @@ export default function ParentDashboardPage() {
                     <Panel>
                         <EmptyState
                             icon={<Users />}
-                            title="No student linked to this number"
-                            description="Your mobile number isn't attached to a student record yet. The school office can link it for you."
+                            title={t("emptyTitle")}
+                            description={t("emptyDescription")}
                         />
                     </Panel>
                 )}
@@ -154,8 +157,8 @@ export default function ParentDashboardPage() {
                                                 shown — it is half of how a parent names their
                                                 child's class out loud. */}
                                             <span className="truncate">
-                                                {student.className || 'Class not set'}
-                                                {student.sectionName ? ` · Section ${student.sectionName}` : ''}
+                                                {student.className || t("classNotSet")}
+                                                {student.sectionName ? ` · ${t("sectionName", { section: student.sectionName })}` : ''}
                                             </span>
                                         </span>
                                     </span>
@@ -165,7 +168,7 @@ export default function ParentDashboardPage() {
                                     <div className="min-w-0">
                                         <dt className="eyebrow flex items-center gap-1">
                                             <Hash className="size-3" aria-hidden />
-                                            Roll no
+                                            {t("rollNo")}
                                         </dt>
                                         <dd className="tabular mt-0.5 text-[13.5px] text-ink">
                                             {student.rollNo || '—'}
@@ -174,7 +177,7 @@ export default function ParentDashboardPage() {
                                     <div className="min-w-0">
                                         <dt className="eyebrow flex items-center gap-1">
                                             <CalendarDays className="size-3" aria-hidden />
-                                            Session
+                                            {t("session")}
                                         </dt>
                                         <dd className="mt-0.5 truncate text-[13.5px] text-ink">
                                             {student.academicSession || '—'}
@@ -183,7 +186,7 @@ export default function ParentDashboardPage() {
                                 </dl>
 
                                 <span className="mt-4 flex items-center gap-1.5 text-[13px] font-semibold text-brand">
-                                    Open record
+                                    {t("openRecord")}
                                     <ArrowRight
                                         className="size-3.5 transition-transform duration-200 group-hover/child:translate-x-1"
                                         aria-hidden

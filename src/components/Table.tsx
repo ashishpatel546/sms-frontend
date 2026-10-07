@@ -3,6 +3,7 @@
    callers keep working. `any` is the compatibility surface, not an oversight —
    new code uses DataTable directly, which is generic over the row type. */
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { DataTable, type Column as DataColumn } from '@/components/ui/DataTable';
 
 /**
@@ -48,10 +49,11 @@ const Table: React.FC<TableProps> = ({
     columns,
     data,
     loading = false,
-    emptyMessage = 'No data found',
+    emptyMessage,
     defaultSortColumn,
     defaultSortDirection = 'asc',
 }) => {
+    const t = useTranslations('ui');
     const mapped: DataColumn<any>[] = React.useMemo(() => {
         // Only the first column that qualifies becomes the card's headline; any
         // later candidate falls back to a labelled field. Resolved up front so
@@ -80,7 +82,7 @@ const Table: React.FC<TableProps> = ({
             columns={mapped}
             data={data}
             loading={loading}
-            emptyMessage={emptyMessage}
+            emptyMessage={emptyMessage ?? t('table.noData')}
             defaultSort={
                 defaultSortColumn
                     ? { key: defaultSortColumn, direction: defaultSortDirection }

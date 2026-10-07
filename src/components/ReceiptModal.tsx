@@ -14,6 +14,8 @@ import { getToken } from "@/lib/auth";
 import { getEnv, getSchoolSlug } from "@/lib/env";
 import { fetcher } from "@/lib/api";
 import toast from "react-hot-toast";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 
 export interface ReceiptData {
     receiptNumber?: string;
@@ -97,7 +99,11 @@ export default function ReceiptModal({
     onWaiveOff,
     onIssueRefund,
 }: ReceiptModalProps) {
-    const [schoolName, setSchoolName] = useState<string>("Loading...");
+    const t = useTranslations("fees.receipt");
+    const tf = useTranslations("fees");
+    const tc = useTranslations("common");
+    const intl = INTL_LOCALE[useLocale() as Locale];
+    const [schoolName, setSchoolName] = useState<string>(tc("state.loading"));
     const [schoolTagline, setSchoolTagline] = useState<string | null>(null);
     const [schoolAddress, setSchoolAddress] = useState<string | null>(null);
     const [schoolPhone, setSchoolPhone] = useState<string | null>(null);
@@ -120,6 +126,22 @@ export default function ReceiptModal({
             })
             .catch(() => {/* keep placeholder */});
     }, []);
+
+    // Display label for a payment method; values the screen doesn't know are shown as sent.
+    const methodLabel = (method: string) => {
+        switch (method) {
+            case "CASH":
+            case "UPI":
+            case "CARD":
+            case "ONLINE":
+            case "CHEQUE":
+                return tf(`method.${method}`);
+            case "Fee Adjustment":
+                return t("feeAdjustment");
+            default:
+                return method;
+        }
+    };
 
     const monthLabel =
         receiptData.monthsPaid || receiptData.feeMonth || "—";
@@ -166,7 +188,7 @@ export default function ReceiptModal({
             setTimeout(() => URL.revokeObjectURL(url), 60000);
         } catch (err) {
             console.error('[ReceiptModal] Print error:', err);
-            toast.error('Failed to prepare print. Please try again.');
+            toast.error(t('toast.printFailed'));
         } finally {
             setIsPrinting(false);
         }
@@ -188,7 +210,7 @@ export default function ReceiptModal({
             setTimeout(() => URL.revokeObjectURL(url), 10000);
         } catch (err) {
             console.error('[ReceiptModal] Download error:', err);
-            toast.error('Failed to generate PDF. Please try again.');
+            toast.error(t('toast.pdfFailed'));
         } finally {
             setIsDownloading(false);
         }
@@ -217,7 +239,7 @@ export default function ReceiptModal({
                       <tr key={`cat-${i}`} className="border-b border-gray-100">
                           <td className="py-2 pl-4 pr-2">{c.feeCategoryName}</td>
                           <td className="py-2 text-right whitespace-nowrap">
-                              ₹{Number(c.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                              ₹{Number(c.amount).toLocaleString(intl, { minimumFractionDigits: 2 })}
                           </td>
                       </tr>
                   ))
@@ -226,7 +248,7 @@ export default function ReceiptModal({
                   <tr key={`cat-${i}`} className="border-b border-gray-100">
                       <td className="py-2 pl-4 pr-2">{c.name}</td>
                       <td className="py-2 text-right whitespace-nowrap">
-                          ₹{Number(c.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                          ₹{Number(c.amount).toLocaleString(intl, { minimumFractionDigits: 2 })}
                       </td>
                   </tr>
               ))
@@ -235,7 +257,7 @@ export default function ReceiptModal({
                   <tr key={`cat-${i}`} className="border-b border-gray-100">
                       <td className="py-2 pl-4 pr-2">{c.name}</td>
                       <td className="py-2 text-right whitespace-nowrap">
-                          ₹{Number(c.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                          ₹{Number(c.amount).toLocaleString(intl, { minimumFractionDigits: 2 })}
                       </td>
                   </tr>
               ))
@@ -243,13 +265,14 @@ export default function ReceiptModal({
             ? [
                   <tr key="base" className="border-b border-gray-100">
                       <td className="py-2 pl-4 pr-2">
-                          Base Tuition
-                          {receiptData.feeCategory ? ` / ${receiptData.feeCategory} Fee` : ""}
+                          {receiptData.feeCategory
+                              ? t("baseTuitionWithCategory", { category: receiptData.feeCategory })
+                              : t("baseTuition")}
                       </td>
                       <td className="py-2 text-right whitespace-nowrap">
                           ₹{Number(
                               receiptData.baseFeeAmount ?? receiptData.totalBaseFee
-                          ).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                          ).toLocaleString(intl, { minimumFractionDigits: 2 })}
                       </td>
                   </tr>,
               ]
@@ -262,27 +285,27 @@ export default function ReceiptModal({
                   .filter((c) => c.type === "DISCOUNT")
                   .map((c, i) => (
                       <tr key={`disc-${i}`} className="border-b border-gray-100 text-green-600">
-                          <td className="py-2 pl-4 pr-2">Discount ({c.discountName})</td>
+                          <td className="py-2 pl-4 pr-2">{t("discountNamed", { name: c.discountName ?? "" })}</td>
                           <td className="py-2 text-right whitespace-nowrap">
-                              -₹{Number(c.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                              -₹{Number(c.amount).toLocaleString(intl, { minimumFractionDigits: 2 })}
                           </td>
                       </tr>
                   ))
             : receiptData.appliedDiscounts && receiptData.appliedDiscounts.length > 0
             ? receiptData.appliedDiscounts.map((d, i) => (
                   <tr key={`disc-${i}`} className="border-b border-gray-100 text-green-600">
-                      <td className="py-2 pl-4 pr-2">Discount ({d.name})</td>
+                      <td className="py-2 pl-4 pr-2">{t("discountNamed", { name: d.name })}</td>
                       <td className="py-2 text-right whitespace-nowrap">
-                          -₹{Number(d.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                          -₹{Number(d.amount).toLocaleString(intl, { minimumFractionDigits: 2 })}
                       </td>
                   </tr>
               ))
             : receiptData.feeBreakdown?.discounts && receiptData.feeBreakdown.discounts.length > 0
             ? receiptData.feeBreakdown.discounts.map((d, i) => (
                   <tr key={`disc-${i}`} className="border-b border-gray-100 text-green-600">
-                      <td className="py-2 pl-4 pr-2">Discount ({d.name})</td>
+                      <td className="py-2 pl-4 pr-2">{t("discountNamed", { name: d.name })}</td>
                       <td className="py-2 text-right whitespace-nowrap">
-                          -₹{Number(d.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                          -₹{Number(d.amount).toLocaleString(intl, { minimumFractionDigits: 2 })}
                       </td>
                   </tr>
               ))
@@ -290,9 +313,9 @@ export default function ReceiptModal({
               (receiptData.discountAmount ?? 0) > 0
             ? [
                   <tr key="disc-legacy" className="border-b border-gray-100 text-green-600">
-                      <td className="py-2 pl-4 pr-2">Discount</td>
+                      <td className="py-2 pl-4 pr-2">{t("discount")}</td>
                       <td className="py-2 text-right whitespace-nowrap">
-                          -₹{Number(receiptData.discountAmount).toLocaleString("en-IN", {
+                          -₹{Number(receiptData.discountAmount).toLocaleString(intl, {
                               minimumFractionDigits: 2,
                           })}
                       </td>
@@ -329,7 +352,7 @@ export default function ReceiptModal({
                     
                     {/* Optional: 'PAID' Watermark effect visible in the background */}
                     <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none opacity-[0.03] rotate-[-30deg]">
-                        <span className="text-[120px] font-black tracking-widest text-emerald-600">PAID</span>
+                        <span className="text-[120px] font-black tracking-widest text-emerald-600">{t("watermark")}</span>
                     </div>
 
                     {/* ── Premium Header ── */}
@@ -397,7 +420,7 @@ export default function ReceiptModal({
                                 </div>
                             )}
 
-                            <p className="text-slate-300 text-xs mt-2 uppercase tracking-widest font-medium">Official Fee Receipt</p>
+                            <p className="text-slate-300 text-xs mt-2 uppercase tracking-widest font-medium">{t("title")}</p>
                         </div>
                     </div>
 
@@ -411,11 +434,11 @@ export default function ReceiptModal({
                                     <Hash className="w-4 h-4" />
                                 </div>
                                 <div>
-                                    <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">Receipt No.</p>
+                                    <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">{t("receiptNo")}</p>
                                     <p className="font-bold font-mono text-slate-800 break-all text-sm leading-tight">
                                         {receiptData.receiptNumber
                                             ? receiptData.receiptNumber
-                                            : <span className="text-slate-400 font-normal not-italic text-xs">Adjustment Record</span>
+                                            : <span className="text-slate-400 font-normal not-italic text-xs">{t("adjustmentRecord")}</span>
                                         }
                                     </p>
                                 </div>
@@ -423,10 +446,10 @@ export default function ReceiptModal({
 
                             <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-start justify-end gap-3 text-right pr-6">
                                 <div>
-                                    <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5 mt-0.5">Date</p>
+                                    <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5 mt-0.5">{tc("field.date")}</p>
                                     <p className="font-semibold text-slate-800 text-sm leading-tight">
                                         {receiptData.paymentDate
-                                            ? new Date(receiptData.paymentDate).toLocaleDateString("en-IN", {
+                                            ? new Date(receiptData.paymentDate).toLocaleDateString(intl, {
                                                   day: "2-digit",
                                                   month: "short",
                                                   year: "numeric",
@@ -445,7 +468,7 @@ export default function ReceiptModal({
                                         <User className="w-4 h-4" />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">Student Details</p>
+                                        <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">{t("studentDetails")}</p>
                                         <div className="flex justify-between items-end">
                                             <p className="font-bold text-slate-800 text-base">{receiptData.studentName}</p>
                                             <p className="font-medium text-slate-500 text-xs">
@@ -458,15 +481,15 @@ export default function ReceiptModal({
 
                             <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm col-span-2 flex justify-between items-center">
                                 <div>
-                                    <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">Fee Month(s)</p>
+                                    <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">{t("feeMonths")}</p>
                                     <p className="font-semibold text-slate-800 text-sm">{monthLabel}</p>
                                 </div>
                                 {receiptData.paymentMethod && (
                                     <div className="text-right">
-                                        <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">Payment Method</p>
+                                        <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">{t("paymentMethod")}</p>
                                         <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-xs font-medium">
                                             <CreditCard className="w-3 h-3" />
-                                            {receiptData.paymentMethod}
+                                            {methodLabel(receiptData.paymentMethod)}
                                         </div>
                                     </div>
                                 )}
@@ -478,8 +501,8 @@ export default function ReceiptModal({
                             <table className="w-full text-sm text-left">
                                 <thead className="bg-slate-50 border-b border-slate-200">
                                     <tr>
-                                        <th className="py-2.5 px-4 text-slate-500 font-bold text-xs uppercase tracking-wider">Description</th>
-                                        <th className="py-2.5 px-4 text-right text-slate-500 font-bold text-xs uppercase tracking-wider">Amount</th>
+                                        <th className="py-2.5 px-4 text-slate-500 font-bold text-xs uppercase tracking-wider">{tc("field.description")}</th>
+                                        <th className="py-2.5 px-4 text-right text-slate-500 font-bold text-xs uppercase tracking-wider">{tc("field.amount")}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
@@ -489,9 +512,9 @@ export default function ReceiptModal({
                                 {/* Late Fee */}
                                 {lateFeeAmt > 0 && (
                                     <tr className="border-b border-gray-100 text-red-600">
-                                        <td className="py-2 pl-4 pr-2">Late Fee</td>
+                                        <td className="py-2 pl-4 pr-2">{t("lateFee")}</td>
                                         <td className="py-2 text-right whitespace-nowrap">
-                                            +₹{lateFeeAmt.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                            +₹{lateFeeAmt.toLocaleString(intl, { minimumFractionDigits: 2 })}
                                         </td>
                                     </tr>
                                 )}
@@ -499,9 +522,9 @@ export default function ReceiptModal({
                                 {/* Total Payable */}
                                 {receiptData.totalPayable != null && (
                                     <tr className="border-b border-gray-200 text-gray-600">
-                                        <td className="py-2 pl-4 pr-2 text-sm">Total Payable</td>
+                                        <td className="py-2 pl-4 pr-2 text-sm">{t("totalPayable")}</td>
                                         <td className="py-2 text-right text-sm whitespace-nowrap">
-                                            ₹{Number(receiptData.totalPayable).toLocaleString("en-IN", {
+                                            ₹{Number(receiptData.totalPayable).toLocaleString(intl, {
                                                 minimumFractionDigits: 2,
                                             })}
                                         </td>
@@ -512,10 +535,10 @@ export default function ReceiptModal({
                                 <tr className="bg-emerald-50 border-t-2 border-slate-200">
                                     <td className="py-3.5 px-4 font-bold text-slate-800 flex items-center gap-2">
                                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                                        Total Paid
+                                        {t("totalPaid")}
                                     </td>
                                     <td className="py-3.5 px-4 text-right font-bold text-emerald-700 text-base whitespace-nowrap">
-                                        ₹{Number(receiptData.amountPaid).toLocaleString("en-IN", {
+                                        ₹{Number(receiptData.amountPaid).toLocaleString(intl, {
                                             minimumFractionDigits: 2,
                                         })}
                                     </td>
@@ -527,10 +550,10 @@ export default function ReceiptModal({
                                     .map((a, i) => (
                                         <tr key={`ref-${i}`} className="border-b border-orange-50 text-orange-600">
                                             <td className="py-2 pl-4 pr-2 text-sm">
-                                                Refund ({a.paymentMethod || "—"})
+                                                {t("refundWithMethod", { method: a.paymentMethod ? methodLabel(a.paymentMethod) : "—" })}
                                                 {a.adjustedAt && (
                                                     <span className="ml-1 text-xs text-gray-400">
-                                                        {new Date(a.adjustedAt).toLocaleDateString("en-IN", {
+                                                        {new Date(a.adjustedAt).toLocaleDateString(intl, {
                                                             day: "2-digit",
                                                             month: "short",
                                                             year: "numeric",
@@ -542,12 +565,12 @@ export default function ReceiptModal({
                                                 )}
                                                 {a.createdByName && (
                                                     <span className="block text-xs text-gray-400">
-                                                        Refunded by: {a.createdByName}
+                                                        {t("refundedBy", { name: a.createdByName })}
                                                     </span>
                                                 )}
                                             </td>
                                             <td className="py-2 text-right text-sm whitespace-nowrap">
-                                                -₹{Number(a.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                -₹{Number(a.amount).toLocaleString(intl, { minimumFractionDigits: 2 })}
                                             </td>
                                         </tr>
                                     ))}
@@ -558,10 +581,10 @@ export default function ReceiptModal({
                                     .map((a, i) => (
                                         <tr key={`waive-${i}`} className="border-b border-purple-50 text-purple-600">
                                             <td className="py-2 pl-4 pr-2 text-sm">
-                                                Fee Waived Off
+                                                {t("waivedOff")}
                                                 {a.adjustedAt && (
                                                     <span className="ml-1 text-xs text-gray-400">
-                                                        {new Date(a.adjustedAt).toLocaleDateString("en-IN", {
+                                                        {new Date(a.adjustedAt).toLocaleDateString(intl, {
                                                             day: "2-digit",
                                                             month: "short",
                                                             year: "numeric",
@@ -573,17 +596,17 @@ export default function ReceiptModal({
                                                 )}
                                                 {a.createdByName && (
                                                     <span className="block text-xs text-gray-400">
-                                                        Waived by: {a.createdByName}
+                                                        {t("waivedBy", { name: a.createdByName })}
                                                     </span>
                                                 )}
                                                 {a.permittedByName && (
                                                     <span className="block text-xs text-gray-400">
-                                                        Permitted by: {a.permittedByName}
+                                                        {t("permittedBy", { name: a.permittedByName })}
                                                     </span>
                                                 )}
                                             </td>
                                             <td className="py-2 text-right text-sm whitespace-nowrap">
-                                                -₹{Number(a.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                -₹{Number(a.amount).toLocaleString(intl, { minimumFractionDigits: 2 })}
                                             </td>
                                         </tr>
                                     ))}
@@ -591,9 +614,9 @@ export default function ReceiptModal({
                                 {/* Excess balance */}
                                 {(receiptData.excess ?? 0) > 0 && (
                                     <tr className="text-green-700 border-b border-green-100">
-                                        <td className="py-2 pl-4 pr-2 text-sm font-medium">Excess Balance</td>
+                                        <td className="py-2 pl-4 pr-2 text-sm font-medium">{t("excessBalance")}</td>
                                         <td className="py-2 text-right text-sm font-medium whitespace-nowrap">
-                                            ₹{Number(receiptData.excess).toLocaleString("en-IN", {
+                                            ₹{Number(receiptData.excess).toLocaleString(intl, {
                                                 minimumFractionDigits: 2,
                                             })}
                                         </td>
@@ -603,9 +626,9 @@ export default function ReceiptModal({
                                 {/* Balance remaining */}
                                 {balanceDue > 0 && (
                                     <tr className="text-red-600 border-t border-red-100">
-                                        <td className="py-2 pl-4 pr-2 text-sm font-medium">Balance Remaining</td>
+                                        <td className="py-2 pl-4 pr-2 text-sm font-medium">{t("balanceRemaining")}</td>
                                         <td className="py-2 text-right text-sm font-medium whitespace-nowrap">
-                                            ₹{Number(balanceDue).toLocaleString("en-IN", {
+                                            ₹{Number(balanceDue).toLocaleString(intl, {
                                                 minimumFractionDigits: 2,
                                             })}
                                         </td>
@@ -618,19 +641,19 @@ export default function ReceiptModal({
                         {/* Collected / gateway info */}
                         {receiptData.collectedByName ? (
                             <div className="text-xs text-slate-500 flex justify-between border-t border-slate-200 pt-3 mt-4">
-                                <span>Collected by:</span>
+                                <span>{t("collectedBy")}</span>
                                 <span className="font-medium text-slate-800">{receiptData.collectedByName}</span>
                             </div>
                         ) : receiptData.gatewayPaymentId ? (
                             <div className="text-xs text-slate-500 flex justify-between border-t border-slate-200 pt-3 mt-4">
-                                <span>Processed via:</span>
+                                <span>{t("processedVia")}</span>
                                 <span className="font-medium text-slate-800">Razorpay</span>
                             </div>
                         ) : null}
 
                         {receiptData.gatewayPaymentId && (
                             <div className="mt-2 border border-blue-100 bg-blue-50 rounded-lg px-3 py-2 text-xs">
-                                <p className="text-gray-500 mb-0.5">Gateway Transaction ID</p>
+                                <p className="text-gray-500 mb-0.5">{t("gatewayTxnId")}</p>
                                 <div className="flex items-center gap-2 justify-between">
                                     <span className="font-mono text-blue-700 break-all">
                                         {receiptData.gatewayPaymentId}
@@ -640,21 +663,21 @@ export default function ReceiptModal({
                                             navigator.clipboard.writeText(receiptData.gatewayPaymentId!)
                                         }
                                         className="no-print text-gray-400 hover:text-blue-600 shrink-0"
-                                        title="Copy"
+                                        title={tc("action.copy")}
                                     >
                                         ⧉
                                     </button>
                                 </div>
                                 {receiptData.gatewayOrderId && (
                                     <p className="text-gray-400 mt-1 font-mono break-all">
-                                        Order: {receiptData.gatewayOrderId}
+                                        {t("order", { id: receiptData.gatewayOrderId })}
                                     </p>
                                 )}
                             </div>
                         )}
 
                         {receiptData.remarks && (
-                            <p className="mt-3 text-xs text-gray-500">Remarks: {receiptData.remarks}</p>
+                            <p className="mt-3 text-xs text-gray-500">{t("remarks", { remarks: receiptData.remarks })}</p>
                         )}
 
                         {/* Authorized signature line / Digital generation notice */}
@@ -662,14 +685,14 @@ export default function ReceiptModal({
                             {isAdmin ? (
                                 <div className="text-center">
                                     <div className="w-32 border-b border-slate-400 mb-1 h-6"></div>
-                                    <span className="font-medium">Authorized Signature</span>
+                                    <span className="font-medium">{t("signature")}</span>
                                 </div>
                             ) : (
                                 <span className="italic bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-100 min-w-0">
-                                    This is a digitally generated receipt and does not require a signature.
+                                    {t("digitalNotice")}
                                 </span>
                             )}
-                            <span className="font-medium text-slate-400 uppercase tracking-widest text-[10px] shrink-0">Thank You</span>
+                            <span className="font-medium text-slate-400 uppercase tracking-widest text-[10px] shrink-0">{t("thankYou")}</span>
                         </div>
                     </div>
 
@@ -680,7 +703,7 @@ export default function ReceiptModal({
                             onClick={onClose}
                             className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors text-sm"
                         >
-                            Close
+                            {tc("action.close")}
                         </button>
 
                         {/* Admin-only: Collect Remaining */}
@@ -689,7 +712,7 @@ export default function ReceiptModal({
                                 onClick={onCollectRemaining}
                                 className="px-4 py-2 bg-blue-100 text-blue-700 border border-blue-200 rounded-xl hover:bg-blue-200 transition-colors text-sm"
                             >
-                                Collect Remaining ₹{Number(receiptData.balanceAfterPayment).toFixed(2)}
+                                {t("collectRemaining", { amount: Number(receiptData.balanceAfterPayment).toFixed(2) })}
                             </button>
                         )}
 
@@ -699,7 +722,7 @@ export default function ReceiptModal({
                                 onClick={onWaiveOff}
                                 className="px-4 py-2 bg-purple-100 text-purple-700 border border-purple-200 rounded-xl hover:bg-purple-200 transition-colors text-sm"
                             >
-                                Waive Off Remaining
+                                {t("waiveOffRemaining")}
                             </button>
                         )}
 
@@ -709,7 +732,7 @@ export default function ReceiptModal({
                                 onClick={onIssueRefund}
                                 className="px-4 py-2 bg-orange-100 text-orange-700 border border-orange-200 rounded-xl hover:bg-orange-200 transition-colors text-sm"
                             >
-                                Issue Refund (₹{Number(receiptData.excess).toFixed(2)} excess)
+                                {t("issueRefund", { amount: Number(receiptData.excess).toFixed(2) })}
                             </button>
                         )}
 
@@ -725,14 +748,14 @@ export default function ReceiptModal({
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                                     </svg>
-                                    Generating…
+                                    {t("generating")}
                                 </>
                             ) : (
                                 <>
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                     </svg>
-                                    Download PDF
+                                    {t("downloadPdf")}
                                 </>
                             )}
                         </button>
@@ -749,14 +772,14 @@ export default function ReceiptModal({
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                                     </svg>
-                                    Preparing…
+                                    {t("preparing")}
                                 </>
                             ) : (
                                 <>
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                     </svg>
-                                    Print Receipt
+                                    {t("print")}
                                 </>
                             )}
                         </button>

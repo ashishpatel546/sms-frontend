@@ -1,6 +1,7 @@
 'use client';
 
 import { API_BASE_URL } from './api';
+import type { useTranslations } from 'next-intl';
 import { authFetch } from './auth';
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -27,31 +28,24 @@ export const CIRCULAR_PAGE_SIZE = 5;
  */
 export type CircularAudience = 'PARENT' | 'STAFF' | 'ALL';
 
-/** Label, and the plain sentence that says who will actually be told. */
+type CircularsTranslator = ReturnType<typeof useTranslations<'circulars'>>;
+
+/**
+ * Each audience's key in `circulars.audience`, which holds its label and the
+ * plain sentence that says who will actually be told.
+ */
 export const CIRCULAR_AUDIENCES: {
   value: CircularAudience;
-  label: string;
-  who: string;
+  key: 'all' | 'parent' | 'staff';
 }[] = [
-  {
-    value: 'ALL',
-    label: 'Everyone',
-    who: 'Every parent and every member of staff is notified.',
-  },
-  {
-    value: 'PARENT',
-    label: 'Parents',
-    who: 'Only parents are notified, and only they can see it.',
-  },
-  {
-    value: 'STAFF',
-    label: 'Staff',
-    who: 'Only staff are notified. Parents never see this circular.',
-  },
+  { value: 'ALL', key: 'all' },
+  { value: 'PARENT', key: 'parent' },
+  { value: 'STAFF', key: 'staff' },
 ];
 
-export function circularAudienceLabel(audience: CircularAudience): string {
-  return CIRCULAR_AUDIENCES.find((a) => a.value === audience)?.label ?? 'Everyone';
+export function circularAudienceLabel(audience: CircularAudience, t: CircularsTranslator): string {
+  const key = CIRCULAR_AUDIENCES.find((a) => a.value === audience)?.key ?? 'all';
+  return t(`audience.${key}.label`);
 }
 
 export interface Circular {
@@ -121,7 +115,7 @@ async function getJson<T>(path: string): Promise<T> {
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { message?: string | string[] };
     const message = Array.isArray(body.message) ? body.message[0] : body.message;
-    throw new CircularApiError(message ?? 'The request failed', res.status);
+    throw new CircularApiError(message ?? '', res.status);
   }
   return (await res.json()) as T;
 }
@@ -151,7 +145,7 @@ export function fetchCircularFileUrl(
  */
 export async function downloadCircularFile(id: string, fileName: string): Promise<void> {
   const res = await authFetch(`${API_BASE_URL}/circulars/${id}/download`);
-  if (!res.ok) throw new CircularApiError('Could not download the attachment', res.status);
+  if (!res.ok) throw new CircularApiError('', res.status);
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -184,7 +178,7 @@ export async function createCircular(input: {
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { message?: string | string[] };
     const message = Array.isArray(body.message) ? body.message[0] : body.message;
-    throw new CircularApiError(message ?? 'The circular could not be issued', res.status);
+    throw new CircularApiError(message ?? '', res.status);
   }
   return (await res.json()) as Circular;
 }
@@ -198,7 +192,7 @@ async function postJson<T>(path: string, body?: unknown): Promise<T> {
   if (!res.ok) {
     const b = (await res.json().catch(() => ({}))) as { message?: string | string[] };
     const message = Array.isArray(b.message) ? b.message[0] : b.message;
-    throw new CircularApiError(message ?? 'The request failed', res.status);
+    throw new CircularApiError(message ?? '', res.status);
   }
   return (await res.json()) as T;
 }
@@ -233,15 +227,16 @@ export function formatFileSize(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function formatPublishedAt(iso: string): string {
-  return new Date(iso).toLocaleString('en-IN', {
+/** `intlLocale` is a BCP-47 tag — pass `INTL_LOCALE[locale]` for display. */
+export function formatPublishedAt(iso: string, intlLocale = 'en-IN'): string {
+  return new Date(iso).toLocaleString(intlLocale, {
     dateStyle: 'medium',
     timeStyle: 'short',
   });
 }
 
-export function formatPublishedDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-IN', {
+export function formatPublishedDate(iso: string, intlLocale = 'en-IN'): string {
+  return new Date(iso).toLocaleDateString(intlLocale, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',

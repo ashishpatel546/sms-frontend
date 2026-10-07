@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { useTranslations } from "next-intl";
 import { useRbac } from "@/lib/rbac";
 import AddStaffForm from "@/components/AddStaffForm";
 import { Panel, PanelBody } from "@/components/ui/Panel";
@@ -11,6 +12,7 @@ import { PersonPhotosSection, type StagedPhotos } from "@/components/person/Pers
 import { personUserId, uploadPersonPhoto } from "@/lib/person-documents-api";
 
 export default function AddStaffPage() {
+    const t = useTranslations("staff");
     const router = useRouter();
     const rbac = useRbac();
 
@@ -20,10 +22,10 @@ export default function AddStaffPage() {
 
     useEffect(() => {
         if (!rbac.canManageTeachers) {
-            toast.error("You don't have permission to add staff.");
+            toast.error(t("new.noPermission"));
             router.replace("/dashboard/staff");
         }
-    }, [rbac.canManageTeachers, router]);
+    }, [rbac.canManageTeachers, router, t]);
 
     const handleSuccess = async (newStaff: any) => {
         const photo = stagedPhotos.self;
@@ -33,10 +35,10 @@ export default function AddStaffPage() {
             try {
                 await uploadPersonPhoto(userId, "self", photo.full, photo.thumb);
             } catch {
-                toast.error("Staff member saved, but the photo did not upload. Add it from Edit.");
+                toast.error(t("new.photoUploadFailed"));
             }
         } else if (photo) {
-            toast.error("Staff member saved, but the photo could not be attached. Add it from Edit.");
+            toast.error(t("new.photoNotAttached"));
         }
 
         router.push("/dashboard/staff");
@@ -46,17 +48,17 @@ export default function AddStaffPage() {
     return (
         <PageShell>
             <PageHeader
-                section="Academics · Staff"
-                title="Add a staff member"
-                description="Their record, their photo, and what they teach."
+                section={t("section")}
+                title={t("new.title")}
+                description={t("new.description")}
                 backHref="/dashboard/staff"
-                backLabel="Back to staff"
+                backLabel={t("backToStaff")}
             />
 
             <PageBody>
                 <PersonPhotosSection
                     kinds={["self"]}
-                    selfLabel="Staff photo"
+                    selfLabel={t("staffPhoto")}
                     staged={stagedPhotos}
                     onStagedChange={(kind, photo) =>
                         setStagedPhotos(prev => ({ ...prev, [kind]: photo }))

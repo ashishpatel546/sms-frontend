@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { API_BASE_URL } from '@/lib/api';
 import { authFetch } from '@/lib/auth';
 
@@ -24,9 +25,10 @@ interface Props {
 export default function StudentPicker({
   value,
   onChange,
-  placeholder = 'Search by name or mobile…',
+  placeholder,
   className = '',
 }: Props) {
+  const t = useTranslations('inventory.studentPicker');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<StudentResult[]>([]);
   const [selected, setSelected] = useState<StudentResult | null>(null);
@@ -145,7 +147,7 @@ export default function StudentPicker({
             type="text"
             value={query}
             onChange={handleInputChange}
-            placeholder={placeholder}
+            placeholder={placeholder ?? t('placeholder')}
             className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 pr-8 text-[14px] text-ink placeholder:text-ink-faint focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none"
           />
           {loading && (

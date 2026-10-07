@@ -1,0 +1,116 @@
+{
+  "page": {
+    "section": "Communication",
+    "title": "Circulars",
+    "description": "School-wide notices, newest first. Every circular is final once issued.",
+    "issue": "Issue circular",
+    "issueFirst": "Issue the first circular",
+    "emptyStaff": "Nothing has been issued yet. A circular goes out to every parent and staff member the moment you publish it.",
+    "emptyReader": "Nothing has been issued yet. Notices from the school office will appear here."
+  },
+  "audience": {
+    "all": {
+      "label": "Everyone",
+      "who": "Every parent and every member of staff is notified."
+    },
+    "parent": {
+      "label": "Parents",
+      "who": "Only parents are notified, and only they can see it."
+    },
+    "staff": {
+      "label": "Staff",
+      "who": "Only staff are notified. Parents never see this circular."
+    }
+  },
+  "card": {
+    "openAria": "Open circular: {title}",
+    "new": "New",
+    "archived": "Archived",
+    "issuedBy": "Issued by {name}"
+  },
+  "feed": {
+    "searchPlaceholder": "Search title or description…",
+    "searchAria": "Search circulars",
+    "audience": "Audience",
+    "filter": {
+      "all": "All",
+      "parents": "To parents",
+      "staff": "To staff"
+    },
+    "showArchived": "Show archived",
+    "noResults": "No results",
+    "range": "{from}–{to} of {total}",
+    "loadFailed": "The circulars could not be loaded.",
+    "noMatchTitle": "Nothing matches that",
+    "noMatchBody": "No circular has “{search}” in its title or description.",
+    "clearSearch": "Clear the search",
+    "noAudienceTitle": "Nothing for that audience",
+    "noAudienceParents": "No circular has been issued to parents yet.",
+    "noAudienceStaff": "No circular has been issued to staff yet.",
+    "showAll": "Show all circulars",
+    "emptyTitle": "No circulars yet",
+    "pagesAria": "Circular pages",
+    "newer": "Newer",
+    "older": "Older",
+    "pageOf": "Page {page} of {totalPages}"
+  },
+  "reader": {
+    "eyebrow": "Circular",
+    "issuedTo": "Issued to {audience}",
+    "downloadFailed": "Could not download the attachment.",
+    "archived": "Circular archived — hidden from the school and its notification withdrawn.",
+    "archiveFailed": "Could not archive the circular.",
+    "restored": "Circular restored — the school can see it and has been notified again.",
+    "restoreFailed": "Could not restore the circular.",
+    "archivedNoteTitle": "Archived — the school cannot see this",
+    "withdrawnOn": "Withdrawn on {date}.",
+    "reason": "Reason: {reason}",
+    "attachmentFailed": "The attachment could not be loaded. Try downloading it instead.",
+    "openPdf": "Open the PDF",
+    "loadingAttachment": "Loading the attachment…",
+    "noAttachment": "No attachment on this circular.",
+    "archiveWarning": "This withdraws the circular from every parent and staff member, and takes the notification announcing it back out of their feeds. The text is not changed and nothing is deleted — though a push already shown on someone’s phone cannot be pulled back.",
+    "reasonPlaceholder": "Reason (optional, kept for the audit trail)",
+    "reasonAria": "Reason for archiving",
+    "archiving": "Archiving…",
+    "confirmArchive": "Yes, archive it",
+    "restoreWarning": "This puts the circular back in front of the school and announces it again — everyone is notified a second time, because archiving withdrew the first notification.",
+    "restoring": "Restoring…",
+    "confirmRestore": "Yes, restore and notify",
+    "downloading": "Downloading…",
+    "downloadPdf": "Download PDF",
+    "restore": "Restore",
+    "archive": "Archive"
+  },
+  "issue": {
+    "title": "Issue a circular",
+    "onlyPdf": "Only a PDF can be attached.",
+    "tooLarge": "That file is {size} — the limit is {limit} MB.",
+    "toast": {
+      "all": "Circular issued — every parent and staff member has been notified.",
+      "parent": "Circular issued — every parent has been notified.",
+      "staff": "Circular issued — every member of staff has been notified."
+    },
+    "failed": "The circular could not be issued.",
+    "finalTitle": "Published once, and final",
+    "finalBody": "A circular cannot be edited after it is issued, and the audience you choose is notified immediately. To correct one, issue a new circular — only the school’s owner can withdraw one.",
+    "audienceLegend": "Who is this for?",
+    "audienceHint": "Only this group is notified, and a staff circular never reaches the parent portal.",
+    "titleLabel": "Title",
+    "titlePlaceholder": "e.g. Summer vacation from 15 May",
+    "descriptionHint": "Attach the full notice as a PDF if it runs longer.",
+    "charsLeft": "{remaining} of {max} left",
+    "descriptionPlaceholder": "What the school is announcing…",
+    "attachment": "Attachment",
+    "attachmentHint": "(optional PDF, up to {limit} MB)",
+    "choosePdf": "Choose a PDF",
+    "confirm": {
+      "all": "Every parent and staff member will be notified straight away, and this circular can never be edited. Issue it?",
+      "parent": "Every parent will be notified straight away, and this circular can never be edited. Staff can still find it in the circulars list, but will not be notified. Issue it?",
+      "staff": "Every member of staff will be notified straight away, and this circular can never be edited. Parents will not see it at all. Issue it?"
+    },
+    "issuing": "Issuing…",
+    "confirmIssue": "Yes, issue it",
+    "keepEditing": "Keep editing"
+  }
+}

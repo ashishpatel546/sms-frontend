@@ -17,6 +17,7 @@
  * carries its `accuracy`, and the check-in path is required to send it on.
  */
 
+import type { HelperMessage } from "@/i18n/helper-message";
 export interface PreciseFix {
   lat: number;
   lng: number;
@@ -94,6 +95,22 @@ export function explainFixError(error: GeolocationFixError): string {
       return "Could not get a location in time. Step outdoors, make sure GPS is on, and try again.";
     case "TOO_COARSE":
       return `Your location is only accurate to ${describeAccuracy(error.accuracy ?? 0)}, which usually means GPS is off and your phone is guessing from the network. Turn on Location/GPS, step outside if you are indoors, and try again.`;
+  }
+}
+
+/** Translatable form of explainFixError — show with useTranslations("common.helper"). */
+export function fixErrorMessage(error: GeolocationFixError): HelperMessage {
+  switch (error.code) {
+    case "UNSUPPORTED":
+      return { key: "geoUnsupported" };
+    case "PERMISSION_DENIED":
+      return { key: "geoPermissionDenied" };
+    case "POSITION_UNAVAILABLE":
+      return { key: "geoUnavailable" };
+    case "TIMEOUT":
+      return { key: "geoTimeout" };
+    case "TOO_COARSE":
+      return { key: "geoTooCoarse", values: { accuracy: describeAccuracy(error.accuracy ?? 0) } };
   }
 }
 

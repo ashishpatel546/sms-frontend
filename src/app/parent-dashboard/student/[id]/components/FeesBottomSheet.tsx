@@ -2,6 +2,7 @@
 
 import { CheckCircle2 } from 'lucide-react';
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useFees } from "../hooks/useStudentData";
 
 interface FeesBottomSheetProps {
@@ -30,6 +31,8 @@ export default function FeesBottomSheet({
     studentInfo,
     paymentEnabled,
 }: FeesBottomSheetProps) {
+    const t = useTranslations("parent");
+    const tc = useTranslations("common");
     const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
 
     // Lazy load: only fetch when the sheet is open
@@ -106,7 +109,7 @@ export default function FeesBottomSheet({
             className="fixed inset-0 z-60 flex flex-col justify-end"
             role="dialog"
             aria-modal="true"
-            aria-label="Fee Summary"
+            aria-label={t("feesSheet.title")}
         >
             {/* Backdrop */}
             <div
@@ -128,14 +131,14 @@ export default function FeesBottomSheet({
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 shrink-0">
                     <div>
-                        <h2 className="text-base font-bold text-slate-800">Fee Summary</h2>
+                        <h2 className="text-base font-bold text-slate-800">{t("feesSheet.title")}</h2>
                         {academicYearString && (
                             <p className="text-xs text-slate-400 mt-0.5">{academicYearString}</p>
                         )}
                     </div>
                     <button
                         onClick={onClose}
-                        aria-label="Close"
+                        aria-label={tc("action.close")}
                         className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -151,13 +154,13 @@ export default function FeesBottomSheet({
                         {isLoading ? (
                             <div className="flex items-center justify-center py-14">
                                 <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
-                                <span className="ml-3 text-slate-500 text-sm">Loading fees…</span>
+                                <span className="ml-3 text-slate-500 text-sm">{t("feesSheet.loading")}</span>
                             </div>
                         ) : allDueItems.length === 0 && paidMonths.length === 0 ? (
                             <div className="text-center py-14">
                                 <div className="text-4xl mb-3">📭</div>
-                                <p className="text-slate-700 font-semibold">No fee data</p>
-                                <p className="text-slate-400 text-sm mt-1">Nothing to show for {academicYearString}</p>
+                                <p className="text-slate-700 font-semibold">{t("feesSheet.noData")}</p>
+                                <p className="text-slate-400 text-sm mt-1">{t("feesSheet.nothingFor", { session: academicYearString })}</p>
                             </div>
                         ) : (
                             <>
@@ -165,14 +168,14 @@ export default function FeesBottomSheet({
                                 {allDueItems.length === 0 ? (
                                     <div className="text-center py-8">
                                         <div className="mx-auto mb-2 grid size-11 place-items-center rounded-full bg-accent-success-tint text-accent-success-deep"><CheckCircle2 className="size-5" aria-hidden /></div>
-                                        <p className="text-slate-700 font-semibold">All fees paid!</p>
-                                        <p className="text-slate-400 text-sm mt-1">No pending dues for {academicYearString}</p>
+                                        <p className="text-slate-700 font-semibold">{t("feesSheet.allPaid")}</p>
+                                        <p className="text-slate-400 text-sm mt-1">{t("feesSheet.noDuesFor", { session: academicYearString })}</p>
                                     </div>
                                 ) : (
                                     <>
                                         <div className="flex items-center justify-between">
                                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                                                Pending Dues
+                                                {t("feesSheet.pendingDues")}
                                                 <span className="bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full text-[10px] font-bold">
                                                     {allDueItems.length}
                                                 </span>
@@ -182,7 +185,7 @@ export default function FeesBottomSheet({
                                                     onClick={toggleAll}
                                                     className="text-xs font-medium text-brand hover:underline"
                                                 >
-                                                    {allSelected ? "Deselect All" : "Select All"}
+                                                    {allSelected ? t("feesSheet.deselectAll") : tc("action.selectAll")}
                                                 </button>
                                             )}
                                         </div>
@@ -232,12 +235,12 @@ export default function FeesBottomSheet({
 
                                                             {item.status === "PARTIAL" && item.totalPaid > 0 && (
                                                                 <p className="text-[11px] text-yellow-600 mt-1">
-                                                                    ₹{Number(item.totalPaid).toLocaleString()} already paid of ₹{Number(item.totalDue).toLocaleString()}
+                                                                    {t("feesSheet.alreadyPaidOf", { paid: Number(item.totalPaid).toLocaleString(), total: Number(item.totalDue).toLocaleString() })}
                                                                 </p>
                                                             )}
                                                             {item.lateFee > 0 && (
                                                                 <p className="text-[11px] text-red-500 mt-0.5">
-                                                                    Incl. ₹{Number(item.lateFee).toLocaleString()} late fee
+                                                                    {t("feesSheet.inclLateFee", { amount: Number(item.lateFee).toLocaleString() })}
                                                                 </p>
                                                             )}
                                                         </div>
@@ -250,7 +253,7 @@ export default function FeesBottomSheet({
                                         {!paymentEnabled && (
                                             <div className="flex items-start gap-2 p-3 bg-sky-50 border border-sky-200 rounded-xl">
                                                 <span className="text-sm">ℹ️</span>
-                                                <p className="text-sky-700 text-xs">Online payment is not available. Please pay at the school office.</p>
+                                                <p className="text-sky-700 text-xs">{t("student.fees.payAtOffice")}</p>
                                             </div>
                                         )}
 
@@ -258,7 +261,7 @@ export default function FeesBottomSheet({
                                         {paymentEnabled && selectedKeys.length > 0 && (
                                             <div className="bg-brand/5 border border-brand/20 rounded-2xl p-4">
                                                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                                                    Payment Summary
+                                                    {t("feesSheet.paymentSummary")}
                                                 </p>
                                                 {selectedKeys.map((key) => {
                                                     const item = allDueItems.find((x) => x.key === key);
@@ -271,7 +274,7 @@ export default function FeesBottomSheet({
                                                     );
                                                 })}
                                                 <div className="flex justify-between font-bold text-slate-900 border-t border-slate-200 mt-2 pt-2 text-sm">
-                                                    <span>Total</span>
+                                                    <span>{tc("field.total")}</span>
                                                     <span>₹{Number(selectedTotal).toLocaleString()}</span>
                                                 </div>
                                             </div>
@@ -283,7 +286,7 @@ export default function FeesBottomSheet({
                                 {lastPaid && (
                                     <div className="border-t border-slate-100 pt-4">
                                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                                            Recent Payment
+                                            {t("feesSheet.recentPayment")}
                                         </p>
                                         <button
                                             onClick={handleViewLastReceipt}
@@ -294,11 +297,11 @@ export default function FeesBottomSheet({
                                                     {lastPaid.label}
                                                 </p>
                                                 <p className="text-xs text-green-600 mt-0.5">
-                                                    ₹{Number(lastPaid.amount).toLocaleString()} · Paid
+                                                    {t("feesSheet.amountPaid", { amount: Number(lastPaid.amount).toLocaleString() })}
                                                 </p>
                                             </div>
                                             <span className="text-green-600 text-sm font-medium flex items-center gap-1 shrink-0">
-                                                View Receipt
+                                                {t("feesSheet.viewReceipt")}
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                                 </svg>
@@ -321,14 +324,14 @@ export default function FeesBottomSheet({
                             }}
                             className="w-full py-3.5 bg-brand text-white rounded-2xl font-bold text-sm shadow-lg shadow-brand/20 active:scale-[0.98] transition-transform"
                         >
-                            Pay ₹{Number(selectedTotal).toLocaleString()} →
+                            {t("feesSheet.payAmount", { amount: Number(selectedTotal).toLocaleString() })} →
                         </button>
                     ) : (
                         <button
                             onClick={() => { onViewFull(); onClose(); }}
                             className="w-full py-3.5 bg-slate-100 text-slate-600 rounded-2xl font-semibold text-sm hover:bg-slate-200 transition-colors"
                         >
-                            View Full Fee Details →
+                            {t("feesSheet.viewFull")} →
                         </button>
                     )}
                 </div>

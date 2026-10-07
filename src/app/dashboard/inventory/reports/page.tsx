@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import useSWR from 'swr';
+import { useLocale, useTranslations } from 'next-intl';
 import toast, { Toaster } from 'react-hot-toast';
 import { AlertTriangle, Download, FileDown, IndianRupee, Package, Receipt, Wallet } from 'lucide-react';
 
@@ -39,19 +40,16 @@ import { Input, Select } from '@/components/ui/Field';
 import { Button } from '@/components/ui/button';
 import { Money } from '@/components/ui/Money';
 import { StatusChip } from '@/components/ui/StatusChip';
+import { INTL_LOCALE, type Locale } from '@/i18n/config';
 
 type ReportTab = 'sales' | 'payments' | 'outstanding' | 'waivers' | 'issuances' | 'stock';
 
-const TABS: { value: ReportTab; label: string }[] = [
-  { value: 'sales', label: 'Sales' },
-  { value: 'payments', label: 'Payments' },
-  { value: 'outstanding', label: 'Outstanding' },
-  { value: 'waivers', label: 'Waived Off' },
-  { value: 'issuances', label: 'Borrow / Issue' },
-  { value: 'stock', label: 'Stock' },
-];
+const TABS: ReportTab[] = ['sales', 'payments', 'outstanding', 'waivers', 'issuances', 'stock'];
 
 export default function InventoryReportsPage() {
+  const t = useTranslations('inventory.reports');
+  const ti = useTranslations('inventory');
+  const tc = useTranslations('common');
   const [tab, setTab] = React.useState<ReportTab>('sales');
   const [fromDate, setFromDate] = React.useState('');
   const [toDate, setToDate] = React.useState('');
@@ -98,7 +96,7 @@ export default function InventoryReportsPage() {
     try {
       await downloadReportCsv(tab, baseQuery, `inventory-${tab}-report_${new Date().toISOString().slice(0, 10)}.csv`);
     } catch {
-      toast.error('Could not export the report');
+      toast.error(t('exportFailed'));
     } finally {
       setExporting(false);
     }
@@ -155,7 +153,7 @@ export default function InventoryReportsPage() {
         `inventory-stock-report_${new Date().toISOString().slice(0, 10)}.pdf`,
       );
     } else {
-      toast.error('Nothing to export yet');
+      toast.error(t('nothingToExport'));
     }
   };
 
@@ -163,86 +161,86 @@ export default function InventoryReportsPage() {
     <PageShell>
       <Toaster position="top-center" />
       <PageHeader
-        section="Inventory"
-        title="Reports"
-        description="Sales and borrow reports, payments, outstanding balances, waive-offs and stock — every filter downloadable."
+        section={t('section')}
+        title={t('title')}
+        description={t('description')}
         actions={
           <>
             <Button variant="outline" onClick={exportCsv} disabled={exporting}><Download /> CSV</Button>
             <Button variant="outline" onClick={exportPdf}><FileDown /> PDF</Button>
           </>
         }
-        tabs={<PageTabs value={tab} onValueChange={(v) => { setTab(v as ReportTab); setPage(1); }} options={TABS} />}
+        tabs={<PageTabs value={tab} onValueChange={(v) => { setTab(v as ReportTab); setPage(1); }} options={TABS.map((value) => ({ value, label: t(`tabs.${value}`) }))} />}
       />
 
       <PageBody className="space-y-4">
         {summary && (
           <StatGrid columns={5}>
-            <StatTile label="Sales" value={summary.salesCount} icon={<Receipt />} pigment="info" />
-            <StatTile label="Sales value" value={<Money amount={summary.salesValue} symbol />} icon={<IndianRupee />} pigment="info" />
-            <StatTile label="Collected" value={<Money amount={summary.collected} symbol />} icon={<Wallet />} pigment="success" />
-            <StatTile label="Outstanding" value={<Money amount={summary.outstanding} symbol />} icon={<AlertTriangle />} pigment="attn" />
-            <StatTile label="Low stock items" value={summary.lowStockCount} icon={<Package />} pigment={summary.lowStockCount > 0 ? 'danger' : 'neutral'} />
+            <StatTile label={t('stat.sales')} value={summary.salesCount} icon={<Receipt />} pigment="info" />
+            <StatTile label={t('stat.salesValue')} value={<Money amount={summary.salesValue} symbol />} icon={<IndianRupee />} pigment="info" />
+            <StatTile label={t('stat.collected')} value={<Money amount={summary.collected} symbol />} icon={<Wallet />} pigment="success" />
+            <StatTile label={t('stat.outstanding')} value={<Money amount={summary.outstanding} symbol />} icon={<AlertTriangle />} pigment="attn" />
+            <StatTile label={t('stat.lowStock')} value={summary.lowStockCount} icon={<Package />} pigment={summary.lowStockCount > 0 ? 'danger' : 'neutral'} />
           </StatGrid>
         )}
 
         <FilterBar>
           {/* md: a date input clips its own value below ~150px. */}
-          <FilterField label="From" width="md"><Input type="date" value={fromDate} onChange={(e) => { setFromDate(e.target.value); setPage(1); }} /></FilterField>
-          <FilterField label="To" width="md"><Input type="date" value={toDate} onChange={(e) => { setToDate(e.target.value); setPage(1); }} /></FilterField>
+          <FilterField label={tc('field.from')} width="md"><Input type="date" value={fromDate} onChange={(e) => { setFromDate(e.target.value); setPage(1); }} /></FilterField>
+          <FilterField label={tc('field.to')} width="md"><Input type="date" value={toDate} onChange={(e) => { setToDate(e.target.value); setPage(1); }} /></FilterField>
 
           {(tab === 'sales' || tab === 'payments' || tab === 'outstanding' || tab === 'issuances') && (
-            <FilterField label="Mobile" width="sm"><Input value={buyerMobile} onChange={(e) => { setBuyerMobile(e.target.value); setPage(1); }} /></FilterField>
+            <FilterField label={tc('field.mobile')} width="sm"><Input value={buyerMobile} onChange={(e) => { setBuyerMobile(e.target.value); setPage(1); }} /></FilterField>
           )}
           {(tab === 'sales' || tab === 'stock') && (
-            <FilterField label="Item name" width="md"><SearchInput value={itemName} onValueChange={(v) => { setItemName(v); setPage(1); }} /></FilterField>
+            <FilterField label={t('filter.itemName')} width="md"><SearchInput value={itemName} onValueChange={(v) => { setItemName(v); setPage(1); }} /></FilterField>
           )}
           {tab === 'sales' && (
-            <FilterField label="Item code" width="sm"><Input value={itemCode} onChange={(e) => { setItemCode(e.target.value); setPage(1); }} /></FilterField>
+            <FilterField label={t('filter.itemCode')} width="sm"><Input value={itemCode} onChange={(e) => { setItemCode(e.target.value); setPage(1); }} /></FilterField>
           )}
           {(tab === 'sales' || tab === 'stock') && (
-            <FilterField label="Category" width="md">
+            <FilterField label={t('filter.category')} width="md">
               <Select value={categoryId} onChange={(e) => { setCategoryId(e.target.value ? Number(e.target.value) : ''); setPage(1); }}>
-                <option value="">All</option>
+                <option value="">{tc('field.all')}</option>
                 {categories?.filter((c) => c.isActive).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </Select>
             </FilterField>
           )}
           {(tab === 'sales' || tab === 'payments') && (
-            <FilterField label="Payment mode" width="md">
+            <FilterField label={t('filter.paymentMode')} width="md">
               <Select value={paymentMode} onChange={(e) => { setPaymentMode(e.target.value as InventoryPaymentMode | ''); setPage(1); }}>
-                <option value="">All</option>
-                {PAYMENT_MODES.map((m) => <option key={m} value={m}>{PAYMENT_MODE_LABELS[m]}</option>)}
+                <option value="">{tc('field.all')}</option>
+                {PAYMENT_MODES.map((m) => <option key={m} value={m}>{ti(`paymentMode.${m}`)}</option>)}
               </Select>
             </FilterField>
           )}
           {tab === 'sales' && (
-            <FilterField label="Status" width="sm">
+            <FilterField label={tc('field.status')} width="sm">
               <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
-                <option value="">All</option>
-                <option value="DUE">Due</option>
-                <option value="PARTIAL">Partial</option>
-                <option value="PAID">Paid</option>
-                <option value="WAIVED">Waived</option>
+                <option value="">{tc('field.all')}</option>
+                <option value="DUE">{ti('saleStatus.DUE')}</option>
+                <option value="PARTIAL">{ti('saleStatus.PARTIAL')}</option>
+                <option value="PAID">{ti('saleStatus.PAID')}</option>
+                <option value="WAIVED">{ti('saleStatus.WAIVED')}</option>
               </Select>
             </FilterField>
           )}
           {tab === 'issuances' && (
-            <FilterField label="Status" width="sm">
+            <FilterField label={tc('field.status')} width="sm">
               <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
-                <option value="">All</option>
-                <option value="ISSUED">Issued</option>
-                <option value="PARTIALLY_RETURNED">Partially returned</option>
-                <option value="RETURNED">Returned</option>
-                <option value="OVERDUE">Overdue</option>
+                <option value="">{tc('field.all')}</option>
+                <option value="ISSUED">{ti('issuanceStatus.ISSUED')}</option>
+                <option value="PARTIALLY_RETURNED">{ti('issuanceStatus.PARTIALLY_RETURNED')}</option>
+                <option value="RETURNED">{ti('issuanceStatus.RETURNED')}</option>
+                <option value="OVERDUE">{ti('issuanceStatus.OVERDUE')}</option>
               </Select>
             </FilterField>
           )}
           {tab === 'stock' && (
-            <FilterField label="Stock" width="sm">
+            <FilterField label={t('filter.stock')} width="sm">
               <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
-                <option value="">All</option>
-                <option value="low">Low stock only</option>
+                <option value="">{tc('field.all')}</option>
+                <option value="low">{t('filter.lowStockOnly')}</option>
               </Select>
             </FilterField>
           )}
@@ -262,11 +260,12 @@ export default function InventoryReportsPage() {
 /* ── Per-tab tables ───────────────────────────────────────────────────── */
 
 function Pager({ page, total, limit, onPageChange }: { page: number; total: number; limit: number; onPageChange: (p: number) => void }) {
+  const tc = useTranslations('common');
   if (total <= limit) return null;
   return (
     <div className="mt-3 flex justify-end gap-2">
-      <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>Previous</Button>
-      <Button variant="outline" size="sm" disabled={page * limit >= total} onClick={() => onPageChange(page + 1)}>Next</Button>
+      <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>{tc('action.previous')}</Button>
+      <Button variant="outline" size="sm" disabled={page * limit >= total} onClick={() => onPageChange(page + 1)}>{tc('action.next')}</Button>
     </div>
   );
 }
@@ -279,105 +278,122 @@ interface TabTableProps<T> {
 }
 
 function SalesTable({ data, loading, page, onPageChange }: TabTableProps<SalesReportRow>) {
+  const t = useTranslations('inventory.reports');
+  const ti = useTranslations('inventory');
+  const tc = useTranslations('common');
+  const locale = useLocale() as Locale;
   const cols: Column<SalesReportRow>[] = [
-    { key: 'receiptNumber', header: 'Receipt', accessor: (r) => r.receiptNumber, card: 'title' },
-    { key: 'date', header: 'Date', accessor: (r) => new Date(r.createdAt).toLocaleDateString('en-IN'), card: 'meta' },
-    { key: 'buyer', header: 'Buyer', accessor: (r) => r.buyerName, card: 'meta' },
-    { key: 'catDisc', header: 'Cat. Discount', align: 'right', accessor: (r) => <Money amount={r.catalogDiscount} symbol />, card: 'field' },
-    { key: 'ctrDisc', header: 'Counter Discount', align: 'right', accessor: (r) => <Money amount={r.counterDiscount} symbol />, card: 'field' },
-    { key: 'net', header: 'Net', align: 'right', accessor: (r) => <Money amount={r.netAmount} symbol />, card: 'field' },
-    { key: 'waived', header: 'Waived', align: 'right', accessor: (r) => <Money amount={r.waivedAmount} symbol />, card: 'field' },
-    { key: 'balance', header: 'Balance', align: 'right', accessor: (r) => <Money amount={r.balanceAmount} symbol tone={r.balanceAmount > 0 ? 'owing' : 'default'} />, card: 'field' },
-    { key: 'status', header: 'Status', align: 'right', accessor: (r) => <StatusChip status={r.status} />, card: 'trailing' },
+    { key: 'receiptNumber', header: t('col.receipt'), accessor: (r) => r.receiptNumber, card: 'title' },
+    { key: 'date', header: tc('field.date'), accessor: (r) => new Date(r.createdAt).toLocaleDateString(INTL_LOCALE[locale]), card: 'meta' },
+    { key: 'buyer', header: t('col.buyer'), accessor: (r) => r.buyerName, card: 'meta' },
+    { key: 'catDisc', header: t('col.catDiscount'), align: 'right', accessor: (r) => <Money amount={r.catalogDiscount} symbol />, card: 'field' },
+    { key: 'ctrDisc', header: t('col.counterDiscount'), align: 'right', accessor: (r) => <Money amount={r.counterDiscount} symbol />, card: 'field' },
+    { key: 'net', header: t('col.net'), align: 'right', accessor: (r) => <Money amount={r.netAmount} symbol />, card: 'field' },
+    { key: 'waived', header: t('col.waived'), align: 'right', accessor: (r) => <Money amount={r.waivedAmount} symbol />, card: 'field' },
+    { key: 'balance', header: t('col.balance'), align: 'right', accessor: (r) => <Money amount={r.balanceAmount} symbol tone={r.balanceAmount > 0 ? 'owing' : 'default'} />, card: 'field' },
+    { key: 'status', header: tc('field.status'), align: 'right', accessor: (r) => <StatusChip status={r.status} label={ti(`saleStatus.${r.status}`)} />, card: 'trailing' },
   ];
   return (
     <>
-      <DataTable columns={cols} data={data?.data} loading={loading} rowKey={(r) => r.id} emptyMessage="No sales in this range" />
+      <DataTable columns={cols} data={data?.data} loading={loading} rowKey={(r) => r.id} emptyMessage={t('empty.sales')} />
       {data && <Pager page={page} total={data.total} limit={data.limit} onPageChange={onPageChange} />}
     </>
   );
 }
 
 function PaymentsTable({ data, loading, page, onPageChange }: TabTableProps<InventorySalePayment & { sale?: InventorySale }>) {
+  const t = useTranslations('inventory.reports');
+  const ti = useTranslations('inventory');
+  const tc = useTranslations('common');
+  const locale = useLocale() as Locale;
   const cols: Column<InventorySalePayment & { sale?: InventorySale }>[] = [
-    { key: 'date', header: 'Date', accessor: (p) => new Date(p.createdAt).toLocaleString('en-IN'), card: 'title' },
-    { key: 'receipt', header: 'Receipt', accessor: (p) => p.sale?.receiptNumber ?? '—', card: 'meta' },
-    { key: 'buyer', header: 'Buyer', accessor: (p) => p.sale?.buyerName ?? '—', card: 'meta' },
-    { key: 'mode', header: 'Mode', accessor: (p) => PAYMENT_MODE_LABELS[p.mode], card: 'field' },
-    { key: 'reference', header: 'Reference', accessor: (p) => p.reference ?? '—', card: 'field' },
-    { key: 'amount', header: 'Amount', align: 'right', accessor: (p) => <Money amount={p.amount} symbol />, card: 'trailing' },
+    { key: 'date', header: tc('field.date'), accessor: (p) => new Date(p.createdAt).toLocaleString(INTL_LOCALE[locale]), card: 'title' },
+    { key: 'receipt', header: t('col.receipt'), accessor: (p) => p.sale?.receiptNumber ?? '—', card: 'meta' },
+    { key: 'buyer', header: t('col.buyer'), accessor: (p) => p.sale?.buyerName ?? '—', card: 'meta' },
+    { key: 'mode', header: t('col.mode'), accessor: (p) => ti(`paymentMode.${p.mode}`), card: 'field' },
+    { key: 'reference', header: t('col.reference'), accessor: (p) => p.reference ?? '—', card: 'field' },
+    { key: 'amount', header: tc('field.amount'), align: 'right', accessor: (p) => <Money amount={p.amount} symbol />, card: 'trailing' },
   ];
   return (
     <>
-      <DataTable columns={cols} data={data?.data} loading={loading} rowKey={(p) => p.id} emptyMessage="No payments in this range" />
+      <DataTable columns={cols} data={data?.data} loading={loading} rowKey={(p) => p.id} emptyMessage={t('empty.payments')} />
       {data && <Pager page={page} total={data.total} limit={data.limit} onPageChange={onPageChange} />}
     </>
   );
 }
 
 function OutstandingTable({ data, loading, page, onPageChange }: TabTableProps<InventorySale>) {
+  const t = useTranslations('inventory.reports');
   const cols: Column<InventorySale>[] = [
-    { key: 'receipt', header: 'Receipt', accessor: (s) => s.receiptNumber, card: 'title' },
-    { key: 'buyer', header: 'Buyer', accessor: (s) => `${s.buyerName}${s.buyerMobile ? ` · ${s.buyerMobile}` : ''}`, card: 'meta' },
-    { key: 'net', header: 'Net', align: 'right', accessor: (s) => <Money amount={s.netAmount} symbol />, card: 'field' },
-    { key: 'paid', header: 'Paid', align: 'right', accessor: (s) => <Money amount={s.paidAmount} symbol />, card: 'field' },
-    { key: 'balance', header: 'Balance', align: 'right', accessor: (s) => <Money amount={s.balanceAmount} symbol tone="owing" />, card: 'trailing' },
+    { key: 'receipt', header: t('col.receipt'), accessor: (s) => s.receiptNumber, card: 'title' },
+    { key: 'buyer', header: t('col.buyer'), accessor: (s) => `${s.buyerName}${s.buyerMobile ? ` · ${s.buyerMobile}` : ''}`, card: 'meta' },
+    { key: 'net', header: t('col.net'), align: 'right', accessor: (s) => <Money amount={s.netAmount} symbol />, card: 'field' },
+    { key: 'paid', header: t('col.paid'), align: 'right', accessor: (s) => <Money amount={s.paidAmount} symbol />, card: 'field' },
+    { key: 'balance', header: t('col.balance'), align: 'right', accessor: (s) => <Money amount={s.balanceAmount} symbol tone="owing" />, card: 'trailing' },
   ];
   return (
     <>
-      <DataTable columns={cols} data={data?.data} loading={loading} rowKey={(s) => s.id} emptyMessage="Nothing outstanding" defaultSort={{ key: 'balance', direction: 'desc' }} />
+      <DataTable columns={cols} data={data?.data} loading={loading} rowKey={(s) => s.id} emptyMessage={t('empty.outstanding')} defaultSort={{ key: 'balance', direction: 'desc' }} />
       {data && <Pager page={page} total={data.total} limit={data.limit} onPageChange={onPageChange} />}
     </>
   );
 }
 
 function WaiversTable({ data, loading, page, onPageChange }: TabTableProps<InventorySaleWaiver & { sale?: InventorySale }>) {
+  const t = useTranslations('inventory.reports');
+  const tc = useTranslations('common');
+  const locale = useLocale() as Locale;
   const cols: Column<InventorySaleWaiver & { sale?: InventorySale }>[] = [
-    { key: 'date', header: 'Date', accessor: (w) => new Date(w.createdAt).toLocaleString('en-IN'), card: 'title' },
-    { key: 'receipt', header: 'Receipt', accessor: (w) => w.sale?.receiptNumber ?? '—', card: 'meta' },
-    { key: 'buyer', header: 'Buyer', accessor: (w) => w.sale?.buyerName ?? '—', card: 'meta' },
-    { key: 'reason', header: 'Reason', accessor: (w) => w.reason, card: 'field' },
-    { key: 'permittedBy', header: 'Permitted by', accessor: (w) => (w.permittedBy ? `${w.permittedBy.firstName} ${w.permittedBy.lastName}` : '—'), card: 'field' },
-    { key: 'amount', header: 'Amount', align: 'right', accessor: (w) => <Money amount={w.amount} symbol tone="owing" />, card: 'trailing' },
+    { key: 'date', header: tc('field.date'), accessor: (w) => new Date(w.createdAt).toLocaleString(INTL_LOCALE[locale]), card: 'title' },
+    { key: 'receipt', header: t('col.receipt'), accessor: (w) => w.sale?.receiptNumber ?? '—', card: 'meta' },
+    { key: 'buyer', header: t('col.buyer'), accessor: (w) => w.sale?.buyerName ?? '—', card: 'meta' },
+    { key: 'reason', header: t('col.reason'), accessor: (w) => w.reason, card: 'field' },
+    { key: 'permittedBy', header: t('col.permittedBy'), accessor: (w) => (w.permittedBy ? `${w.permittedBy.firstName} ${w.permittedBy.lastName}` : '—'), card: 'field' },
+    { key: 'amount', header: tc('field.amount'), align: 'right', accessor: (w) => <Money amount={w.amount} symbol tone="owing" />, card: 'trailing' },
   ];
   return (
     <>
-      <DataTable columns={cols} data={data?.data} loading={loading} rowKey={(w) => w.id} emptyMessage="No waivers in this range" />
+      <DataTable columns={cols} data={data?.data} loading={loading} rowKey={(w) => w.id} emptyMessage={t('empty.waivers')} />
       {data && <Pager page={page} total={data.total} limit={data.limit} onPageChange={onPageChange} />}
     </>
   );
 }
 
 function IssuancesTable({ data, loading, page, onPageChange }: TabTableProps<InventoryIssuance>) {
+  const t = useTranslations('inventory.reports');
+  const ti = useTranslations('inventory');
+  const tc = useTranslations('common');
   const cols: Column<InventoryIssuance>[] = [
-    { key: 'item', header: 'Item', accessor: (i) => i.itemName, card: 'title' },
-    { key: 'borrower', header: 'Borrower', accessor: (i) => personName(i.borrowerType === 'STUDENT' ? i.student : i.staff), card: 'meta' },
-    { key: 'qty', header: 'Qty', align: 'right', accessor: (i) => i.qty, card: 'field' },
-    { key: 'outstanding', header: 'Outstanding', align: 'right', accessor: (i) => issuanceOutstanding(i), card: 'field' },
-    { key: 'due', header: 'Due', accessor: (i) => i.dueDate, card: 'field' },
-    { key: 'status', header: 'Status', align: 'right', accessor: (i) => <StatusChip status={i.status} />, card: 'trailing' },
+    { key: 'item', header: t('col.item'), accessor: (i) => i.itemName, card: 'title' },
+    { key: 'borrower', header: t('col.borrower'), accessor: (i) => personName(i.borrowerType === 'STUDENT' ? i.student : i.staff), card: 'meta' },
+    { key: 'qty', header: t('col.qty'), align: 'right', accessor: (i) => i.qty, card: 'field' },
+    { key: 'outstanding', header: t('col.outstanding'), align: 'right', accessor: (i) => issuanceOutstanding(i), card: 'field' },
+    { key: 'due', header: t('col.due'), accessor: (i) => i.dueDate, card: 'field' },
+    { key: 'status', header: tc('field.status'), align: 'right', accessor: (i) => <StatusChip status={i.status} label={ti(`issuanceStatus.${i.status}`)} />, card: 'trailing' },
   ];
   return (
     <>
-      <DataTable columns={cols} data={data?.data} loading={loading} rowKey={(i) => i.id} isRowFlagged={(i) => i.status === 'OVERDUE'} emptyMessage="Nothing borrowed in this range" />
+      <DataTable columns={cols} data={data?.data} loading={loading} rowKey={(i) => i.id} isRowFlagged={(i) => i.status === 'OVERDUE'} emptyMessage={t('empty.issuances')} />
       {data && <Pager page={page} total={data.total} limit={data.limit} onPageChange={onPageChange} />}
     </>
   );
 }
 
 function StockTable({ data, loading, page, onPageChange }: TabTableProps<InventoryItem>) {
+  const t = useTranslations('inventory.reports');
+  const tc = useTranslations('common');
   const cols: Column<InventoryItem>[] = [
-    { key: 'code', header: 'Code', accessor: (i) => i.code, card: 'meta' },
-    { key: 'name', header: 'Item', accessor: (i) => i.name, card: 'title' },
-    { key: 'category', header: 'Category', accessor: (i) => i.category?.name ?? '—', card: 'field' },
-    { key: 'available', header: 'Available', align: 'right', accessor: (i) => i.availableQty, card: 'field' },
-    { key: 'total', header: 'Total', align: 'right', accessor: (i) => i.totalQty, card: 'field' },
-    { key: 'reorder', header: 'Reorder at', align: 'right', accessor: (i) => i.reorderLevel ?? '—', card: 'field' },
-    { key: 'flag', header: '', align: 'right', card: 'trailing', accessor: (i) => (isLowStock(i) ? <StatusChip status="Low stock" pigment="danger" /> : null) },
+    { key: 'code', header: t('col.code'), accessor: (i) => i.code, card: 'meta' },
+    { key: 'name', header: t('col.item'), accessor: (i) => i.name, card: 'title' },
+    { key: 'category', header: t('col.category'), accessor: (i) => i.category?.name ?? '—', card: 'field' },
+    { key: 'available', header: t('col.available'), align: 'right', accessor: (i) => i.availableQty, card: 'field' },
+    { key: 'total', header: tc('field.total'), align: 'right', accessor: (i) => i.totalQty, card: 'field' },
+    { key: 'reorder', header: t('col.reorderAt'), align: 'right', accessor: (i) => i.reorderLevel ?? '—', card: 'field' },
+    { key: 'flag', header: '', align: 'right', card: 'trailing', accessor: (i) => (isLowStock(i) ? <StatusChip status="Low stock" label={t('lowStock')} pigment="danger" /> : null) },
   ];
   return (
     <>
-      <DataTable columns={cols} data={data?.data} loading={loading} rowKey={(i) => i.id} isRowFlagged={(i) => isLowStock(i)} emptyMessage="No items match" />
+      <DataTable columns={cols} data={data?.data} loading={loading} rowKey={(i) => i.id} isRowFlagged={(i) => isLowStock(i)} emptyMessage={t('empty.stock')} />
       {data && <Pager page={page} total={data.total} limit={data.limit} onPageChange={onPageChange} />}
     </>
   );

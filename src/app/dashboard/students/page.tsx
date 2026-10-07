@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Papa from "papaparse";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 import { API_BASE_URL, fetcher } from "@/lib/api";
 import { toast } from "react-hot-toast";
 import { useRbac } from "@/lib/rbac";
@@ -26,6 +28,11 @@ import { Panel } from "@/components/ui/Panel";
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 export default function StudentsPage() {
+    const t = useTranslations("students.list");
+    const tb = useTranslations("students.bulk");
+    const ts = useTranslations("students.enrollStatus");
+    const tc = useTranslations("common");
+    const locale = useLocale() as Locale;
     const [students, setStudents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [classes, setClasses] = useState<any[]>([]);
@@ -93,7 +100,7 @@ export default function StudentsPage() {
             const warnings: string[] = [];
 
             if (result.errors.length > 0) {
-                errors.push(`CSV parse error: ${result.errors[0].message}`);
+                errors.push(tb("parseError", { message: result.errors[0].message }));
                 setBulkValidation({ errors, warnings, rowCount: 0 });
                 return;
             }
@@ -101,7 +108,7 @@ export default function StudentsPage() {
             const headers = result.meta.fields ?? [];
             const missingHeaders = REQUIRED_HEADERS.filter(h => !headers.includes(h));
             if (missingHeaders.length > 0) {
-                errors.push(`Missing required column(s): ${missingHeaders.join(", ")}`);
+                errors.push(tb("missingColumns", { columns: missingHeaders.join(", ") }));
             }
 
             const admissionNumberRows = new Map<string, number>();
@@ -111,25 +118,25 @@ export default function StudentsPage() {
                 if (admissionNumber) {
                     const firstRow = admissionNumberRows.get(admissionNumber);
                     if (firstRow !== undefined) {
-                        errors.push(`Row ${rowNum}: admissionNumber "${admissionNumber}" is duplicated in this file (first used in row ${firstRow}) — this row will be skipped`);
+                        errors.push(tb("duplicateAdmission", { row: rowNum, value: admissionNumber, first: firstRow }));
                     } else {
                         admissionNumberRows.set(admissionNumber, rowNum);
                     }
                     if (admissionNumber.length > ADMISSION_NUMBER_MAX_LENGTH) {
-                        errors.push(`Row ${rowNum}: admissionNumber "${admissionNumber}" must be at most ${ADMISSION_NUMBER_MAX_LENGTH} characters`);
+                        errors.push(tb("admissionTooLong", { row: rowNum, value: admissionNumber, max: ADMISSION_NUMBER_MAX_LENGTH }));
                     }
                 }
                 const missingFields = REQUIRED_FIELDS.filter(f => !row[f]?.trim());
                 if (missingFields.length > 0) {
-                    errors.push(`Row ${rowNum}: Missing required fields: ${missingFields.join(", ")}`);
+                    errors.push(tb("missingFields", { row: rowNum, fields: missingFields.join(", ") }));
                     return;
                 }
                 const dob = row.dateOfBirth?.trim() ?? "";
                 if (dob && !DATE_DDMMYYYY.test(dob) && !DATE_YYYYMMDD.test(dob)) {
-                    errors.push(`Row ${rowNum}: dateOfBirth "${dob}" must be DD-MM-YYYY or YYYY-MM-DD`);
+                    errors.push(tb("badDob", { row: rowNum, value: dob }));
                 } else if (DATE_DDMMYYYY.test(dob)) {
                     // Warn about auto-conversion
-                    warnings.push(`Row ${rowNum}: dateOfBirth "${dob}" is DD-MM-YYYY — will be auto-converted`);
+                    warnings.push(tb("dobConverted", { row: rowNum, value: dob }));
                 }
             });
 
@@ -177,7 +184,7 @@ export default function StudentsPage() {
                 setCommittedStatus(searchStatus);
             }
         } catch {
-            toast.error("Failed to fetch students");
+            toast.error(t("fetchFailed"));
         } finally {
             setLoading(false);
         }
@@ -277,22 +284,22 @@ export default function StudentsPage() {
 
             if (!res.ok) {
                 const err = await res.json();
-                toast.error(err.message || "Failed to upload file");
+                toast.error(err.message || tb("uploadFailed"));
             } else {
                 const result = await res.json();
                 setBulkResult(result);
                 
                 if (result.successful > 0 && result.failed === 0 && !result.skipped) {
-                    toast.success(`Successfully imported ${result.successful} students`);
+                    toast.success(tb("imported", { count: result.successful }));
                     fetchStudents(1); // Refresh list
                     setTimeout(() => closeBulkModal(), 2000);
                 } else if (result.successful > 0) {
-                    toast.success(`Partially imported ${result.successful} students. Check errors.`);
+                    toast.success(tb("partial", { count: result.successful }));
                     fetchStudents(1); // Refresh list
                 }
             }
         } catch {
-            toast.error("An error occurred during bulk import");
+            toast.error(tb("error"));
         } finally {
             setBulkUploading(false);
         }
@@ -311,7 +318,7 @@ export default function StudentsPage() {
     const columns: Column<any>[] = [
         {
             key: 'id',
-            header: 'ID',
+            header: t("col.id"),
             accessor: (row) => row.id,
             sortable: true,
             width: 'w-14',
@@ -320,7 +327,7 @@ export default function StudentsPage() {
         },
         {
             key: 'admissionNumber',
-            header: 'Admission No.',
+            header: t("col.admissionNo"),
             sortable: true,
             className: 'tabular',
             card: 'meta',
@@ -328,7 +335,7 @@ export default function StudentsPage() {
         },
         {
             key: 'rollNo',
-            header: 'Roll no',
+            header: tc("field.rollNo"),
             sortable: true,
             className: 'tabular',
             card: 'meta',
@@ -340,7 +347,7 @@ export default function StudentsPage() {
         },
         {
             key: 'name',
-            header: 'Student',
+            header: tc("field.student"),
             sortable: true,
             card: 'title',
             sortValue: (row) => `${row.firstName ?? ''} ${row.lastName ?? ''}`.trim(),
@@ -352,7 +359,7 @@ export default function StudentsPage() {
         },
         {
             key: 'class',
-            header: 'Class / section',
+            header: t("col.classSection"),
             hideBelow: 'lg',
             render: (row) => {
                 const enrollment = row.enrollments?.find((e: any) => e.academicSession?.id === parseInt(searchSessionId))
@@ -365,7 +372,7 @@ export default function StudentsPage() {
         },
         {
             key: 'subjects',
-            header: 'Subjects',
+            header: t("col.subjects"),
             hideBelow: 'xl',
             card: 'hidden',
             render: (row) => row.studentSubjects && row.studentSubjects.length > 0
@@ -374,7 +381,7 @@ export default function StudentsPage() {
         },
         {
             key: 'status',
-            header: 'Status',
+            header: tc("field.status"),
             card: 'trailing',
             render: (row) => {
                 const enrollment = enrollmentFor(row);
@@ -391,10 +398,10 @@ export default function StudentsPage() {
             card: 'trailing',
             render: (row) => (
                 <RowActionsMenu
-                    label="Student actions"
+                    label={t("rowActions")}
                     actions={[
                         {
-                            label: 'View',
+                            label: tc("action.view"),
                             icon: <Eye className="size-4 text-ink-faint" />,
                             href: `/dashboard/students/${row.id}`,
                         },
@@ -402,7 +409,7 @@ export default function StudentsPage() {
                         // cards plan — an action that can only ever open an
                         // upsell is worse than no action.
                         idCardsEnabled && {
-                            label: 'View ID card',
+                            label: t("viewIdCard"),
                             icon: <IdCard className="size-4 text-ink-faint" />,
                             onSelect: () =>
                                 setIdCardStudent({
@@ -411,13 +418,13 @@ export default function StudentsPage() {
                                 }),
                         },
                         rbac.canManageStudents && {
-                            label: 'Edit',
+                            label: tc("action.edit"),
                             icon: <Pencil className="size-4 text-ink-faint" />,
                             href: `/dashboard/students/${row.id}/edit`,
                             disabled: readOnly,
                         },
                         rbac.canManageStudents && {
-                            label: 'Promote',
+                            label: t("promote"),
                             icon: <TrendingUp className="size-4 text-ink-faint" />,
                             href: `/dashboard/students/${row.id}/promote`,
                             disabled: readOnly,
@@ -435,14 +442,14 @@ export default function StudentsPage() {
     return (
         <PageShell>
             <PageHeader
-                section="Academics · Students"
-                title="Students"
-                description="Search the register, then open a student for their full record."
+                section={t("section")}
+                title={t("title")}
+                description={t("description")}
                 actions={
                     <>
                         <Button variant="outline" render={<Link href="/dashboard/documents" />}>
                             <FileSearch />
-                            Document trace
+                            {t("documentTrace")}
                         </Button>
                         {rbac.canManageStudents && (
                             <Button
@@ -454,18 +461,18 @@ export default function StudentsPage() {
                                 }}
                             >
                                 <Upload />
-                                Bulk import
+                                {t("bulkImport")}
                             </Button>
                         )}
                         {rbac.canBulkOperateStudents && (
                             <Button variant="attn" render={<Link href="/dashboard/students/promotions" />}>
-                                Bulk promotions
+                                {t("bulkPromotions")}
                             </Button>
                         )}
                         {rbac.canManageStudents && (
                             <Button render={<Link href="/dashboard/students/new" />}>
                                 <UserPlus />
-                                Add student
+                                {t("addStudent")}
                             </Button>
                         )}
                     </>
@@ -477,59 +484,59 @@ export default function StudentsPage() {
                 <Panel>
                     <form onSubmit={handleSearch} className="p-4">
                         <FieldGrid columns={3}>
-                            <Field label="Student ID" htmlFor="f-id">
-                                <Input id="f-id" value={searchId} onChange={e => setSearchId(e.target.value)} placeholder="e.g. 1" />
+                            <Field label={t("search.studentId")} htmlFor="f-id">
+                                <Input id="f-id" value={searchId} onChange={e => setSearchId(e.target.value)} placeholder={t("search.idPlaceholder")} />
                             </Field>
-                            <Field label="First name" htmlFor="f-first">
-                                <Input id="f-first" value={searchFirstName} onChange={e => setSearchFirstName(e.target.value)} placeholder="First name" />
+                            <Field label={t("search.firstName")} htmlFor="f-first">
+                                <Input id="f-first" value={searchFirstName} onChange={e => setSearchFirstName(e.target.value)} placeholder={t("search.firstName")} />
                             </Field>
-                            <Field label="Last name" htmlFor="f-last">
-                                <Input id="f-last" value={searchLastName} onChange={e => setSearchLastName(e.target.value)} placeholder="Last name" />
+                            <Field label={t("search.lastName")} htmlFor="f-last">
+                                <Input id="f-last" value={searchLastName} onChange={e => setSearchLastName(e.target.value)} placeholder={t("search.lastName")} />
                             </Field>
-                            <Field label="Email" htmlFor="f-email">
-                                <Input id="f-email" value={searchEmail} onChange={e => setSearchEmail(e.target.value)} placeholder="Email address" />
+                            <Field label={tc("field.email")} htmlFor="f-email">
+                                <Input id="f-email" value={searchEmail} onChange={e => setSearchEmail(e.target.value)} placeholder={t("search.emailPlaceholder")} />
                             </Field>
-                            <Field label="Mobile number" htmlFor="f-mobile" hint="Matches the whole number">
-                                <Input id="f-mobile" inputMode="numeric" value={searchMobile} onChange={e => setSearchMobile(e.target.value.replace(/\D/g, ''))} placeholder="Exact mobile no." />
+                            <Field label={t("search.mobile")} htmlFor="f-mobile" hint={t("search.mobileHint")}>
+                                <Input id="f-mobile" inputMode="numeric" value={searchMobile} onChange={e => setSearchMobile(e.target.value.replace(/\D/g, ''))} placeholder={t("search.mobilePlaceholder")} />
                             </Field>
-                            <Field label="Parent's name" htmlFor="f-parent">
-                                <Input id="f-parent" value={searchParents} onChange={e => setSearchParents(e.target.value)} placeholder="Mother or father" />
+                            <Field label={t("search.parentName")} htmlFor="f-parent">
+                                <Input id="f-parent" value={searchParents} onChange={e => setSearchParents(e.target.value)} placeholder={t("search.parentPlaceholder")} />
                             </Field>
-                            <Field label="PEN" htmlFor="f-pen" hint="Permanent enrollment number">
-                                <Input id="f-pen" value={searchPen} onChange={e => setSearchPen(e.target.value)} placeholder="e.g. 1234567890" />
+                            <Field label={t("search.pen")} htmlFor="f-pen" hint={t("search.penHint")}>
+                                <Input id="f-pen" value={searchPen} onChange={e => setSearchPen(e.target.value)} placeholder={t("search.penPlaceholder")} />
                             </Field>
-                            <Field label="Admission No." htmlFor="f-admission-number">
-                                <Input id="f-admission-number" value={searchAdmissionNumber} onChange={e => setSearchAdmissionNumber(e.target.value)} placeholder="e.g. 150" />
+                            <Field label={t("col.admissionNo")} htmlFor="f-admission-number">
+                                <Input id="f-admission-number" value={searchAdmissionNumber} onChange={e => setSearchAdmissionNumber(e.target.value)} placeholder={t("search.admissionPlaceholder")} />
                             </Field>
-                            <Field label="Status" htmlFor="f-status">
+                            <Field label={tc("field.status")} htmlFor="f-status">
                                 <Select id="f-status" value={searchStatus} onChange={e => setSearchStatus(e.target.value)}>
-                                    <option value="">All</option>
-                                    <option value="ACTIVE">Active</option>
-                                    <option value="PROMOTED">Promoted</option>
-                                    <option value="ALUMNI">Alumni</option>
-                                    <option value="WITHDRAWN">Withdrawn</option>
-                                    <option value="GRADUATED">Graduated</option>
+                                    <option value="">{tc("field.all")}</option>
+                                    <option value="ACTIVE">{ts("ACTIVE")}</option>
+                                    <option value="PROMOTED">{ts("PROMOTED")}</option>
+                                    <option value="ALUMNI">{ts("ALUMNI")}</option>
+                                    <option value="WITHDRAWN">{ts("WITHDRAWN")}</option>
+                                    <option value="GRADUATED">{ts("GRADUATED")}</option>
                                 </Select>
                             </Field>
-                            <Field label="Academic year" htmlFor="f-session">
+                            <Field label={tc("field.academicYear")} htmlFor="f-session">
                                 <Select id="f-session" value={searchSessionId} onChange={e => setSearchSessionId(e.target.value)}>
-                                    <option value="">All sessions</option>
+                                    <option value="">{t("search.allSessions")}</option>
                                     {sessions.map((s: any) => (
-                                        <option key={s.id} value={s.id}>{s.name} {s.isActive ? '(active)' : ''}</option>
+                                        <option key={s.id} value={s.id}>{s.name} {s.isActive ? t("search.activeSuffix") : ''}</option>
                                     ))}
                                 </Select>
                             </Field>
-                            <Field label="Class" htmlFor="f-class">
+                            <Field label={tc("field.class")} htmlFor="f-class">
                                 <Select id="f-class" value={searchClassId} onChange={handleClassChange}>
-                                    <option value="">All classes</option>
+                                    <option value="">{t("search.allClasses")}</option>
                                     {classes.map((c: any) => (
                                         <option key={c.id} value={c.id}>{c.name}</option>
                                     ))}
                                 </Select>
                             </Field>
-                            <Field label="Section" htmlFor="f-section">
+                            <Field label={tc("field.section")} htmlFor="f-section">
                                 <Select id="f-section" value={searchSectionId} onChange={e => setSearchSectionId(e.target.value)} disabled={!searchClassId || loadingSections}>
-                                    <option value="">{loadingSections ? 'Loading sections…' : 'All sections'}</option>
+                                    <option value="">{loadingSections ? t("search.loadingSections") : t("search.allSections")}</option>
                                     {sections.map((s: any) => (
                                         <option key={s.id} value={s.id}>{s.name}</option>
                                     ))}
@@ -538,10 +545,10 @@ export default function StudentsPage() {
                         </FieldGrid>
 
                         <div className="mt-4 flex justify-end gap-2 border-t border-line pt-4">
-                            <Button type="button" variant="ghost" onClick={handleReset}>Reset</Button>
+                            <Button type="button" variant="ghost" onClick={handleReset}>{tc("action.reset")}</Button>
                             <Button type="submit">
                                 <Search />
-                                Search
+                                {tc("action.search")}
                             </Button>
                         </div>
                     </form>
@@ -552,8 +559,8 @@ export default function StudentsPage() {
                     <Panel>
                         <EmptyState
                             icon={<Search />}
-                            title="Search the register"
-                            description="Narrow by class, section, status or name, then search. Results appear here."
+                            title={t("prompt.title")}
+                            description={t("prompt.description")}
                         />
                     </Panel>
                 ) : (
@@ -563,21 +570,21 @@ export default function StudentsPage() {
                         loading={loading}
                         rowKey={(row) => row.id}
                         defaultSort={{ key: 'id', direction: 'asc' }}
-                        emptyMessage="No students match those filters"
+                        emptyMessage={t("empty")}
                         // The whole row opens the record — on a phone the card IS
                         // the target, and tapping a name is what people try first.
                         onRowClick={(row) => router.push(`/dashboard/students/${row.id}`)}
                         toolbar={
                             <>
-                                <TableTitle>Students</TableTitle>
-                                <TableCount>{total.toLocaleString('en-IN')} found</TableCount>
+                                <TableTitle>{t("title")}</TableTitle>
+                                <TableCount>{t("found", { count: total, formatted: total.toLocaleString(INTL_LOCALE[locale]) })}</TableCount>
                                 <label className="ml-auto flex items-center gap-2">
-                                    <span className="eyebrow">Rows</span>
+                                    <span className="eyebrow">{t("rows")}</span>
                                     <select
                                         value={pageSize}
                                         onChange={handlePageSizeChange}
                                         className="cursor-pointer rounded-md border border-line-strong bg-surface px-2 py-1 text-[12px] text-ink"
-                                        aria-label="Rows per page"
+                                        aria-label={t("rowsPerPage")}
                                     >
                                         {PAGE_SIZE_OPTIONS.map(opt => (
                                             <option key={opt} value={opt}>{opt}</option>
@@ -605,8 +612,8 @@ export default function StudentsPage() {
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 p-4 backdrop-blur-sm">
                         <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-glass">
                             <div className="flex items-center justify-between border-b border-line bg-surface-secondary px-4 py-3">
-                                <h3 className="font-display text-[17px] font-semibold text-ink">Import students from a CSV</h3>
-                                <button onClick={closeBulkModal} className="ms-auto inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-surface-inset hover:text-ink" aria-label="Close">
+                                <h3 className="font-display text-[17px] font-semibold text-ink">{tb("title")}</h3>
+                                <button onClick={closeBulkModal} className="ms-auto inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-surface-inset hover:text-ink" aria-label={tc("action.close")}>
                                     <svg className="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
                                         <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6" />
                                     </svg>
@@ -614,16 +621,16 @@ export default function StudentsPage() {
                             </div>
                             <div className="p-4 overflow-y-auto">
                                 <div className="mb-4 text-sm text-gray-600 bg-blue-50 p-4 rounded-lg border border-blue-100">
-                                    <p className="font-semibold mb-2">CSV Format Requirements:</p>
+                                    <p className="font-semibold mb-2">{tb("formatTitle")}</p>
                                     <ul className="list-disc pl-5 space-y-1">
-                                        <li>Headers must match the names shown below exactly (column order does not matter):</li>
+                                        <li>{tb("headersRule")}</li>
                                         <li className="font-mono text-xs bg-gray-100 p-1 rounded overflow-x-auto whitespace-nowrap">{BULK_TEMPLATE_HEADERS}</li>
-                                        <li><span className="font-semibold text-red-600">Required:</span> firstName, gender, dateOfBirth, mobile, fathersName, mothersName, category, religion</li>
-                                        <li><span className="font-semibold">Optional fields</span> can be left empty, but the column must still be present.</li>
-                                        <li><span className="font-semibold">admissionNumber:</span> Optional, up to 50 characters, unique within your school. Rows whose number is already in use (or repeated earlier in the file) are skipped and reported below.</li>
-                                        <li><span className="font-semibold">dateOfBirth:</span> Use format YYYY-MM-DD</li>
-                                        <li><span className="font-semibold">subjectIds:</span> Pipe-separated values e.g. <code className="bg-gray-200 px-1 rounded">1|3|4</code></li>
-                                        <li><span className="font-semibold">country:</span> Full country name e.g. <code className="bg-gray-200 px-1 rounded">INDIA</code> (leave blank to default to INDIA)</li>
+                                        <li>{tb.rich("requiredRule", { b: (c) => <span className="font-semibold text-red-600">{c}</span> })}</li>
+                                        <li>{tb.rich("optionalRule", { b: (c) => <span className="font-semibold">{c}</span> })}</li>
+                                        <li>{tb.rich("admissionRule", { b: (c) => <span className="font-semibold">{c}</span> })}</li>
+                                        <li>{tb.rich("dobRule", { b: (c) => <span className="font-semibold">{c}</span> })}</li>
+                                        <li>{tb.rich("subjectRule", { b: (c) => <span className="font-semibold">{c}</span>, code: (c) => <code className="bg-gray-200 px-1 rounded">{c}</code> })}</li>
+                                        <li>{tb.rich("countryRule", { b: (c) => <span className="font-semibold">{c}</span>, code: (c) => <code className="bg-gray-200 px-1 rounded">{c}</code> })}</li>
                                     </ul>
                                     <button
                                         type="button"
@@ -638,12 +645,12 @@ export default function StudentsPage() {
                                         }}
                                         className="mt-3 inline-flex cursor-pointer items-center gap-1 text-[12px] font-semibold text-brand underline hover:no-underline"
                                     >
-                                        Download CSV template
+                                        {tb("downloadTemplate")}
                                     </button>
                                 </div>
 
                                 <form onSubmit={handleBulkUpload}>
-                                    <label className="eyebrow mb-2 block">CSV file</label>
+                                    <label className="eyebrow mb-2 block">{tb("csvFile")}</label>
                                     <input 
                                         type="file" 
                                         accept=".csv"
@@ -662,8 +669,8 @@ export default function StudentsPage() {
                                         <div className={`p-4 mb-4 text-sm rounded-lg border ${bulkValidation.errors.length > 0 ? 'bg-red-50 text-red-800 border-red-200' : 'bg-green-50 text-green-800 border-green-200'}`}>
                                             <p className="font-bold mb-1">
                                                 {bulkValidation.errors.length > 0
-                                                    ? `Validation found ${bulkValidation.errors.length} issue(s) in ${bulkValidation.rowCount} row(s)`
-                                                    : `File looks good — ${bulkValidation.rowCount} row(s) ready to import`}
+                                                    ? tb("validationIssues", { issues: bulkValidation.errors.length, rows: bulkValidation.rowCount })
+                                                    : tb("validationOk", { rows: bulkValidation.rowCount })}
                                             </p>
                                             {bulkValidation.errors.length > 0 && (
                                                 <div className="mt-2 max-h-40 overflow-y-auto text-xs bg-white p-2 rounded border border-red-100">
@@ -674,7 +681,7 @@ export default function StudentsPage() {
                                             )}
                                             {bulkValidation.warnings.length > 0 && (
                                                 <details className="mt-2">
-                                                    <summary className="text-xs cursor-pointer text-amber-700 font-medium">{bulkValidation.warnings.length} auto-conversion note(s)</summary>
+                                                    <summary className="text-xs cursor-pointer text-amber-700 font-medium">{tb("conversionNotes", { count: bulkValidation.warnings.length })}</summary>
                                                     <div className="mt-1 max-h-32 overflow-y-auto text-xs bg-white p-2 rounded border border-amber-100">
                                                         {bulkValidation.warnings.map((w, i) => (
                                                             <div key={i} className="mb-1 text-amber-700 font-mono">{w}</div>
@@ -687,10 +694,10 @@ export default function StudentsPage() {
 
                                     {bulkResult && (
                                         <div className={`p-4 mb-4 text-sm rounded-lg ${(bulkResult.failed > 0 || !!bulkResult.skipped) ? 'bg-orange-50 text-orange-800 border border-orange-200' : 'bg-green-50 text-green-800 border border-green-200'}`}>
-                                            <p className="font-bold mb-2">Import Results:</p>
-                                            <p>{bulkResult.successful} students successfully created and enrolled.</p>
-                                            {!!bulkResult.skipped && <p>{bulkResult.skipped} skipped.</p>}
-                                            {bulkResult.failed > 0 && <p>{bulkResult.failed} failed.</p>}
+                                            <p className="font-bold mb-2">{tb("resultsTitle")}</p>
+                                            <p>{tb("resultCreated", { count: bulkResult.successful })}</p>
+                                            {!!bulkResult.skipped && <p>{tb("resultSkipped", { count: bulkResult.skipped })}</p>}
+                                            {bulkResult.failed > 0 && <p>{tb("resultFailed", { count: bulkResult.failed })}</p>}
                                             {bulkResult.errors?.length > 0 && (
                                                 <div className="mt-2 max-h-32 overflow-y-auto text-xs bg-white p-2 rounded border border-orange-100">
                                                     {bulkResult.errors.map((err, i) => (
@@ -707,7 +714,7 @@ export default function StudentsPage() {
                                             onClick={closeBulkModal} 
                                             className="text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-4 focus:ring-line-strong font-medium rounded-lg text-sm px-5 py-2.5"
                                         >
-                                            Close
+                                            {tc("action.close")}
                                         </button>
                                         <button 
                                             type="submit" 
@@ -715,7 +722,7 @@ export default function StudentsPage() {
                                             title={readOnly ? READ_ONLY_TITLE : undefined}
                                             className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-brand/40 font-medium rounded-lg text-sm px-5 py-2.5 disabled:opacity-50"
                                         >
-                                            {bulkUploading ? 'Importing...' : 'Upload & Import'}
+                                            {bulkUploading ? tb("importing") : tb("submit")}
                                         </button>
                                     </div>
                                 </form>

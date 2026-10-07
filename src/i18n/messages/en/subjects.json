@@ -1,0 +1,68 @@
+{
+  "meta": {
+    "title": "Subjects"
+  },
+  "category": {
+    "BASE": "Base / Compulsory",
+    "OPTIONAL": "Optional",
+    "VOCATIONAL": "Vocational",
+    "ACTIVITY": "Activity"
+  },
+  "categoryShort": {
+    "BASE": "Base",
+    "OPTIONAL": "Optional",
+    "VOCATIONAL": "Vocational",
+    "ACTIVITY": "Activity"
+  },
+  "list": {
+    "section": "Academics · Subjects",
+    "title": "Subjects",
+    "description": "Subjects taught, and the classes they belong to.",
+    "addSubject": "Add subject",
+    "searchTitle": "Search Subjects",
+    "subjectId": "Subject ID",
+    "idPlaceholder": "e.g. 1",
+    "colId": "ID",
+    "colCategory": "Category",
+    "colComponents": "Components",
+    "colFeeMapping": "Fee Mapping",
+    "theoryShort": "Th",
+    "practicalShort": "Pr",
+    "viewOnly": "View only",
+    "loadFailed": "Failed to load subjects",
+    "allCategories": "All Categories",
+    "allItems": "All Items",
+    "hasTheory": "Has Theory",
+    "hasPractical": "Has Practical",
+    "both": "Both (Th + Pr)",
+    "findTitle": "Find Subjects",
+    "findHint": "Please apply filters and click Search to view the list.",
+    "empty": "No subjects found matching your criteria.",
+    "rowsPerPage": "Rows per page:",
+    "range": "{from}–{to} of {total}",
+    "prev": "← Prev",
+    "next": "Next →"
+  },
+  "form": {
+    "addTitle": "Add New Subject",
+    "editTitle": "Edit Subject",
+    "back": "← Back to Subjects",
+    "name": "Subject Name",
+    "namePlaceholder": "Mathematics",
+    "category": "Subject Category",
+    "feeCategory": "Linked Fee Category (Optional)",
+    "feeNone": "-- None (Implicit) --",
+    "feeHint": "If mapped, opting into this subject will auto-apply this fee type dynamically.",
+    "hasTheory": "Has Theory Component?",
+    "hasPractical": "Has Practical Component?",
+    "bothHint": "If both are checked, exam data entry will provide separate fields for Theory and Practical marks which auto-sum to the total.",
+    "creating": "Creating...",
+    "create": "Create Subject",
+    "saveChanges": "Save Changes",
+    "noPermission": "You don't have permission to add subjects.",
+    "createFailed": "Failed to create subject. Please try again.",
+    "notFound": "Subject not found",
+    "loadFailed": "Failed to load subject data",
+    "updateFailed": "Failed to update subject. Please try again."
+  }
+}

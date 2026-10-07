@@ -1,5 +1,6 @@
 import React from 'react';
 import { CheckCheck, ChevronRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/skeleton';
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -19,17 +20,19 @@ interface TodayHomeworkCardProps {
 }
 
 export const TodayHomeworkCard = ({ count, isLoading, onOpen }: TodayHomeworkCardProps) => {
+  const t = useTranslations('parent.today');
+  const tc = useTranslations('common');
   const none = count === 0;
 
   return (
     <button
       onClick={onOpen}
       aria-label={
-        none ? 'No homework set today. Open homework.' : `${count} homework task${count === 1 ? '' : 's'} set today. Open homework.`
+        none ? t('homeworkNoneAria') : t('homeworkCountAria', { count })
       }
       className="flex min-h-33 w-full cursor-pointer flex-col items-center gap-1 rounded-xl border border-line bg-surface p-2.5 text-center shadow-soft transition-all hover:-translate-y-0.5 hover:border-brand-edge hover:shadow-raised focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
     >
-      <span className="eyebrow w-full text-left">Homework</span>
+      <span className="eyebrow w-full text-left">{t("homework")}</span>
 
       {isLoading ? (
         <Skeleton className="mt-2 h-11 w-14 rounded-lg" />
@@ -39,7 +42,7 @@ export const TodayHomeworkCard = ({ count, isLoading, onOpen }: TodayHomeworkCar
           <span className="grid size-9 place-items-center rounded-xl bg-accent-success-tint text-accent-success-deep">
             <CheckCheck className="size-4.5" strokeWidth={2.6} aria-hidden />
           </span>
-          <span className="text-[11px] leading-tight font-semibold text-ink">Nothing set</span>
+          <span className="text-[11px] leading-tight font-semibold text-ink">{t("nothingSet")}</span>
         </span>
       ) : (
         <span className="mt-1 flex flex-col items-center leading-none">
@@ -47,13 +50,13 @@ export const TodayHomeworkCard = ({ count, isLoading, onOpen }: TodayHomeworkCar
             {count}
           </span>
           <span className="mt-1 text-[11px] leading-tight font-semibold text-ink">
-            {count === 1 ? 'task' : 'tasks'}
+            {t('tasks', { count })}
           </span>
         </span>
       )}
 
       <span className="mt-auto flex items-center gap-0.5 pt-1.5 text-[11px] font-semibold text-brand">
-        View
+        {tc('action.view')}
         <ChevronRight className="size-3.5" aria-hidden />
       </span>
     </button>

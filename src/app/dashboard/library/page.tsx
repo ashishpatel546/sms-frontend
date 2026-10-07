@@ -5,6 +5,7 @@ import { useRbac } from '@/lib/rbac';
 import { authFetch } from '@/lib/auth';
 import { API_BASE_URL, fetcher } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { useTranslations } from 'next-intl';
 import { BookOpen, RefreshCw, Download, Plus, PlusCircle, Edit2, BookX, CheckCircle, AlertTriangle, Clock, Upload, ScanLine } from 'lucide-react';
 import NumberInput from '@/components/ui/NumberInput';
 import StableScanner from '@/components/inventory/StableScanner';
@@ -93,32 +94,35 @@ const normalizeIsbn = (v: string) => v.replace(/[^0-9Xx]/g, '').toUpperCase();
 const looksLikeIsbn = (v: string) =>
   /^[0-9Xx\- ]+$/.test(v.trim()) && normalizeIsbn(v).length >= 8;
 
-const getBorrowerName = (i: Issuance): string => {
+type LibT = ReturnType<typeof useTranslations<'library'>>;
+
+const getBorrowerName = (i: Issuance, t: LibT): string => {
   if (i.borrowerType === 'STUDENT') {
-    if (!i.student) return `Student #${i.studentId}`;
+    if (!i.student) return t('borrower.studentId', { id: String(i.studentId) });
     const u = i.student.user;
     const name = `${u?.firstName ?? i.student.firstName ?? ''} ${u?.lastName ?? i.student.lastName ?? ''}`.trim();
-    return name || `Student #${i.studentId}`;
+    return name || t('borrower.studentId', { id: String(i.studentId) });
   }
-  if (!i.staff) return `Staff #${i.staffId}`;
+  if (!i.staff) return t('borrower.staffId', { id: String(i.staffId) });
   const u = i.staff.user;
   const name = `${u?.firstName ?? i.staff.firstName ?? ''} ${u?.lastName ?? i.staff.lastName ?? ''}`.trim();
-  return name || `Staff #${i.staffId}`;
+  return name || t('borrower.staffId', { id: String(i.staffId) });
 };
 
-const statusBadge = (issuance: Issuance) => {
+const statusBadge = (issuance: Issuance, t: LibT) => {
   if (issuance.status === 'RETURNED')
-    return <span className="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">Returned</span>;
+    return <span className="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">{t('status.returned')}</span>;
   const today = new Date().toISOString().substring(0, 10);
   if (issuance.dueDate < today || issuance.status === 'OVERDUE')
-    return <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">Overdue</span>;
+    return <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">{t('status.overdue')}</span>;
   if (issuance.dueDate === today)
-    return <span className="px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">Due Today</span>;
-  return <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">Active</span>;
+    return <span className="px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">{t('status.dueToday')}</span>;
+  return <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">{t('status.active')}</span>;
 };
 
 const TAB_LABELS = ['My Books', 'Books', 'Issue / Return', 'Reports', 'Settings'] as const;
 type Tab = typeof TAB_LABELS[number];
+const TAB_KEY = { 'My Books': 'myBooks', 'Books': 'books', 'Issue / Return': 'issueReturn', 'Reports': 'reports', 'Settings': 'settings' } as const satisfies Record<Tab, string>;
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
@@ -139,6 +143,7 @@ function PaginationBar({ page, total, limit, onChange }: { page: number; total: 
 // ── My Books Tab ───────────────────────────────────────────────────────────────
 
 function MyBooksTab() {
+  const t = useTranslations('library');
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<Pagination<Issuance> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -151,11 +156,11 @@ function MyBooksTab() {
       if (!res.ok) throw new Error('Failed to load');
       setResult(await res.json());
     } catch {
-      toast.error('Could not load your borrowed books');
+      toast.error(t('my.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { load(page); }, [load, page]);
 
@@ -163,29 +168,29 @@ function MyBooksTab() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-4">My Borrowed Books</h2>
+      <h2 className="text-lg font-semibold mb-4">{t('my.title')}</h2>
       {!result || result.data.length === 0 ? (
-        <p className="text-slate-500 text-sm">You have no borrowed books.</p>
+        <p className="text-slate-500 text-sm">{t('my.empty')}</p>
       ) : (
         <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-slate-500">
-                  <th className="pb-2 pr-4">Book</th>
-                  <th className="pb-2 pr-4">Issued</th>
-                  <th className="pb-2 pr-4">Due</th>
-                  <th className="pb-2 pr-4">Status</th>
-                  <th className="pb-2">Late Fee Paid</th>
+                  <th className="pb-2 pr-4">{t('col.book')}</th>
+                  <th className="pb-2 pr-4">{t('col.issued')}</th>
+                  <th className="pb-2 pr-4">{t('col.due')}</th>
+                  <th className="pb-2 pr-4">{t('col.status')}</th>
+                  <th className="pb-2">{t('col.lateFeePaid')}</th>
                 </tr>
               </thead>
               <tbody>
                 {result.data.map(i => (
                   <tr key={i.id} className="border-b last:border-0 align-top">
-                    <td className="py-2 pr-4 font-medium">{i.book?.title ?? `Book #${i.bookId}`}</td>
+                    <td className="py-2 pr-4 font-medium">{i.book?.title ?? t('bookId', { id: String(i.bookId) })}</td>
                     <td className="py-2 pr-4 whitespace-nowrap text-xs text-slate-500">{fmtTs(i.issueDate)}</td>
                     <td className="py-2 pr-4 text-xs">{fmtDate(i.dueDate)}</td>
-                    <td className="py-2 pr-4">{statusBadge(i)}</td>
+                    <td className="py-2 pr-4">{statusBadge(i, t)}</td>
                     <td className="py-2 text-xs">
                       {i.lateFeePayment ? `₹${i.lateFeePayment.amountPaid}` : '—'}
                     </td>
@@ -204,6 +209,7 @@ function MyBooksTab() {
 // ── Books Tab ──────────────────────────────────────────────────────────────────
 
 function BooksTab() {
+  const t = useTranslations('library');
   const [books, setBooks] = useState<Pagination<Book> | null>(null);
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({ title: '', author: '', isbn: '', publisher: '' });
@@ -230,11 +236,11 @@ function BooksTab() {
       if (!res.ok) throw new Error();
       setBooks(await res.json());
     } catch {
-      toast.error('Failed to load books');
+      toast.error(t('books.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, t]);
 
   useEffect(() => { load(1); }, []);
 
@@ -275,21 +281,21 @@ function BooksTab() {
       const res = await authFetch(`${API_BASE_URL}/library/books/bulk-import`, { method: 'POST', body: formData });
       if (!res.ok) {
         const err = await res.json();
-        toast.error(err.message || 'Failed to upload');
+        toast.error(err.message || t('bulk.uploadFailed'));
         return;
       }
       const result = await res.json();
       setBulkResult(result);
       if (result.successful > 0 && result.failed === 0) {
-        toast.success(`Successfully imported ${result.successful} books`);
+        toast.success(t('bulk.imported', { count: result.successful }));
         load(1);
         setTimeout(closeBulkModal, 2000);
       } else if (result.successful > 0) {
-        toast.success(`Partially imported ${result.successful} books. Check errors.`);
+        toast.success(t('bulk.partial', { count: result.successful }));
         load(1);
       }
     } catch {
-      toast.error('An error occurred during bulk import');
+      toast.error(t('bulk.error'));
     } finally {
       setBulkUploading(false);
     }
@@ -300,20 +306,20 @@ function BooksTab() {
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-4">
         {(['title', 'author', 'isbn', 'publisher'] as const).map(k => (
-          <input key={k} placeholder={k.charAt(0).toUpperCase() + k.slice(1)} value={filters[k]}
+          <input key={k} placeholder={t(`books.filter.${k}`)} value={filters[k]}
             onChange={e => setFilters(f => ({ ...f, [k]: e.target.value }))}
             onKeyDown={e => e.key === 'Enter' && handleSearch()}
             className="border rounded px-3 py-1.5 text-sm w-36 dark:bg-slate-800 dark:border-slate-600" />
         ))}
-        <button onClick={handleSearch} className="px-3 py-1.5 rounded bg-lime-600 text-white text-sm hover:bg-lime-700">Search</button>
+        <button onClick={handleSearch} className="px-3 py-1.5 rounded bg-lime-600 text-white text-sm hover:bg-lime-700">{t('search')}</button>
         <button onClick={downloadCsv} className="flex items-center gap-1 px-3 py-1.5 rounded border text-sm hover:bg-slate-100 dark:hover:bg-slate-700">
           <Download className="w-3.5 h-3.5" /> CSV
         </button>
         <button onClick={() => setShowBulkModal(true)} className="flex items-center gap-1 px-3 py-1.5 rounded border text-sm hover:bg-slate-100 dark:hover:bg-slate-700">
-          <Upload className="w-3.5 h-3.5" /> Bulk Upload
+          <Upload className="w-3.5 h-3.5" /> {t('books.bulkUpload')}
         </button>
         <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1 px-3 py-1.5 rounded bg-slate-800 text-white text-sm hover:bg-slate-700 ml-auto">
-          <Plus className="w-3.5 h-3.5" /> Add Book
+          <Plus className="w-3.5 h-3.5" /> {t('books.addBook')}
         </button>
       </div>
 
@@ -325,13 +331,13 @@ function BooksTab() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-slate-500">
-                  <th className="pb-2 pr-3">Title</th>
-                  <th className="pb-2 pr-3">Author</th>
-                  <th className="pb-2 pr-3">ISBN</th>
-                  <th className="pb-2 pr-3">Copies</th>
-                  <th className="pb-2 pr-3">Available</th>
-                  <th className="pb-2 pr-3">Status</th>
-                  <th className="pb-2">Actions</th>
+                  <th className="pb-2 pr-3">{t('col.title')}</th>
+                  <th className="pb-2 pr-3">{t('col.author')}</th>
+                  <th className="pb-2 pr-3">{t('col.isbn')}</th>
+                  <th className="pb-2 pr-3">{t('col.copies')}</th>
+                  <th className="pb-2 pr-3">{t('col.available')}</th>
+                  <th className="pb-2 pr-3">{t('col.status')}</th>
+                  <th className="pb-2">{t('col.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -346,16 +352,16 @@ function BooksTab() {
                     </td>
                     <td className="py-2 pr-3">
                       {b.isActive
-                        ? <span className="text-xs text-green-600">Active</span>
-                        : <span className="text-xs text-slate-400">Discarded</span>}
+                        ? <span className="text-xs text-green-600">{t('status.active')}</span>
+                        : <span className="text-xs text-slate-400">{t('status.discarded')}</span>}
                     </td>
                     <td className="py-2 flex gap-2">
-                      <button onClick={() => setEditBook(b)} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700" title="Edit"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => setEditBook(b)} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700" title={t('books.edit')}><Edit2 className="w-4 h-4" /></button>
                       {b.isActive && (
-                        <button onClick={() => setIncreaseCopiesBook(b)} className="p-1 rounded hover:bg-lime-50 dark:hover:bg-lime-900/30 text-lime-600" title="Increase copies"><PlusCircle className="w-4 h-4" /></button>
+                        <button onClick={() => setIncreaseCopiesBook(b)} className="p-1 rounded hover:bg-lime-50 dark:hover:bg-lime-900/30 text-lime-600" title={t('books.increaseCopies')}><PlusCircle className="w-4 h-4" /></button>
                       )}
                       {b.isActive && (
-                        <button onClick={() => setDiscardBook(b)} className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" title="Discard copies"><BookX className="w-4 h-4" /></button>
+                        <button onClick={() => setDiscardBook(b)} className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" title={t('books.discardCopies')}><BookX className="w-4 h-4" /></button>
                       )}
                     </td>
                   </tr>
@@ -394,7 +400,7 @@ function BooksTab() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/55">
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between p-4 border-b dark:border-slate-700">
-              <h3 className="text-lg font-semibold">Bulk Import Books</h3>
+              <h3 className="text-lg font-semibold">{t('bulk.title')}</h3>
               <button onClick={closeBulkModal} className="text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg w-8 h-8 inline-flex justify-center items-center">
                 <svg className="w-3 h-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
                   <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6" />
@@ -403,25 +409,25 @@ function BooksTab() {
             </div>
             <div className="p-5 overflow-y-auto">
               <div className="mb-4 text-sm text-slate-600 dark:text-slate-300 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800">
-                <p className="font-semibold mb-2">CSV Format Requirements:</p>
+                <p className="font-semibold mb-2">{t('bulk.formatTitle')}</p>
                 <ul className="list-disc pl-5 space-y-1 text-xs">
-                  <li><span className="font-semibold text-red-600">Required:</span> title, author</li>
-                  <li><span className="font-semibold">Optional:</span> isbn, subject, genre, publisher, mrp, edition, language, shelfLocation, totalCopies, description</li>
-                  <li>All column headers must be present (leave optional fields empty)</li>
-                  <li><span className="font-semibold">totalCopies:</span> whole number, defaults to 1 if empty</li>
-                  <li><span className="font-semibold">mrp:</span> decimal number e.g. 250.00</li>
+                  <li>{t.rich('bulk.required', { b: (c) => <span className="font-semibold text-red-600">{c}</span> })}</li>
+                  <li>{t.rich('bulk.optional', { b: (c) => <span className="font-semibold">{c}</span> })}</li>
+                  <li>{t('bulk.allHeaders')}</li>
+                  <li>{t.rich('bulk.totalCopies', { b: (c) => <span className="font-semibold">{c}</span> })}</li>
+                  <li>{t.rich('bulk.mrp', { b: (c) => <span className="font-semibold">{c}</span> })}</li>
                 </ul>
                 <button
                   type="button"
                   onClick={downloadTemplate}
                   className="mt-3 inline-flex items-center gap-1 text-xs text-blue-700 dark:text-blue-400 hover:underline font-medium"
                 >
-                  <Download className="w-3 h-3" /> Download CSV Template
+                  <Download className="w-3 h-3" /> {t('bulk.downloadTemplate')}
                 </button>
               </div>
 
               <form onSubmit={handleBulkUpload}>
-                <label className="block mb-2 text-sm font-medium">Upload CSV File</label>
+                <label className="block mb-2 text-sm font-medium">{t('bulk.uploadFile')}</label>
                 <input
                   type="file"
                   accept=".csv"
@@ -432,9 +438,9 @@ function BooksTab() {
 
                 {bulkResult && (
                   <div className={`p-4 mb-4 text-sm rounded-lg border ${bulkResult.failed > 0 ? 'bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300' : 'bg-green-50 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300'}`}>
-                    <p className="font-bold mb-2">Import Results:</p>
-                    <p>{bulkResult.successful} books successfully imported.</p>
-                    {bulkResult.failed > 0 && <p>{bulkResult.failed} failed.</p>}
+                    <p className="font-bold mb-2">{t('bulk.results')}</p>
+                    <p>{t('bulk.successCount', { count: bulkResult.successful })}</p>
+                    {bulkResult.failed > 0 && <p>{t('bulk.failedCount', { count: bulkResult.failed })}</p>}
                     {bulkResult.errors.length > 0 && (
                       <div className="mt-2 max-h-32 overflow-y-auto text-xs bg-white dark:bg-slate-800 p-2 rounded border border-orange-100">
                         {bulkResult.errors.map((err, i) => (
@@ -446,9 +452,9 @@ function BooksTab() {
                 )}
 
                 <div className="flex justify-end gap-2 mt-4">
-                  <button type="button" onClick={closeBulkModal} className="px-4 py-2 rounded border text-sm hover:bg-slate-100 dark:hover:bg-slate-700">Close</button>
+                  <button type="button" onClick={closeBulkModal} className="px-4 py-2 rounded border text-sm hover:bg-slate-100 dark:hover:bg-slate-700">{t('close')}</button>
                   <button type="submit" disabled={!bulkFile || bulkUploading} className="px-4 py-2 rounded bg-lime-600 text-white text-sm hover:bg-lime-700 disabled:opacity-50">
-                    {bulkUploading ? 'Importing…' : 'Upload & Import'}
+                    {bulkUploading ? t('bulk.importing') : t('bulk.submit')}
                   </button>
                 </div>
               </form>
@@ -463,6 +469,8 @@ function BooksTab() {
 // ── Book Form Modal ────────────────────────────────────────────────────────────
 
 function BookFormModal({ book, onClose, onSaved }: { book: Book | null; onClose: () => void; onSaved: () => void }) {
+  const t = useTranslations('library');
+  const tc = useTranslations('common');
   const isEdit = !!book;
   const [form, setForm] = useState({
     title: book?.title ?? '',
@@ -503,11 +511,11 @@ function BookFormModal({ book, onClose, onSaved }: { book: Book | null; onClose:
 
       const url = isEdit ? `${API_BASE_URL}/library/books/${book.id}` : `${API_BASE_URL}/library/books`;
       const res = await authFetch(url, { method: isEdit ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.message ?? 'Failed'); }
-      toast.success(isEdit ? 'Book updated' : 'Book added');
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message ?? t('failed')); }
+      toast.success(isEdit ? t('form.updated') : t('form.added'));
       onSaved();
     } catch (err: any) {
-      toast.error(err.message ?? 'Error saving book');
+      toast.error(err.message ?? t('form.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -524,17 +532,17 @@ function BookFormModal({ book, onClose, onSaved }: { book: Book | null; onClose:
   return (
     <div className="fixed inset-0 z-50 bg-walnut-950/55 flex items-center justify-center p-4">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
-        <h3 className="text-lg font-semibold mb-4">{isEdit ? 'Edit Book' : 'Add Book'}</h3>
+        <h3 className="text-lg font-semibold mb-4">{isEdit ? t('form.editTitle') : t('form.addTitle')}</h3>
         <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
-          <div className="col-span-2">{field('title', 'Title *')}</div>
-          <div className="col-span-2">{field('author', 'Author *')}</div>
+          <div className="col-span-2">{field('title', t('form.titleRequired'))}</div>
+          <div className="col-span-2">{field('author', t('form.authorRequired'))}</div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">ISBN</label>
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">{t('col.isbn')}</label>
             <div className="flex gap-1.5">
               <input type="text" value={form.isbn} onChange={e => setForm(f => ({ ...f, isbn: e.target.value }))}
                 className="w-full min-w-0 border rounded px-3 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
-              <button type="button" onClick={() => setScanOpen(v => !v)} title="Scan the barcode on the back cover"
-                aria-label="Scan ISBN barcode"
+              <button type="button" onClick={() => setScanOpen(v => !v)} title={t('scanBackCover')}
+                aria-label={t('scanIsbn')}
                 className={`shrink-0 border rounded px-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 dark:border-slate-600 ${scanOpen ? 'bg-lime-50 border-lime-400 text-lime-700 dark:bg-lime-900/30 dark:text-lime-300' : 'text-slate-600 dark:text-slate-300'}`}>
                 <ScanLine className="w-4 h-4" />
               </button>
@@ -547,29 +555,29 @@ function BookFormModal({ book, onClose, onSaved }: { book: Book | null; onClose:
                   const isbn = normalizeIsbn(code) || code.trim();
                   setForm(f => ({ ...f, isbn }));
                   setScanOpen(false);
-                  toast.success(`ISBN ${isbn} captured`);
+                  toast.success(t('form.isbnCaptured', { isbn }));
                 }}
                 onClose={() => setScanOpen(false)}
               />
             </div>
           )}
-          {field('publisher', 'Publisher')}
-          {field('subject', 'Subject')}
-          {field('genre', 'Genre')}
-          {field('mrp', 'MRP (₹)', 'number')}
-          {field('edition', 'Edition')}
-          {field('language', 'Language')}
-          {field('shelfLocation', 'Shelf Location')}
-          {!isEdit && field('totalCopies', 'Total Copies', 'number')}
+          {field('publisher', t('form.publisher'))}
+          {field('subject', t('form.subject'))}
+          {field('genre', t('form.genre'))}
+          {field('mrp', t('form.mrp'), 'number')}
+          {field('edition', t('form.edition'))}
+          {field('language', t('form.language'))}
+          {field('shelfLocation', t('form.shelfLocation'))}
+          {!isEdit && field('totalCopies', t('form.totalCopies'), 'number')}
           <div className="col-span-2">
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Description</label>
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">{tc('field.description')}</label>
             <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               rows={2} className="w-full border rounded px-3 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
           </div>
           <div className="col-span-2 flex gap-2 justify-end mt-2">
-            <button type="button" onClick={onClose} className="px-4 py-1.5 rounded border text-sm hover:bg-slate-100 dark:hover:bg-slate-700">Cancel</button>
+            <button type="button" onClick={onClose} className="px-4 py-1.5 rounded border text-sm hover:bg-slate-100 dark:hover:bg-slate-700">{t('cancel')}</button>
             <button type="submit" disabled={saving || !form.title || !form.author} className="px-4 py-1.5 rounded bg-lime-600 text-white text-sm hover:bg-lime-700 disabled:opacity-50">
-              {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Book'}
+              {saving ? tc('action.saving') : isEdit ? t('form.saveChanges') : t('form.addTitle')}
             </button>
           </div>
         </form>
@@ -581,6 +589,8 @@ function BookFormModal({ book, onClose, onSaved }: { book: Book | null; onClose:
 // ── Increase Copies Modal ──────────────────────────────────────────────────────
 
 function IncreaseCopiesModal({ book, onClose, onSaved }: { book: Book; onClose: () => void; onSaved: () => void }) {
+  const t = useTranslations('library');
+  const tc = useTranslations('common');
   const [additionalCopies, setAdditionalCopies] = useState('1');
   const [confirmed, setConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -588,7 +598,7 @@ function IncreaseCopiesModal({ book, onClose, onSaved }: { book: Book; onClose: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const n = parseInt(additionalCopies);
-    if (!n || n < 1) { toast.error('Enter a valid number of copies (min 1)'); return; }
+    if (!n || n < 1) { toast.error(t('increase.invalid')); return; }
     if (!confirmed) { setConfirmed(true); return; }
     setSaving(true);
     try {
@@ -597,11 +607,11 @@ function IncreaseCopiesModal({ book, onClose, onSaved }: { book: Book; onClose: 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ additionalCopies: n }),
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.message ?? 'Failed'); }
-      toast.success(`Added ${n} ${n === 1 ? 'copy' : 'copies'} to "${book.title}"`);
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message ?? t('failed')); }
+      toast.success(t('increase.added', { count: n, title: book.title }));
       onSaved();
     } catch (err: any) {
-      toast.error(err.message ?? 'Error increasing copies');
+      toast.error(err.message ?? t('increase.failed'));
     } finally {
       setSaving(false);
     }
@@ -612,15 +622,15 @@ function IncreaseCopiesModal({ book, onClose, onSaved }: { book: Book; onClose: 
   return (
     <div className="fixed inset-0 z-50 bg-walnut-950/55 flex items-center justify-center p-4">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-sm p-6">
-        <h3 className="text-lg font-semibold mb-1">Increase Copies</h3>
+        <h3 className="text-lg font-semibold mb-1">{t('increase.title')}</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
           <span className="font-medium text-slate-700 dark:text-slate-200">{book.title}</span>
-          <br />Current: {book.totalCopies} total · {book.availableCopies} available
+          <br />{t('increase.current', { total: book.totalCopies, available: book.availableCopies })}
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Copies to Add</label>
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">{t('increase.copiesToAdd')}</label>
             <input
               type="number" min={1} value={additionalCopies}
               onChange={e => { setAdditionalCopies(e.target.value); setConfirmed(false); }}
@@ -632,18 +642,16 @@ function IncreaseCopiesModal({ book, onClose, onSaved }: { book: Book; onClose: 
             <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-3 text-sm text-amber-800 dark:text-amber-300">
               <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
               <span>
-                You are about to permanently add <strong>{n}</strong> {n === 1 ? 'copy' : 'copies'} to this book.
-                Copies can only be reduced by discarding the book.
-                Click <strong>Confirm</strong> to proceed.
+                {t.rich('increase.confirmText', { count: n, strong: (c) => <strong>{c}</strong> })}
               </span>
             </div>
           )}
 
           <div className="flex gap-2 justify-end">
-            <button type="button" onClick={onClose} className="px-4 py-1.5 rounded border text-sm hover:bg-slate-100 dark:hover:bg-slate-700">Cancel</button>
+            <button type="button" onClick={onClose} className="px-4 py-1.5 rounded border text-sm hover:bg-slate-100 dark:hover:bg-slate-700">{t('cancel')}</button>
             <button type="submit" disabled={saving || !n || n < 1}
               className={`px-4 py-1.5 rounded text-white text-sm disabled:opacity-50 ${confirmed ? 'bg-amber-600 hover:bg-amber-700' : 'bg-lime-600 hover:bg-lime-700'}`}>
-              {saving ? 'Saving…' : confirmed ? 'Confirm' : 'Add Copies'}
+              {saving ? tc('action.saving') : confirmed ? tc('action.confirm') : t('increase.submit')}
             </button>
           </div>
         </form>
@@ -655,6 +663,7 @@ function IncreaseCopiesModal({ book, onClose, onSaved }: { book: Book; onClose: 
 // ── Discard Modal ──────────────────────────────────────────────────────────────
 
 function DiscardModal({ book, onClose, onDiscarded }: { book: Book; onClose: () => void; onDiscarded: () => void }) {
+  const t = useTranslations('library');
   const [reason, setReason] = useState<'BOOK_LOST' | 'BOOK_DAMAGED' | 'OTHER'>('BOOK_DAMAGED');
   const [note, setNote] = useState('');
   const [discardMode, setDiscardMode] = useState<'partial' | 'all'>('partial');
@@ -668,9 +677,9 @@ function DiscardModal({ book, onClose, onDiscarded }: { book: Book; onClose: () 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (reason === 'OTHER' && !note.trim()) { toast.error('Please provide a note'); return; }
+    if (reason === 'OTHER' && !note.trim()) { toast.error(t('discard.noteRequired')); return; }
     if (!isAll && (copies < 1 || copies > book.availableCopies)) {
-      toast.error(`Enter a number between 1 and ${book.availableCopies}`);
+      toast.error(t('discard.range', { max: book.availableCopies }));
       return;
     }
     setSaving(true);
@@ -684,20 +693,20 @@ function DiscardModal({ book, onClose, onDiscarded }: { book: Book; onClose: () 
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.message ?? 'Failed'); }
-      toast.success(isFullDiscard ? 'Book fully discarded' : `${effectiveCopies} ${effectiveCopies === 1 ? 'copy' : 'copies'} discarded`);
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message ?? t('failed')); }
+      toast.success(isFullDiscard ? t('discard.fully') : t('discard.done', { count: effectiveCopies }));
       onDiscarded();
     } catch (err: any) {
-      toast.error(err.message ?? 'Error');
+      toast.error(err.message ?? t('failed'));
     } finally {
       setSaving(false);
     }
   };
 
   const reasonConfig = {
-    BOOK_LOST:    { icon: '🔍', label: 'Lost',    color: 'border-amber-400 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300' },
-    BOOK_DAMAGED: { icon: '💔', label: 'Damaged', color: 'border-orange-400 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300' },
-    OTHER:        { icon: '📋', label: 'Other',   color: 'border-slate-400 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300' },
+    BOOK_LOST:    { icon: '🔍', label: t('discard.lost'),    color: 'border-amber-400 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300' },
+    BOOK_DAMAGED: { icon: '💔', label: t('discard.damaged'), color: 'border-orange-400 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300' },
+    OTHER:        { icon: '📋', label: t('discard.other'),   color: 'border-slate-400 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300' },
   };
 
   return (
@@ -710,8 +719,8 @@ function DiscardModal({ book, onClose, onDiscarded }: { book: Book; onClose: () 
               <BookX className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-semibold text-base leading-tight">Discard Copies</h3>
-              <p className="text-red-100 text-xs truncate mt-0.5">"{book.title}" · {book.availableCopies} available of {book.totalCopies} total</p>
+              <h3 className="font-semibold text-base leading-tight">{t('discard.title')}</h3>
+              <p className="text-red-100 text-xs truncate mt-0.5">{t('discard.subtitle', { title: book.title, available: book.availableCopies, total: book.totalCopies })}</p>
             </div>
           </div>
         </div>
@@ -719,7 +728,7 @@ function DiscardModal({ book, onClose, onDiscarded }: { book: Book; onClose: () 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {/* Reason selector — icon cards */}
           <div>
-            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Reason</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">{t('discard.reason')}</p>
             <div className="grid grid-cols-3 gap-2">
               {(Object.entries(reasonConfig) as [keyof typeof reasonConfig, typeof reasonConfig[keyof typeof reasonConfig]][]).map(([key, cfg]) => (
                 <button
@@ -737,23 +746,23 @@ function DiscardModal({ book, onClose, onDiscarded }: { book: Book; onClose: () 
 
           {reason === 'OTHER' && (
             <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Note <span className="text-red-500">*</span></label>
-              <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="Describe the reason…"
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">{t('discard.note')} <span className="text-red-500">*</span></label>
+              <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder={t('discard.notePlaceholder')}
                 className="w-full border rounded-lg px-3 py-2 text-sm dark:bg-slate-800 dark:border-slate-600 resize-none focus:outline-none focus:ring-2 focus:ring-red-400" />
             </div>
           )}
 
           {/* Quantity selector */}
           <div>
-            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Copies to Discard</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">{t('discard.copies')}</p>
             <div className="grid grid-cols-2 gap-2 mb-3">
               <button type="button" onClick={() => setDiscardMode('partial')}
                 className={`py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${discardMode === 'partial' ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300'}`}>
-                Specific number
+                {t('discard.specific')}
               </button>
               <button type="button" onClick={() => setDiscardMode('all')}
                 className={`py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${discardMode === 'all' ? 'border-red-600 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300'}`}>
-                All available ({book.availableCopies})
+                {t('discard.allAvailable', { count: book.availableCopies })}
               </button>
             </div>
             {discardMode === 'partial' && (
@@ -773,15 +782,15 @@ function DiscardModal({ book, onClose, onDiscarded }: { book: Book; onClose: () 
           {isFullDiscard && (
             <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-3 text-sm text-red-700 dark:text-red-300">
               <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-              <span>This will <strong>fully discard</strong> the book record — it will be permanently marked inactive and removed from circulation.</span>
+              <span>{t.rich('discard.fullWarning', { strong: (c) => <strong>{c}</strong> })}</span>
             </div>
           )}
 
           <div className="flex gap-2 pt-1">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Cancel</button>
+            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">{t('cancel')}</button>
             <button type="submit" disabled={saving || (!isAll && (copies < 1 || copies > book.availableCopies))}
               className="flex-1 py-2.5 rounded-xl bg-linear-to-r from-red-500 to-rose-600 text-white text-sm font-semibold hover:from-red-600 hover:to-rose-700 disabled:opacity-50 transition-all shadow-sm shadow-red-500/20">
-              {saving ? 'Discarding…' : isFullDiscard ? 'Discard All' : `Discard ${effectiveCopies || '—'} ${effectiveCopies === 1 ? 'Copy' : 'Copies'}`}
+              {saving ? t('discard.discarding') : isFullDiscard ? t('discard.all') : effectiveCopies ? t('discard.submit', { count: effectiveCopies }) : t('discard.submitNone')}
             </button>
           </div>
         </form>
@@ -793,6 +802,7 @@ function DiscardModal({ book, onClose, onDiscarded }: { book: Book; onClose: () 
 // ── Issue / Return Tab ─────────────────────────────────────────────────────────
 
 function IssueReturnTab() {
+  const t = useTranslations('library');
   const [subTab, setSubTab] = useState<'issue' | 'active'>('issue');
   const [settings, setSettings] = useState<LibrarySettings | null>(null);
 
@@ -806,7 +816,7 @@ function IssueReturnTab() {
     <div className="space-y-4">
       {/* Sub-tab bar */}
       <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-fit">
-        {([['issue', 'Issue Book'], ['active', 'Active Issuances']] as const).map(([key, label]) => (
+        {([['issue', t('issue.tabIssue')], ['active', t('issue.tabActive')]] as const).map(([key, label]) => (
           <button key={key} onClick={() => setSubTab(key)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               subTab === key
@@ -829,6 +839,7 @@ function IssueReturnTab() {
 }
 
 function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | null; onIssued: () => void }) {
+  const t = useTranslations('library');
   const [bookQuery, setBookQuery] = useState('');
   const [bookSuggestions, setBookSuggestions] = useState<Book[]>([]);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
@@ -871,12 +882,12 @@ function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | nu
       const res = await authFetch(`${API_BASE_URL}/library/books?isbn=${encodeURIComponent(isbn)}&limit=5`);
       const data: Pagination<Book> = await res.json();
       const book = data.data.find(b => b.isActive);
-      if (!book) { toast.error(`No book found with ISBN ${isbn} — add it under Books first`); return; }
-      if (book.availableCopies <= 0) { toast.error(`"${book.title}" has no copies available`); return; }
+      if (!book) { toast.error(t('issue.notFoundAdd', { isbn })); return; }
+      if (book.availableCopies <= 0) { toast.error(t('issue.noCopies', { title: book.title })); return; }
       setSelectedBook(book); setBookQuery(''); setBookSuggestions([]); setScanOpen(false);
-      toast.success(`"${book.title}" selected`);
+      toast.success(t('issue.selected', { title: book.title }));
     } catch {
-      toast.error('Could not look up that ISBN');
+      toast.error(t('lookupFailed'));
     }
   };
 
@@ -902,7 +913,7 @@ function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | nu
 
   const handleIssue = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedBook || !selectedBorrower) { toast.error('Select a book and borrower'); return; }
+    if (!selectedBook || !selectedBorrower) { toast.error(t('issue.selectBoth')); return; }
     setIssuing(true);
     try {
       const body: Record<string, unknown> = { bookId: selectedBook.id, borrowerType };
@@ -910,7 +921,7 @@ function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | nu
       else body.staffId = selectedBorrower.id;
       if (loanDays > 0) {
         if (settings && loanDays > settings.maxLoanDays) {
-          toast.error(`Loan period cannot exceed ${settings.maxLoanDays} days`);
+          toast.error(t('issue.maxExceeded', { max: settings.maxLoanDays }));
           setIssuing(false); return;
         }
         body.dueDate = dueDate;
@@ -918,14 +929,14 @@ function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | nu
       const res = await authFetch(`${API_BASE_URL}/library/issuances`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.message ?? 'Failed'); }
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message ?? t('failed')); }
       const borrowerName = `${selectedBorrower.firstName} ${selectedBorrower.lastName}`;
-      toast.success(`📗 "${selectedBook.title}" issued to ${borrowerName} — due ${dueDate || 'per default'}`);
+      toast.success(dueDate ? t('issue.issued', { title: selectedBook.title, name: borrowerName, due: dueDate }) : t('issue.issuedDefault', { title: selectedBook.title, name: borrowerName }));
       setSelectedBook(null); setBookQuery(''); setSelectedBorrower(null); setBorrowerQuery('');
       setLoanDays(settings?.defaultLoanDays ?? 14);
       onIssued();
     } catch (err: any) {
-      toast.error(err.message ?? 'Error issuing book');
+      toast.error(err.message ?? t('issue.failed'));
     } finally {
       setIssuing(false);
     }
@@ -936,14 +947,14 @@ function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | nu
       <form onSubmit={handleIssue} className="space-y-3">
         {/* Book search */}
         <div className="relative">
-          <label className="block text-xs font-medium mb-1">Book</label>
+          <label className="block text-xs font-medium mb-1">{t('col.book')}</label>
           <div className="flex gap-1.5">
             <input value={selectedBook ? selectedBook.title : bookQuery}
               onChange={e => onBookQueryChange(e.target.value)}
-              placeholder="Search by title or scan ISBN…"
+              placeholder={t('issue.bookPlaceholder')}
               className="w-full min-w-0 border rounded px-3 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
-            <button type="button" onClick={() => setScanOpen(v => !v)} title="Scan the barcode on the back cover"
-              aria-label="Scan ISBN barcode"
+            <button type="button" onClick={() => setScanOpen(v => !v)} title={t('scanBackCover')}
+              aria-label={t('scanIsbn')}
               className={`shrink-0 border rounded px-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 dark:border-slate-600 ${scanOpen ? 'bg-lime-50 border-lime-400 text-lime-700 dark:bg-lime-900/30 dark:text-lime-300' : 'text-slate-600 dark:text-slate-300'}`}>
               <ScanLine className="w-4 h-4" />
             </button>
@@ -960,13 +971,13 @@ function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | nu
                   className="px-3 py-2 cursor-pointer hover:bg-lime-50 dark:hover:bg-slate-700 text-sm flex items-center justify-between gap-3">
                   <span>
                     <span className="font-medium">{b.title}</span>
-                    <span className="text-slate-400 text-xs ml-1">by {b.author}</span>
+                    <span className="text-slate-400 text-xs ml-1">{t('byAuthor', { author: b.author })}</span>
                   </span>
                   <span className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full ${
                     b.availableCopies <= 2
                       ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
                       : 'bg-lime-100 text-lime-700 dark:bg-lime-900/30 dark:text-lime-300'
-                  }`}>{b.availableCopies} avail</span>
+                  }`}>{t('issue.avail', { count: b.availableCopies })}</span>
                 </li>
               ))}
             </ul>
@@ -975,11 +986,11 @@ function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | nu
             <div className="mt-1.5 flex items-center gap-3 px-3 py-2 bg-lime-50 dark:bg-lime-900/20 border border-lime-200 dark:border-lime-800 rounded-lg">
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-lime-800 dark:text-lime-300 truncate">{selectedBook.title}</p>
-                <p className="text-xs text-slate-500 truncate">by {selectedBook.author}{selectedBook.isbn ? ` · ISBN: ${selectedBook.isbn}` : ''}</p>
+                <p className="text-xs text-slate-500 truncate">{t('byAuthor', { author: selectedBook.author })}{selectedBook.isbn ? ` · ${t('issue.isbnLabel', { isbn: selectedBook.isbn })}` : ''}</p>
               </div>
               <div className={`shrink-0 text-right ${selectedBook.availableCopies <= 2 ? 'text-amber-600 dark:text-amber-400' : 'text-lime-700 dark:text-lime-400'}`}>
                 <p className="text-lg font-bold leading-none">{selectedBook.availableCopies}</p>
-                <p className="text-xs text-slate-500">of {selectedBook.totalCopies} avail</p>
+                <p className="text-xs text-slate-500">{t('issue.ofAvail', { total: selectedBook.totalCopies })}</p>
               </div>
             </div>
           )}
@@ -987,20 +998,20 @@ function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | nu
 
         {/* Borrower type */}
         <div className="flex gap-4">
-          {(['STUDENT', 'STAFF'] as const).map(t => (
-            <label key={t} className="flex items-center gap-2 cursor-pointer text-sm">
-              <input type="radio" checked={borrowerType === t} onChange={() => { setBorrowerType(t); setSelectedBorrower(null); setBorrowerQuery(''); setBorrowerSuggestions([]); }} />
-              {t.charAt(0) + t.slice(1).toLowerCase()}
+          {(['STUDENT', 'STAFF'] as const).map(bt => (
+            <label key={bt} className="flex items-center gap-2 cursor-pointer text-sm">
+              <input type="radio" checked={borrowerType === bt} onChange={() => { setBorrowerType(bt); setSelectedBorrower(null); setBorrowerQuery(''); setBorrowerSuggestions([]); }} />
+              {t(`borrowerType.${bt}`)}
             </label>
           ))}
         </div>
 
         {/* Borrower search */}
         <div className="relative">
-          <label className="block text-xs font-medium mb-1">Borrower</label>
+          <label className="block text-xs font-medium mb-1">{t('col.borrower')}</label>
           <input value={selectedBorrower ? `${selectedBorrower.firstName} ${selectedBorrower.lastName}` : borrowerQuery}
             onChange={e => onBorrowerQueryChange(e.target.value)}
-            placeholder={`Search ${borrowerType.toLowerCase()} name…`}
+            placeholder={borrowerType === 'STUDENT' ? t('issue.searchStudent') : t('issue.searchStaff')}
             className="w-full border rounded px-3 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
           {borrowerSuggestions.length > 0 && !selectedBorrower && (
             <ul className="absolute z-10 left-0 right-0 mt-0.5 bg-white dark:bg-slate-800 border dark:border-slate-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -1017,14 +1028,14 @@ function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | nu
         {/* Issue date + loan days */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium mb-1">Issue Date</label>
+            <label className="block text-xs font-medium mb-1">{t('issue.issueDate')}</label>
             <input value={new Date().toISOString().substring(0, 10)} readOnly
               className="w-full border rounded px-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-700 dark:border-slate-600 cursor-not-allowed" />
           </div>
           <div>
             <label className="block text-xs font-medium mb-1">
-              Issue For (days)
-              {settings && <span className="text-slate-400 ml-1">· max {settings.maxLoanDays}d</span>}
+              {t('issue.issueFor')}
+              {settings && <span className="text-slate-400 ml-1">· {t('issue.maxDays', { count: settings.maxLoanDays })}</span>}
             </label>
             <div className="flex gap-1.5 mb-1.5 flex-wrap">
               {[7, 14, 21, 30].map(d => (
@@ -1033,7 +1044,7 @@ function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | nu
                     loanDays === d
                       ? 'bg-lime-600 text-white border-lime-600'
                       : 'border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:border-lime-400'
-                  }`}>{d}d</button>
+                  }`}>{t('daysShort', { count: d })}</button>
               ))}
             </div>
             {/* Clamped where it is used, not per keystroke: clamping as you type
@@ -1041,11 +1052,11 @@ function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | nu
             <NumberInput min={1} max={settings?.maxLoanDays ?? 365} value={loanDays || null}
               emptyValue={0}
               onChange={v => setLoanDays(v ?? 0)}
-              placeholder="Custom days…"
+              placeholder={t('issue.customDays')}
               className="w-full border rounded px-3 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
             {dueDate && (
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Due: <span className="font-medium text-slate-700 dark:text-slate-200">{dueDate}</span>
+                {t('issue.due')} <span className="font-medium text-slate-700 dark:text-slate-200">{dueDate}</span>
               </p>
             )}
           </div>
@@ -1053,7 +1064,7 @@ function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | nu
 
         <button type="submit" disabled={issuing || !selectedBook || !selectedBorrower}
           className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-lime-600 text-white text-sm font-medium hover:bg-lime-700 disabled:opacity-50 transition-colors">
-          {issuing ? 'Issuing…' : '📗 Issue Book'}
+          {issuing ? t('issue.issuing') : `📗 ${t('issue.submit')}`}
         </button>
       </form>
     </div>
@@ -1061,6 +1072,7 @@ function IssueBookPanel({ settings, onIssued }: { settings: LibrarySettings | nu
 }
 
 function ActiveIssuancesPanel({ refreshKey }: { refreshKey: string }) {
+  const t = useTranslations('library');
   const [issuances, setIssuances] = useState<Pagination<Issuance> | null>(null);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -1107,11 +1119,11 @@ function ActiveIssuancesPanel({ refreshKey }: { refreshKey: string }) {
       if (!res.ok) throw new Error();
       setIssuances(await res.json());
     } catch {
-      toast.error('Failed to load issuances');
+      toast.error(t('active.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [filterBook, filterStudent, filterStaff, filterMobile, dueFilter, dueEnabled, statusFilter]);
+  }, [filterBook, filterStudent, filterStaff, filterMobile, dueFilter, dueEnabled, statusFilter, t]);
 
   useEffect(() => { load(1); }, [refreshKey]);
 
@@ -1156,14 +1168,14 @@ function ActiveIssuancesPanel({ refreshKey }: { refreshKey: string }) {
       const res = await authFetch(`${API_BASE_URL}/library/books?isbn=${encodeURIComponent(isbn)}&limit=5`);
       const data: Pagination<Book> = await res.json();
       const book = data.data[0];
-      if (!book) { toast.error(`No book found with ISBN ${isbn}`); return; }
+      if (!book) { toast.error(t('active.notFound', { isbn })); return; }
       setScanOpen(false);
       setFilterBook(book.title);
       setPage(1);
       load(1, { book: book.title });
-      toast.success(`Showing issuances of "${book.title}"`);
+      toast.success(t('active.showing', { title: book.title }));
     } catch {
-      toast.error('Could not look up that ISBN');
+      toast.error(t('lookupFailed'));
     }
   };
 
@@ -1172,45 +1184,45 @@ function ActiveIssuancesPanel({ refreshKey }: { refreshKey: string }) {
       {/* Filter grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
         <div>
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Book Name</label>
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('active.bookName')}</label>
           <div className="flex gap-1.5">
             <input
               value={filterBook}
               onChange={e => handleFilterChange('book', e.target.value)}
-              placeholder="Search by book title…"
+              placeholder={t('active.bookPlaceholder')}
               className="w-full min-w-0 border rounded-lg px-3 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600"
             />
-            <button type="button" onClick={() => setScanOpen(v => !v)} title="Scan a book to find its issuances"
-              aria-label="Scan ISBN barcode"
+            <button type="button" onClick={() => setScanOpen(v => !v)} title={t('active.scanTitle')}
+              aria-label={t('scanIsbn')}
               className={`shrink-0 border rounded-lg px-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 dark:border-slate-600 ${scanOpen ? 'bg-lime-50 border-lime-400 text-lime-700 dark:bg-lime-900/30 dark:text-lime-300' : 'text-slate-600 dark:text-slate-300'}`}>
               <ScanLine className="w-4 h-4" />
             </button>
           </div>
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Student Name</label>
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('active.studentName')}</label>
           <input
             value={filterStudent}
             onChange={e => handleFilterChange('student', e.target.value)}
-            placeholder="Search by student name…"
+            placeholder={t('active.studentPlaceholder')}
             className="w-full border rounded-lg px-3 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Staff Name</label>
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('active.staffName')}</label>
           <input
             value={filterStaff}
             onChange={e => handleFilterChange('staff', e.target.value)}
-            placeholder="Search by staff name…"
+            placeholder={t('active.staffPlaceholder')}
             className="w-full border rounded-lg px-3 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Mobile Number</label>
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('active.mobile')}</label>
           <input
             value={filterMobile}
             onChange={e => handleFilterChange('mobile', e.target.value)}
-            placeholder="Search by mobile…"
+            placeholder={t('active.mobilePlaceholder')}
             className="w-full border rounded-lg px-3 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600"
           />
         </div>
@@ -1233,29 +1245,29 @@ function ActiveIssuancesPanel({ refreshKey }: { refreshKey: string }) {
               onChange={e => handleDueToggle(e.target.checked)}
               className="accent-lime-600 w-3.5 h-3.5"
             />
-            Due On (on or before)
+            {t('active.dueOn')}
           </label>
           <input
             type="date"
             value={dueFilter}
             onChange={e => handleDueDateChange(e.target.value)}
             disabled={!dueEnabled}
-            title={dueEnabled ? 'Filter by due date (on or before)' : 'Enable checkbox to activate due date filter'}
+            title={dueEnabled ? t('active.dueOnTitle') : t('active.dueOnDisabled')}
             className={`border rounded-lg px-3 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600 transition-opacity ${dueEnabled ? 'opacity-100' : 'opacity-40 cursor-not-allowed'}`}
           />
         </div>
 
         {/* Status */}
         <div className="flex flex-col gap-1">
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">Status</label>
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">{t('col.status')}</label>
           <select
             value={statusFilter}
             onChange={e => handleStatusChange(e.target.value as '' | 'ISSUED' | 'OVERDUE')}
             className="border rounded-lg px-3 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600"
           >
-            <option value="">All active</option>
-            <option value="ISSUED">Issued</option>
-            <option value="OVERDUE">Overdue</option>
+            <option value="">{t('active.allActive')}</option>
+            <option value="ISSUED">{t('status.issued')}</option>
+            <option value="OVERDUE">{t('status.overdue')}</option>
           </select>
         </div>
 
@@ -1263,7 +1275,7 @@ function ActiveIssuancesPanel({ refreshKey }: { refreshKey: string }) {
         <button
           onClick={() => { setPage(1); load(1); }}
           className="px-3 py-1.5 rounded-lg border text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors self-end"
-          title="Refresh"
+          title={t('refresh')}
         >
           <RefreshCw className="w-4 h-4" />
         </button>
@@ -1277,31 +1289,31 @@ function ActiveIssuancesPanel({ refreshKey }: { refreshKey: string }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-slate-500">
-                  <th className="pb-2 pr-3">Book</th>
-                  <th className="pb-2 pr-3">Borrower</th>
-                  <th className="pb-2 pr-3">Issued</th>
-                  <th className="pb-2 pr-3">Due</th>
-                  <th className="pb-2 pr-3">Status</th>
-                  <th className="pb-2">Action</th>
+                  <th className="pb-2 pr-3">{t('col.book')}</th>
+                  <th className="pb-2 pr-3">{t('col.borrower')}</th>
+                  <th className="pb-2 pr-3">{t('col.issued')}</th>
+                  <th className="pb-2 pr-3">{t('col.due')}</th>
+                  <th className="pb-2 pr-3">{t('col.status')}</th>
+                  <th className="pb-2">{t('col.action')}</th>
                 </tr>
               </thead>
               <tbody>
                 {issuances?.data.length === 0 && (
-                  <tr><td colSpan={6} className="py-8 text-center text-slate-400 text-sm">No issuances found</td></tr>
+                  <tr><td colSpan={6} className="py-8 text-center text-slate-400 text-sm">{t('active.empty')}</td></tr>
                 )}
                 {issuances?.data.map(i => {
                   const isOverdue = i.status === 'OVERDUE' || i.dueDate < new Date().toISOString().substring(0, 10);
                   return (
                     <tr key={i.id} className={`border-b last:border-0 align-middle ${isOverdue ? 'bg-red-50 dark:bg-red-900/10' : ''}`}>
                       <td className="py-2 pr-3 font-medium">{i.book?.title ?? `#${i.bookId}`}</td>
-                      <td className="py-2 pr-3">{getBorrowerName(i)}</td>
+                      <td className="py-2 pr-3">{getBorrowerName(i, t)}</td>
                       <td className="py-2 pr-3 text-xs text-slate-500">{fmtTs(i.issueDate)}</td>
                       <td className="py-2 pr-3 text-xs">{fmtDate(i.dueDate)}</td>
-                      <td className="py-2 pr-3">{statusBadge(i)}</td>
+                      <td className="py-2 pr-3">{statusBadge(i, t)}</td>
                       <td className="py-2">
                         <button onClick={() => setReturnIssuance(i)}
                           className="px-2.5 py-1 rounded bg-slate-800 text-white text-xs hover:bg-slate-700">
-                          Return
+                          {t('active.return')}
                         </button>
                       </td>
                     </tr>
@@ -1331,6 +1343,7 @@ function ActiveIssuancesPanel({ refreshKey }: { refreshKey: string }) {
 // ── Return Modal ───────────────────────────────────────────────────────────────
 
 function ReturnModal({ issuance, onClose, onReturned }: { issuance: Issuance; onClose: () => void; onReturned: () => void }) {
+  const t = useTranslations('library');
   const [lateFeeInfo, setLateFeeInfo] = useState<{ lateFeeCharged: number; daysOverdue: number } | null>(null);
   const [feeMode, setFeeMode] = useState<'collect' | 'waive' | 'partial'>('collect');
   const [amountPaid, setAmountPaid] = useState('');
@@ -1362,10 +1375,10 @@ function ReturnModal({ issuance, onClose, onReturned }: { issuance: Issuance; on
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!splitOk) { toast.error(`Paid + Waived must equal ₹${fee}`); return; }
-    if (fee > 0 && paid > 0 && !paymentMethod) { toast.error('Select payment method'); return; }
-    if (fee > 0 && waived > 0 && !waiveReason.trim()) { toast.error('Provide waiver reason'); return; }
-    if ((returnCondition === 'DAMAGED' || returnCondition === 'LOST') && !damageNote.trim()) { toast.error('Provide damage/loss note'); return; }
+    if (!splitOk) { toast.error(t('return.splitMismatch', { fee })); return; }
+    if (fee > 0 && paid > 0 && !paymentMethod) { toast.error(t('return.selectMethod')); return; }
+    if (fee > 0 && waived > 0 && !waiveReason.trim()) { toast.error(t('return.waiverReasonRequired')); return; }
+    if ((returnCondition === 'DAMAGED' || returnCondition === 'LOST') && !damageNote.trim()) { toast.error(t('return.noteRequired')); return; }
     setSaving(true);
     try {
       const body: Record<string, unknown> = { returnCondition };
@@ -1379,11 +1392,11 @@ function ReturnModal({ issuance, onClose, onReturned }: { issuance: Issuance; on
       const res = await authFetch(`${API_BASE_URL}/library/issuances/${issuance.id}/return`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.message ?? 'Failed'); }
-      toast.success('Book returned successfully');
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message ?? t('failed')); }
+      toast.success(t('return.done'));
       onReturned();
     } catch (err: any) {
-      toast.error(err.message ?? 'Error');
+      toast.error(err.message ?? t('failed'));
     } finally {
       setSaving(false);
     }
@@ -1392,34 +1405,34 @@ function ReturnModal({ issuance, onClose, onReturned }: { issuance: Issuance; on
   return (
     <div className="fixed inset-0 z-50 bg-walnut-950/55 flex items-center justify-center p-4">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6">
-        <h3 className="text-lg font-semibold mb-3">Return Book</h3>
+        <h3 className="text-lg font-semibold mb-3">{t('return.title')}</h3>
 
         {/* Info summary */}
         <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 text-sm space-y-1 mb-4">
-          <div><span className="font-medium">Book:</span> {issuance.book?.title ?? `#${issuance.bookId}`}</div>
-          <div><span className="font-medium">Issued:</span> {fmtTs(issuance.issueDate)}</div>
-          <div><span className="font-medium">Due:</span> {fmtDate(issuance.dueDate)}</div>
+          <div><span className="font-medium">{t('return.book')}</span> {issuance.book?.title ?? `#${issuance.bookId}`}</div>
+          <div><span className="font-medium">{t('return.issued')}</span> {fmtTs(issuance.issueDate)}</div>
+          <div><span className="font-medium">{t('return.due')}</span> {fmtDate(issuance.dueDate)}</div>
           {lateFeeInfo && lateFeeInfo.daysOverdue > 0 && (
-            <div className="text-red-600"><span className="font-medium">Days Overdue:</span> {lateFeeInfo.daysOverdue}</div>
+            <div className="text-red-600"><span className="font-medium">{t('return.daysOverdue')}</span> {lateFeeInfo.daysOverdue}</div>
           )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Late fee section */}
           {lateFeeInfo === null ? (
-            <div className="flex items-center gap-2 text-sm text-slate-500"><div className="w-4 h-4 border-2 border-lime-600 border-t-transparent rounded-full animate-spin" /> Calculating fee…</div>
+            <div className="flex items-center gap-2 text-sm text-slate-500"><div className="w-4 h-4 border-2 border-lime-600 border-t-transparent rounded-full animate-spin" /> {t('return.calculating')}</div>
           ) : fee === 0 ? (
             <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-lg px-3 py-2 text-sm">
-              <CheckCircle className="w-4 h-4" /> No late fee applicable
+              <CheckCircle className="w-4 h-4" /> {t('return.noFee')}
             </div>
           ) : (
             <div className="space-y-3">
               <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded-lg px-3 py-2 text-sm">
-                <AlertTriangle className="w-4 h-4" /> Late fee: <span className="font-semibold">₹{fee}</span>
+                <AlertTriangle className="w-4 h-4" /> {t.rich('return.lateFee', { fee, b: (c) => <span className="font-semibold">{c}</span> })}
               </div>
               {/* Fee mode radio */}
               <div className="space-y-1">
-                {([['collect', 'Collect Full', `Pay ₹${fee}`], ['waive', 'Waive All', 'Waive entire fee'], ['partial', 'Partial', 'Custom split']] as const).map(([v, lbl, sub]) => (
+                {([['collect', t('return.collectFull'), t('return.pay', { fee })], ['waive', t('return.waiveAll'), t('return.waiveEntire')], ['partial', t('return.partial'), t('return.customSplit')]] as const).map(([v, lbl, sub]) => (
                   <label key={v} className="flex items-start gap-2 cursor-pointer text-sm">
                     <input type="radio" checked={feeMode === v} onChange={() => setFeeMode(v)} className="mt-0.5" />
                     <span><span className="font-medium">{lbl}</span> <span className="text-slate-400 text-xs">— {sub}</span></span>
@@ -1430,35 +1443,35 @@ function ReturnModal({ issuance, onClose, onReturned }: { issuance: Issuance; on
               {feeMode === 'partial' && (
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-medium mb-1">Amount Paid (₹)</label>
+                    <label className="block text-xs font-medium mb-1">{t('return.amountPaid')}</label>
                     <input type="number" min="0" max={fee} step="0.01" value={amountPaid} onChange={e => { setAmountPaid(e.target.value); setAmountWaived(String(Math.max(0, fee - parseFloat(e.target.value || '0')))); }}
                       className="w-full border rounded px-2 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium mb-1">Amount Waived (₹)</label>
+                    <label className="block text-xs font-medium mb-1">{t('return.amountWaived')}</label>
                     <input type="number" min="0" max={fee} step="0.01" value={amountWaived} onChange={e => { setAmountWaived(e.target.value); setAmountPaid(String(Math.max(0, fee - parseFloat(e.target.value || '0')))); }}
                       className="w-full border rounded px-2 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
                   </div>
-                  <div className="col-span-2 text-xs text-slate-500">Total: ₹{(paid + waived).toFixed(2)} / ₹{fee} {!splitOk && <span className="text-red-500">(must equal ₹{fee})</span>}</div>
+                  <div className="col-span-2 text-xs text-slate-500">{t('return.total', { sum: (paid + waived).toFixed(2), fee })} {!splitOk && <span className="text-red-500">{t('return.mustEqual', { fee })}</span>}</div>
                 </div>
               )}
               {/* Payment method */}
               {paid > 0 && (
                 <div>
-                  <label className="block text-xs font-medium mb-1">Payment Method</label>
+                  <label className="block text-xs font-medium mb-1">{t('return.paymentMethod')}</label>
                   <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}
                     className="w-full border rounded px-2 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600">
-                    <option value="CASH">Cash</option>
-                    <option value="CARD">Card</option>
-                    <option value="ONLINE">Online</option>
-                    <option value="CHEQUE">Cheque</option>
+                    <option value="CASH">{t('method.CASH')}</option>
+                    <option value="CARD">{t('method.CARD')}</option>
+                    <option value="ONLINE">{t('method.ONLINE')}</option>
+                    <option value="CHEQUE">{t('method.CHEQUE')}</option>
                   </select>
                 </div>
               )}
               {/* Waive reason */}
               {waived > 0 && (
                 <div>
-                  <label className="block text-xs font-medium mb-1">Waiver Reason *</label>
+                  <label className="block text-xs font-medium mb-1">{t('return.waiverReason')}</label>
                   <textarea value={waiveReason} onChange={e => setWaiveReason(e.target.value)} rows={2}
                     className="w-full border rounded px-2 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
                 </div>
@@ -1468,29 +1481,29 @@ function ReturnModal({ issuance, onClose, onReturned }: { issuance: Issuance; on
 
           {/* Return condition */}
           <div>
-            <label className="block text-xs font-medium mb-1">Return Condition</label>
+            <label className="block text-xs font-medium mb-1">{t('return.condition')}</label>
             <div className="flex gap-4">
               {(['GOOD', 'DAMAGED', 'LOST'] as const).map(c => (
                 <label key={c} className="flex items-center gap-1.5 cursor-pointer text-sm">
                   <input type="radio" checked={returnCondition === c} onChange={() => setReturnCondition(c)} />
-                  {c.charAt(0) + c.slice(1).toLowerCase()}
+                  {t(`condition.${c}`)}
                 </label>
               ))}
             </div>
           </div>
           {(returnCondition === 'DAMAGED' || returnCondition === 'LOST') && (
             <div>
-              <label className="block text-xs font-medium mb-1">Note *</label>
+              <label className="block text-xs font-medium mb-1">{t('return.note')}</label>
               <textarea value={damageNote} onChange={e => setDamageNote(e.target.value)} rows={2}
                 className="w-full border rounded px-2 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
             </div>
           )}
 
           <div className="flex gap-2 justify-end pt-1">
-            <button type="button" onClick={onClose} className="px-4 py-1.5 rounded border text-sm hover:bg-slate-100 dark:hover:bg-slate-700">Cancel</button>
+            <button type="button" onClick={onClose} className="px-4 py-1.5 rounded border text-sm hover:bg-slate-100 dark:hover:bg-slate-700">{t('cancel')}</button>
             <button type="submit" disabled={saving || lateFeeInfo === null || !splitOk}
               className="px-4 py-1.5 rounded bg-lime-600 text-white text-sm hover:bg-lime-700 disabled:opacity-50">
-              {saving ? 'Processing…' : 'Confirm Return'}
+              {saving ? t('return.processing') : t('return.submit')}
             </button>
           </div>
         </form>
@@ -1505,15 +1518,17 @@ function ReportsTab() {
   const REPORT_TABS = ['Book Inventory', 'Issuance History', 'Late Fees', 'Overdue', 'Popular Books'] as const;
   type ReportTab = typeof REPORT_TABS[number];
   const [activeReport, setActiveReport] = useState<ReportTab>('Book Inventory');
+  const t = useTranslations('library');
+  const REPORT_KEY = { 'Book Inventory': 'inventory', 'Issuance History': 'history', 'Late Fees': 'lateFees', 'Overdue': 'overdue', 'Popular Books': 'popular' } as const satisfies Record<ReportTab, string>;
 
   return (
     <div>
       {/* Sub-tab bar */}
       <div className="flex flex-wrap gap-1 border-b mb-4">
-        {REPORT_TABS.map(t => (
-          <button key={t} onClick={() => setActiveReport(t)}
-            className={`px-3 py-1.5 text-sm rounded-t transition-colors ${activeReport === t ? 'border-b-2 border-lime-600 font-medium text-lime-700 dark:text-lime-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-800'}`}>
-            {t}
+        {REPORT_TABS.map(rt => (
+          <button key={rt} onClick={() => setActiveReport(rt)}
+            className={`px-3 py-1.5 text-sm rounded-t transition-colors ${activeReport === rt ? 'border-b-2 border-lime-600 font-medium text-lime-700 dark:text-lime-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-800'}`}>
+            {t(`reports.tabs.${REPORT_KEY[rt]}`)}
           </button>
         ))}
       </div>
@@ -1528,6 +1543,7 @@ function ReportsTab() {
 }
 
 function BookInventoryReport() {
+  const t = useTranslations('library');
   const [data, setData] = useState<Pagination<Book> | null>(null);
   const [filters, setFilters] = useState({ title: '', author: '', publisher: '' });
   const [page, setPage] = useState(1);
@@ -1544,8 +1560,8 @@ function BookInventoryReport() {
       const res = await authFetch(`${API_BASE_URL}/library/reports/books?${q}`);
       if (!res.ok) throw new Error();
       setData(await res.json());
-    } catch { toast.error('Failed to load'); } finally { setLoading(false); }
-  }, [filters]);
+    } catch { toast.error(t('loadFailed')); } finally { setLoading(false); }
+  }, [filters, t]);
 
   useEffect(() => { load(1); }, []);
 
@@ -1561,18 +1577,18 @@ function BookInventoryReport() {
     <div>
       <div className="flex flex-wrap gap-2 mb-3">
         {(['title', 'author', 'publisher'] as const).map(k => (
-          <input key={k} placeholder={k} value={filters[k]} onChange={e => setFilters(f => ({ ...f, [k]: e.target.value }))}
+          <input key={k} placeholder={t(`books.filter.${k}`)} value={filters[k]} onChange={e => setFilters(f => ({ ...f, [k]: e.target.value }))}
             onKeyDown={e => e.key === 'Enter' && load(1)}
             className="border rounded px-3 py-1.5 text-sm w-32 dark:bg-slate-800 dark:border-slate-600" />
         ))}
-        <button onClick={() => load(1)} className="px-3 py-1.5 rounded bg-lime-600 text-white text-sm">Search</button>
+        <button onClick={() => load(1)} className="px-3 py-1.5 rounded bg-lime-600 text-white text-sm">{t('search')}</button>
         <button onClick={downloadCsv} className="flex items-center gap-1 px-3 py-1.5 rounded border text-sm hover:bg-slate-100 dark:hover:bg-slate-700"><Download className="w-3.5 h-3.5" /> CSV</button>
       </div>
       {loading ? <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 border-lime-600 border-t-transparent rounded-full animate-spin" /></div> : (
         <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="border-b text-slate-500"><th className="pb-1 pr-3 text-left">Title</th><th className="pb-1 pr-3 text-left">Author</th><th className="pb-1 pr-3 text-left">Publisher</th><th className="pb-1 pr-3 text-right">Total</th><th className="pb-1 text-right">Available</th></tr></thead>
+              <thead><tr className="border-b text-slate-500"><th className="pb-1 pr-3 text-left">{t('col.title')}</th><th className="pb-1 pr-3 text-left">{t('col.author')}</th><th className="pb-1 pr-3 text-left">{t('form.publisher')}</th><th className="pb-1 pr-3 text-right">{t('col.total')}</th><th className="pb-1 text-right">{t('col.available')}</th></tr></thead>
               <tbody>
                 {data?.data.map(b => (
                   <tr key={b.id} className="border-b last:border-0">
@@ -1594,6 +1610,7 @@ function BookInventoryReport() {
 }
 
 function IssuanceHistoryReport() {
+  const t = useTranslations('library');
   const [data, setData] = useState<Pagination<Issuance> | null>(null);
   const [status, setStatus] = useState('');
   const [borrowerType, setBorrowerType] = useState('');
@@ -1614,8 +1631,8 @@ function IssuanceHistoryReport() {
       const res = await authFetch(`${API_BASE_URL}/library/issuances?${q}`);
       if (!res.ok) throw new Error();
       setData(await res.json());
-    } catch { toast.error('Failed to load'); } finally { setLoading(false); }
-  }, [status, borrowerType, fromDate, toDate]);
+    } catch { toast.error(t('loadFailed')); } finally { setLoading(false); }
+  }, [status, borrowerType, fromDate, toDate, t]);
 
   useEffect(() => { load(1); }, []);
 
@@ -1634,35 +1651,35 @@ function IssuanceHistoryReport() {
     <div>
       <div className="flex flex-wrap gap-2 mb-3">
         <select value={status} onChange={e => setStatus(e.target.value)} className="border rounded px-2 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600">
-          <option value="">All Status</option>
-          <option value="ISSUED">Issued</option>
-          <option value="RETURNED">Returned</option>
-          <option value="OVERDUE">Overdue</option>
+          <option value="">{t('reports.allStatus')}</option>
+          <option value="ISSUED">{t('status.issued')}</option>
+          <option value="RETURNED">{t('status.returned')}</option>
+          <option value="OVERDUE">{t('status.overdue')}</option>
         </select>
         <select value={borrowerType} onChange={e => setBorrowerType(e.target.value)} className="border rounded px-2 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600">
-          <option value="">All Borrowers</option>
-          <option value="STUDENT">Students</option>
-          <option value="STAFF">Staff</option>
+          <option value="">{t('reports.allBorrowers')}</option>
+          <option value="STUDENT">{t('reports.students')}</option>
+          <option value="STAFF">{t('reports.staff')}</option>
         </select>
         <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="border rounded px-2 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
         <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="border rounded px-2 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
-        <button onClick={() => load(1)} className="px-3 py-1.5 rounded bg-lime-600 text-white text-sm">Search</button>
+        <button onClick={() => load(1)} className="px-3 py-1.5 rounded bg-lime-600 text-white text-sm">{t('search')}</button>
         <button onClick={downloadCsv} className="flex items-center gap-1 px-3 py-1.5 rounded border text-sm hover:bg-slate-100 dark:hover:bg-slate-700"><Download className="w-3.5 h-3.5" /> CSV</button>
       </div>
       {loading ? <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 border-lime-600 border-t-transparent rounded-full animate-spin" /></div> : (
         <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="border-b text-slate-500 text-left"><th className="pb-1 pr-3">Book</th><th className="pb-1 pr-3">Borrower</th><th className="pb-1 pr-3">Issued</th><th className="pb-1 pr-3">Due</th><th className="pb-1 pr-3">Returned</th><th className="pb-1">Status</th></tr></thead>
+              <thead><tr className="border-b text-slate-500 text-left"><th className="pb-1 pr-3">{t('col.book')}</th><th className="pb-1 pr-3">{t('col.borrower')}</th><th className="pb-1 pr-3">{t('col.issued')}</th><th className="pb-1 pr-3">{t('col.due')}</th><th className="pb-1 pr-3">{t('col.returned')}</th><th className="pb-1">{t('col.status')}</th></tr></thead>
               <tbody>
                 {data?.data.map(i => (
                   <tr key={i.id} className="border-b last:border-0 align-middle">
                     <td className="py-1.5 pr-3">{i.book?.title ?? `#${i.bookId}`}</td>
-                    <td className="py-1.5 pr-3">{getBorrowerName(i)}</td>
+                    <td className="py-1.5 pr-3">{getBorrowerName(i, t)}</td>
                     <td className="py-1.5 pr-3 text-xs">{fmtTs(i.issueDate)}</td>
                     <td className="py-1.5 pr-3 text-xs">{fmtDate(i.dueDate)}</td>
                     <td className="py-1.5 pr-3 text-xs">{i.returnDate ? fmtTs(i.returnDate) : '—'}</td>
-                    <td className="py-1.5">{statusBadge(i)}</td>
+                    <td className="py-1.5">{statusBadge(i, t)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1678,6 +1695,7 @@ function IssuanceHistoryReport() {
 function LateFeesReport() {
   interface FeeRow { id: number; issuanceId: number; lateFeeCharged: number; amountPaid: number; amountWaived: number; paymentMethod?: string; collectedAt?: string; issuance?: Issuance; }
   interface FeeResult { data: FeeRow[]; total: number; page: number; limit: number; summary: { totalCharged: number; totalCollected: number; totalWaived: number; totalOutstanding: number }; }
+  const t = useTranslations('library');
   const [data, setData] = useState<FeeResult | null>(null);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -1694,8 +1712,8 @@ function LateFeesReport() {
       const res = await authFetch(`${API_BASE_URL}/library/reports/fees?${q}`);
       if (!res.ok) throw new Error();
       setData(await res.json());
-    } catch { toast.error('Failed to load'); } finally { setLoading(false); }
-  }, [fromDate, toDate]);
+    } catch { toast.error(t('loadFailed')); } finally { setLoading(false); }
+  }, [fromDate, toDate, t]);
 
   useEffect(() => { load(1); }, []);
 
@@ -1714,12 +1732,12 @@ function LateFeesReport() {
       <div className="flex flex-wrap gap-2 mb-3">
         <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="border rounded px-2 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
         <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="border rounded px-2 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
-        <button onClick={() => load(1)} className="px-3 py-1.5 rounded bg-lime-600 text-white text-sm">Search</button>
+        <button onClick={() => load(1)} className="px-3 py-1.5 rounded bg-lime-600 text-white text-sm">{t('search')}</button>
         <button onClick={downloadCsv} className="flex items-center gap-1 px-3 py-1.5 rounded border text-sm hover:bg-slate-100 dark:hover:bg-slate-700"><Download className="w-3.5 h-3.5" /> CSV</button>
       </div>
       {data?.summary && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-          {[['Charged', data.summary.totalCharged, 'text-slate-700'], ['Collected', data.summary.totalCollected, 'text-green-600'], ['Waived', data.summary.totalWaived, 'text-amber-600'], ['Outstanding', data.summary.totalOutstanding, 'text-red-600']].map(([l, v, c]) => (
+          {[[t('reports.charged'), data.summary.totalCharged, 'text-slate-700'], [t('reports.collected'), data.summary.totalCollected, 'text-green-600'], [t('reports.waived'), data.summary.totalWaived, 'text-amber-600'], [t('reports.outstanding'), data.summary.totalOutstanding, 'text-red-600']].map(([l, v, c]) => (
             <div key={String(l)} className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 text-center">
               <div className={`text-xl font-bold ${c}`}>₹{Number(v).toFixed(2)}</div>
               <div className="text-xs text-slate-500 mt-0.5">{l}</div>
@@ -1731,20 +1749,20 @@ function LateFeesReport() {
         <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="border-b text-slate-500 text-left"><th className="pb-1 pr-3">Book</th><th className="pb-1 pr-3">Borrower</th><th className="pb-1 pr-3 text-right">Charged</th><th className="pb-1 pr-3 text-right">Paid</th><th className="pb-1 pr-3 text-right">Waived</th><th className="pb-1 pr-3">Method</th><th className="pb-1">Collected At</th></tr></thead>
+              <thead><tr className="border-b text-slate-500 text-left"><th className="pb-1 pr-3">{t('col.book')}</th><th className="pb-1 pr-3">{t('col.borrower')}</th><th className="pb-1 pr-3 text-right">{t('reports.charged')}</th><th className="pb-1 pr-3 text-right">{t('reports.paid')}</th><th className="pb-1 pr-3 text-right">{t('reports.waived')}</th><th className="pb-1 pr-3">{t('reports.method')}</th><th className="pb-1">{t('reports.collectedAt')}</th></tr></thead>
               <tbody>
                 {data?.data.map(r => (
                   <tr key={r.id} className="border-b last:border-0">
-                    <td className="py-1.5 pr-3">{r.issuance?.book?.title ?? `Issuance #${r.issuanceId}`}</td>
+                    <td className="py-1.5 pr-3">{r.issuance?.book?.title ?? t('reports.issuanceId', { id: String(r.issuanceId) })}</td>
                     <td className="py-1.5 pr-3">
                       {r.issuance?.borrowerType === 'STUDENT'
-                        ? r.issuance.student ? getBorrowerName(r.issuance) : '—'
-                        : r.issuance?.staff ? getBorrowerName(r.issuance) : '—'}
+                        ? r.issuance.student ? getBorrowerName(r.issuance, t) : '—'
+                        : r.issuance?.staff ? getBorrowerName(r.issuance, t) : '—'}
                     </td>
                     <td className="py-1.5 pr-3 text-right">₹{r.lateFeeCharged}</td>
                     <td className="py-1.5 pr-3 text-right text-green-600">₹{r.amountPaid}</td>
                     <td className="py-1.5 pr-3 text-right text-amber-600">₹{r.amountWaived}</td>
-                    <td className="py-1.5 pr-3">{r.paymentMethod ?? '—'}</td>
+                    <td className="py-1.5 pr-3">{r.paymentMethod ? (t.has(`method.${r.paymentMethod}` as `method.CASH`) ? t(`method.${r.paymentMethod as 'CASH'}`) : r.paymentMethod) : '—'}</td>
                     <td className="py-1.5 text-xs">{r.collectedAt ? fmtTs(r.collectedAt) : '—'}</td>
                   </tr>
                 ))}
@@ -1759,6 +1777,7 @@ function LateFeesReport() {
 }
 
 function OverdueReport() {
+  const t = useTranslations('library');
   const [data, setData] = useState<Pagination<Issuance> | null>(null);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -1770,8 +1789,8 @@ function OverdueReport() {
       const res = await authFetch(`${API_BASE_URL}/library/reports/overdue-summary?page=${p}&limit=${LIMIT}`);
       if (!res.ok) throw new Error();
       setData(await res.json());
-    } catch { toast.error('Failed to load'); } finally { setLoading(false); }
-  }, []);
+    } catch { toast.error(t('loadFailed')); } finally { setLoading(false); }
+  }, [t]);
 
   useEffect(() => { load(1); }, []);
 
@@ -1781,16 +1800,16 @@ function OverdueReport() {
         <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="border-b text-slate-500 text-left"><th className="pb-1 pr-3">Book</th><th className="pb-1 pr-3">Borrower</th><th className="pb-1 pr-3">Due</th><th className="pb-1">Days Overdue</th></tr></thead>
+              <thead><tr className="border-b text-slate-500 text-left"><th className="pb-1 pr-3">{t('col.book')}</th><th className="pb-1 pr-3">{t('col.borrower')}</th><th className="pb-1 pr-3">{t('col.due')}</th><th className="pb-1">{t('reports.daysOverdue')}</th></tr></thead>
               <tbody>
                 {data?.data.map(i => {
                   const days = Math.max(0, Math.floor((Date.now() - new Date(i.dueDate).getTime()) / 86400000));
                   return (
                     <tr key={i.id} className="border-b last:border-0">
                       <td className="py-1.5 pr-3">{i.book?.title ?? `#${i.bookId}`}</td>
-                      <td className="py-1.5 pr-3">{getBorrowerName(i)}</td>
+                      <td className="py-1.5 pr-3">{getBorrowerName(i, t)}</td>
                       <td className="py-1.5 pr-3 text-xs">{fmtDate(i.dueDate)}</td>
-                      <td className="py-1.5 text-red-600 font-medium">{days}d</td>
+                      <td className="py-1.5 text-red-600 font-medium">{t('daysShort', { count: days })}</td>
                     </tr>
                   );
                 })}
@@ -1807,6 +1826,7 @@ function OverdueReport() {
 function PopularBooksReport() {
   interface PopBook { bookId: number; title: string; issuanceCount: number; }
   const fmtDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const t = useTranslations('library');
   const [data, setData] = useState<PopBook[]>([]);
   const [fromDate, setFromDate] = useState(() => { const d = new Date(); return fmtDate(new Date(d.getFullYear(), d.getMonth(), 1)); });
   const [toDate, setToDate] = useState(() => fmtDate(new Date()));
@@ -1821,8 +1841,8 @@ function PopularBooksReport() {
       const res = await authFetch(`${API_BASE_URL}/library/reports/popular-books?${q}`);
       if (!res.ok) throw new Error();
       setData(await res.json());
-    } catch { toast.error('Failed to load'); } finally { setLoading(false); }
-  }, [fromDate, toDate]);
+    } catch { toast.error(t('loadFailed')); } finally { setLoading(false); }
+  }, [fromDate, toDate, t]);
 
   useEffect(() => { load(); }, []);
 
@@ -1831,12 +1851,12 @@ function PopularBooksReport() {
       <div className="flex flex-wrap gap-2 mb-3">
         <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="border rounded px-2 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
         <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="border rounded px-2 py-1.5 text-sm dark:bg-slate-800 dark:border-slate-600" />
-        <button onClick={load} className="px-3 py-1.5 rounded bg-lime-600 text-white text-sm">Search</button>
+        <button onClick={load} className="px-3 py-1.5 rounded bg-lime-600 text-white text-sm">{t('search')}</button>
       </div>
       {loading ? <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 border-lime-600 border-t-transparent rounded-full animate-spin" /></div> : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="border-b text-slate-500 text-left"><th className="pb-1 pr-3">#</th><th className="pb-1 pr-3">Book</th><th className="pb-1">Times Issued</th></tr></thead>
+            <thead><tr className="border-b text-slate-500 text-left"><th className="pb-1 pr-3">#</th><th className="pb-1 pr-3">{t('col.book')}</th><th className="pb-1">{t('reports.timesIssued')}</th></tr></thead>
             <tbody>
               {data.map((b, i) => (
                 <tr key={b.bookId} className="border-b last:border-0">
@@ -1856,6 +1876,8 @@ function PopularBooksReport() {
 // ── Settings Tab ───────────────────────────────────────────────────────────────
 
 function SettingsTab() {
+  const t = useTranslations('library');
+  const tc = useTranslations('common');
   const [form, setForm] = useState<LibrarySettings>({ defaultLoanDays: 14, maxLoanDays: 30, maxBooksPerBorrower: 3, lateFeePerDay: 5, allowRenewal: false });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1872,8 +1894,8 @@ function SettingsTab() {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form),
       });
       if (!res.ok) throw new Error('Failed');
-      toast.success('Settings saved');
-    } catch { toast.error('Failed to save settings'); } finally { setSaving(false); }
+      toast.success(t('settings.saved'));
+    } catch { toast.error(t('settings.saveFailed')); } finally { setSaving(false); }
   };
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-lime-600 border-t-transparent rounded-full animate-spin" /></div>;
@@ -1889,23 +1911,23 @@ function SettingsTab() {
 
   return (
     <div className="max-w-md">
-      <h2 className="text-lg font-semibold mb-4">Library Settings</h2>
+      <h2 className="text-lg font-semibold mb-4">{t('settings.title')}</h2>
       <form onSubmit={handleSave} className="space-y-4">
-        {numField('defaultLoanDays', 'Default Loan Days')}
-        {numField('maxLoanDays', 'Maximum Loan Days')}
-        {numField('maxBooksPerBorrower', 'Max Books per Borrower')}
+        {numField('defaultLoanDays', t('settings.defaultLoanDays'))}
+        {numField('maxLoanDays', t('settings.maxLoanDays'))}
+        {numField('maxBooksPerBorrower', t('settings.maxBooks'))}
         <div>
-          <label className="block text-sm font-medium mb-1">Late Fee per Day (₹)</label>
+          <label className="block text-sm font-medium mb-1">{t('settings.lateFee')}</label>
           <NumberInput min={0} step="0.5" value={form.lateFeePerDay} emptyValue={0}
             onChange={v => setForm(f => ({ ...f, lateFeePerDay: v ?? 0 }))}
             className="w-full border rounded px-3 py-2 text-sm dark:bg-slate-800 dark:border-slate-600 max-w-xs" />
         </div>
         <label className="flex items-center gap-2 cursor-pointer text-sm">
           <input type="checkbox" checked={form.allowRenewal} onChange={e => setForm(f => ({ ...f, allowRenewal: e.target.checked }))} />
-          Allow Renewal
+          {t('settings.allowRenewal')}
         </label>
         <button type="submit" disabled={saving} className="px-5 py-2 rounded bg-lime-600 text-white text-sm hover:bg-lime-700 disabled:opacity-50">
-          {saving ? 'Saving…' : 'Save Settings'}
+          {saving ? tc('action.saving') : t('settings.save')}
         </button>
       </form>
     </div>
@@ -1915,6 +1937,7 @@ function SettingsTab() {
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function LibraryPage() {
+  const t = useTranslations('library');
   const { canManageLibrary } = useRbac();
   const defaultTab: Tab = 'My Books';
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab);
@@ -1932,8 +1955,8 @@ export default function LibraryPage() {
             <BookOpen className="w-6 h-6 text-lime-700 dark:text-lime-400" />
           </div>
           <div>
-            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Library</h1>
-            <p className="text-xs text-slate-500">Manage books, issuances and late fees</p>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t('title')}</h1>
+            <p className="text-xs text-slate-500">{t('subtitle')}</p>
           </div>
         </div>
 
@@ -1947,7 +1970,7 @@ export default function LibraryPage() {
                   ? 'border-b-2 border-lime-600 text-lime-700 dark:text-lime-400'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200',
               ].join(' ')}>
-              {tab}
+              {t(`tabs.${TAB_KEY[tab]}`)}
             </button>
           ))}
         </div>

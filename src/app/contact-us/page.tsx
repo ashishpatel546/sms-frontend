@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import QRCode from "react-qr-code";
+import { useTranslations } from "next-intl";
 import { Mail, ArrowLeft } from "lucide-react";
 import { useSchoolInfoState } from "@/lib/useSchoolInfo";
 
 export default function ContactUsPage() {
   const router = useRouter();
+  const t = useTranslations("publicPages.contact");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
   const [issue, setIssue] = useState("");
@@ -53,15 +55,15 @@ export default function ContactUsPage() {
              onClick={() => router.push('/')}
              className="flex items-center gap-2 text-marigold-300 hover:text-marigold-200 transition-colors w-fit mb-12 text-sm font-semibold tracking-wide uppercase"
           >
-            <ArrowLeft size={16} /> Back to Login
+            <ArrowLeft size={16} /> {t("back")}
           </button>
 
           <div className="mb-10">
             <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">
-              Get in Touch
+              {t("title")}
             </h1>
             <p className="text-brass-100/85 text-lg leading-relaxed font-medium">
-              We&apos;re here to help! Connect with our support team instantly via WhatsApp or reach out through email.
+              {t("intro")}
             </p>
           </div>
 
@@ -72,11 +74,11 @@ export default function ContactUsPage() {
                 <Mail size={24} />
               </div>
               <div className="flex flex-col flex-1">
-                <span className="text-brass-100/70 text-sm font-semibold uppercase tracking-wider mb-1">Email Support</span>
+                <span className="text-brass-100/70 text-sm font-semibold uppercase tracking-wider mb-1">{t("emailSupport")}</span>
                 <a href={`mailto:${supportEmail}`} className="text-white font-medium text-lg hover:text-marigold-200 transition-colors">
                   {supportEmail}
                 </a>
-                <span className="text-brass-100/55 text-sm mt-1">Average response time: 24hrs</span>
+                <span className="text-brass-100/55 text-sm mt-1">{t("responseTime")}</span>
               </div>
             </div>
 
@@ -90,9 +92,9 @@ export default function ContactUsPage() {
                 </svg>
               </div>
               <div className="flex flex-col flex-1 relative z-10">
-                <span className="text-brass-100/70 text-sm font-semibold uppercase tracking-wider mb-1">WhatsApp Support</span>
+                <span className="text-brass-100/70 text-sm font-semibold uppercase tracking-wider mb-1">{t("whatsappSupport")}</span>
                 <span className="text-white font-medium text-lg tracking-widest">+91 {supportNumber.replace(/(\d{5})(\d{5})/, '$1 $2')}</span>
-                <span className="text-brass-100/55 text-sm mt-1">Chat directly with our team</span>
+                <span className="text-brass-100/55 text-sm mt-1">{t("chatDirect")}</span>
               </div>
             </div>
             
@@ -100,7 +102,7 @@ export default function ContactUsPage() {
             <div className="hidden md:flex flex-col items-center justify-center p-6 mt-8 rounded-2xl bg-white border border-slate-200 w-fit mx-auto shadow-2xl">
               <QRCode value={`https://wa.me/91${supportNumber}`} size={140} level="M" className="mb-4" />
               <div className="flex items-center gap-2 text-indigo-600 font-bold tracking-wide text-sm">
-                <span>Scan to Connect</span>
+                <span>{t("scan")}</span>
               </div>
             </div>
           </div>
@@ -117,8 +119,8 @@ export default function ContactUsPage() {
         <div className="w-full max-w-xl z-10 relative mt-8 md:mt-0">
           
           <div className="mb-8 text-center md:text-left">
-            <h2 className="text-3xl font-extrabold text-white mb-2 tracking-tight">Tell us how we can help</h2>
-            <p className="text-brass-100/70">Fill out the form below to quickly summarize your issue and start a WhatsApp conversation with our support team.</p>
+            <h2 className="text-3xl font-extrabold text-white mb-2 tracking-tight">{t("formTitle")}</h2>
+            <p className="text-brass-100/70">{t("formIntro")}</p>
           </div>
 
           <form onSubmit={handleWhatsAppSubmit} className="space-y-6 bg-walnut-850 border border-white/10 p-6 md:p-8 rounded-3xl shadow-2xl relative overflow-hidden">
@@ -127,19 +129,19 @@ export default function ContactUsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Mobile Number */}
                 <div>
-                  <label className="block text-sm font-semibold text-brass-100/85 mb-1.5 ml-1">Mobile Number <span className="text-red-400">*</span></label>
+                  <label className="block text-sm font-semibold text-brass-100/85 mb-1.5 ml-1">{t("mobile")} <span className="text-red-400">*</span></label>
                   <input
                     type="tel"
                     required
                     value={mobile}
                     onChange={(e) => setMobile(e.target.value)}
-                    placeholder="10-digit mobile"
+                    placeholder={t("mobilePlaceholder")}
                     className="w-full bg-walnut-800 border border-white/12 text-white placeholder-brass-100/40 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand/40 transition-shadow"
                   />
                 </div>
                 {/* Email Address */}
                 <div>
-                  <label className="block text-sm font-semibold text-brass-100/85 mb-1.5 ml-1">Email <span className="text-brass-100/55 font-normal">(Optional)</span></label>
+                  <label className="block text-sm font-semibold text-brass-100/85 mb-1.5 ml-1">{t("email")} <span className="text-brass-100/55 font-normal">{t("optional")}</span></label>
                   <input
                     type="email"
                     value={email}
@@ -152,13 +154,13 @@ export default function ContactUsPage() {
 
               {/* School Name (Disabled) */}
               <div>
-                <label className="block text-sm font-semibold text-brass-100/85 mb-1.5 ml-1">School Name</label>
+                <label className="block text-sm font-semibold text-brass-100/85 mb-1.5 ml-1">{t("schoolName")}</label>
                 <div className="relative">
                   <input
                     type="text"
                     disabled
                     value={schoolName}
-                    placeholder={settled ? "School could not be identified" : "Loading…"}
+                    placeholder={settled ? t("schoolUnknown") : t("loading")}
                     className="w-full bg-walnut-800/50 border border-white/12/50 text-brass-100/70 cursor-not-allowed rounded-xl px-4 py-3.5 font-medium placeholder-brass-100/40"
                   />
                   <div className="absolute right-4 top-[50%] -translate-y-[50%]">
@@ -169,13 +171,13 @@ export default function ContactUsPage() {
 
               {/* Issue Details */}
               <div>
-                <label className="block text-sm font-semibold text-brass-100/85 mb-1.5 ml-1">Issue Details <span className="text-red-400">*</span></label>
+                <label className="block text-sm font-semibold text-brass-100/85 mb-1.5 ml-1">{t("issue")} <span className="text-red-400">*</span></label>
                 <textarea
                   required
                   value={issue}
                   onChange={(e) => setIssue(e.target.value)}
                   rows={4}
-                  placeholder="Please describe the issue you are facing..."
+                  placeholder={t("issuePlaceholder")}
                   className="w-full bg-walnut-800 border border-white/12 text-white placeholder-brass-100/40 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand/40 transition-shadow resize-none"
                 />
               </div>
@@ -189,10 +191,10 @@ export default function ContactUsPage() {
               <svg className="w-6 h-6 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12.031 2C6.405 2 1.843 6.565 1.843 12.185c0 1.954.544 3.864 1.579 5.546L1.517 24l6.406-1.681c1.616.921 3.447 1.408 5.334 1.408 5.626 0 10.188-4.565 10.188-10.185C23.445 7.915 21.258 5.926 19.332 4 17.406 2.073 14.752 2 12.031 2zm0 18.062c-1.618 0-3.204-.434-4.595-1.259l-.329-.195-3.414.895.913-3.33-.214-.34C3.412 14.398 2.894 12.809 2.894 11.206 2.894 6.55 6.678 2.768 11.332 2.768c2.253 0 4.37.878 5.962 2.472 1.593 1.594 2.47 3.712 2.47 5.966 0 4.654-3.784 8.436-8.437 8.436zm4.61-4.993c-.252-.127-1.493-.738-1.724-.822-.232-.085-.4-.127-.568.127-.169.253-.652.822-.8.991-.148.169-.295.19-.548.064-.252-.127-1.066-.393-2.032-1.253-.752-.67-1.26-1.498-1.408-1.752-.148-.253-.015-.39.111-.516.114-.114.252-.295.379-.443.127-.148.169-.253.253-.422.085-.169.042-.317-.021-.443-.063-.127-.568-1.373-.778-1.879-.205-.494-.413-.428-.568-.436-.148-.008-.316-.008-.485-.008s-.442.063-.674.317C3.127 10.334 2.5 11.2 2.5 12.973c0 1.774 1.137 3.484 1.295 3.695.158.211 2.532 3.864 6.136 5.419.858.371 1.528.593 2.051.759.86.273 1.644.234 2.261.141.693-.105 2.128-.869 2.422-1.71.295-.841.295-1.562.205-1.71-.089-.148-.316-.233-.568-.36z" />
               </svg>
-              <span>Connect on WhatsApp</span>
+              <span>{t("submit")}</span>
             </button>
             <p className="text-center text-xs text-brass-100/55 mt-4 leading-relaxed px-4">
-              Clicking the button will open a WhatsApp chat directly with our team, transferring the details you filled in above. 
+              {t("submitNote")}
             </p>
           </form>
 

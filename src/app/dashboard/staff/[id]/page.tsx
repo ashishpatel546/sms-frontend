@@ -9,6 +9,7 @@ import { authFetch } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
 import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
 import toast from "react-hot-toast";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Panel, PanelBody, PanelHeader } from "@/components/ui/Panel";
@@ -24,7 +25,19 @@ import { PersonPhotosSection } from "@/components/person/PersonPhotosSection";
 import { PersonDocumentsSection } from "@/components/person/PersonDocumentsSection";
 import { personUserId } from "@/lib/person-documents-api";
 
+const KNOWN_ROLES = ["SUPER_ADMIN", "ADMIN", "HR_ADMIN", "SUB_ADMIN", "LIBRARIAN", "TEACHER", "GUARD", "PARENT", "STUDENT", "SYSTEM_ADMIN"] as const;
+// Stored values → label keys (the value itself is what the API keeps).
+const STAFF_CATEGORY_KEYS = {
+    "Teaching Staff": "teaching",
+    "Management": "management",
+    "Support Staff": "support",
+    "Admin Staff": "admin",
+} as const;
+
 export default function ViewStaffPage() {
+    const t = useTranslations("staff");
+    const tc = useTranslations("common");
+    const tRole = useTranslations("nav.role");
     const params = useParams();
     const id = params?.id as string;
     const rbac = useRbac();
@@ -41,11 +54,11 @@ export default function ViewStaffPage() {
     const fetchStaffDetails = async () => {
         try {
             const res = await authFetch(`${API_BASE_URL}/staff/${id}`);
-            if (!res.ok) throw new Error("Failed to fetch staff details");
+            if (!res.ok) throw new Error(t("detail.fetchFailed"));
             const data = await res.json();
             setStaff(data);
         } catch (err: any) {
-            setError(err.message || "Failed to load staff details");
+            setError(err.message || t("detail.loadFailed"));
         } finally {
             setLoading(false);
         }
@@ -70,15 +83,15 @@ export default function ViewStaffPage() {
                 })
             });
             if (res.ok) {
-                toast.success("Staff exit marked successfully");
+                toast.success(t("exit.marked"));
                 setShowExitModal(false);
                 fetchStaffDetails(); // Refresh details on page
             } else {
                 const err = await res.json();
-                toast.error(err.message || "Failed to mark exit");
+                toast.error(err.message || t("exit.failed"));
             }
         } catch (error) {
-            toast.error("An error occurred while marking exit");
+            toast.error(t("exit.error"));
         } finally {
             setIsExiting(false);
         }
@@ -87,7 +100,7 @@ export default function ViewStaffPage() {
     if (loading) {
         return (
             <div className="flex min-h-[60vh] items-center justify-center">
-                <div className="font-medium text-ink-muted">Loading staff details…</div>
+                <div className="font-medium text-ink-muted">{t("detail.loading")}</div>
             </div>
         );
     }
@@ -97,11 +110,11 @@ export default function ViewStaffPage() {
             <PageShell>
                 <Panel>
                     <EmptyState
-                        title="Staff member not found"
-                        description={error || "This staff record could not be loaded."}
+                        title={t("detail.notFound")}
+                        description={error || t("detail.couldNotLoad")}
                         action={
                             <Button variant="outline" render={<Link href="/dashboard/staff" />}>
-                                Back to staff
+                                {t("backToStaff")}
                             </Button>
                         }
                     />
@@ -110,25 +123,43 @@ export default function ViewStaffPage() {
         );
     }
 
+    const roleLabel = (role: string) =>
+        (KNOWN_ROLES as readonly string[]).includes(role)
+            ? tRole(role as (typeof KNOWN_ROLES)[number])
+            : role.replace(/_/g, " ");
+    /** Stored as Male / Female / Others; shown in the reader's language. */
+    const genderLabel = (value: string | undefined) => {
+        const key = ({ male: "field.male", female: "field.female", other: "field.other", others: "field.other" } as const)[
+            (value ?? "").toLowerCase() as "male" | "female" | "other" | "others"
+        ];
+        return key ? tc(key) : value;
+    };
+    const staffCategoryLabel = (value: string | undefined) =>
+        value && value in STAFF_CATEGORY_KEYS
+            ? t(`staffCategory.${STAFF_CATEGORY_KEYS[value as keyof typeof STAFF_CATEGORY_KEYS]}`)
+            : value;
+
     const activeAssignments = staff.subjectAssignments?.filter((a: any) => a.isActive) || [];
     const address = staff.address ?? {};
     const userId = personUserId(staff);
 
     const assignmentColumns: Column<any>[] = [
-        { key: 'subject', header: 'Subject', card: 'title', render: (row) => row.subject?.name ?? '—' },
-        { key: 'class', header: 'Class', card: 'meta', render: (row) => row.class?.name ?? '—' },
-        { key: 'section', header: 'Section', card: 'meta', render: (row) => row.section?.name ?? '—' },
+        { key: 'subject', header: tc('field.subject'), card: 'title', render: (row) => row.subject?.name ?? '—' },
+        { key: 'class', header: tc('field.class'), card: 'meta', render: (row) => row.class?.name ?? '—' },
+        { key: 'section', header: tc('field.section'), card: 'meta', render: (row) => row.section?.name ?? '—' },
     ];
 
     return (
         <>
             <ProfileShell
-                section="Academics · Staff"
-                title={[staff.firstName, staff.lastName].filter(Boolean).join(" ") || "Staff member"}
-                subtitle={`Staff ID: ${staff.id}${staff.role ? ` · ${String(staff.role).replace(/_/g, " ")}` : ""}`}
+                section={t("section")}
+                title={[staff.firstName, staff.lastName].filter(Boolean).join(" ") || t("detail.staffMember")}
+                subtitle={staff.role
+                    ? t("detail.subtitleWithRole", { id: staff.id, role: roleLabel(String(staff.role)) })
+                    : t("detail.subtitle", { id: staff.id })}
                 status={staff.isActive ? "ACTIVE" : "INACTIVE"}
                 backHref="/dashboard/staff"
-                backLabel="Back to staff"
+                backLabel={t("backToStaff")}
                 actions={rbac.canManageTeachers && (
                     <>
                         {staff.isActive && (
@@ -142,7 +173,7 @@ export default function ViewStaffPage() {
                                 }}
                             >
                                 <UserMinus />
-                                Mark exit
+                                {t("list.markExit")}
                             </Button>
                         )}
                         <Button
@@ -151,7 +182,7 @@ export default function ViewStaffPage() {
                             render={<Link href={`/dashboard/staff/${staff.id}/edit`} />}
                         >
                             <Pencil />
-                            Edit staff
+                            {t("detail.editStaff")}
                         </Button>
                     </>
                 )}
@@ -159,59 +190,59 @@ export default function ViewStaffPage() {
                 <PersonPhotosSection
                     readOnly
                     kinds={["self"]}
-                    selfLabel="Staff photo"
+                    selfLabel={t("staffPhoto")}
                     userId={userId}
                     record={staff}
-                    title="Photo on file"
+                    title={t("detail.photoOnFile")}
                 />
 
-                <ProfileSection title="Basic information" cols={3}>
-                    <ReadField label="First name" value={staff.firstName} />
-                    <ReadField label="Last name" value={staff.lastName} />
-                    <ReadField label="Gender" value={staff.gender} />
-                    <ReadField label="Date of birth" value={formatDate(staff.dateOfBirth)} />
-                    <ReadField label="Blood group" value={staff.bloodGroup} />
-                    <ReadField label="Aadhaar number" value={staff.aadhaarNumber} />
+                <ProfileSection title={t("detail.basicInfo")} cols={3}>
+                    <ReadField label={t("detail.field.firstName")} value={staff.firstName} />
+                    <ReadField label={t("detail.field.lastName")} value={staff.lastName} />
+                    <ReadField label={tc("field.gender")} value={genderLabel(staff.gender)} />
+                    <ReadField label={tc("field.dob")} value={formatDate(staff.dateOfBirth)} />
+                    <ReadField label={t("detail.field.bloodGroup")} value={staff.bloodGroup} />
+                    <ReadField label={t("detail.field.aadhaar")} value={staff.aadhaarNumber} />
                 </ProfileSection>
 
-                <ProfileSection title="Contact information" cols={3}>
-                    <ReadField label="Email" value={staff.email} />
-                    <ReadField label="Mobile number" value={staff.mobile} />
-                    <ReadField label="Alternate mobile" value={staff.alternateMobile} />
+                <ProfileSection title={t("detail.contactInfo")} cols={3}>
+                    <ReadField label={tc("field.email")} value={staff.email} />
+                    <ReadField label={t("detail.field.mobile")} value={staff.mobile} />
+                    <ReadField label={t("detail.field.alternateMobile")} value={staff.alternateMobile} />
                 </ProfileSection>
 
-                <ProfileSection title="Address details" cols={3}>
-                    <ReadField label="Address line 1" value={address.addressLine1} span="full" />
-                    <ReadField label="Address line 2" value={address.addressLine2} span="full" />
-                    <ReadField label="Landmark" value={address.landmark} />
-                    <ReadField label="City" value={address.city} />
-                    <ReadField label="State" value={address.state} />
-                    <ReadField label="Postal code" value={address.postalCode} />
-                    <ReadField label="Country" value={address.country} />
+                <ProfileSection title={t("detail.addressDetails")} cols={3}>
+                    <ReadField label={t("detail.field.addressLine1")} value={address.addressLine1} span="full" />
+                    <ReadField label={t("detail.field.addressLine2")} value={address.addressLine2} span="full" />
+                    <ReadField label={t("detail.field.landmark")} value={address.landmark} />
+                    <ReadField label={t("detail.field.city")} value={address.city} />
+                    <ReadField label={t("detail.field.state")} value={address.state} />
+                    <ReadField label={t("detail.field.postalCode")} value={address.postalCode} />
+                    <ReadField label={t("detail.field.country")} value={address.country} />
                 </ProfileSection>
 
-                <ProfileSection title="Demographics & family" cols={4}>
-                    <ReadField label="Father's name" value={staff.fathersName} />
-                    <ReadField label="Mother's name" value={staff.mothersName} />
-                    <ReadField label="Category" value={staff.category} />
-                    <ReadField label="Religion" value={staff.religion} />
+                <ProfileSection title={t("detail.demographics")} cols={4}>
+                    <ReadField label={t("detail.field.fathersName")} value={staff.fathersName} />
+                    <ReadField label={t("detail.field.mothersName")} value={staff.mothersName} />
+                    <ReadField label={t("detail.field.category")} value={staff.category} />
+                    <ReadField label={t("detail.field.religion")} value={staff.religion} />
                 </ProfileSection>
 
-                <ProfileSection title="Employment information" cols={3}>
-                    <ReadField label="Staff category" value={staff.staffCategory} />
-                    <ReadField label="Designation" value={staff.designation?.title} />
-                    <ReadField label="Joining date" value={formatDate(staff.joiningDate)} />
-                    <ReadField label="Exit date" value={formatDate(staff.exitDate)} />
+                <ProfileSection title={t("detail.employment")} cols={3}>
+                    <ReadField label={t("detail.field.staffCategory")} value={staffCategoryLabel(staff.staffCategory)} />
+                    <ReadField label={t("detail.field.designation")} value={staff.designation?.title} />
+                    <ReadField label={t("detail.field.joiningDate")} value={formatDate(staff.joiningDate)} />
+                    <ReadField label={t("detail.field.exitDate")} value={formatDate(staff.exitDate)} />
                 </ProfileSection>
 
                 {staff.staffCategory === 'Teaching Staff' && (
                     <Panel>
-                        <PanelHeader title="Subject assignments" />
+                        <PanelHeader title={t("detail.subjectAssignments")} />
                         <DataTable
                             columns={assignmentColumns}
                             data={activeAssignments}
                             rowKey={(row) => row.id}
-                            emptyMessage="No active subject assignments."
+                            emptyMessage={t("detail.noAssignments")}
                         />
                     </Panel>
                 )}
@@ -220,13 +251,13 @@ export default function ViewStaffPage() {
                     <PersonDocumentsSection
                         userId={userId}
                         owners={["SELF"]}
-                        selfLabel="Own"
+                        selfLabel={t("detail.ownDocuments")}
                         showTraceLink
                         disabled={!rbac.canManageTeachers || readOnly}
                         disabledReason={
                             readOnly
                                 ? READ_ONLY_TITLE
-                                : "Only sub admins and above can change what the school holds."
+                                : t("detail.documentsDisabled")
                         }
                     />
                 )}
@@ -235,19 +266,19 @@ export default function ViewStaffPage() {
             {showExitModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 p-4 backdrop-blur-sm">
                     <Panel className="w-full max-w-md">
-                        <PanelHeader title="Mark staff exit" />
+                        <PanelHeader title={t("exit.title")} />
                         <PanelBody>
                             <p className="text-[13.5px] text-ink-muted">
-                                You are marking exit for{" "}
-                                <span className="font-semibold text-ink">
-                                    {staff.firstName} {staff.lastName}
-                                </span>{" "}
-                                (ID: {staff.id}). This will also deactivate their user account.
+                                {t.rich("exit.intro", {
+                                    name: `${staff.firstName} ${staff.lastName}`,
+                                    id: staff.id,
+                                    b: (c) => <span className="font-semibold text-ink">{c}</span>,
+                                })}
                             </p>
                             <form onSubmit={handleConfirmExit} className="mt-4 space-y-4">
                                 <div>
                                     <label htmlFor="exit-date" className="eyebrow text-[10px]">
-                                        Exit date *
+                                        {t("exit.exitDate")} *
                                     </label>
                                     <input
                                         id="exit-date"
@@ -264,10 +295,10 @@ export default function ViewStaffPage() {
                                         variant="outline"
                                         onClick={() => setShowExitModal(false)}
                                     >
-                                        Cancel
+                                        {tc("action.cancel")}
                                     </Button>
                                     <Button type="submit" variant="destructive" disabled={isExiting}>
-                                        {isExiting ? "Marking exit…" : "Confirm exit"}
+                                        {isExiting ? t("exit.marking") : t("exit.confirm")}
                                     </Button>
                                 </div>
                             </form>

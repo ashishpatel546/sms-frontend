@@ -2,7 +2,9 @@
 
 import * as React from 'react';
 import { Archive, FileText, Paperclip, Users } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
+import { INTL_LOCALE, type Locale } from '@/i18n/config';
 import {
   circularAudienceLabel,
   formatFileSize,
@@ -41,9 +43,12 @@ export function CircularCard({
   showAudience?: boolean;
   className?: string;
 }) {
+  const t = useTranslations('circulars');
+  const locale = useLocale() as Locale;
+  const intlLocale = INTL_LOCALE[locale];
   const published = new Date(circular.publishedAt);
-  const day = published.toLocaleDateString('en-IN', { day: '2-digit' });
-  const month = published.toLocaleDateString('en-IN', { month: 'short' });
+  const day = published.toLocaleDateString(intlLocale, { day: '2-digit' });
+  const month = published.toLocaleDateString(intlLocale, { month: 'short' });
   const year = published.getFullYear();
   const archived = !!circular.archivedAt;
   const fresh = isRecent(circular.publishedAt) && !archived;
@@ -65,7 +70,7 @@ export function CircularCard({
         type="button"
         onClick={onOpen}
         className="flex w-full cursor-pointer items-start gap-3 p-3.5 text-left outline-none sm:gap-4 sm:p-4"
-        aria-label={`Open circular: ${circular.title}`}
+        aria-label={t('card.openAria', { title: circular.title })}
       >
         {/* The date block — day over month, the way a notice is filed. */}
         <span
@@ -88,19 +93,19 @@ export function CircularCard({
             </span>
             {fresh && (
               <span className="inline-flex items-center rounded-full border border-accent-edge bg-accent-tint px-1.5 py-0.5 font-mono text-[9.5px] font-semibold tracking-[0.12em] text-accent-deep uppercase">
-                New
+                {t('card.new')}
               </span>
             )}
             {archived && (
               <span className="inline-flex items-center gap-1 rounded-full border border-line-strong bg-surface-inset px-1.5 py-0.5 font-mono text-[9.5px] font-semibold tracking-[0.12em] text-ink-muted uppercase">
                 <Archive className="size-2.5" aria-hidden />
-                Archived
+                {t('card.archived')}
               </span>
             )}
             {showAudience && (
               <span className="inline-flex items-center gap-1 rounded-full border border-line bg-surface-secondary px-1.5 py-0.5 font-mono text-[9.5px] font-semibold tracking-[0.12em] text-ink-muted uppercase">
                 <Users className="size-2.5" aria-hidden />
-                {circularAudienceLabel(circular.audience)}
+                {circularAudienceLabel(circular.audience, t)}
               </span>
             )}
           </span>
@@ -118,9 +123,9 @@ export function CircularCard({
               </span>
             )}
             <span suppressHydrationWarning>
-              {published.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}
+              {published.toLocaleTimeString(intlLocale, { hour: 'numeric', minute: '2-digit' })}
             </span>
-            {circular.createdByName && <span className="truncate">Issued by {circular.createdByName}</span>}
+            {circular.createdByName && <span className="truncate">{t('card.issuedBy', { name: circular.createdByName })}</span>}
           </span>
         </span>
 

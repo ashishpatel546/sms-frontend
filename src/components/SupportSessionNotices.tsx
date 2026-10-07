@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useReadOnlySession } from '@/lib/support-session';
 
 /**
@@ -20,6 +21,7 @@ import { useReadOnlySession } from '@/lib/support-session';
  * self-contained like the service-unavailable overlay.
  */
 export default function SupportSessionNotices() {
+  const t = useTranslations('support');
   const readOnly = useReadOnlySession();
   const [denied, setDenied] = useState<string | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -48,10 +50,7 @@ export default function SupportSessionNotices() {
           className="fixed inset-x-0 top-0 z-70 flex items-center justify-center gap-2 bg-amber-500 px-3 py-1.5 text-center text-[12px] font-medium text-amber-950 shadow-sm"
         >
           <span aria-hidden>👁️</span>
-          <span>
-            Read-only support session — you can view everything, but changes
-            are disabled.
-          </span>
+          <span>{t('session.readOnlyStrip')}</span>
         </div>
       )}
 
@@ -68,7 +67,7 @@ export default function SupportSessionNotices() {
             onClick={() => setDenied(null)}
             className="max-w-md rounded-xl bg-red-600 px-4 py-2.5 text-left text-[13px] leading-snug text-white shadow-lg"
           >
-            <span className="font-semibold">Not allowed: </span>
+            <span className="font-semibold">{t('session.notAllowed')} </span>
             {denied}
           </button>
         </div>

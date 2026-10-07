@@ -12,6 +12,11 @@
  * so this is a deliberate duplicate, not a drifted copy to reconcile.
  */
 
+import type { useTranslations } from 'next-intl';
+
+/** The Support page's translator — the handout's wording lives in `support.installGuide`. */
+type GuideTranslator = ReturnType<typeof useTranslations<'support'>>;
+
 export interface InstallGuideInput {
   /** Display name, e.g. "Edusphere". */
   schoolName: string;
@@ -23,6 +28,10 @@ export interface InstallGuideInput {
   logoUrl?: string | null;
   contactPhone?: string | null;
   contactEmail?: string | null;
+  /** Translator for the handout's text, from the page rendering it. */
+  t: GuideTranslator;
+  /** BCP-47 language of the handout, for `<html lang>`. */
+  lang?: string;
 }
 
 /** Minimal HTML-escape — every value below comes from an editable tenant record. */
@@ -42,8 +51,13 @@ export function buildInstallGuideHtml({
   logoUrl,
   contactPhone,
   contactEmail,
+  t,
+  lang = 'en',
 }: InstallGuideInput): string {
-  const name = esc(schoolName || 'the school');
+  const name = esc(schoolName || t('installGuide.theSchool'));
+  const g = (key: Parameters<GuideTranslator>[0], values?: Record<string, string>) =>
+    t(key, values);
+  const strong = (c: string) => `<strong>${c}</strong>`;
   const url = esc(portalUrl);
 
   const logoBlock = logoUrl
@@ -56,14 +70,14 @@ export function buildInstallGuideHtml({
   const helpLine =
     contactBits.length > 0
       ? contactBits.map(esc).join(' &middot; ')
-      : 'Contact the school office.';
+      : esc(t('installGuide.contactOffice'));
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${esc(lang)}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${name} — install guide</title>
+<title>${g('installGuide.docTitle', { name })}</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -409,10 +423,10 @@ h1.title .school { color: var(--rule); }
 
   <header class="masthead">
     <div class="masthead-text">
-      <p class="eyebrow">School app &middot; Setup guide</p>
-      <h1 class="title">Install the <span class="school">${name}</span> app on your phone</h1>
+      <p class="eyebrow">${g('installGuide.eyebrow')}</p>
+      <h1 class="title">${t.markup('installGuide.title', { name, school: (c) => `<span class="school">${c}</span>` })}</h1>
       <p class="lede">
-        No app store, no download — the portal installs straight from your browser in about a minute.
+        ${g('installGuide.lede')}
       </p>
     </div>
     ${logoBlock}
@@ -420,22 +434,22 @@ h1.title .school { color: var(--rule); }
   <div class="double-rule"></div>
 
   <div class="section-head">
-    <h2>Start here — open the portal</h2>
-    <span class="aside">Either way works</span>
+    <h2>${g('installGuide.startHere')}</h2>
+    <span class="aside">${g('installGuide.eitherWay')}</span>
   </div>
 
   <section class="start">
     <div class="start-col">
-      <p class="opt-label">Option A</p>
+      <p class="opt-label">${g('installGuide.optionA')}</p>
       <div class="opt-a">
-        <div class="qr-frame"><img src="${qrDataUrl}" alt="QR code for ${url}" /></div>
+        <div class="qr-frame"><img src="${qrDataUrl}" alt="${esc(g('installGuide.qrAlt', { url: portalUrl }))}" /></div>
         <div>
           <h3 class="opt-title">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.4 4 8 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-4l-1.4-2H9.4zM12 17.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9zm0-2a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></svg>
-            Scan the code
+            ${g('installGuide.scanTitle')}
           </h3>
           <p class="opt-body">
-            Open the camera app on your phone, point it at the code, and tap the link that pops up.
+            ${g('installGuide.scanBody')}
           </p>
         </div>
       </div>
@@ -444,21 +458,21 @@ h1.title .school { color: var(--rule); }
     <div class="divider" aria-hidden="true"></div>
 
     <div class="start-col">
-      <p class="opt-label">Option B</p>
+      <p class="opt-label">${g('installGuide.optionB')}</p>
       <h3 class="opt-title">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm6.9 6h-2.95a15.6 15.6 0 0 0-1.38-3.56A8.03 8.03 0 0 1 18.9 8zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14A7.9 7.9 0 0 1 4 12c0-.69.1-1.36.26-2h3.38a16.5 16.5 0 0 0 0 4H4.26zm.84 2h2.95c.33 1.28.8 2.5 1.38 3.56A8.03 8.03 0 0 1 5.1 16zm2.95-8H5.1a8.03 8.03 0 0 1 4.33-3.56A15.6 15.6 0 0 0 8.05 8zM12 19.96A13.6 13.6 0 0 1 10.09 16h3.82A13.6 13.6 0 0 1 12 19.96zM14.34 14H9.66a14.7 14.7 0 0 1 0-4h4.68a14.7 14.7 0 0 1 0 4zm.23 5.56c.58-1.06 1.05-2.28 1.38-3.56h2.95a8.03 8.03 0 0 1-4.33 3.56zM16.36 14a16.5 16.5 0 0 0 0-4h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2h-3.38z"/></svg>
-        Or type the address
+        ${g('installGuide.typeTitle')}
       </h3>
       <p class="opt-body">
-        Open Chrome or Safari on your phone and enter this address exactly as written:
+        ${g('installGuide.typeBody')}
       </p>
       <a class="url-stamp" href="${url}">${url}</a>
     </div>
   </section>
 
   <div class="section-head">
-    <h2>Then add it to your home screen</h2>
-    <span class="aside">Follow your phone's column</span>
+    <h2>${g('installGuide.thenAdd')}</h2>
+    <span class="aside">${g('installGuide.followColumn')}</span>
   </div>
 
   <div class="tracks">
@@ -475,27 +489,27 @@ h1.title .school { color: var(--rule); }
       <ol class="track">
         <li class="step">
           <span class="num">1</span>
-          <h4>Open the link in Chrome</h4>
-          <p>Scan the code or type the address into Google Chrome.</p>
+          <h4>${g('installGuide.android.step1Title')}</h4>
+          <p>${g('installGuide.android.step1Body')}</p>
         </li>
         <li class="step">
           <span class="num">2</span>
-          <h4>Tap Install</h4>
-          <p>A banner slides up from the bottom of the screen once the portal loads.</p>
+          <h4>${g('installGuide.android.step2Title')}</h4>
+          <p>${g('installGuide.android.step2Body')}</p>
           <span class="chip">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16 6 10h4V3h4v7h4l-6 6zM5 19h14v2H5v-2z"/></svg>
-            Install app
+            ${g('installGuide.android.installChip')}
           </span>
         </li>
         <li class="step">
           <span class="num">3</span>
-          <h4>No banner? Use the menu</h4>
-          <p>Tap the three dots <strong>&#8942;</strong> in the top-right corner and choose <strong>Add to Home screen</strong>.</p>
+          <h4>${g('installGuide.android.step3Title')}</h4>
+          <p>${t.markup('installGuide.android.step3Body', { strong })}</p>
         </li>
         <li class="step">
           <span class="num">4</span>
-          <h4>Tap Add</h4>
-          <p>The app icon appears on your home screen, ready to open.</p>
+          <h4>${g('installGuide.tapAdd')}</h4>
+          <p>${g('installGuide.android.step4Body')}</p>
         </li>
       </ol>
     </section>
@@ -505,38 +519,38 @@ h1.title .school { color: var(--rule); }
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.05 12.04c-.03-2.6 2.12-3.85 2.22-3.91-1.21-1.77-3.09-2.01-3.76-2.04-1.6-.16-3.12.94-3.93.94-.81 0-2.06-.92-3.39-.9-1.74.03-3.35 1.01-4.25 2.57-1.81 3.14-.46 7.79 1.3 10.34.86 1.25 1.89 2.65 3.24 2.6 1.3-.05 1.79-.84 3.36-.84 1.57 0 2.01.84 3.38.81 1.4-.02 2.28-1.27 3.13-2.53.99-1.45 1.4-2.86 1.42-2.93-.03-.01-2.72-1.04-2.75-4.11zM14.6 4.6c.71-.86 1.19-2.06 1.06-3.25-1.02.04-2.26.68-3 1.54-.66.76-1.24 1.98-1.08 3.14 1.14.09 2.3-.58 3.02-1.43z"/></svg>
         <div>
           <h3>iPhone &amp; iPad</h3>
-          <p class="sub">Use Safari &middot; Chrome also works</p>
+          <p class="sub">${g('installGuide.ios.sub')}</p>
         </div>
       </div>
 
       <ol class="track">
         <li class="step">
           <span class="num">1</span>
-          <h4>Open the link in Safari</h4>
-          <p>Scan the code or type the address into Safari on your iPhone or iPad.</p>
+          <h4>${g('installGuide.ios.step1Title')}</h4>
+          <p>${g('installGuide.ios.step1Body')}</p>
         </li>
         <li class="step">
           <span class="num">2</span>
-          <h4>Tap Share</h4>
-          <p>The share button sits in the bar at the bottom of the screen.</p>
+          <h4>${g('installGuide.ios.step2Title')}</h4>
+          <p>${g('installGuide.ios.step2Body')}</p>
           <span class="chip">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 6.83 8.41 9.41 7 8l5-5 5 5-1.41 1.41L13 6.83V16h-2V6.83z"/><path d="M5 11v8h14v-8h2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8h2z"/></svg>
-            Share
+            ${g('installGuide.ios.shareChip')}
           </span>
         </li>
         <li class="step">
           <span class="num">3</span>
-          <h4>Choose Add to Home Screen</h4>
-          <p>Scroll down the list of options until you find it.</p>
+          <h4>${g('installGuide.ios.step3Title')}</h4>
+          <p>${g('installGuide.ios.step3Body')}</p>
           <span class="chip">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V5h14v14zm-8-3h2v-3h3v-2h-3V8h-2v3H8v2h3v3z"/></svg>
-            Add to Home Screen
+            ${g('installGuide.ios.addChip')}
           </span>
         </li>
         <li class="step">
           <span class="num">4</span>
-          <h4>Tap Add</h4>
-          <p>It's in the top-right corner. The app icon appears on your home screen.</p>
+          <h4>${g('installGuide.tapAdd')}</h4>
+          <p>${g('installGuide.ios.step4Body')}</p>
         </li>
       </ol>
     </section>
@@ -546,8 +560,8 @@ h1.title .school { color: var(--rule); }
   <footer class="sheet-foot">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 14.41-4.2-4.2 1.4-1.42 2.8 2.8 5.8-5.8 1.4 1.42-7.2 7.2z"/></svg>
     <div>
-      <p>Once installed, the app opens full-screen, keeps you signed in, and can send you notices from the school.</p>
-      <p class="help">Trouble installing? ${helpLine}</p>
+      <p>${g('installGuide.footer')}</p>
+      <p class="help">${g('installGuide.help', { help: helpLine })}</p>
     </div>
   </footer>
 

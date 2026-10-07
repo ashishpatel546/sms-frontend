@@ -115,53 +115,34 @@ export interface PersonDocumentReportQuery {
   limit?: number;
 }
 
-/* ── Labels ─────────────────────────────────────────────────────────────── */
+/* ── Display order ──────────────────────────────────────────────────────── */
 
 /**
  * Display order is the order the office asks for the papers in, not
  * alphabetical: identity first, then school history, then entitlement proofs.
+ * Labels live in the `students.doc.type.*` messages, keyed by value.
  */
-export const DOCUMENT_TYPES: { value: PersonDocumentType; label: string }[] = [
-  { value: 'AADHAAR', label: 'Aadhaar' },
-  { value: 'BIRTH_CERTIFICATE', label: 'Birth certificate' },
-  { value: 'TRANSFER_CERTIFICATE', label: 'Transfer certificate' },
-  { value: 'PREVIOUS_MARKSHEET', label: 'Previous marksheet' },
-  { value: 'ADDRESS_PROOF', label: 'Address proof' },
-  { value: 'PAN', label: 'PAN' },
-  { value: 'INCOME_CERTIFICATE', label: 'Income certificate' },
-  { value: 'CASTE_CERTIFICATE', label: 'Caste certificate' },
-  { value: 'PHOTO', label: 'Passport photo' },
-  { value: 'OTHER', label: 'Other' },
+export const DOCUMENT_TYPES: { value: PersonDocumentType }[] = [
+  { value: 'AADHAAR' },
+  { value: 'BIRTH_CERTIFICATE' },
+  { value: 'TRANSFER_CERTIFICATE' },
+  { value: 'PREVIOUS_MARKSHEET' },
+  { value: 'ADDRESS_PROOF' },
+  { value: 'PAN' },
+  { value: 'INCOME_CERTIFICATE' },
+  { value: 'CASTE_CERTIFICATE' },
+  { value: 'PHOTO' },
+  { value: 'OTHER' },
 ];
 
-export const DOCUMENT_TYPE_LABEL: Record<PersonDocumentType, string> =
-  DOCUMENT_TYPES.reduce(
-    (acc, d) => {
-      acc[d.value] = d.label;
-      return acc;
-    },
-    {} as Record<PersonDocumentType, string>,
-  );
-
-export const OWNER_LABEL: Record<PersonDocumentOwner, string> = {
-  SELF: 'Own',
-  FATHER: "Father's",
-  MOTHER: "Mother's",
-  GUARDIAN: "Guardian's",
-};
+/** Owners in display order. Labels live in `students.doc.owner.*`. */
+export const DOCUMENT_OWNERS: PersonDocumentOwner[] = ['SELF', 'FATHER', 'MOTHER', 'GUARDIAN'];
 
 export const PHOTO_KIND_TO_OWNER: Record<PhotoKind, PersonDocumentOwner> = {
   self: 'SELF',
   father: 'FATHER',
   mother: 'MOTHER',
   guardian: 'GUARDIAN',
-};
-
-/** Status word shown in the UI. "On file" is clearer than "Uploaded". */
-export const DOCUMENT_STATUS_LABEL: Record<PersonDocumentStatus, string> = {
-  PENDING: 'Pending',
-  COLLECTED: 'Collected',
-  UPLOADED: 'On file',
 };
 
 /* ── Limits (mirrors of the server's, so errors surface before the round trip) */
@@ -201,8 +182,10 @@ async function request<T>(
     const info = (await res.json().catch(() => ({}))) as { message?: string | string[] };
     const raw = info?.message;
     const message = Array.isArray(raw) ? raw.join(', ') : raw;
+    // No English fallback here: callers show their own translated message
+    // when the server sent none (`err.message || t(...)`).
     throw new PersonDocumentsError(
-      message || 'That request did not go through.',
+      message || '',
       res.status,
       info,
     );

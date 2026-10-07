@@ -5,20 +5,30 @@
  * lock screen with an upgrade prompt.
  */
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
 import { Lock, ArrowUpCircle, Sparkles, RefreshCw, WifiOff } from "lucide-react";
 import { useAiAccess } from "@/lib/ai-access";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 
-const FEATURE_LABELS: Record<string, string> = {
-  chat:           "AI Chat / Student Tutor",
-  quiz:           "Practice Quiz",
-  explain_topic:  "Explain Topic",
-  lesson_plan:    "Lesson Plan Generator",
-  question_paper: "Question Paper Generator",
-  worksheet:      "Worksheet Generator",
-  assignment:     "Assignment Suggestions",
-  learning_path:  "Personalized Learning Path",
-  teacher_chat:   "Teacher AI Chat",
-};
+/** Features with a translated name (planGate.feature.*). */
+const FEATURE_KEYS = [
+  "chat",
+  "quiz",
+  "explain_topic",
+  "lesson_plan",
+  "question_paper",
+  "worksheet",
+  "assignment",
+  "learning_path",
+  "teacher_chat",
+] as const;
+type FeatureKey = (typeof FEATURE_KEYS)[number];
+const isFeatureKey = (f: string): f is FeatureKey => (FEATURE_KEYS as readonly string[]).includes(f);
+
+/** AI platform roles with a translated plural (planGate.role.*). */
+const ROLE_KEYS = ["student", "teacher"] as const;
+type RoleKey = (typeof ROLE_KEYS)[number];
+const isRoleKey = (r: string): r is RoleKey => (ROLE_KEYS as readonly string[]).includes(r);
 
 interface Props {
   feature: string;
@@ -30,6 +40,9 @@ interface Props {
 
 export function FeatureGate({ feature, children, onUpgradeClick }: Props) {
   const access = useAiAccess();
+  const t = useTranslations("ai.planGate");
+  const locale = useLocale() as Locale;
+  const featureName = (f: string) => (isFeatureKey(f) ? t(`feature.${f}`) : f.replace(/_/g, " "));
 
   // ── Loading skeleton ───────────────────────────────────────────────────────
   if (access.loading) {
@@ -51,10 +64,9 @@ export function FeatureGate({ feature, children, onUpgradeClick }: Props) {
           <WifiOff className="w-7 h-7 text-slate-400" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-xl font-bold text-ink">Can&apos;t reach the AI service</h2>
+          <h2 className="text-xl font-bold text-ink">{t("unreachableTitle")}</h2>
           <p className="text-sm text-ink-muted leading-relaxed max-w-sm">
-            We couldn&apos;t check your subscription because the AI service is not
-            reachable from this device right now. Check your connection and try again.
+            {t("unreachableBody")}
           </p>
         </div>
         <button
@@ -62,7 +74,7 @@ export function FeatureGate({ feature, children, onUpgradeClick }: Props) {
           className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors shadow-sm"
         >
           <RefreshCw className="w-4 h-4" />
-          Try again
+          {t("tryAgain")}
         </button>
       </div>
     );
@@ -79,15 +91,15 @@ export function FeatureGate({ feature, children, onUpgradeClick }: Props) {
     !access.roles.some((r) => allowedRoles.includes(r));
 
   if (roleBlocked) {
-    const label = FEATURE_LABELS[feature] ?? feature.replace(/_/g, " ");
-    const roleText = allowedRoles
-      .map((r) => (r === "student" ? "students & parents" : `${r}s`))
-      .join(" and ");
+    const label = featureName(feature);
+    const roleText = new Intl.ListFormat(INTL_LOCALE[locale], { type: "conjunction" }).format(
+      allowedRoles.map((r) => (isRoleKey(r) ? t(`role.${r}`) : `${r}s`)),
+    );
     return (
       <div className="max-w-xl mx-auto px-4 py-12 text-center">
         <Sparkles className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-        <h2 className="text-lg font-semibold text-ink">Not available for your role</h2>
-        <p className="text-sm text-ink-muted mt-1">{label} is available for {roleText}.</p>
+        <h2 className="text-lg font-semibold text-ink">{t("roleBlockedTitle")}</h2>
+        <p className="text-sm text-ink-muted mt-1">{t("roleBlockedBody", { feature: label, roles: roleText })}</p>
       </div>
     );
   }
@@ -98,7 +110,7 @@ export function FeatureGate({ feature, children, onUpgradeClick }: Props) {
   if (hasAccess) return <>{children}</>;
 
   // ── Feature locked ─────────────────────────────────────────────────────────
-  const featureLabel = FEATURE_LABELS[feature] ?? feature.replace(/_/g, " ");
+  const featureLabel = featureName(feature);
   const noActivePlan = !access.hasActivePlan;
 
   return (
@@ -113,14 +125,14 @@ export function FeatureGate({ feature, children, onUpgradeClick }: Props) {
         <h2 className="text-xl font-bold text-ink">{featureLabel}</h2>
         {noActivePlan ? (
           <p className="text-sm text-ink-muted leading-relaxed max-w-sm">
-            You don&apos;t have an active plan. Subscribe to unlock this and other
-            AI-powered features.
+            {t("noPlan")}
           </p>
         ) : (
           <p className="text-sm text-ink-muted leading-relaxed max-w-sm">
-            Your current{" "}
-            <span className="font-semibold text-ink">{access.planDisplayName}</span>{" "}
-            plan doesn&apos;t include this feature. Upgrade to unlock it.
+            {t.rich("planMissing", {
+              plan: access.planDisplayName,
+              b: (c) => <span className="font-semibold text-ink">{c}</span>,
+            })}
           </p>
         )}
       </div>
@@ -133,7 +145,7 @@ export function FeatureGate({ feature, children, onUpgradeClick }: Props) {
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors shadow-sm"
           >
             <ArrowUpCircle className="w-4 h-4" />
-            {noActivePlan ? "View Plans" : "Upgrade Plan"}
+            {noActivePlan ? t("viewPlans") : t("upgradePlan")}
           </button>
         ) : (
           <Link
@@ -141,7 +153,7 @@ export function FeatureGate({ feature, children, onUpgradeClick }: Props) {
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors shadow-sm"
           >
             <ArrowUpCircle className="w-4 h-4" />
-            {noActivePlan ? "View Plans" : "Upgrade Plan"}
+            {noActivePlan ? t("viewPlans") : t("upgradePlan")}
           </Link>
         )}
 
@@ -153,7 +165,7 @@ export function FeatureGate({ feature, children, onUpgradeClick }: Props) {
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 text-ink-muted text-sm font-medium hover:text-ink hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
         >
           <RefreshCw className="w-4 h-4" />
-          Refresh status
+          {t("refreshStatus")}
         </button>
       </div>
 
@@ -171,7 +183,7 @@ export function FeatureGate({ feature, children, onUpgradeClick }: Props) {
         <div className="absolute inset-0 flex items-center justify-center z-20">
           <div className="flex items-center gap-2 bg-white dark:bg-slate-800 shadow-lg rounded-xl px-4 py-2.5 text-sm font-semibold text-ink border border-slate-100 dark:border-white/10">
             <Sparkles className="w-4 h-4 text-violet-500" />
-            Upgrade to unlock
+            {t("upgradeToUnlock")}
           </div>
         </div>
       </div>

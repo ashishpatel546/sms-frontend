@@ -9,10 +9,15 @@ import { authFetch } from "@/lib/auth";
 import { useRbac } from "@/lib/rbac";
 import { sortByName } from "@/lib/utils";
 import { useReadOnlySession, READ_ONLY_TITLE } from '@/lib/support-session';
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 
 export default function ExaminationsDataEntryPage() {
     const rbac = useRbac();
     const readOnly = useReadOnlySession();
+    const t = useTranslations("exams");
+    const tc = useTranslations("common");
+    const intlLocale = INTL_LOCALE[useLocale() as Locale];
     const [classes, setClasses] = useState<any[]>([]);
     const [sections, setSections] = useState<any[]>([]);
     const [loadingSections, setLoadingSections] = useState(false);
@@ -133,7 +138,7 @@ export default function ExaminationsDataEntryPage() {
 
     const handleFetchStudents = async () => {
         if (!selectedClassId || !selectedSectionId || !selectedSessionId || !selectedSubjectId || !selectedExamCategoryId) {
-            toast.error("Please select all required fields to fetch students.");
+            toast.error(t("dataEntry.selectAllRequired"));
             return;
         }
         setEditingRows(new Set());
@@ -151,12 +156,12 @@ export default function ExaminationsDataEntryPage() {
             if (res.ok) {
                 const data = await res.json();
                 setStudentsMarks(data);
-                if (data.length === 0) toast("No students enrolled for this selection.");
+                if (data.length === 0) toast(t("dataEntry.noStudentsEnrolled"));
             } else {
-                toast.error("Failed to fetch students");
+                toast.error(t("dataEntry.fetchFailed"));
             }
         } catch (_err) {
-            toast.error("Network error");
+            toast.error(t("shared.networkError"));
         } finally {
             setLoading(false);
         }
@@ -194,7 +199,7 @@ export default function ExaminationsDataEntryPage() {
         });
 
         if (invalidStudent) {
-            toast.error(`Obtained marks cannot exceed Total marks for ${invalidStudent.studentName}`);
+            toast.error(t("dataEntry.exceedsFor", { name: invalidStudent.studentName }));
             return;
         }
 
@@ -224,13 +229,13 @@ export default function ExaminationsDataEntryPage() {
             });
 
             if (res.ok) {
-                toast.success("Marks saved successfully!");
+                toast.success(t("shared.marksSaved"));
                 handleFetchStudents();
             } else {
-                toast.error("Failed to save marks");
+                toast.error(t("dataEntry.saveFailed"));
             }
         } catch (_err) {
-            toast.error("Network error");
+            toast.error(t("shared.networkError"));
         }
     };
 
@@ -243,7 +248,7 @@ export default function ExaminationsDataEntryPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-950/40" onClick={() => setAuditCard(null)}>
                     <div className="bg-white rounded-xl shadow-2xl border border-gray-200 p-5 w-full max-w-xs" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-4">
-                            <h4 className="text-sm font-bold text-slate-800">Marks Audit Info</h4>
+                            <h4 className="text-sm font-bold text-slate-800">{t("audit.title")}</h4>
                             <button onClick={() => setAuditCard(null)} className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
@@ -251,19 +256,19 @@ export default function ExaminationsDataEntryPage() {
                         <p className="text-xs text-gray-500 mb-3 font-medium">{auditCard.studentName}</p>
                         {auditCard.createdByName && (
                             <div className="mb-3 p-3 bg-green-50 rounded-lg">
-                                <p className="text-[10px] font-semibold uppercase tracking-wider text-green-600 mb-1">Entered by</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-green-600 mb-1">{t("audit.enteredBy")}</p>
                                 <p className="text-sm font-semibold text-slate-800">{auditCard.createdByName}</p>
                                 {auditCard.createdAt && (
-                                    <p className="text-xs text-gray-400 mt-0.5">{new Date(auditCard.createdAt).toLocaleString()}</p>
+                                    <p className="text-xs text-gray-400 mt-0.5">{new Date(auditCard.createdAt).toLocaleString(intlLocale)}</p>
                                 )}
                             </div>
                         )}
                         {auditCard.updatedByName && (
                             <div className="p-3 bg-amber-50 rounded-lg">
-                                <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 mb-1">Last modified by</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 mb-1">{t("audit.lastModifiedBy")}</p>
                                 <p className="text-sm font-semibold text-slate-800">{auditCard.updatedByName}</p>
                                 {auditCard.updatedAt && (
-                                    <p className="text-xs text-gray-400 mt-0.5">{new Date(auditCard.updatedAt).toLocaleString()}</p>
+                                    <p className="text-xs text-gray-400 mt-0.5">{new Date(auditCard.updatedAt).toLocaleString(intlLocale)}</p>
                                 )}
                             </div>
                         )}
@@ -272,56 +277,56 @@ export default function ExaminationsDataEntryPage() {
             )}
             <div className="max-w-7xl mx-auto">
                 <div className="flex justify-between items-center mb-6">
-                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Bulk Data Entry</h1>
+                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t("page.bulkDataEntry")}</h1>
                     <Link href="/dashboard/examinations" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                        Back to Examinations
+                        {t("dataEntry.backToExams")}
                     </Link>
                 </div>
 
                 <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 mb-6">
-                    <h2 className="text-lg font-semibold text-slate-700 mb-4">Selection Criteria</h2>
+                    <h2 className="text-lg font-semibold text-slate-700 mb-4">{t("dataEntry.selectionCriteria")}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
                         <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Academic Session *</label>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">{t("shared.academicSession")} *</label>
                             <select value={selectedSessionId} onChange={e => setSelectedSessionId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" required>
-                                <option value="" disabled>Select Session</option>
+                                <option value="" disabled>{t("dataEntry.selectSession")}</option>
                                 {sessions.map((s: any) => (
-                                    <option key={s.id} value={s.id}>{s.name} {s.isActive ? '(Active)' : ''}</option>
+                                    <option key={s.id} value={s.id}>{s.name} {s.isActive ? t('dataEntry.activeSuffix') : ''}</option>
                                 ))}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Class *</label>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">{tc("field.class")} *</label>
                             <select value={selectedClassId} onChange={handleClassChange} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" required>
-                                <option value="" disabled>Select Class</option>
+                                <option value="" disabled>{t("dataEntry.selectClass")}</option>
                                 {classes.map((c: any) => (
                                     <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Section *</label>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">{tc("field.section")} *</label>
                             <select value={selectedSectionId} onChange={e => setSelectedSectionId(e.target.value)} disabled={!selectedClassId || loadingSections} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2 disabled:opacity-50 disabled:cursor-not-allowed" required>
-                                <option value="" disabled>{loadingSections ? 'Loading sections...' : 'Select Section'}</option>
+                                <option value="" disabled>{loadingSections ? t('shared.loadingSections') : t('dataEntry.selectSection')}</option>
                                 {sections.map((s: any) => (
                                     <option key={s.id} value={s.id}>{s.name}</option>
                                 ))}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Subject *</label>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">{tc("field.subject")} *</label>
                             <select value={selectedSubjectId} onChange={e => setSelectedSubjectId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" required>
-                                <option value="" disabled>Select Subject</option>
+                                <option value="" disabled>{t("shared.selectSubject")}</option>
                                 {subjects.map((s: any) => (
                                     <option key={s.id} value={s.id}>{s.name}</option>
                                 ))}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Exam Category *</label>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">{t("shared.examCategory")} *</label>
                             <select value={selectedExamCategoryId} onChange={e => setSelectedExamCategoryId(e.target.value)} className="bg-gray-50 border border-gray-300 text-sm rounded-lg w-full p-2" required>
-                                <option value="" disabled>Select Exam</option>
+                                <option value="" disabled>{t("dataEntry.selectExam")}</option>
                                 {examCategories.filter(c => c.id !== examSettings?.finalTargetCategoryId).map((c: any) => (
                                     <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
@@ -330,7 +335,7 @@ export default function ExaminationsDataEntryPage() {
                     </div>
                     <div className="flex justify-end">
                         <button onClick={handleFetchStudents} disabled={loading} className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-brand/40 disabled:opacity-75 disabled:cursor-not-allowed">
-                            {loading ? 'Fetching...' : 'Fetch Students'}
+                            {loading ? t('dataEntry.fetching') : t('dataEntry.fetchStudents')}
                         </button>
                     </div>
                 </div>
@@ -338,28 +343,28 @@ export default function ExaminationsDataEntryPage() {
                 {studentsMarks.length > 0 && (
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-lg font-semibold text-slate-700">Enter Student Marks</h2>
+                            <h2 className="text-lg font-semibold text-slate-700">{t("dataEntry.enterStudentMarks")}</h2>
                             <button onClick={handleSaveBulkMarks} disabled={readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="px-5 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 shadow flex items-center gap-2 transition-transform transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                Save All Marks
+                                {t("dataEntry.saveAllMarks")}
                             </button>
                         </div>
                         <div className="relative overflow-x-auto rounded border border-gray-200">
                             <table className="w-full text-sm text-left text-gray-500">
                                 <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                                     <tr>
-                                        <th className="px-4 py-3 w-16 text-center">ID</th>
+                                        <th className="px-4 py-3 w-16 text-center">{t("page.colId")}</th>
                                         <th
                                             className="px-4 py-3 cursor-pointer hover:bg-gray-100 select-none"
                                             onClick={() => handleSortClick('studentName')}
                                         >
-                                            Student Name<SortIcon col="studentName" />
+                                            {t("dataEntry.colStudentName")}<SortIcon col="studentName" />
                                         </th>
                                         <th
                                             className="px-4 py-3 text-center cursor-pointer hover:bg-gray-100 select-none"
                                             onClick={() => handleSortClick('rollNo')}
                                         >
-                                            Roll No<SortIcon col="rollNo" />
+                                            {t("page.colRollNo")}<SortIcon col="rollNo" />
                                         </th>
                                         <th className="px-4 py-3 min-w-30">
                                             <div className="flex items-center justify-between">
@@ -367,10 +372,10 @@ export default function ExaminationsDataEntryPage() {
                                                     className="cursor-pointer hover:text-blue-600 select-none"
                                                     onClick={() => handleSortClick(isSplit ? 'theoryTotalMarks' : 'totalMarks')}
                                                 >
-                                                    {isSplit ? 'Th. Total' : 'Total Marks'}
+                                                    {isSplit ? t('dataEntry.colThTotal') : t('dataEntry.colTotalMarks')}
                                                     <SortIcon col={isSplit ? 'theoryTotalMarks' : 'totalMarks'} />
                                                 </span>
-                                                <button onClick={() => handleApplyAllTotalMarks(isSplit ? 'theoryTotalMarks' : 'totalMarks')} title="Apply first value to all" className="text-blue-600 hover:text-blue-800 focus:outline-none">
+                                                <button onClick={() => handleApplyAllTotalMarks(isSplit ? 'theoryTotalMarks' : 'totalMarks')} title={t("dataEntry.applyToAll")} className="text-blue-600 hover:text-blue-800 focus:outline-none">
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                                                 </button>
                                             </div>
@@ -379,7 +384,7 @@ export default function ExaminationsDataEntryPage() {
                                             className="px-4 py-3 min-w-30 cursor-pointer hover:bg-gray-100 select-none"
                                             onClick={() => handleSortClick(isSplit ? 'theoryObtainedMarks' : 'obtainedMarks')}
                                         >
-                                            {isSplit ? 'Th. Obtained' : 'Obtained'}
+                                            {isSplit ? t('dataEntry.colThObtained') : t('shared.obtained')}
                                             <SortIcon col={isSplit ? 'theoryObtainedMarks' : 'obtainedMarks'} />
                                         </th>
                                         
@@ -391,9 +396,9 @@ export default function ExaminationsDataEntryPage() {
                                                             className="cursor-pointer hover:text-purple-700 select-none"
                                                             onClick={() => handleSortClick('practicalTotalMarks')}
                                                         >
-                                                            Pr. Total (Opt.)<SortIcon col="practicalTotalMarks" />
+                                                            {t("dataEntry.colPrTotal")}<SortIcon col="practicalTotalMarks" />
                                                         </span>
-                                                        <button onClick={() => handleApplyAllTotalMarks('practicalTotalMarks')} title="Apply first value to all" className="text-purple-600 hover:text-purple-800 focus:outline-none">
+                                                        <button onClick={() => handleApplyAllTotalMarks('practicalTotalMarks')} title={t("dataEntry.applyToAll")} className="text-purple-600 hover:text-purple-800 focus:outline-none">
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                                                         </button>
                                                     </div>
@@ -402,14 +407,14 @@ export default function ExaminationsDataEntryPage() {
                                                     className="px-4 py-3 min-w-30 bg-purple-50 text-purple-900 cursor-pointer hover:bg-purple-100 select-none"
                                                     onClick={() => handleSortClick('practicalObtainedMarks')}
                                                 >
-                                                    Pr. Obtained (Opt.)<SortIcon col="practicalObtainedMarks" />
+                                                    {t("dataEntry.colPrObtained")}<SortIcon col="practicalObtainedMarks" />
                                                 </th>
-                                                <th className="px-4 py-3 w-24 text-center bg-gray-100 font-bold">Overall</th>
+                                                <th className="px-4 py-3 w-24 text-center bg-gray-100 font-bold">{t("dataEntry.colOverall")}</th>
                                             </>
                                         )}
 
-                                        <th className="px-4 py-3 w-32 text-center text-blue-600 font-bold">Percentage</th>
-                                        <th className="px-4 py-3 w-24 text-center">Actions</th>
+                                        <th className="px-4 py-3 w-32 text-center text-blue-600 font-bold">{t("dataEntry.colPercentage")}</th>
+                                        <th className="px-4 py-3 w-24 text-center">{tc("action.actions")}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -429,7 +434,7 @@ export default function ExaminationsDataEntryPage() {
                                                 <td className="px-4 py-2 text-center text-slate-600">{m.rollNo || '-'}</td>
                                                 <td className="px-4 py-2">
                                                     {isRowEditable(m) ? (
-                                                        <input type="number" min="0" value={(isSplit ? m.theoryTotalMarks : m.totalMarks) ?? ''} onChange={e => handleMarkChange(m.studentId, isSplit ? 'theoryTotalMarks' : 'totalMarks', e.target.value)} className="w-full text-sm border-gray-300 rounded focus:ring-brand/40 focus:border-brand p-1.5" placeholder="Total" />
+                                                        <input type="number" min="0" value={(isSplit ? m.theoryTotalMarks : m.totalMarks) ?? ''} onChange={e => handleMarkChange(m.studentId, isSplit ? 'theoryTotalMarks' : 'totalMarks', e.target.value)} className="w-full text-sm border-gray-300 rounded focus:ring-brand/40 focus:border-brand p-1.5" placeholder={tc("field.total")} />
                                                     ) : (
                                                         <span className="text-sm text-slate-600">{(isSplit ? m.theoryTotalMarks : m.totalMarks) ?? '-'}</span>
                                                     )}
@@ -437,8 +442,8 @@ export default function ExaminationsDataEntryPage() {
                                                 <td className="px-4 py-2">
                                                     {isRowEditable(m) ? (
                                                         <>
-                                                            <input type="number" min="0" max={(isSplit ? m.theoryTotalMarks : m.totalMarks) ?? ''} value={(isSplit ? m.theoryObtainedMarks : m.obtainedMarks) ?? ''} onChange={e => handleMarkChange(m.studentId, isSplit ? 'theoryObtainedMarks' : 'obtainedMarks', e.target.value)} className={`w-full text-sm rounded p-1.5 ${(isSplit ? isInvalidTh : isInvalidBase) ? 'border-red-500 ring-1 ring-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50 text-red-700' : 'border-gray-300 focus:ring-brand/40 focus:border-brand'}`} placeholder="Obtained" title={(isSplit ? isInvalidTh : isInvalidBase) ? "Obtained marks cannot exceed Total marks" : ""} />
-                                                            {(isSplit ? isInvalidTh : isInvalidBase) && <p className="text-[10px] text-red-600 font-bold mt-1 text-center">Exceeds Total</p>}
+                                                            <input type="number" min="0" max={(isSplit ? m.theoryTotalMarks : m.totalMarks) ?? ''} value={(isSplit ? m.theoryObtainedMarks : m.obtainedMarks) ?? ''} onChange={e => handleMarkChange(m.studentId, isSplit ? 'theoryObtainedMarks' : 'obtainedMarks', e.target.value)} className={`w-full text-sm rounded p-1.5 ${(isSplit ? isInvalidTh : isInvalidBase) ? 'border-red-500 ring-1 ring-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50 text-red-700' : 'border-gray-300 focus:ring-brand/40 focus:border-brand'}`} placeholder={t("shared.obtained")} title={(isSplit ? isInvalidTh : isInvalidBase) ? t("shared.exceedsTotalTitle") : ""} />
+                                                            {(isSplit ? isInvalidTh : isInvalidBase) && <p className="text-[10px] text-red-600 font-bold mt-1 text-center">{t("dataEntry.exceedsTotal")}</p>}
                                                         </>
                                                     ) : (
                                                         <div className="flex items-center gap-1">
@@ -450,7 +455,7 @@ export default function ExaminationsDataEntryPage() {
                                                                         ? 'underline decoration-dotted decoration-blue-400 cursor-pointer'
                                                                         : 'cursor-default'
                                                                 }`}
-                                                                title={m.markId && (m.createdByName || m.updatedByName) ? 'Tap to see who entered this' : undefined}
+                                                                title={m.markId && (m.createdByName || m.updatedByName) ? t('shared.tapToSeeAudit') : undefined}
                                                             >
                                                                 {(isSplit ? m.theoryObtainedMarks : m.obtainedMarks) ?? '-'}
                                                             </button>
@@ -462,7 +467,7 @@ export default function ExaminationsDataEntryPage() {
                                                     <>
                                                         <td className="px-4 py-2 bg-purple-50/30">
                                                             {isRowEditable(m) ? (
-                                                                <input type="number" min="0" value={m.practicalTotalMarks ?? ''} onChange={e => handleMarkChange(m.studentId, 'practicalTotalMarks', e.target.value)} className="w-full text-sm border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500 p-1.5" placeholder="Total" />
+                                                                <input type="number" min="0" value={m.practicalTotalMarks ?? ''} onChange={e => handleMarkChange(m.studentId, 'practicalTotalMarks', e.target.value)} className="w-full text-sm border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500 p-1.5" placeholder={tc("field.total")} />
                                                             ) : (
                                                                 <span className="text-sm text-slate-600">{m.practicalTotalMarks ?? '-'}</span>
                                                             )}
@@ -470,8 +475,8 @@ export default function ExaminationsDataEntryPage() {
                                                         <td className="px-4 py-2 bg-purple-50/30">
                                                             {isRowEditable(m) ? (
                                                                 <>
-                                                                    <input type="number" min="0" max={m.practicalTotalMarks ?? ''} value={m.practicalObtainedMarks ?? ''} onChange={e => handleMarkChange(m.studentId, 'practicalObtainedMarks', e.target.value)} className={`w-full text-sm rounded p-1.5 ${isInvalidPr ? 'border-red-500 ring-1 ring-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50 text-red-700' : 'border-gray-300 focus:ring-purple-500 focus:border-purple-500'}`} placeholder="Obtained" title={isInvalidPr ? "Obtained marks cannot exceed Total marks" : ""} />
-                                                                    {isInvalidPr && <p className="text-[10px] text-red-600 font-bold mt-1 text-center">Exceeds Total</p>}
+                                                                    <input type="number" min="0" max={m.practicalTotalMarks ?? ''} value={m.practicalObtainedMarks ?? ''} onChange={e => handleMarkChange(m.studentId, 'practicalObtainedMarks', e.target.value)} className={`w-full text-sm rounded p-1.5 ${isInvalidPr ? 'border-red-500 ring-1 ring-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50 text-red-700' : 'border-gray-300 focus:ring-purple-500 focus:border-purple-500'}`} placeholder={t("shared.obtained")} title={isInvalidPr ? t("shared.exceedsTotalTitle") : ""} />
+                                                                    {isInvalidPr && <p className="text-[10px] text-red-600 font-bold mt-1 text-center">{t("dataEntry.exceedsTotal")}</p>}
                                                                 </>
                                                             ) : (
                                                                 <button
@@ -482,7 +487,7 @@ export default function ExaminationsDataEntryPage() {
                                                                             ? 'underline decoration-dotted decoration-blue-400 cursor-pointer'
                                                                             : 'cursor-default'
                                                                     }`}
-                                                                    title={m.markId && (m.createdByName || m.updatedByName) ? 'Tap to see who entered this' : undefined}
+                                                                    title={m.markId && (m.createdByName || m.updatedByName) ? t('shared.tapToSeeAudit') : undefined}
                                                                 >
                                                                     {m.practicalObtainedMarks ?? '-'}
                                                                 </button>
@@ -511,10 +516,10 @@ export default function ExaminationsDataEntryPage() {
                                                                         : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                                                                 }`}
                                                             >
-                                                                {editingRows.has(m.studentId) ? 'Lock' : 'Edit'}
+                                                                {editingRows.has(m.studentId) ? t('dataEntry.lock') : tc('action.edit')}
                                                             </button>
                                                         ) : (
-                                                            <span className="px-2 py-0.5 text-[10px] font-medium rounded bg-gray-100 text-gray-500">Saved</span>
+                                                            <span className="px-2 py-0.5 text-[10px] font-medium rounded bg-gray-100 text-gray-500">{tc("state.saved")}</span>
                                                         )
                                                     ) : null}
                                                 </td>

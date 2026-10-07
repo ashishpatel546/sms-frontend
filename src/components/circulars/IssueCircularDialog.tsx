@@ -17,19 +17,22 @@ import { Field, Fieldset, Input, Label, Textarea } from '@/components/ui/Field';
 import { Note } from '@/components/ui/Panel';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useLocale, useTranslations } from 'next-intl';
+import { INTL_LOCALE, type Locale } from '@/i18n/config';
 
 /** Below this much headroom the counter starts warning rather than informing. */
 const COUNTER_WARN_AT = 100;
 
 /**
- * Who is about to be interrupted, as a sentence subject. The confirmation and
- * the toast both name them: "everyone has been notified" is exactly the phrase
- * that stops someone reading the audience they just chose.
+ * Who is about to be interrupted. The confirmation and the toast both name
+ * them: "everyone has been notified" is exactly the phrase that stops someone
+ * reading the audience they just chose. Keys into `circulars.issue.toast` and
+ * `circulars.issue.confirm`, whole sentences per audience.
  */
-const AUDIENCE_PHRASE: Record<CircularAudience, string> = {
-  ALL: 'Every parent and staff member',
-  PARENT: 'Every parent',
-  STAFF: 'Every member of staff',
+const AUDIENCE_KEY: Record<CircularAudience, 'all' | 'parent' | 'staff'> = {
+  ALL: 'all',
+  PARENT: 'parent',
+  STAFF: 'staff',
 };
 
 /**
@@ -47,6 +50,9 @@ export function IssueCircularDialog({
   onClose: () => void;
   onIssued: () => void;
 }) {
+  const t = useTranslations('circulars');
+  const tc = useTranslations('common');
+  const locale = useLocale() as Locale;
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   // Everyone is the default: it is what a circular meant before audiences
@@ -88,13 +94,13 @@ export function IssueCircularDialog({
       return;
     }
     if (picked.type !== 'application/pdf') {
-      setFileError('Only a PDF can be attached.');
+      setFileError(t('issue.onlyPdf'));
       setFile(null);
       return;
     }
     if (picked.size > CIRCULAR_MAX_FILE_BYTES) {
       setFileError(
-        `That file is ${formatFileSize(picked.size)} — the limit is ${CIRCULAR_MAX_FILE_BYTES / (1024 * 1024)} MB.`,
+        t('issue.tooLarge', { size: formatFileSize(picked.size), limit: CIRCULAR_MAX_FILE_BYTES / (1024 * 1024) }),
       );
       setFile(null);
       return;
@@ -111,13 +117,11 @@ export function IssueCircularDialog({
         audience,
         file,
       });
-      toast.success(
-        `Circular issued — ${AUDIENCE_PHRASE[audience].toLowerCase()} has been notified.`,
-      );
+      toast.success(t(`issue.toast.${AUDIENCE_KEY[audience]}`));
       onIssued();
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'The circular could not be issued.');
+      toast.error(e instanceof Error && e.message ? e.message : t('issue.failed'));
       setConfirming(false);
     } finally {
       setSubmitting(false);
@@ -141,19 +145,19 @@ export function IssueCircularDialog({
 
         <header className="flex shrink-0 items-start gap-3 border-b border-line px-4 py-3 sm:px-5 sm:py-4">
           <div className="min-w-0 flex-1">
-            <p className="eyebrow">Circulars</p>
+            <p className="eyebrow">{t('page.title')}</p>
             <h2
               id="issue-circular-title"
               className="mt-0.5 font-display text-[18px] leading-snug font-semibold text-ink sm:text-[20px]"
             >
-              Issue a circular
+              {t('issue.title')}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
-            aria-label="Close"
+            aria-label={tc('action.close')}
             className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-md text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink disabled:opacity-40 focus-visible:ring-3 focus-visible:ring-brand/40 focus-visible:outline-none"
           >
             <X className="size-4" />
@@ -171,16 +175,14 @@ export function IssueCircularDialog({
           <Note
             pigment="attn"
             icon={<Lock />}
-            title="Published once, and final"
+            title={t('issue.finalTitle')}
           >
-            A circular cannot be edited after it is issued, and the audience
-            you choose is notified immediately. To correct one, issue a new
-            circular — only the school&rsquo;s owner can withdraw one.
+            {t('issue.finalBody')}
           </Note>
 
           <Fieldset
-            legend="Who is this for?"
-            description="Only this group is notified, and a staff circular never reaches the parent portal."
+            legend={t('issue.audienceLegend')}
+            description={t('issue.audienceHint')}
           >
             <div className="space-y-2">
               {CIRCULAR_AUDIENCES.map((option) => {
@@ -205,10 +207,10 @@ export function IssueCircularDialog({
                     />
                     <span className="min-w-0">
                       <span className="block text-[13.5px] font-semibold text-ink">
-                        {option.label}
+                        {t(`audience.${option.key}.label`)}
                       </span>
                       <span className="mt-0.5 block text-[12px] leading-relaxed text-ink-muted">
-                        {option.who}
+                        {t(`audience.${option.key}.who`)}
                       </span>
                     </span>
                   </label>
@@ -217,24 +219,24 @@ export function IssueCircularDialog({
             </div>
           </Fieldset>
 
-          <Field label="Title" required>
+          <Field label={t('issue.titleLabel')} required>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value.slice(0, CIRCULAR_TITLE_MAX))}
               maxLength={CIRCULAR_TITLE_MAX}
-              placeholder="e.g. Summer vacation from 15 May"
+              placeholder={t('issue.titlePlaceholder')}
               autoFocus
               required
             />
           </Field>
 
           <Field
-            label="Description"
+            label={tc('field.description')}
             htmlFor="circular-description"
             required
             hint={
               <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                <span>Attach the full notice as a PDF if it runs longer.</span>
+                <span>{t('issue.descriptionHint')}</span>
                 <span
                   className={cn(
                     'font-mono text-[11px] tabular',
@@ -242,8 +244,10 @@ export function IssueCircularDialog({
                   )}
                   aria-live="polite"
                 >
-                  {remaining.toLocaleString('en-IN')} of{' '}
-                  {CIRCULAR_DESCRIPTION_MAX.toLocaleString('en-IN')} left
+                  {t('issue.charsLeft', {
+                    remaining: remaining.toLocaleString(INTL_LOCALE[locale]),
+                    max: CIRCULAR_DESCRIPTION_MAX.toLocaleString(INTL_LOCALE[locale]),
+                  })}
                 </span>
               </span>
             }
@@ -254,7 +258,7 @@ export function IssueCircularDialog({
               onChange={(e) => setDescription(e.target.value.slice(0, CIRCULAR_DESCRIPTION_MAX))}
               maxLength={CIRCULAR_DESCRIPTION_MAX}
               rows={7}
-              placeholder="What the school is announcing…"
+              placeholder={t('issue.descriptionPlaceholder')}
               required
             />
           </Field>
@@ -262,9 +266,9 @@ export function IssueCircularDialog({
           {/* Attachment */}
           <div>
             <Label htmlFor="circular-file" className="mb-1.5">
-              Attachment
+              {t('issue.attachment')}
               <span className="ml-1.5 normal-case tracking-normal text-ink-faint">
-                (optional PDF, up to {CIRCULAR_MAX_FILE_BYTES / (1024 * 1024)} MB)
+                {t('issue.attachmentHint', { limit: CIRCULAR_MAX_FILE_BYTES / (1024 * 1024) })}
               </span>
             </Label>
             <input
@@ -293,7 +297,7 @@ export function IssueCircularDialog({
                     if (fileInputRef.current) fileInputRef.current.value = '';
                   }}
                 >
-                  Remove
+                  {tc('action.remove')}
                 </Button>
               </div>
             ) : (
@@ -303,7 +307,7 @@ export function IssueCircularDialog({
                 className="mt-0 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-line-strong bg-surface-secondary px-3 py-5 text-[13px] font-medium text-ink-muted transition-colors hover:border-brand hover:bg-brand-tint hover:text-brand focus-visible:ring-3 focus-visible:ring-brand/40 focus-visible:outline-none"
               >
                 <FileUp className="size-4" aria-hidden />
-                Choose a PDF
+                {t('issue.choosePdf')}
               </button>
             )}
             {fileError && (
@@ -317,36 +321,29 @@ export function IssueCircularDialog({
             <div className="space-y-2.5">
               <p className="flex items-start gap-2 text-[12.5px] leading-relaxed text-ink">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0 text-accent-deep" aria-hidden />
-                <span>
-                  {AUDIENCE_PHRASE[audience]} will be notified straight away,
-                  and this circular can never be edited.
-                  {audience === 'STAFF' && ' Parents will not see it at all.'}
-                  {audience === 'PARENT' &&
-                    ' Staff can still find it in the circulars list, but will not be notified.'}{' '}
-                  Issue it?
-                </span>
+                <span>{t(`issue.confirm.${AUDIENCE_KEY[audience]}`)}</span>
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <Button onClick={() => void submit()} disabled={submitting}>
                   {submitting ? <Loader2 className="animate-spin" /> : <Send />}
-                  {submitting ? 'Issuing…' : 'Yes, issue it'}
+                  {submitting ? t('issue.issuing') : t('issue.confirmIssue')}
                 </Button>
                 <Button
                   variant="ghost"
                   onClick={() => setConfirming(false)}
                   disabled={submitting}
                 >
-                  Keep editing
+                  {t('issue.keepEditing')}
                 </Button>
               </div>
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
               <Button type="submit" form="issue-circular-form" disabled={!canSubmit}>
-                <Send /> Issue circular
+                <Send /> {t('page.issue')}
               </Button>
               <Button variant="ghost" className="ml-auto" onClick={onClose}>
-                Cancel
+                {tc('action.cancel')}
               </Button>
             </div>
           )}

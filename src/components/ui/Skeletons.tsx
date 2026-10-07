@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 import { Skeleton } from './skeleton';
 import { cn } from '@/lib/utils';
 
@@ -56,16 +57,17 @@ export function ChildCardSkeleton({ index = 0 }: { index?: number }) {
 
 /** The responsive grid of child cards, matching the real one column for column. */
 export function ChildGridSkeleton({ count = 3 }: { count?: number }) {
+  const t = useTranslations('ui');
   return (
     <div
       role="status"
-      aria-label="Loading your children"
+      aria-label={t('skeleton.children')}
       className="grid grid-cols-1 gap-3 sm:grid-cols-2"
     >
       {Array.from({ length: count }).map((_, i) => (
         <ChildCardSkeleton key={i} index={i} />
       ))}
-      <span className="sr-only">Loading your children…</span>
+      <span className="sr-only">{t('skeleton.childrenLong')}</span>
     </div>
   );
 }
@@ -142,10 +144,11 @@ export function StatRowSkeleton({ count = 4 }: { count?: number }) {
    ───────────────────────────────────────────────────────────────────────── */
 
 export function StudentRecordSkeleton() {
+  const t = useTranslations('ui');
   return (
     <div
       role="status"
-      aria-label="Loading student record"
+      aria-label={t('skeleton.studentRecord')}
       className="max-w-5xl space-y-4 px-3 py-4 sm:px-5 sm:py-6"
     >
       {/* identity */}
@@ -175,7 +178,7 @@ export function StudentRecordSkeleton() {
       <StatRowSkeleton count={4} />
       <PanelSkeleton rows={4} />
 
-      <span className="sr-only">Loading student record…</span>
+      <span className="sr-only">{t('skeleton.studentRecordLong')}</span>
     </div>
   );
 }
@@ -186,11 +189,13 @@ export function StudentRecordSkeleton() {
    ───────────────────────────────────────────────────────────────────────── */
 
 export function SectionSkeleton({ stats = false }: { stats?: boolean }) {
+  const t = useTranslations('ui');
+  const tc = useTranslations('common');
   return (
-    <div role="status" aria-label="Loading section" className="animate-fade-in space-y-4">
+    <div role="status" aria-label={t('skeleton.section')} className="animate-fade-in space-y-4">
       {stats && <StatRowSkeleton count={4} />}
       <PanelSkeleton rows={5} />
-      <span className="sr-only">Loading…</span>
+      <span className="sr-only">{tc('state.loading')}</span>
     </div>
   );
 }

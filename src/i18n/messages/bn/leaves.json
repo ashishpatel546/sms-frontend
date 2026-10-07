@@ -1,0 +1,84 @@
+{
+  "title": "ছাত্রছাত্রীদের ছুটি",
+  "type": {
+    "SICK_LEAVE": "অসুস্থতার ছুটি",
+    "CASUAL_LEAVE": "নৈমিত্তিক ছুটি",
+    "OTHER_LEAVE": "অন্যান্য ছুটি"
+  },
+  "status": {
+    "PENDING": "বিচারাধীন",
+    "FIRST_APPROVED": "প্রথম অনুমোদন হয়েছে",
+    "APPROVED": "অনুমোদিত",
+    "REJECTED": "প্রত্যাখ্যাত",
+    "CANCELLED": "বাতিল"
+  },
+  "duration": {
+    "halfDay": "অর্ধদিবস",
+    "fullDay": "পূর্ণ দিন"
+  },
+  "sectionSuffix": " · সেকশন {name}",
+  "dateRange": "{name} — {from} থেকে {to}",
+  "drawer": {
+    "title": "ছুটি #{id}-এর বিবরণ",
+    "leaveType": "ছুটির ধরন",
+    "duration": "সময়কাল",
+    "reason": "কারণ",
+    "awaitingFirst": "প্রথম অনুমোদনের অপেক্ষায়",
+    "awaitingFinal": "চূড়ান্ত অনুমোদনের অপেক্ষায়",
+    "documents": "নথি",
+    "pdf": "PDF",
+    "image": "ছবি"
+  },
+  "reject": {
+    "title": "ছুটি #{id} প্রত্যাখ্যান করুন",
+    "reasonLabel": "প্রত্যাখ্যানের কারণ",
+    "placeholder": "প্রত্যাখ্যানের কারণ লিখুন...",
+    "rejecting": "প্রত্যাখ্যান করা হচ্ছে…",
+    "confirm": "ছুটি প্রত্যাখ্যান করুন"
+  },
+  "requestDoc": {
+    "title": "তথ্য চান — ছুটি #{id}",
+    "messageLabel": "অভিভাবকের জন্য বার্তা",
+    "minChars": "(অন্তত 10টি অক্ষর)",
+    "placeholder": "যেমন: অসুস্থতা নিশ্চিত করে কোনো নিবন্ধিত ডাক্তারের মেডিক্যাল সার্টিফিকেট আপলোড করুন।",
+    "sending": "পাঠানো হচ্ছে…",
+    "send": "অনুরোধ পাঠান"
+  },
+  "list": {
+    "heading": "ছুটির আবেদন",
+    "subtitle": "ছাত্রছাত্রীদের ছুটির আবেদন দেখুন ও পরিচালনা করুন",
+    "allClasses": "সব শ্রেণি",
+    "allSections": "সব সেকশন",
+    "studentId": "ছাত্রছাত্রীর ID",
+    "studentIdPlaceholder": "যেমন: 101",
+    "allStatuses": "সব অবস্থা",
+    "unapproved": "⏳ অনুমোদন বাকি (সক্রিয়)",
+    "fromDate": "শুরুর তারিখ",
+    "toDate": "শেষের তারিখ",
+    "empty": "কোনো ছুটির আবেদন পাওয়া যায়নি",
+    "colDates": "তারিখ",
+    "colDuration": "সময়কাল",
+    "colAppliedOn": "আবেদনের তারিখ",
+    "actionNeeded": "⚠ পদক্ষেপ প্রয়োজন",
+    "rowsPerPage": "প্রতি পৃষ্ঠায় সারি:",
+    "range": "{total}টির মধ্যে {from}–{to}",
+    "prev": "← আগের",
+    "next": "পরের →"
+  },
+  "actions": {
+    "firstApprove": "প্রথম অনুমোদন দিন",
+    "finalApprove": "চূড়ান্ত অনুমোদন দিন",
+    "askInfo": "তথ্য চান",
+    "cancelLeave": "বাতিল করুন"
+  },
+  "toast": {
+    "loadFailed": "ছুটির আবেদন লোড করা যায়নি",
+    "actionFailed": "কাজটি করা যায়নি",
+    "firstApproved": "প্রথম অনুমোদন দেওয়া হয়েছে",
+    "fullyApproved": "ছুটি সম্পূর্ণ অনুমোদিত — উপস্থিতি আপডেট হয়েছে",
+    "rejected": "ছুটি প্রত্যাখ্যান করা হয়েছে",
+    "cancelled": "ছুটি বাতিল করা হয়েছে",
+    "messageSent": "অভিভাবককে বার্তা পাঠানো হয়েছে",
+    "docUrlFailed": "নথির লিংক পাওয়া যায়নি"
+  }
+}

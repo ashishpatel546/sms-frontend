@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
+import { useTranslations } from 'next-intl';
 import {
   Camera,
   ImagePlus,
@@ -80,6 +81,7 @@ export function PersonPhotoField({
   readOnly = false,
   className,
 }: PersonPhotoFieldProps) {
+  const t = useTranslations('students.photo');
   const staging = userId === null || userId === undefined;
 
   const [thumbUrl, setThumbUrl] = React.useState<string | null>(null);
@@ -126,7 +128,7 @@ export function PersonPhotoField({
     event.target.value = '';
     if (!file) return;
     if (!isImageFile(file)) {
-      toast.error('Pick an image — JPEG, PNG or WebP. PDFs go under Documents.');
+      toast.error(t('notImage'));
       return;
     }
     // Deliberately no size check: the crop step downsizes whatever comes in.
@@ -138,7 +140,7 @@ export function PersonPhotoField({
       if (staged?.previewUrl) URL.revokeObjectURL(staged.previewUrl);
       onStagedChange?.(prepared);
       setPickedFile(null);
-      toast.success(`Photo ready — ${formatBytes(prepared.fullBytes)}, saved with the record.`);
+      toast.success(t('ready', { size: formatBytes(prepared.fullBytes) }));
       return;
     }
 
@@ -149,9 +151,9 @@ export function PersonPhotoField({
       setPickedFile(null);
       await loadThumb();
       onChanged?.();
-      toast.success(`${label} saved — ${formatBytes(prepared.fullBytes)}.`);
+      toast.success(t('saved', { label, size: formatBytes(prepared.fullBytes) }));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'That photo did not save.');
+      toast.error((err instanceof Error && err.message) || t('saveFailed'));
       throw err;
     } finally {
       setBusy(false);
@@ -172,9 +174,9 @@ export function PersonPhotoField({
       setThumbUrl(null);
       setFallbackUrl(null);
       onChanged?.();
-      toast.success(`${label} removed.`);
+      toast.success(t('removed', { label }));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'That photo was not removed.');
+      toast.error((err instanceof Error && err.message) || t('removeFailed'));
     } finally {
       setBusy(false);
     }
@@ -192,7 +194,7 @@ export function PersonPhotoField({
       const result = await getPersonPhotoUrl(userId, kind, 'full');
       if (result) setZoomUrl(result.url);
     } catch {
-      toast.error('That photo could not be opened.');
+      toast.error(t('openFailed'));
     } finally {
       setBusy(false);
     }
@@ -242,8 +244,8 @@ export function PersonPhotoField({
             <button
               type="button"
               onClick={handleZoom}
-              aria-label={`View ${label.toLowerCase()} full size`}
-              title="View full size"
+              aria-label={t('viewFullFor', { label: label.toLowerCase() })}
+              title={t('viewFull')}
               className="absolute top-1.5 right-1.5 grid size-8 cursor-pointer place-items-center rounded-md bg-walnut-950/55 text-white/85 backdrop-blur-xs transition-colors hover:bg-walnut-950/80 hover:text-white"
             >
               <Maximize2 className="size-3.5" />
@@ -256,7 +258,7 @@ export function PersonPhotoField({
             ) : (
               <>
                 <User aria-hidden className="size-6 text-ink-faint" />
-                <span className="text-[11.5px] text-ink-faint">No photo</span>
+                <span className="text-[11.5px] text-ink-faint">{t('none')}</span>
               </>
             )}
           </div>
@@ -279,7 +281,7 @@ export function PersonPhotoField({
           className="inline-flex h-9 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-line-strong bg-surface px-2.5 text-[12.5px] font-semibold text-ink transition-colors hover:border-brand hover:bg-brand-tint hover:text-brand disabled:cursor-not-allowed disabled:opacity-50"
         >
           <ImagePlus className="size-3.5" />
-          {hasPhoto ? 'Replace' : 'Add photo'}
+          {hasPhoto ? t('replace') : t('add')}
         </button>
 
         {/* Camera is offered separately only where there is one worth offering. */}
@@ -287,8 +289,8 @@ export function PersonPhotoField({
           type="button"
           onClick={() => cameraInput.current?.click()}
           disabled={disabled || busy}
-          title={controlTitle ?? 'Take a photo'}
-          aria-label="Take a photo"
+          title={controlTitle ?? t('takePhoto')}
+          aria-label={t('takePhoto')}
           className="inline-flex size-9 cursor-pointer items-center justify-center rounded-md border border-line-strong bg-surface text-ink-muted transition-colors hover:border-brand hover:bg-brand-tint hover:text-brand disabled:cursor-not-allowed disabled:opacity-50 sm:hidden"
         >
           <Camera className="size-3.5" />
@@ -299,8 +301,8 @@ export function PersonPhotoField({
             type="button"
             onClick={handleRemove}
             disabled={disabled || busy}
-            title={controlTitle ?? `Remove ${label.toLowerCase()}`}
-            aria-label={`Remove ${label.toLowerCase()}`}
+            title={controlTitle ?? t('removeFor', { label: label.toLowerCase() })}
+            aria-label={t('removeFor', { label: label.toLowerCase() })}
             className="inline-flex size-9 cursor-pointer items-center justify-center rounded-md border border-accent-danger-edge bg-accent-danger-tint text-accent-danger-deep transition-colors hover:border-accent-danger hover:bg-accent-danger hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Trash2 className="size-3.5" />
@@ -311,7 +313,7 @@ export function PersonPhotoField({
       {hint && <p className="mt-1.5 text-[11.5px] text-ink-muted">{hint}</p>}
       {staged && (
         <p className="mt-1.5 text-[11.5px] text-accent-warn-deep">
-          Uploads when the record is saved · {formatBytes(staged.fullBytes)}
+          {t('stagedHint', { size: formatBytes(staged.fullBytes) })}
         </p>
       )}
 
@@ -364,6 +366,7 @@ function PhotoLightbox({
   alt: string;
   onClose: () => void;
 }) {
+  const tc = useTranslations('common');
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -392,7 +395,7 @@ function PhotoLightbox({
       <button
         type="button"
         onClick={onClose}
-        aria-label="Close"
+        aria-label={tc('action.close')}
         className="absolute top-4 right-4 grid size-11 cursor-pointer place-items-center rounded-md border border-white/12 bg-white/8 text-white transition-colors hover:bg-white/16"
       >
         <X className="size-4" />

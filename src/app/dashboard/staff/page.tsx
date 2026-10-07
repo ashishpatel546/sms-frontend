@@ -13,6 +13,7 @@ import { authFetch } from "@/lib/auth";
 import Papa from "papaparse";
 import { AlertTriangle, Eye, IdCard, Pencil, UserMinus } from "lucide-react";
 import toast from "react-hot-toast";
+import { useTranslations } from "next-intl";
 import { RowActionsMenu } from "@/components/ui/RowActionsMenu";
 import { IdCardDialog } from "@/components/id-cards/IdCardDialog";
 import { useFeatureFlag } from "@/lib/useSchoolFeatures";
@@ -20,6 +21,8 @@ import { useFeatureFlag } from "@/lib/useSchoolFeatures";
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 export default function TeachersPage() {
+    const t = useTranslations("staff");
+    const tc = useTranslations("common");
     const [teachers, setTeachers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const rbac = useRbac();
@@ -154,18 +157,18 @@ export default function TeachersPage() {
             if (res.ok) {
                 toast.success(
                     idCardsEnabled && revokeIdCard
-                        ? "Exit marked and ID card revoked"
-                        : "Staff exit marked successfully"
+                        ? t("exit.markedRevoked")
+                        : t("exit.marked")
                 );
                 setShowExitModal(false);
                 setSelectedStaffForExit(null);
                 fetchTeachers(page, pageSize);
             } else {
                 const err = await res.json();
-                toast.error(err.message || "Failed to mark exit");
+                toast.error(err.message || t("exit.failed"));
             }
         } catch {
-            toast.error("An error occurred while marking exit");
+            toast.error(t("exit.error"));
         } finally {
             setIsExiting(false);
         }
@@ -245,57 +248,57 @@ export default function TeachersPage() {
                         fetchTeachers(1);
                     } else {
                         const err = await res.json();
-                        alert("Import failed: " + (err.message || "Unknown error"));
+                        alert(t("import.failedAlert", { message: err.message || t("import.unknownError") }));
                     }
                 } catch (error) {
                     console.error("Bulk import error", error);
-                    alert("An error occurred during import.");
+                    alert(t("import.errorAlert"));
                 } finally {
                     setImportLoading(false);
                 }
             },
             error: (err: any) => {
-                alert("Failed to read CSV file: " + err.message);
+                alert(t("import.readFailed", { message: err.message }));
                 setImportLoading(false);
             }
         });
     };
 
     const columns = [
-        { header: "ID", accessor: "id", sortable: true },
+        { header: t("list.column.id"), accessor: "id", sortable: true },
         {
-            header: "Name",
+            header: tc("field.name"),
             sortable: true,
             sortKey: "firstName",
             render: (row: any) => `${row.firstName} ${row.lastName}`
         },
-        { header: "Email", accessor: "email", sortable: true },
+        { header: tc("field.email"), accessor: "email", sortable: true },
         {
-            header: "Designation",
+            header: t("list.designation"),
             render: (row: any) => row.designation?.title || '-'
         },
         {
-            header: "Class Teacher Of",
+            header: t("list.column.classTeacherOf"),
             render: (row: any) => row.classTeacherOf && row.classTeacherOf.length > 0
                 ? row.classTeacherOf.map((s: any) => `${s.class?.name || ''}-${s.name}`).filter(Boolean).join(', ')
                 : '-'
         },
         {
-            header: "Subjects",
+            header: t("list.column.subjects"),
             render: (row: any) => row.subjectAssignments && row.subjectAssignments.length > 0
                 ? row.subjectAssignments.map((sa: any) => `${sa.subject?.name} (${sa.class?.name}-${sa.section?.name})`).join(', ')
                 : '-'
         },
         {
-            header: "Status",
+            header: tc("field.status"),
             render: (row: any) => (
                 <span className={`px-2 py-1 font-semibold leading-tight ${row.isActive ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'} rounded-full`}>
-                    {row.isActive ? 'Active' : 'Inactive'}
+                    {row.isActive ? tc('status.active') : tc('status.inactive')}
                 </span>
             )
         },
         {
-            header: "Actions",
+            header: tc("action.actions"),
             // RowActionsMenu, not a hand-rolled dropdown. The previous version
             // closed itself on `mousedown` from a document-level outside-click
             // handler, which fired BEFORE the menu item's `click` — so View,
@@ -304,21 +307,21 @@ export default function TeachersPage() {
             // state, so that race is not expressible.
             render: (row: any) => (
                 <RowActionsMenu
-                    label={`Actions for ${row.firstName ?? ''} ${row.lastName ?? ''}`.trim()}
+                    label={t('list.rowActions', { name: `${row.firstName ?? ''} ${row.lastName ?? ''}`.trim() })}
                     actions={[
                         {
-                            label: 'View',
+                            label: tc('action.view'),
                             icon: <Eye className="size-4 text-ink-faint" />,
                             href: `/dashboard/staff/${row.id}`,
                         },
                         rbac.canManageTeachers && {
-                            label: 'Edit',
+                            label: tc('action.edit'),
                             icon: <Pencil className="size-4 text-ink-faint" />,
                             href: `/dashboard/staff/${row.id}/edit`,
                             disabled: readOnly,
                         },
                         idCardsEnabled && {
-                            label: 'View ID card',
+                            label: t('list.viewIdCard'),
                             icon: <IdCard className="size-4 text-ink-faint" />,
                             onSelect: () =>
                                 setIdCardStaff({
@@ -327,7 +330,7 @@ export default function TeachersPage() {
                                 }),
                         },
                         rbac.canManageTeachers && row.isActive && {
-                            label: 'Mark exit',
+                            label: t('list.markExit'),
                             icon: <UserMinus className="size-4 text-accent-danger" />,
                             danger: true,
                             disabled: readOnly,
@@ -369,18 +372,18 @@ export default function TeachersPage() {
             <div className="max-w-7xl mx-auto">
                 <PageHeader
                     className="mb-4"
-                    section="Academics · Staff"
-                    title="Staff"
-                    description="Teachers, admins and support staff on the payroll."
+                    section={t("section")}
+                    title={t("list.title")}
+                    description={t("list.description")}
                     actions={rbac.canManageTeachers ? (
                         <>
                             <Button variant="outline" onClick={() => setShowImportModal(true)}>
                                 <Upload />
-                                Import CSV
+                                {t("list.importCsv")}
                             </Button>
                             <Button render={<Link href="/dashboard/staff/new" />}>
                                 <UserPlus />
-                                Add staff
+                                {t("list.addStaff")}
                             </Button>
                         </>
                     ) : undefined}
@@ -388,59 +391,59 @@ export default function TeachersPage() {
 
                 {/* Advanced Search Filter */}
                 <div className="mb-4 rounded-xl border border-line bg-surface p-4 shadow-soft">
-                    <h2 className="mb-3.5 font-display text-[15px] font-semibold text-ink">Search Staff</h2>
+                    <h2 className="mb-3.5 font-display text-[15px] font-semibold text-ink">{t("list.searchTitle")}</h2>
                     <form onSubmit={handleSearch}>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4">
                             <div>
-                                <label className="eyebrow mb-1.5 block">Teacher ID</label>
-                                <input type="text" value={searchId} onChange={e => setSearchId(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none" placeholder="e.g. 1" />
+                                <label className="eyebrow mb-1.5 block">{t("list.teacherId")}</label>
+                                <input type="text" value={searchId} onChange={e => setSearchId(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none" placeholder={t("list.idPlaceholder")} />
                             </div>
                             <div>
-                                <label className="eyebrow mb-1.5 block">First Name</label>
-                                <input type="text" value={searchFirstName} onChange={e => setSearchFirstName(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none" placeholder="First Name" />
+                                <label className="eyebrow mb-1.5 block">{t("list.firstName")}</label>
+                                <input type="text" value={searchFirstName} onChange={e => setSearchFirstName(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none" placeholder={t("list.firstName")} />
                             </div>
                             <div>
-                                <label className="eyebrow mb-1.5 block">Last Name</label>
-                                <input type="text" value={searchLastName} onChange={e => setSearchLastName(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none" placeholder="Last Name" />
+                                <label className="eyebrow mb-1.5 block">{t("list.lastName")}</label>
+                                <input type="text" value={searchLastName} onChange={e => setSearchLastName(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none" placeholder={t("list.lastName")} />
                             </div>
                             <div>
-                                <label className="eyebrow mb-1.5 block">Email</label>
-                                <input type="text" value={searchEmail} onChange={e => setSearchEmail(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none" placeholder="Email Address" />
+                                <label className="eyebrow mb-1.5 block">{tc("field.email")}</label>
+                                <input type="text" value={searchEmail} onChange={e => setSearchEmail(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none" placeholder={t("list.emailPlaceholder")} />
                             </div>
                             <div>
-                                <label className="eyebrow mb-1.5 block">Category</label>
+                                <label className="eyebrow mb-1.5 block">{t("list.category")}</label>
                                 <select value={searchCategory} onChange={e => setSearchCategory(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none">
-                                    <option value="">All Categories</option>
-                                    <option value="Teaching Staff">Teaching Staff</option>
-                                    <option value="Management">Management</option>
-                                    <option value="Support Staff">Support Staff</option>
-                                    <option value="Admin Staff">Admin Staff</option>
+                                    <option value="">{t("list.allCategories")}</option>
+                                    <option value="Teaching Staff">{t("staffCategory.teaching")}</option>
+                                    <option value="Management">{t("staffCategory.management")}</option>
+                                    <option value="Support Staff">{t("staffCategory.support")}</option>
+                                    <option value="Admin Staff">{t("staffCategory.admin")}</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="eyebrow mb-1.5 block">Designation</label>
+                                <label className="eyebrow mb-1.5 block">{t("list.designation")}</label>
                                 <select value={searchDesignation} onChange={e => setSearchDesignation(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none">
-                                    <option value="">All Designations</option>
+                                    <option value="">{t("list.allDesignations")}</option>
                                     {designations.map(d => (
                                         <option key={d.id} value={d.id}>{d.title}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="eyebrow mb-1.5 block">Status</label>
+                                <label className="eyebrow mb-1.5 block">{tc("field.status")}</label>
                                 <select value={searchStatus} onChange={e => setSearchStatus(e.target.value)} className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink transition-colors focus:border-brand focus:ring-3 focus:ring-brand/16 focus:outline-none">
-                                    <option value="">All Statuses</option>
-                                    <option value="true">Active</option>
-                                    <option value="false">Inactive</option>
+                                    <option value="">{t("list.allStatuses")}</option>
+                                    <option value="true">{tc("status.active")}</option>
+                                    <option value="false">{tc("status.inactive")}</option>
                                 </select>
                             </div>
                         </div>
                         <div className="flex justify-end gap-2">
                             <button type="button" onClick={handleReset} className="h-10 cursor-pointer rounded-md px-3.5 text-[13.5px] font-semibold text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink">
-                                Reset
+                                {tc("action.reset")}
                             </button>
                             <button type="submit" className="h-10 cursor-pointer rounded-md bg-brand px-4 text-[13.5px] font-semibold text-brand-contrast shadow-soft transition-all hover:bg-brand-deep hover:shadow-brand">
-                                Search
+                                {tc("action.search")}
                             </button>
                         </div>
                     </form>
@@ -453,14 +456,14 @@ export default function TeachersPage() {
                         loading={loading}
                         defaultSortColumn="id"
                         defaultSortDirection="asc"
-                        emptyMessage="No teachers found matching the search criteria."
+                        emptyMessage={t("list.empty")}
                     />
 
                     {/* Pagination Controls */}
                     {!loading && total > 0 && (
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 pt-4 border-t border-slate-200">
                             <div className="flex items-center gap-2 text-sm text-slate-600">
-                                <span>Rows per page:</span>
+                                <span>{t("list.rowsPerPage")}</span>
                                 <select
                                     value={pageSize}
                                     onChange={handlePageSizeChange}
@@ -471,7 +474,7 @@ export default function TeachersPage() {
                                     ))}
                                 </select>
                                 <span className="ml-2">
-                                    {Math.min((page - 1) * pageSize + 1, total)}–{Math.min(page * pageSize, total)} of {total}
+                                    {t("list.range", { from: Math.min((page - 1) * pageSize + 1, total), to: Math.min(page * pageSize, total), total })}
                                 </span>
                             </div>
 
@@ -481,7 +484,7 @@ export default function TeachersPage() {
                                     disabled={page === 1}
                                     className="px-3 py-1.5 text-sm rounded-md border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
-                                    ← Prev
+                                    {t("list.prev")}
                                 </button>
 
                                 {getPageNumbers().map((p, idx) =>
@@ -506,7 +509,7 @@ export default function TeachersPage() {
                                     disabled={page === totalPages}
                                     className="px-3 py-1.5 text-sm rounded-md border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
-                                    Next →
+                                    {t("list.next")}
                                 </button>
                             </div>
                         </div>
@@ -518,18 +521,18 @@ export default function TeachersPage() {
             {showImportModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm">
                     <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <h2 className="text-xl font-bold mb-4">Bulk Import Staff</h2>
+                        <h2 className="text-xl font-bold mb-4">{t("import.title")}</h2>
                         
                         <div className="mb-4 p-4 bg-blue-50 text-blue-800 text-sm rounded-lg border border-blue-200 relative">
-                            <p className="mb-2"><strong>Instructions:</strong></p>
+                            <p className="mb-2"><strong>{t("import.instructions")}</strong></p>
                             <ol className="list-decimal ml-5 space-y-1">
-                                <li>Download the CSV template below.</li>
-                                <li>Fill in the staff details. Do NOT delete the header row.</li>
-                                <li><strong>designationId</strong>: Must be the numeric ID from the list below.</li>
-                                <li><strong>Password</strong>: The default password configured in the `.env` (via SSM) will automatically be assigned. The staff member will be forced to change it on their first login.</li>
+                                <li>{t("import.step1")}</li>
+                                <li>{t("import.step2")}</li>
+                                <li>{t.rich("import.step3", { b: (c) => <strong>{c}</strong> })}</li>
+                                <li>{t.rich("import.step4", { b: (c) => <strong>{c}</strong> })}</li>
                             </ol>
                             <button onClick={handleDownloadTemplate} type="button" className="mt-3 text-white bg-blue-600 hover:bg-blue-700 font-medium rounded text-xs px-3 py-1.5 focus:outline-none">
-                                Download CSV Template
+                                {t("import.downloadTemplate")}
                             </button>
                         </div>
 
@@ -537,8 +540,8 @@ export default function TeachersPage() {
                             <table className="w-full text-sm text-left text-gray-500">
                                 <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
                                     <tr>
-                                        <th className="px-4 py-2 border-b">Designation ID</th>
-                                        <th className="px-4 py-2 border-b">Title</th>
+                                        <th className="px-4 py-2 border-b">{t("import.designationId")}</th>
+                                        <th className="px-4 py-2 border-b">{t("import.designationTitle")}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -549,7 +552,7 @@ export default function TeachersPage() {
                                         </tr>
                                     ))}
                                     {designations.length === 0 && (
-                                        <tr><td colSpan={2} className="px-4 py-2 text-center">No designations found.</td></tr>
+                                        <tr><td colSpan={2} className="px-4 py-2 text-center">{t("import.noDesignations")}</td></tr>
                                     )}
                                 </tbody>
                             </table>
@@ -557,20 +560,20 @@ export default function TeachersPage() {
 
                         {importSummary ? (
                             <div className="mb-6 border border-slate-200 rounded-lg p-4 bg-slate-50">
-                                <h3 className="font-bold text-lg mb-2 text-slate-800">Import Results</h3>
+                                <h3 className="font-bold text-lg mb-2 text-slate-800">{t("import.results")}</h3>
                                 <div className="flex gap-4 mb-4">
                                     <div className="bg-green-100 border border-green-200 text-green-800 p-3 rounded-lg flex-1 text-center">
                                         <div className="text-2xl font-bold">{importSummary.successful}</div>
-                                        <div className="text-xs uppercase font-medium mt-1">Successful</div>
+                                        <div className="text-xs uppercase font-medium mt-1">{t("import.successful")}</div>
                                     </div>
                                     <div className="bg-red-100 border border-red-200 text-red-800 p-3 rounded-lg flex-1 text-center">
                                         <div className="text-2xl font-bold">{importSummary.failed}</div>
-                                        <div className="text-xs uppercase font-medium mt-1">Failed</div>
+                                        <div className="text-xs uppercase font-medium mt-1">{t("import.failed")}</div>
                                     </div>
                                 </div>
                                 {importSummary.errors.length > 0 && (
                                     <div className="bg-red-50 p-3 rounded-lg max-h-40 overflow-y-auto text-sm border border-red-200">
-                                        <p className="font-bold text-red-800 mb-2 mt-1">Errors:</p>
+                                        <p className="font-bold text-red-800 mb-2 mt-1">{t("import.errors")}</p>
                                         <ul className="list-disc pl-5 text-red-700 space-y-1">
                                             {importSummary.errors.map((e, idx) => <li key={idx}>{e}</li>)}
                                         </ul>
@@ -578,22 +581,22 @@ export default function TeachersPage() {
                                 )}
                                 <div className="flex justify-end gap-2 pt-4 border-t mt-4 border-slate-200">
                                     <button type="button" onClick={() => { setShowImportModal(false); setImportSummary(null); setImportFile(null); }} className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-brand/40">
-                                        Done
+                                        {t("import.done")}
                                     </button>
                                 </div>
                             </div>
                         ) : (
                             <form onSubmit={handleImportSubmit} className="space-y-4">
                                 <div>
-                                    <label className="block mb-2 text-sm font-medium text-gray-900">Upload CSV File <span className="text-red-500">*</span></label>
+                                    <label className="block mb-2 text-sm font-medium text-gray-900">{t("import.uploadFile")} <span className="text-red-500">*</span></label>
                                     <input type="file" accept=".csv" required onChange={e => setImportFile(e.target.files?.[0] || null)} className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none file:mr-4 file:py-2.5 file:px-4 file:rounded-l-lg file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200" />
                                 </div>
                                 <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
                                     <button type="button" onClick={() => setShowImportModal(false)} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-line-strong">
-                                        Cancel
+                                        {tc("action.cancel")}
                                     </button>
                                     <button type="submit" disabled={importLoading || !importFile || readOnly} title={readOnly ? READ_ONLY_TITLE : undefined} className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-brand/40 disabled:opacity-50 flex items-center">
-                                        {importLoading ? "Importing..." : "Start Import"}
+                                        {importLoading ? t("import.importing") : t("import.start")}
                                     </button>
                                 </div>
                             </form>
@@ -604,13 +607,17 @@ export default function TeachersPage() {
             {showExitModal && selectedStaffForExit && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-walnut-950/55 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-                        <h3 className="text-lg font-bold text-gray-900 mb-4">Mark Staff Exit</h3>
+                        <h3 className="text-lg font-bold text-gray-900 mb-4">{t("exit.title")}</h3>
                         <p className="text-sm text-gray-600 mb-4">
-                            You are marking exit for staff member: <span className="font-semibold text-gray-800">{selectedStaffForExit.firstName} {selectedStaffForExit.lastName}</span> (ID: {selectedStaffForExit.id}). This will also deactivate their user account.
+                            {t.rich("exit.introList", {
+                                name: `${selectedStaffForExit.firstName} ${selectedStaffForExit.lastName}`,
+                                id: selectedStaffForExit.id,
+                                b: (c) => <span className="font-semibold text-gray-800">{c}</span>,
+                            })}
                         </p>
                         <form onSubmit={handleConfirmExit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Exit Date <span className="text-red-500">*</span></label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t("exit.exitDate")} <span className="text-red-500">*</span></label>
                                 <input
                                     type="date"
                                     required
@@ -638,9 +645,9 @@ export default function TeachersPage() {
                                             className="mt-0.5 size-4 cursor-pointer"
                                         />
                                         <span className="text-sm">
-                                            <span className="font-medium text-gray-900">Revoke their ID card</span>
+                                            <span className="font-medium text-gray-900">{t("exit.revokeCard")}</span>
                                             <span className="block text-xs text-gray-500 mt-0.5">
-                                                The card stops working at the gate immediately, and stays dead even if the account is reactivated later.
+                                                {t("exit.revokeHint")}
                                             </span>
                                         </span>
                                     </label>
@@ -650,15 +657,15 @@ export default function TeachersPage() {
                                             value={idCardRevokeReason}
                                             onChange={e => setIdCardRevokeReason(e.target.value)}
                                             maxLength={500}
-                                            placeholder={`Staff exit on ${exitDate}`}
+                                            placeholder={t("exit.reasonPlaceholder", { date: exitDate })}
                                             className="mt-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
-                                            aria-label="Reason recorded against the revoked card"
+                                            aria-label={t("exit.reasonAria")}
                                         />
                                     ) : (
                                         <p className="mt-2.5 flex gap-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-800">
                                             <AlertTriangle className="size-4 shrink-0 mt-px" aria-hidden />
                                             <span>
-                                                Their card will keep working if this account is ever reactivated. Revoke it later from <span className="font-medium">ID Cards</span> — but they will not appear in that register once they are inactive.
+                                                {t.rich("exit.keepWarning", { b: (c) => <span className="font-medium">{c}</span> })}
                                             </span>
                                         </p>
                                     )}
@@ -671,7 +678,7 @@ export default function TeachersPage() {
                                     onClick={() => { setShowExitModal(false); setSelectedStaffForExit(null); }}
                                     className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-line-strong"
                                 >
-                                    Cancel
+                                    {tc("action.cancel")}
                                 </button>
                                 <button
                                     type="submit"
@@ -679,7 +686,7 @@ export default function TeachersPage() {
                                     title={readOnly ? READ_ONLY_TITLE : undefined}
                                     className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-300 disabled:opacity-50"
                                 >
-                                    {isExiting ? "Marking Exit..." : "Confirm Exit"}
+                                    {isExiting ? t("exit.marking") : t("exit.confirm")}
                                 </button>
                             </div>
                         </form>

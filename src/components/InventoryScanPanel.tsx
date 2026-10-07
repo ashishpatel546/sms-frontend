@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { AlertTriangle, BookUp, Boxes, IndianRupee, PackageX, ShoppingCart } from 'lucide-react';
 import { errorMessage, lookupItem, type InventoryItem } from '@/lib/inventory-api';
 
@@ -38,6 +39,7 @@ export default function InventoryScanPanel({
   onDone,
   onCancel,
 }: InventoryScanPanelProps) {
+  const t = useTranslations('inventory.scanPanel');
   const [item, setItem] = useState<InventoryItem | null>(initialItem);
   const [error, setError] = useState('');
 
@@ -49,12 +51,12 @@ export default function InventoryScanPanel({
         if (!cancelled) setItem(data);
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(errorMessage(e, 'This code did not match any item'));
+        if (!cancelled) setError(errorMessage(e, t('noMatch')));
       });
     return () => {
       cancelled = true;
     };
-  }, [code, initialItem]);
+  }, [code, initialItem, t]);
 
   if (error) {
     return (
@@ -63,7 +65,7 @@ export default function InventoryScanPanel({
           <PackageX className="h-10 w-10 text-red-400" aria-hidden />
         </div>
         <div className="space-y-1 px-2">
-          <h2 className="text-xl font-bold text-white">Not an inventory item</h2>
+          <h2 className="text-xl font-bold text-white">{t('notItem')}</h2>
           <p className="text-sm text-red-400">{error}</p>
         </div>
         <div className="flex gap-2">
@@ -71,13 +73,13 @@ export default function InventoryScanPanel({
             onClick={onCancel}
             className="rounded-xl bg-slate-800 px-6 py-3 font-semibold text-white transition-all hover:bg-slate-700"
           >
-            Go Back
+            {t('goBack')}
           </button>
           <button
             onClick={onDone}
             className="rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white transition-all hover:bg-indigo-500"
           >
-            Scan Another
+            {t('scanAnother')}
           </button>
         </div>
       </div>
@@ -88,7 +90,7 @@ export default function InventoryScanPanel({
     return (
       <div className="flex flex-col items-center gap-4 py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-        <p className="text-sm text-slate-400">Looking up item…</p>
+        <p className="text-sm text-slate-400">{t('lookingUp')}</p>
       </div>
     );
   }
@@ -111,7 +113,7 @@ export default function InventoryScanPanel({
 
         <div className="grid grid-cols-2 gap-3 border-t border-slate-800 pt-3">
           <div>
-            <p className="text-xs text-slate-500">Available</p>
+            <p className="text-xs text-slate-500">{t('available')}</p>
             <p
               className={`text-lg font-bold ${
                 outOfStock ? 'text-red-400' : low ? 'text-amber-400' : 'text-emerald-300'
@@ -119,12 +121,12 @@ export default function InventoryScanPanel({
             >
               {item.availableQty}
               <span className="ml-1 text-xs font-normal text-slate-500">
-                of {item.totalQty} {item.unit}
+                {t('ofTotal', { total: item.totalQty, unit: item.unit })}
               </span>
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-500">Price</p>
+            <p className="text-xs text-slate-500">{t('price')}</p>
             <p className="flex items-center text-lg font-bold text-white">
               <IndianRupee className="h-4 w-4" aria-hidden />
               {item.sellingPrice}
@@ -137,7 +139,7 @@ export default function InventoryScanPanel({
 
         {item.category?.name && (
           <p className="text-sm text-slate-400">
-            <span className="text-slate-500">Category:</span> {item.category.name}
+            <span className="text-slate-500">{t('category')}</span> {item.category.name}
           </p>
         )}
 
@@ -150,7 +152,7 @@ export default function InventoryScanPanel({
             }`}
           >
             <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
-            {outOfStock ? 'Out of stock' : `Low stock — reorder level is ${item.reorderLevel}`}
+            {outOfStock ? t('outOfStock') : t('lowStock', { level: item.reorderLevel ?? 0 })}
           </div>
         )}
       </div>
@@ -160,13 +162,13 @@ export default function InventoryScanPanel({
           href="/dashboard/inventory/sell"
           className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition-all hover:bg-indigo-500"
         >
-          <ShoppingCart className="h-4 w-4" aria-hidden /> Sell
+          <ShoppingCart className="h-4 w-4" aria-hidden /> {t('sell')}
         </Link>
         <Link
           href="/dashboard/inventory/issuances"
           className="flex items-center justify-center gap-2 rounded-xl bg-slate-800 py-3 text-sm font-semibold text-white transition-all hover:bg-slate-700"
         >
-          <BookUp className="h-4 w-4" aria-hidden /> Issue
+          <BookUp className="h-4 w-4" aria-hidden /> {t('issue')}
         </Link>
       </div>
 
@@ -175,13 +177,13 @@ export default function InventoryScanPanel({
           onClick={onCancel}
           className="flex-1 rounded-xl bg-slate-800 py-2.5 text-sm font-medium text-white transition-all hover:bg-slate-700"
         >
-          Done
+          {t('done')}
         </button>
         <button
           onClick={onDone}
           className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white transition-all hover:bg-indigo-500"
         >
-          📷 Scan Another
+          📷 {t('scanAnother')}
         </button>
       </div>
     </div>

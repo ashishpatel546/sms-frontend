@@ -1,0 +1,74 @@
+{
+  "error": {
+    "didNotLoad": "यह लोड नहीं हो सका"
+  },
+  "table": {
+    "empty": "अभी यहाँ कुछ नहीं है",
+    "noData": "कोई डेटा नहीं मिला"
+  },
+  "filter": {
+    "clearSearch": "खोज साफ़ करें"
+  },
+  "pagination": {
+    "label": "पेज नेविगेशन",
+    "showing": "<n>{total}</n> में से <n>{range}</n> दिखाए जा रहे हैं",
+    "records": "<n>{total}</n> रिकॉर्ड",
+    "page": "पेज {page}"
+  },
+  "stamp": {
+    "notMarked": "दर्ज नहीं",
+    "todayAria": "आज की उपस्थिति: {status}",
+    "markedAt": "{time} बजे दर्ज"
+  },
+  "skeleton": {
+    "children": "आपके बच्चों की जानकारी लोड हो रही है",
+    "childrenLong": "आपके बच्चों की जानकारी लोड हो रही है…",
+    "studentRecord": "विद्यार्थी का रिकॉर्ड लोड हो रहा है",
+    "studentRecordLong": "विद्यार्थी का रिकॉर्ड लोड हो रहा है…",
+    "section": "भाग लोड हो रहा है"
+  },
+  "pullToRefresh": {
+    "pulling": "रीफ़्रेश करने के लिए नीचे खींचें",
+    "armed": "रीफ़्रेश करने के लिए छोड़ें",
+    "refreshing": "रीफ़्रेश हो रहा है…",
+    "settling": "सब अपडेट है"
+  },
+  "theme": {
+    "title": "थीम",
+    "appearance": "रूप",
+    "palette": "रंग-पट्टी",
+    "mode": {
+      "light": "लाइट",
+      "dark": "डार्क",
+      "auto": "ऑटो"
+    },
+    "paletteName": {
+      "ink": "रजिस्टर और स्याही",
+      "assembly": "असेंबली"
+    },
+    "paletteHint": {
+      "ink": "अखरोटी रंग की पट्टी, पीतल जैसा ब्रांड रंग",
+      "assembly": "सफ़ेद पृष्ठभूमि, झंडे जैसे रंग"
+    }
+  },
+  "serviceUnavailable": {
+    "title": "सेवा अस्थायी रूप से उपलब्ध नहीं है",
+    "body": "अभी सर्वर से कनेक्ट नहीं हो पा रहा है। कृपया सहायता के लिए अपने स्कूल के व्यवस्थापक से संपर्क करें।"
+  },
+  "pwa": {
+    "fallbackName": "स्कूल प्रबंधन प्रणाली",
+    "installName": "{name} इंस्टॉल करें",
+    "iosHint": "<share></share> पर टैप करें, फिर “Add to Home Screen” चुनें",
+    "menuHint": "<b>⋯</b> मेन्यू → “Add to phone” पर टैप करके इंस्टॉल करें",
+    "benefit": "जल्दी खोलने और ऑफ़लाइन इस्तेमाल के लिए ऐप इंस्टॉल करें",
+    "install": "इंस्टॉल करें",
+    "dismissAria": "इंस्टॉल बैनर बंद करें"
+  },
+  "manifest": {
+    "description": "Colegios द्वारा संचालित एक संपूर्ण स्कूल प्रबंधन प्रणाली।",
+    "dashboard": "डैशबोर्ड",
+    "dashboardHint": "एडमिन डैशबोर्ड पर जाएँ",
+    "parentPortal": "अभिभावक पोर्टल",
+    "parentPortalHint": "अभिभावक पोर्टल पर जाएँ"
+  }
+}

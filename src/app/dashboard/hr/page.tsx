@@ -6,9 +6,15 @@ import { todayLocalDate } from "@/lib/utils";
 import { useRbac } from "@/lib/rbac";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 
 export default function HrOverviewPage() {
   const rbac = useRbac();
+  const t = useTranslations("hr");
+  const tc = useTranslations("common");
+  const locale = useLocale() as Locale;
+  const monthName = (m: number) => new Date(2000, m - 1, 1).toLocaleDateString(INTL_LOCALE[locale], { month: "short" });
   const [runs, setRuns] = useState<PayrollRun[]>([]);
   const [pendingLeaves, setPendingLeaves] = useState<StaffLeaveApplication[]>([]);
   const [todayAttendance, setTodayAttendance] = useState<StaffAttendanceRecord[]>([]);
@@ -39,35 +45,35 @@ export default function HrOverviewPage() {
   const present = todayAttendance.filter((a) => ["PRESENT", "LATE"].includes(a.status)).length;
   const absent = todayAttendance.filter((a) => a.status === "ABSENT").length;
 
-  if (loading) return <div className="p-6 text-sm text-gray-500">Loading HR overview…</div>;
+  if (loading) return <div className="p-6 text-sm text-gray-500">{t("overview.loading")}</div>;
 
   return (
     <div className="p-3 sm:p-6 space-y-6">
       <Toaster />
-      <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">HR Portal Overview</h1>
+      <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t("overview.title")}</h1>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="Present Today" value={present} color="green" />
-        <StatCard label="Absent Today" value={absent} color="red" />
-        <StatCard label="Pending Leaves" value={pendingLeaves.length} color="amber" />
-        <StatCard label="Payroll Runs" value={runs.length} color="blue" />
+        <StatCard label={t("overview.presentToday")} value={present} color="green" />
+        <StatCard label={t("overview.absentToday")} value={absent} color="red" />
+        <StatCard label={t("overview.pendingLeaves")} value={pendingLeaves.length} color="amber" />
+        <StatCard label={t("overview.payrollRuns")} value={runs.length} color="blue" />
       </div>
 
       {/* Pending leaves quick list */}
       {pendingLeaves.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-gray-800">Pending Leave Approvals</h2>
+            <h2 className="font-semibold text-gray-800">{t("overview.pendingApprovals")}</h2>
             <Link href="/dashboard/hr/leaves" className="text-sm text-blue-600 hover:underline">
-              View all
+              {tc("action.viewAll")}
             </Link>
           </div>
           <ul className="divide-y divide-gray-100">
             {pendingLeaves.slice(0, 5).map((l) => (
               <li key={l.id} className="py-2 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5">
-                <span className="text-gray-700">Staff #{l.staffId} — {l.leavePolicy?.name ?? `Policy #${l.leavePolicyId}`}</span>
-                <span className="text-gray-500 text-xs sm:text-sm">{l.fromDate} → {l.toDate} ({l.leaveDays}d)</span>
+                <span className="text-gray-700">{t("overview.staffNo", { id: l.staffId })} — {l.leavePolicy?.name ?? t("overview.policyNo", { id: l.leavePolicyId })}</span>
+                <span className="text-gray-500 text-xs sm:text-sm">{l.fromDate} → {l.toDate} ({t("overview.daysShort", { count: l.leaveDays })})</span>
               </li>
             ))}
           </ul>
@@ -78,19 +84,19 @@ export default function HrOverviewPage() {
       {runs.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-gray-800">Recent Payroll Runs</h2>
+            <h2 className="font-semibold text-gray-800">{t("overview.recentRuns")}</h2>
             <Link href="/dashboard/hr/payroll" className="text-sm text-blue-600 hover:underline">
-              View all
+              {tc("action.viewAll")}
             </Link>
           </div>
           <ul className="divide-y divide-gray-100">
             {runs.map((r) => (
               <li key={r.id} className="py-2 text-sm flex items-center justify-between">
                 <Link href={`/dashboard/hr/payroll/${r.id}`} className="text-blue-600 hover:underline">
-                  {MONTHS[r.month - 1]} {r.year}
+                  {monthName(r.month)} {r.year}
                 </Link>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${r.status === "FINALIZED" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
-                  {r.status}
+                  {t(`payrollStatus.${r.status}`)}
                 </span>
               </li>
             ))}
@@ -101,12 +107,12 @@ export default function HrOverviewPage() {
       {/* Quick links */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {[
-          { href: "/dashboard/hr/staff-attendance", label: "Mark Attendance" },
-          { href: "/dashboard/hr/leaves", label: "Manage Leaves" },
-          { href: "/dashboard/hr/leave-policies", label: "Leave Policies" },
-          { href: "/dashboard/hr/salary-config", label: "Salary Config" },
-          { href: "/dashboard/hr/payroll", label: "Run Payroll" },
-          { href: "/dashboard/hr/staff-attendance/zones", label: "Attendance Zones" },
+          { href: "/dashboard/hr/staff-attendance", label: t("overview.links.markAttendance") },
+          { href: "/dashboard/hr/leaves", label: t("overview.links.manageLeaves") },
+          { href: "/dashboard/hr/leave-policies", label: t("overview.links.leavePolicies") },
+          { href: "/dashboard/hr/salary-config", label: t("overview.links.salaryConfig") },
+          { href: "/dashboard/hr/payroll", label: t("overview.links.runPayroll") },
+          { href: "/dashboard/hr/staff-attendance/zones", label: t("overview.links.attendanceZones") },
         ].map((link) => (
           <Link
             key={link.href}
@@ -120,8 +126,6 @@ export default function HrOverviewPage() {
     </div>
   );
 }
-
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
   const colors: Record<string, string> = {

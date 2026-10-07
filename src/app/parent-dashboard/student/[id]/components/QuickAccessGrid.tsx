@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import {
   SECTION_STYLE,
   MORE_CHIP,
@@ -58,11 +59,12 @@ const Chip = ({
 );
 
 export const QuickAccessGrid = ({ onSelect }: QuickAccessGridProps) => {
+  const t = useTranslations('parent.sections');
   const [expanded, setExpanded] = React.useState(false);
 
   return (
     <div className="rounded-xl border border-line bg-surface p-3.5 shadow-soft">
-      <p className="eyebrow mb-3">Quick access</p>
+      <p className="eyebrow mb-3">{t("quickAccess")}</p>
       <div
         id="quick-access-chips"
         className="grid grid-cols-4 gap-x-2 gap-y-3.5 sm:grid-cols-6"
@@ -72,7 +74,7 @@ export const QuickAccessGrid = ({ onSelect }: QuickAccessGridProps) => {
             key={key}
             gradient={SECTION_STYLE[key].gradient}
             path={SECTION_STYLE[key].path}
-            label={SECTION_STYLE[key].label}
+            label={t(key)}
             onClick={() => onSelect(key)}
           />
         ))}
@@ -82,7 +84,7 @@ export const QuickAccessGrid = ({ onSelect }: QuickAccessGridProps) => {
         <Chip
           gradient={MORE_CHIP.gradient}
           path={MORE_CHIP.path}
-          label={expanded ? 'Less' : 'More'}
+          label={expanded ? t('less') : t('more')}
           onClick={() => setExpanded((v) => !v)}
           expanded={expanded}
           controls="quick-access-chips"
@@ -94,7 +96,7 @@ export const QuickAccessGrid = ({ onSelect }: QuickAccessGridProps) => {
               key={key}
               gradient={SECTION_STYLE[key].gradient}
               path={SECTION_STYLE[key].path}
-              label={SECTION_STYLE[key].label}
+              label={t(key)}
               onClick={() => onSelect(key)}
             />
           ))}

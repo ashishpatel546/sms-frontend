@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Sparkles, MessageCircle, Lightbulb, ListChecks, Map, CreditCard, type LucideIcon } from "lucide-react";
 import { AiFeatureGate } from "@/components/ai/AiFeatureGate";
 import { AiTutorChatTool } from "@/components/ai/tools/AiTutorChatTool";
@@ -11,12 +12,13 @@ import { AiPlanTool } from "@/components/ai/tools/AiPlanTool";
 
 type AiTool = "chat" | "explain" | "quiz" | "learning-path" | "plan";
 
-const TOOLS: { key: AiTool; label: string; icon: LucideIcon }[] = [
-  { key: "chat", label: "Ask AI", icon: MessageCircle },
-  { key: "explain", label: "Explain", icon: Lightbulb },
-  { key: "quiz", label: "Quiz", icon: ListChecks },
-  { key: "learning-path", label: "Learning Path", icon: Map },
-  { key: "plan", label: "My Plan", icon: CreditCard },
+// Labels: `parent.aiTools.tool.<key>`.
+const TOOLS: { key: AiTool; icon: LucideIcon }[] = [
+  { key: "chat", icon: MessageCircle },
+  { key: "explain", icon: Lightbulb },
+  { key: "quiz", icon: ListChecks },
+  { key: "learning-path", icon: Map },
+  { key: "plan", icon: CreditCard },
 ];
 
 interface AiToolsSectionProps {
@@ -25,6 +27,7 @@ interface AiToolsSectionProps {
 }
 
 export function AiToolsSection({ info }: AiToolsSectionProps) {
+  const t = useTranslations("parent.aiTools");
   const [activeTool, setActiveTool] = useState<AiTool>("chat");
   const defaultGrade = info?.className?.match(/\d+/)?.[0] ?? "8";
   const onUpgradeClick = () => setActiveTool("plan");
@@ -40,14 +43,14 @@ export function AiToolsSection({ info }: AiToolsSectionProps) {
             <Sparkles className="size-5.5" />
           </div>
           <div>
-            <h2 className="font-display text-[16px] leading-tight font-semibold text-ink">AI tutor</h2>
-            <p className="text-[12.5px] text-ink-muted">Explanations, quizzes and study plans, tailored to your child</p>
+            <h2 className="font-display text-[16px] leading-tight font-semibold text-ink">{t("title")}</h2>
+            <p className="text-[12.5px] text-ink-muted">{t("subtitle")}</p>
           </div>
         </div>
 
         {/* Sub-tool switcher */}
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-          {TOOLS.map(({ key, label, icon: Icon }) => (
+          {TOOLS.map(({ key, icon: Icon }) => (
             <button
               key={key}
               onClick={() => setActiveTool(key)}
@@ -58,7 +61,7 @@ export function AiToolsSection({ info }: AiToolsSectionProps) {
               }`}
             >
               <Icon className="w-4 h-4 shrink-0" />
-              <span className="text-[11px] leading-tight text-center whitespace-nowrap overflow-hidden w-full">{label}</span>
+              <span className="text-[11px] leading-tight text-center whitespace-nowrap overflow-hidden w-full">{t(`tool.${key}`)}</span>
             </button>
           ))}
         </div>

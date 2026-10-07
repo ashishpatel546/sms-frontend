@@ -8,11 +8,16 @@ import toast, { Toaster } from "react-hot-toast";
 import StaffPicker from "@/components/StaffPicker";
 import { InfoBanner } from "@/components/ui/InfoBanner";
 import NumberInput from "@/components/ui/NumberInput";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 
 type ComponentTab = "components" | "ctc";
 
 export default function SalaryConfigPage() {
   const rbac = useRbac();
+  const t = useTranslations("hr");
+  const tc = useTranslations("common");
+  const locale = useLocale() as Locale;
   const [tab, setTab] = useState<ComponentTab>("ctc");
   const [components, setComponents] = useState<SalaryComponentDef[]>([]);
   const [configs, setConfigs] = useState<EmployeeSalaryConfig[]>([]);
@@ -40,7 +45,7 @@ export default function SalaryConfigPage() {
       ]);
       if (comps.status === "fulfilled") setComponents(comps.value);
       if (cfgs.status === "fulfilled") setConfigs(cfgs.value);
-    } catch { toast.error("Failed to load salary config"); }
+    } catch { toast.error(t("salary.loadFailed")); }
     finally { setLoading(false); }
   };
 
@@ -48,55 +53,54 @@ export default function SalaryConfigPage() {
 
   // Component handlers
   const handleSeedComps = async () => {
-    try { const created = await hrApi.salaryComponents.seedDefaults(); toast.success(`${created.length} defaults seeded`); load(); }
-    catch (e: any) { toast.error(e?.info?.message ?? "Failed"); }
+    try { const created = await hrApi.salaryComponents.seedDefaults(); toast.success(t("salary.seeded", { count: created.length })); load(); }
+    catch (e: any) { toast.error(e?.info?.message ?? t("failed")); }
   };
 
   const handleSaveComp = async () => {
-    if (!compForm.name || !compForm.code) { toast.error("Name and code required"); return; }
+    if (!compForm.name || !compForm.code) { toast.error(t("policies.nameCodeRequired")); return; }
     try {
-      if (compEditId) { await hrApi.salaryComponents.update(compEditId, compForm); toast.success("Updated"); }
-      else { await hrApi.salaryComponents.create(compForm); toast.success("Created"); }
+      if (compEditId) { await hrApi.salaryComponents.update(compEditId, compForm); toast.success(tc("state.updated")); }
+      else { await hrApi.salaryComponents.create(compForm); toast.success(t("salary.created")); }
       setShowCompForm(false); load();
-    } catch (e: any) { toast.error(e?.info?.message ?? "Save failed"); }
+    } catch (e: any) { toast.error(e?.info?.message ?? t("policies.saveFailed")); }
   };
 
   const handleDeleteComp = async (id: number) => {
-    if (!confirm("Delete component?")) return;
-    try { await hrApi.salaryComponents.remove(id); toast.success("Deleted"); load(); }
-    catch (e: any) { toast.error(e?.info?.message ?? "Failed"); }
+    if (!confirm(t("salary.deleteConfirm"))) return;
+    try { await hrApi.salaryComponents.remove(id); toast.success(tc("state.deleted")); load(); }
+    catch (e: any) { toast.error(e?.info?.message ?? t("failed")); }
   };
 
   // CTC handlers
   const handleSaveCtc = async () => {
-    if (!ctcStaffId || !ctcForm.grossCTC || !ctcForm.effectiveFrom) { toast.error("Fill required fields"); return; }
+    if (!ctcStaffId || !ctcForm.grossCTC || !ctcForm.effectiveFrom) { toast.error(t("myLeaves.fillRequired")); return; }
     let overrides: Record<string, number> = {};
     if (ctcForm.componentOverrides.trim()) {
       try { overrides = JSON.parse(ctcForm.componentOverrides); }
-      catch { toast.error("Component overrides must be valid JSON"); return; }
+      catch { toast.error(t("salary.invalidJson")); return; }
     }
     try {
       await hrApi.employeeSalary.create({
         staffId: ctcStaffId, grossCTC: Number(ctcForm.grossCTC),
         effectiveFrom: ctcForm.effectiveFrom, componentOverrides: overrides,
       });
-      toast.success("CTC saved");
+      toast.success(t("salary.ctcSaved"));
       setShowCtcForm(false); load();
-    } catch (e: any) { toast.error(e?.info?.message ?? "Save failed"); }
+    } catch (e: any) { toast.error(e?.info?.message ?? t("policies.saveFailed")); }
   };
 
-  const CALC_LABELS: Record<string, string> = { FLAT: "Flat ₹", PERCENTAGE_OF_BASIC: "% of Basic", PERCENTAGE_OF_GROSS: "% of Gross" };
 
   return (
     <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
-      <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Salary Configuration</h1>
+      <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t("salary.title")}</h1>
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200">
-        {(["ctc", "components"] as ComponentTab[]).map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === t ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
-            {t === "ctc" ? "Employee CTC" : "Salary Components"}
+        {(["ctc", "components"] as ComponentTab[]).map((key) => (
+          <button key={key} onClick={() => setTab(key)} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === key ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+            {key === "ctc" ? t("salary.tabCtc") : t("salary.tabComponents")}
           </button>
         ))}
       </div>
@@ -105,11 +109,12 @@ export default function SalaryConfigPage() {
       {tab === "ctc" && (
         <>
           {/* CTC Info Banner */}
-          <InfoBanner title="Employee CTC (Cost to Company)">
-            Set the <strong>monthly gross salary</strong> for each staff member here. The system uses salary components (defined in the Components tab)
-            to automatically calculate earnings (Basic, HRA, TA, etc.) and deductions (PF, PT, TDS). Each CTC record has an
-            effective date, so you can track salary revisions over time. You can optionally override specific component amounts
-            using the JSON overrides field (e.g. <code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">{'\{"HRA": 15000\}'}</code>).
+          <InfoBanner title={t("salary.ctcInfoTitle")}>
+            {t.rich("salary.ctcInfoBody", {
+              strong: (c) => <strong>{c}</strong>,
+              code: (c) => <code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">{c}</code>,
+              example: '{"HRA": 15000}',
+            })}
           </InfoBanner>
           {rbac.canManagePayroll && (
             <div className="flex justify-end">
@@ -117,14 +122,14 @@ export default function SalaryConfigPage() {
                 setCtcStaffId(null);
                 setCtcForm({ grossCTC: "", effectiveFrom: todayLocalDate(), componentOverrides: "" });
                 setShowCtcForm(true);
-              }} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">+ Set CTC</button>
+              }} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">{t("salary.setCtcButton")}</button>
             </div>
           )}
           {/* Search & Filter */}
           <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
-              placeholder="Search by name, mobile or staff ID…"
+              placeholder={t("salary.searchPlaceholder")}
               value={ctcSearch}
               onChange={(e) => setCtcSearch(e.target.value)}
               className="flex-1 sm:max-w-sm border rounded-lg px-3 py-2 text-sm"
@@ -134,12 +139,12 @@ export default function SalaryConfigPage() {
               onChange={(e) => setCtcStatusFilter(e.target.value as any)}
               className="border rounded-lg px-3 py-2 text-sm text-gray-700"
             >
-              <option value="ACTIVE">Active Only</option>
-              <option value="ALL">All (Including History)</option>
+              <option value="ACTIVE">{t("salary.activeOnly")}</option>
+              <option value="ALL">{t("salary.allHistory")}</option>
             </select>
           </div>
-          {loading ? <p className="text-sm text-gray-500">Loading…</p> : configs.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 text-sm">No CTC configurations yet.</div>
+          {loading ? <p className="text-sm text-gray-500">{tc("state.loading")}</p> : configs.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 text-sm">{t("salary.noCtc")}</div>
           ) : (
             <>
               {/* Mobile cards */}
@@ -155,18 +160,18 @@ export default function SalaryConfigPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="font-semibold text-gray-900">
-                          {c.staff ? `${c.staff.user.firstName} ${c.staff.user.lastName}` : `Staff #${c.staffId}`}
+                          {c.staff ? `${c.staff.user.firstName} ${c.staff.user.lastName}` : t("overview.staffNo", { id: c.staffId })}
                         </span>
                         {c.staff?.designation && <p className="text-xs text-gray-500">{c.staff.designation}</p>}
                         {c.staff?.user?.mobile && <p className="text-xs text-gray-400">{c.staff.user.mobile}</p>}
                       </div>
-                      <span className="font-medium text-blue-700">₹{Number(c.grossCTC).toLocaleString("en-IN")}</span>
+                      <span className="font-medium text-blue-700">₹{Number(c.grossCTC).toLocaleString(INTL_LOCALE[locale])}</span>
                     </div>
                     <div className="text-xs text-gray-600 space-y-0.5">
-                      <div><span className="text-gray-400">From: </span>{c.effectiveFrom}</div>
-                      <div><span className="text-gray-400">To: </span>{c.effectiveTo ?? <span className="text-green-600 font-medium">Current</span>}</div>
+                      <div><span className="text-gray-400">{t("salary.fromLabel")} </span>{c.effectiveFrom}</div>
+                      <div><span className="text-gray-400">{t("salary.toLabel")} </span>{c.effectiveTo ?? <span className="text-green-600 font-medium">{t("salary.current")}</span>}</div>
                       {Object.keys(c.componentOverrides ?? {}).length > 0 && (
-                        <div className="truncate"><span className="text-gray-400">Overrides: </span>{JSON.stringify(c.componentOverrides)}</div>
+                        <div className="truncate"><span className="text-gray-400">{t("salary.overridesLabel")} </span>{JSON.stringify(c.componentOverrides)}</div>
                       )}
                     </div>
                     {rbac.canManagePayroll && !c.effectiveTo && (
@@ -183,7 +188,7 @@ export default function SalaryConfigPage() {
                           }}
                           className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                         >
-                          Revise CTC
+                          {t("salary.reviseCtc")}
                         </button>
                       </div>
                     )}
@@ -196,12 +201,12 @@ export default function SalaryConfigPage() {
                 <table className="min-w-full text-sm">
                   <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
                     <tr>
-                      <th className="px-4 py-3 text-left">Staff</th>
-                      <th className="px-4 py-3 text-left">Monthly Gross CTC (₹)</th>
-                      <th className="px-4 py-3 text-left">Effective From</th>
-                      <th className="px-4 py-3 text-left">Effective To</th>
-                      <th className="px-4 py-3 text-left">Overrides</th>
-                      {rbac.canManagePayroll && <th className="px-4 py-3 text-right">Actions</th>}
+                      <th className="px-4 py-3 text-left">{t("leaves.staff")}</th>
+                      <th className="px-4 py-3 text-left">{t("run.monthlyGrossCtc")}</th>
+                      <th className="px-4 py-3 text-left">{t("salary.effectiveFrom")}</th>
+                      <th className="px-4 py-3 text-left">{t("salary.effectiveTo")}</th>
+                      <th className="px-4 py-3 text-left">{t("salary.overrides")}</th>
+                      {rbac.canManagePayroll && <th className="px-4 py-3 text-right">{tc("action.actions")}</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -220,13 +225,13 @@ export default function SalaryConfigPage() {
                           {c.staff?.designation && <div className="text-xs text-gray-500">{c.staff.designation}</div>}
                           {c.staff?.user?.mobile && <div className="text-xs text-gray-400">{c.staff.user.mobile}</div>}
                         </td>
-                        <td className="px-4 py-3 font-medium">₹{Number(c.grossCTC).toLocaleString("en-IN")}</td>
+                        <td className="px-4 py-3 font-medium">₹{Number(c.grossCTC).toLocaleString(INTL_LOCALE[locale])}</td>
                         <td className="px-4 py-3">{c.effectiveFrom}</td>
                         <td className="px-4 py-3">
                           {c.effectiveTo ? (
                             <span className="text-gray-600">{c.effectiveTo}</span>
                           ) : (
-                            <span className="text-green-600 font-medium">Current</span>
+                            <span className="text-green-600 font-medium">{t("salary.current")}</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-xs text-gray-500 max-w-xs truncate">
@@ -247,7 +252,7 @@ export default function SalaryConfigPage() {
                                 }}
                                 className="text-blue-600 hover:text-blue-800 font-medium px-2 py-1"
                               >
-                                Revise CTC
+                                {t("salary.reviseCtc")}
                               </button>
                             )}
                           </td>
@@ -266,21 +271,17 @@ export default function SalaryConfigPage() {
       {tab === "components" && (
         <>
           {/* Components Info Banner */}
-          <InfoBanner title="Salary Components" variant="amber">
-            Salary components define <strong>how gross CTC is split</strong> into individual line items on salary slips.
-            <strong>Earnings</strong> (Basic, HRA, TA, Special Allowance) add to take-home pay.
-            <strong>Deductions</strong> (PF — Provident Fund, PT — Professional Tax, TDS) are subtracted.
-            Click <strong>Seed Defaults</strong> to add standard Indian payroll components automatically.
-            Components with <em>% of Basic</em> or <em>% of Gross</em> calculation are recomputed each payroll run.
+          <InfoBanner title={t("salary.tabComponents")} variant="amber">
+            {t.rich("salary.compInfoBody", { strong: (c) => <strong>{c}</strong>, em: (c) => <em>{c}</em> })}
           </InfoBanner>
           {rbac.canManagePayroll && (
             <div className="flex gap-2 justify-end">
-              <button onClick={handleSeedComps} className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">Seed Defaults</button>
-              <button onClick={() => { setCompForm(EMPTY_COMP); setCompEditId(null); setShowCompForm(true); }} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">+ Add Component</button>
+              <button onClick={handleSeedComps} className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">{t("salary.seedDefaults")}</button>
+              <button onClick={() => { setCompForm(EMPTY_COMP); setCompEditId(null); setShowCompForm(true); }} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">{t("salary.addComponent")}</button>
             </div>
           )}
-          {loading ? <p className="text-sm text-gray-500">Loading…</p> : components.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 text-sm">No components. Click "Seed Defaults" to add standard components.</div>
+          {loading ? <p className="text-sm text-gray-500">{tc("state.loading")}</p> : components.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 text-sm">{t("salary.noComponents")}</div>
           ) : (
             <>
               {/* Mobile cards */}
@@ -292,16 +293,16 @@ export default function SalaryConfigPage() {
                         <p className="font-medium text-gray-900 text-sm">{c.name}</p>
                         <p className="text-xs text-gray-500 font-mono">{c.code}</p>
                       </div>
-                      <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs ${c.type === "EARNING" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>{c.type}</span>
+                      <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs ${c.type === "EARNING" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>{t(`salary.compType.${c.type}`)}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs text-gray-600">
-                      <span>{CALC_LABELS[c.calcType]} · {c.calcType === "FLAT" ? `₹${c.value}` : `${c.value}%`}</span>
-                      <span className={`px-2 py-0.5 rounded-full border ${c.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}>{c.isActive ? "Active" : "Inactive"}</span>
+                      <span>{t(`salary.calc.${c.calcType}`)} · {c.calcType === "FLAT" ? `₹${c.value}` : `${c.value}%`}</span>
+                      <span className={`px-2 py-0.5 rounded-full border ${c.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}>{c.isActive ? tc("status.active") : tc("status.inactive")}</span>
                     </div>
                     {rbac.canManagePayroll && (
                       <div className="flex gap-3">
-                        <button onClick={() => { setCompForm({ ...c }); setCompEditId(c.id); setShowCompForm(true); }} className="text-blue-600 hover:underline text-xs">Edit</button>
-                        <button onClick={() => handleDeleteComp(c.id)} className="text-red-600 hover:underline text-xs">Delete</button>
+                        <button onClick={() => { setCompForm({ ...c }); setCompEditId(c.id); setShowCompForm(true); }} className="text-blue-600 hover:underline text-xs">{tc("action.edit")}</button>
+                        <button onClick={() => handleDeleteComp(c.id)} className="text-red-600 hover:underline text-xs">{tc("action.delete")}</button>
                       </div>
                     )}
                   </div>
@@ -313,13 +314,13 @@ export default function SalaryConfigPage() {
                 <table className="min-w-full text-sm">
                   <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
                     <tr>
-                      <th className="px-4 py-3 text-left">Name</th>
-                      <th className="px-4 py-3 text-left">Code</th>
-                      <th className="px-4 py-3 text-left">Type</th>
-                      <th className="px-4 py-3 text-left">Calc</th>
-                      <th className="px-4 py-3 text-left">Value</th>
-                      <th className="px-4 py-3 text-left">Status</th>
-                      {rbac.canManagePayroll && <th className="px-4 py-3 text-left">Actions</th>}
+                      <th className="px-4 py-3 text-left">{tc("field.name")}</th>
+                      <th className="px-4 py-3 text-left">{t("policies.code")}</th>
+                      <th className="px-4 py-3 text-left">{tc("field.type")}</th>
+                      <th className="px-4 py-3 text-left">{t("salary.calcShort")}</th>
+                      <th className="px-4 py-3 text-left">{t("salary.value")}</th>
+                      <th className="px-4 py-3 text-left">{tc("field.status")}</th>
+                      {rbac.canManagePayroll && <th className="px-4 py-3 text-left">{tc("action.actions")}</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -328,19 +329,19 @@ export default function SalaryConfigPage() {
                         <td className="px-4 py-3 font-medium">{c.name}</td>
                         <td className="px-4 py-3 font-mono text-xs">{c.code}</td>
                         <td className="px-4 py-3">
-                          <span className={`px-2 py-0.5 rounded-full text-xs ${c.type === "EARNING" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>{c.type}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs ${c.type === "EARNING" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>{t(`salary.compType.${c.type}`)}</span>
                         </td>
-                        <td className="px-4 py-3 text-xs text-gray-600">{CALC_LABELS[c.calcType]}</td>
+                        <td className="px-4 py-3 text-xs text-gray-600">{t(`salary.calc.${c.calcType}`)}</td>
                         <td className="px-4 py-3">{c.calcType === "FLAT" ? `₹${c.value}` : `${c.value}%`}</td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-0.5 rounded-full text-xs border ${c.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}>
-                            {c.isActive ? "Active" : "Inactive"}
+                            {c.isActive ? tc("status.active") : tc("status.inactive")}
                           </span>
                         </td>
                         {rbac.canManagePayroll && (
                           <td className="px-4 py-3 flex gap-2">
-                            <button onClick={() => { setCompForm({ ...c }); setCompEditId(c.id); setShowCompForm(true); }} className="text-blue-600 hover:underline text-xs">Edit</button>
-                            <button onClick={() => handleDeleteComp(c.id)} className="text-red-600 hover:underline text-xs">Delete</button>
+                            <button onClick={() => { setCompForm({ ...c }); setCompEditId(c.id); setShowCompForm(true); }} className="text-blue-600 hover:underline text-xs">{tc("action.edit")}</button>
+                            <button onClick={() => handleDeleteComp(c.id)} className="text-red-600 hover:underline text-xs">{tc("action.delete")}</button>
                           </td>
                         )}
                       </tr>
@@ -357,47 +358,47 @@ export default function SalaryConfigPage() {
       {showCompForm && (
         <div className="fixed inset-0 bg-walnut-950/55 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 w-full sm:max-w-md space-y-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="font-semibold text-lg">{compEditId ? "Edit" : "New"} Component</h2>
+            <h2 className="font-semibold text-lg">{compEditId ? t("salary.editComponent") : t("salary.newComponent")}</h2>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
-                <label className="text-sm font-medium">Name</label>
+                <label className="text-sm font-medium">{tc("field.name")}</label>
                 <input value={compForm.name ?? ""} onChange={(e) => setCompForm((f) => ({ ...f, name: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
               </div>
               <div>
-                <label className="text-sm font-medium">Code</label>
+                <label className="text-sm font-medium">{t("policies.code")}</label>
                 <input value={compForm.code ?? ""} onChange={(e) => setCompForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1 font-mono" />
               </div>
               <div>
-                <label className="text-sm font-medium">Type</label>
+                <label className="text-sm font-medium">{tc("field.type")}</label>
                 <select value={compForm.type ?? "EARNING"} onChange={(e) => setCompForm((f) => ({ ...f, type: e.target.value as any }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1">
-                  <option value="EARNING">Earning</option>
-                  <option value="DEDUCTION">Deduction</option>
+                  <option value="EARNING">{t("salary.compType.EARNING")}</option>
+                  <option value="DEDUCTION">{t("salary.compType.DEDUCTION")}</option>
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium">Calculation</label>
+                <label className="text-sm font-medium">{t("salary.calculation")}</label>
                 <select value={compForm.calcType ?? "FLAT"} onChange={(e) => setCompForm((f) => ({ ...f, calcType: e.target.value as any }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1">
-                  <option value="FLAT">Flat ₹</option>
-                  <option value="PERCENTAGE_OF_BASIC">% of Basic</option>
-                  <option value="PERCENTAGE_OF_GROSS">% of Gross</option>
+                  <option value="FLAT">{t("salary.calc.FLAT")}</option>
+                  <option value="PERCENTAGE_OF_BASIC">{t("salary.calc.PERCENTAGE_OF_BASIC")}</option>
+                  <option value="PERCENTAGE_OF_GROSS">{t("salary.calc.PERCENTAGE_OF_GROSS")}</option>
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium">Value</label>
+                <label className="text-sm font-medium">{t("salary.value")}</label>
                 <NumberInput step="any" min={0} value={compForm.value ?? 0} emptyValue={0} onChange={(v) => setCompForm((f) => ({ ...f, value: v ?? 0 }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
               </div>
               <div>
-                <label className="text-sm font-medium">Display Order</label>
+                <label className="text-sm font-medium">{t("salary.displayOrder")}</label>
                 <NumberInput min={0} value={compForm.displayOrder ?? 0} emptyValue={0} onChange={(v) => setCompForm((f) => ({ ...f, displayOrder: v ?? 0 }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
               </div>
               <div className="flex items-center gap-2">
                 <input id="ca" type="checkbox" checked={compForm.isActive ?? true} onChange={(e) => setCompForm((f) => ({ ...f, isActive: e.target.checked }))} className="rounded" />
-                <label htmlFor="ca" className="text-sm">Active</label>
+                <label htmlFor="ca" className="text-sm">{tc("status.active")}</label>
               </div>
             </div>
             <div className="flex gap-2 justify-end pt-2">
-              <button onClick={() => setShowCompForm(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleSaveComp} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
+              <button onClick={() => setShowCompForm(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">{tc("action.cancel")}</button>
+              <button onClick={handleSaveComp} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">{tc("action.save")}</button>
             </div>
           </div>
         </div>
@@ -407,28 +408,28 @@ export default function SalaryConfigPage() {
       {showCtcForm && (
         <div className="fixed inset-0 bg-walnut-950/55 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm space-y-4">
-            <h2 className="font-semibold text-lg">Set Employee CTC</h2>
+            <h2 className="font-semibold text-lg">{t("salary.setCtcTitle")}</h2>
             <StaffPicker
-              label="Staff Member"
+              label={t("leaves.staffMember")}
               value={ctcStaffId}
               onChange={(id) => setCtcStaffId(id)}
               required
             />
             <div>
-              <label className="text-sm font-medium">Monthly Gross CTC (₹ / month)</label>
+              <label className="text-sm font-medium">{t("salary.grossLabel")}</label>
               <input type="number" min={0} value={ctcForm.grossCTC} onChange={(e) => setCtcForm((f) => ({ ...f, grossCTC: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
             </div>
             <div>
-              <label className="text-sm font-medium">Effective From</label>
+              <label className="text-sm font-medium">{t("salary.effectiveFrom")}</label>
               <input type="date" value={ctcForm.effectiveFrom} onChange={(e) => setCtcForm((f) => ({ ...f, effectiveFrom: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
             </div>
             <div>
-              <label className="text-sm font-medium">Component Overrides (JSON, optional)</label>
-              <textarea value={ctcForm.componentOverrides} onChange={(e) => setCtcForm((f) => ({ ...f, componentOverrides: e.target.value }))} placeholder={'e.g. {"HRA": 15000, "TA": 2000}'} rows={3} className="w-full border rounded-lg px-3 py-2 text-sm mt-1 font-mono" />
+              <label className="text-sm font-medium">{t("salary.overridesField")}</label>
+              <textarea value={ctcForm.componentOverrides} onChange={(e) => setCtcForm((f) => ({ ...f, componentOverrides: e.target.value }))} placeholder={t("salary.overridesPlaceholder", { example: '{"HRA": 15000, "TA": 2000}' })} rows={3} className="w-full border rounded-lg px-3 py-2 text-sm mt-1 font-mono" />
             </div>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowCtcForm(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleSaveCtc} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
+              <button onClick={() => setShowCtcForm(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">{tc("action.cancel")}</button>
+              <button onClick={handleSaveCtc} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">{tc("action.save")}</button>
             </div>
           </div>
         </div>

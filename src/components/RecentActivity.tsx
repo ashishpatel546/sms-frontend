@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { authFetch } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
 import {
@@ -39,15 +40,16 @@ const ACTION_META: Record<string, { Icon: LucideIcon; pigment: Pigment }> = {
   ACTIVITY_ARCHIVED:    { Icon: Archive,      pigment: "neutral" },
 };
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, t: ReturnType<typeof useTranslations<"dashboard">>): string {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (diff < 60) return "just now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 60) return t("activity.justNow");
+  if (diff < 3600) return t("activity.minutesAgo", { count: Math.floor(diff / 60) });
+  if (diff < 86400) return t("activity.hoursAgo", { count: Math.floor(diff / 3600) });
+  return t("activity.daysAgo", { count: Math.floor(diff / 86400) });
 }
 
 export default function RecentActivity() {
+  const t = useTranslations("dashboard");
   const [logs, setLogs] = useState<ActivityLogEntry[]>([]);
   const [limit, setLimit] = useState(10);
   const [loading, setLoading] = useState(true);
@@ -72,19 +74,19 @@ export default function RecentActivity() {
   return (
     <Panel>
       <PanelHeader
-        title="Recent activity"
+        title={t("activity.title")}
         action={
           <label className="flex items-center gap-2">
-            <span className="eyebrow">Show</span>
+            <span className="eyebrow">{t("activity.show")}</span>
             <select
               value={limit}
               onChange={(e) => setLimit(Number(e.target.value))}
               className="cursor-pointer rounded-md border border-line-strong bg-surface px-2 py-1 text-[12px] text-ink"
-              aria-label="Number of entries to show"
+              aria-label={t("activity.showAria")}
             >
-              <option value={10}>Last 10</option>
-              <option value={20}>Last 20</option>
-              <option value={50}>Last 50</option>
+              <option value={10}>{t("activity.lastN", { count: 10 })}</option>
+              <option value={20}>{t("activity.lastN", { count: 20 })}</option>
+              <option value={50}>{t("activity.lastN", { count: 50 })}</option>
             </select>
           </label>
         }
@@ -103,8 +105,8 @@ export default function RecentActivity() {
         <EmptyState
           compact
           icon={<ClipboardList />}
-          title="Nothing logged yet"
-          description="Approvals, edits and gate events will appear here as staff work through the day."
+          title={t("activity.emptyTitle")}
+          description={t("activity.emptyBody")}
         />
       ) : (
         <ul className="max-h-72 divide-y divide-line overflow-y-auto">
@@ -126,7 +128,7 @@ export default function RecentActivity() {
                       {log.description ?? log.action}
                     </p>
                     <span className="tabular mt-0.5 shrink-0 text-[11.5px] whitespace-nowrap text-ink-faint">
-                      {timeAgo(log.createdAt)}
+                      {timeAgo(log.createdAt, t)}
                     </span>
                   </div>
                   {log.actorName && (

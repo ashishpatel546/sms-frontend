@@ -2,11 +2,16 @@
 
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 import { authFetch } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
 import { sortByName } from "@/lib/utils";
 
 export default function FeeRemindersTab() {
+  const t = useTranslations("notifications.feeReminders");
+  const tc = useTranslations("common");
+  const locale = useLocale() as Locale;
   const [sessions, setSessions] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
@@ -125,7 +130,7 @@ export default function FeeRemindersTab() {
 
   const handleSendReminder = () => {
     if (!selectedClassId || !selectedSectionId) {
-      toast.error("Please select a class and section first.");
+      toast.error(t("selectClassSection"));
       return;
     }
     setShowModal(true);
@@ -133,7 +138,7 @@ export default function FeeRemindersTab() {
 
   const confirmSend = async () => {
     if (useCustomMessage && !customMessage.trim()) {
-      toast.error("Please enter a custom message.");
+      toast.error(t("enterCustomMessage"));
       return;
     }
     
@@ -158,8 +163,8 @@ export default function FeeRemindersTab() {
       if (checkRes.ok) {
         const { isDuplicate, sentAt } = await checkRes.json();
         if (isDuplicate) {
-          const sentDate = new Date(sentAt).toLocaleString();
-          const confirmed = window.confirm(`A Fee Payment Reminder was already sent to these exact students on ${sentDate}. Are you sure you want to send it again?`);
+          const sentDate = new Date(sentAt).toLocaleString(INTL_LOCALE[locale]);
+          const confirmed = window.confirm(t("duplicateConfirm", { date: sentDate }));
           if (!confirmed) {
             setSendingNotif(false);
             return;
@@ -174,17 +179,17 @@ export default function FeeRemindersTab() {
       });
 
       if (res.ok) {
-        toast.success("Fee reminder sent successfully!");
+        toast.success(t("sent"));
         setShowModal(false);
         setCustomMessage("");
         setUseCustomMessage(false);
       } else {
         const errData = await res.json();
-        toast.error(errData.message || "Failed to send reminder.");
+        toast.error(errData.message || t("sendFailed"));
       }
     } catch (err) {
       console.error(err);
-      toast.error("An error occurred. Please try again.");
+      toast.error(t("error"));
     } finally {
       setSendingNotif(false);
     }
@@ -193,44 +198,44 @@ export default function FeeRemindersTab() {
   return (
     <div className="space-y-6">
       <div className="bg-white border text-card-foreground shadow-sm rounded-xl overflow-hidden p-6">
-        <h3 className="text-lg font-semibold mb-4 text-slate-800">Fee Reminder Broadcast</h3>
-        <p className="text-sm text-slate-500 mb-6">Select class and section to send fee reminder to all students in that group.</p>
+        <h3 className="text-lg font-semibold mb-4 text-slate-800">{t("title")}</h3>
+        <p className="text-sm text-slate-500 mb-6">{t("subtitle")}</p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-slate-700">Academic Session</label>
+            <label className="text-sm font-semibold text-slate-700">{t("session")}</label>
             <select
               value={selectedSessionId}
               onChange={(e) => setSelectedSessionId(e.target.value)}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand/40 text-sm"
             >
               {sessions.map((s) => (
-                <option key={s.id} value={s.id}>{s.name} {s.isActive ? '(Active)' : ''}</option>
+                <option key={s.id} value={s.id}>{s.name} {s.isActive ? t("activeSuffix") : ''}</option>
               ))}
             </select>
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-slate-700">Class</label>
+            <label className="text-sm font-semibold text-slate-700">{tc("field.class")}</label>
             <select
               value={selectedClassId}
               onChange={handleClassChange}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand/40 text-sm"
             >
-              <option value="">-- Select Class --</option>
+              <option value="">{t("selectClass")}</option>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-slate-700">Section <span className="text-red-500">*</span></label>
+            <label className="text-sm font-semibold text-slate-700">{tc("field.section")} <span className="text-red-500">*</span></label>
             <select
               value={selectedSectionId}
               onChange={(e) => setSelectedSectionId(e.target.value)}
               disabled={!selectedClassId || sections.length === 0}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand/40 text-sm disabled:opacity-50"
             >
-              <option value="">{selectedClassId ? '-- Select Section --' : '-- Select Class First --'}</option>
+              <option value="">{selectedClassId ? t("selectSection") : t("selectClassFirst")}</option>
               {sections.map((sec) => (
                 <option key={sec.id} value={sec.id}>{sec.name}</option>
               ))}
@@ -241,15 +246,15 @@ export default function FeeRemindersTab() {
         {selectedClassId && selectedSectionId && (
           <div className="mb-6 p-5 border border-slate-200 rounded-xl bg-slate-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <p className="text-sm text-slate-600 font-medium">Students in selection: <span className="text-lg font-bold text-slate-900">{loadingStudents ? '...' : students.length}</span></p>
-              <p className="text-xs text-slate-500 mt-1">Fee payment reminder will be sent to parents of all students with pending dues in selected class &amp; section.</p>
+              <p className="text-sm text-slate-600 font-medium">{t.rich("studentsInSelection", { count: loadingStudents ? '...' : students.length, b: (c) => <span className="text-lg font-bold text-slate-900">{c}</span> })}</p>
+              <p className="text-xs text-slate-500 mt-1">{t("selectionHint")}</p>
             </div>
             <button
               onClick={handleSendReminder}
               disabled={!selectedClassId || !selectedSectionId || loadingStudents || students.length === 0}
               className="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg disabled:opacity-50 transition"
             >
-              Send Reminder
+              {t("sendReminder")}
             </button>
           </div>
         )}
@@ -257,12 +262,12 @@ export default function FeeRemindersTab() {
         {selectedClassId && selectedSectionId && (
           <>
             <div className="mb-4">
-              <h4 className="text-md font-semibold text-slate-800">Student List Reference</h4>
-              <p className="text-xs text-slate-500">Review the list of students who will receive this reminder.</p>
+              <h4 className="text-md font-semibold text-slate-800">{t("listTitle")}</h4>
+              <p className="text-xs text-slate-500">{t("listHint")}</p>
             </div>
             {/* Student list */}
             {loadingStudents ? (
-              <div className="text-center py-8 text-slate-400 text-sm">Loading students...</div>
+              <div className="text-center py-8 text-slate-400 text-sm">{t("loadingStudents")}</div>
             ) : students.length > 0 ? (
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <table className="w-full text-sm">
@@ -270,19 +275,19 @@ export default function FeeRemindersTab() {
                     <tr className="bg-slate-50 border-b border-slate-200">
                       <th className="text-left px-4 py-3 font-semibold text-slate-600 w-10">#</th>
                       <th className="text-left px-4 py-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 select-none" onClick={() => handleSort('firstName')}>
-                        <div className="flex items-center gap-1">Name <span className="text-gray-400 text-xs">{sortColumn === 'firstName' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span></div>
+                        <div className="flex items-center gap-1">{t("colName")} <span className="text-gray-400 text-xs">{sortColumn === 'firstName' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span></div>
                       </th>
                       <th className="text-left px-4 py-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 select-none" onClick={() => handleSort('rollNo')}>
-                        <div className="flex items-center gap-1">Roll No <span className="text-gray-400 text-xs">{sortColumn === 'rollNo' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span></div>
+                        <div className="flex items-center gap-1">{t("colRoll")} <span className="text-gray-400 text-xs">{sortColumn === 'rollNo' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span></div>
                       </th>
                       <th className="text-left px-4 py-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 select-none" onClick={() => handleSort('sectionName')}>
-                        <div className="flex items-center gap-1">Section <span className="text-gray-400 text-xs">{sortColumn === 'sectionName' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span></div>
+                        <div className="flex items-center gap-1">{t("colSection")} <span className="text-gray-400 text-xs">{sortColumn === 'sectionName' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span></div>
                       </th>
                       <th className="text-left px-4 py-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 select-none" onClick={() => handleSort('mobile')}>
-                        <div className="flex items-center gap-1">Mobile <span className="text-gray-400 text-xs">{sortColumn === 'mobile' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span></div>
+                        <div className="flex items-center gap-1">{t("colMobile")} <span className="text-gray-400 text-xs">{sortColumn === 'mobile' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span></div>
                       </th>
                       <th className="text-right px-4 py-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 select-none" onClick={() => handleSort('pendingAmount')}>
-                        <div className="flex items-center justify-end gap-1">Pending Dues <span className="text-gray-400 text-xs">{sortColumn === 'pendingAmount' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span></div>
+                        <div className="flex items-center justify-end gap-1">{t("colPending")} <span className="text-gray-400 text-xs">{sortColumn === 'pendingAmount' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span></div>
                       </th>
                     </tr>
                   </thead>
@@ -296,7 +301,7 @@ export default function FeeRemindersTab() {
                           <td className="px-4 py-3 text-slate-500">{s.rollNo || '—'}</td>
                           <td className="px-4 py-3 text-slate-500">{s.sectionName || '—'}</td>
                           <td className="px-4 py-3 text-slate-500">{s.mobile || '—'}</td>
-                          <td className="px-4 py-3 text-red-600 font-medium text-right">₹{s.pendingAmount?.toLocaleString() || '0'}</td>
+                          <td className="px-4 py-3 text-red-600 font-medium text-right">₹{s.pendingAmount?.toLocaleString(INTL_LOCALE[locale]) || '0'}</td>
                         </tr>
                       ))}
                   </tbody>
@@ -306,7 +311,7 @@ export default function FeeRemindersTab() {
                 {Math.ceil(students.length / STUDENTS_PER_PAGE) > 1 && (
                   <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-slate-50">
                     <span className="text-xs text-slate-500">
-                      Showing {(studentsPage - 1) * STUDENTS_PER_PAGE + 1}–{Math.min(studentsPage * STUDENTS_PER_PAGE, students.length)} of {students.length} students
+                      {t("showing", { from: (studentsPage - 1) * STUDENTS_PER_PAGE + 1, to: Math.min(studentsPage * STUDENTS_PER_PAGE, students.length), total: students.length })}
                     </span>
                     <div className="flex items-center gap-1">
                       <button
@@ -314,7 +319,7 @@ export default function FeeRemindersTab() {
                         disabled={studentsPage === 1}
                         className="px-3 py-1.5 text-xs font-medium rounded-md border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 transition"
                       >
-                        Previous
+                        {tc("action.previous")}
                       </button>
                       {Array.from({ length: Math.ceil(students.length / STUDENTS_PER_PAGE) }, (_, i) => i + 1)
                         .filter(p => p === 1 || p === Math.ceil(students.length / STUDENTS_PER_PAGE) || Math.abs(p - studentsPage) <= 1)
@@ -345,14 +350,14 @@ export default function FeeRemindersTab() {
                         disabled={studentsPage === Math.ceil(students.length / STUDENTS_PER_PAGE)}
                         className="px-3 py-1.5 text-xs font-medium rounded-md border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 transition"
                       >
-                        Next
+                        {tc("action.next")}
                       </button>
                     </div>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="text-center py-8 text-slate-400 text-sm">No students found in the selected section.</div>
+              <div className="text-center py-8 text-slate-400 text-sm">{t("noStudents")}</div>
             )}
           </>
         )}
@@ -366,29 +371,29 @@ export default function FeeRemindersTab() {
                 <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
-                Send Fee Reminder
+                {t("modalTitle")}
               </h3>
-              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 transition">
+              <button onClick={() => setShowModal(false)} aria-label={tc("action.close")} className="text-slate-400 hover:text-slate-600 transition">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
               </button>
             </div>
             <div className="p-6 space-y-5">
               <div className="bg-indigo-50 text-indigo-700 p-3 rounded-lg text-sm border border-indigo-100 flex gap-3 items-center">
                 <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <span>Will notify parents of <strong>{students.length}</strong> selected student(s).</span>
+                <span>{t.rich("willNotify", { count: students.length, strong: (c) => <strong>{c}</strong> })}</span>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Notification Title</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">{t("notificationTitle")}</label>
                 <input type="text" value="Fee Payment Reminder" disabled className="w-full border-slate-200 bg-slate-50 text-slate-500 rounded-lg p-2.5 text-sm" />
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-semibold text-slate-700">Message Content</label>
+                  <label className="text-sm font-semibold text-slate-700">{t("messageContent")}</label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={useCustomMessage} onChange={(e) => setUseCustomMessage(e.target.checked)} className="rounded border-slate-300 text-indigo-600 focus:ring-brand/40" />
-                    <span className="text-xs text-slate-600 font-medium">Use custom message</span>
+                    <span className="text-xs text-slate-600 font-medium">{t("useCustom")}</span>
                   </label>
                 </div>
                 
@@ -396,7 +401,7 @@ export default function FeeRemindersTab() {
                   <textarea
                     value={customMessage}
                     onChange={(e) => setCustomMessage(e.target.value)}
-                    placeholder="Write your custom reminder message here..."
+                    placeholder={t("customPlaceholder")}
                     className="w-full border-slate-300 rounded-lg p-3 text-sm focus:ring-brand/40 focus:border-brand min-h-30"
                   />
                 ) : (
@@ -412,14 +417,14 @@ export default function FeeRemindersTab() {
                 disabled={sendingNotif}
                 className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-200 bg-slate-100 rounded-lg transition"
               >
-                Cancel
+                {tc("action.cancel")}
               </button>
               <button
                 onClick={confirmSend}
                 disabled={sendingNotif || (useCustomMessage && !customMessage.trim())}
                 className="px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow transition flex items-center gap-2 disabled:opacity-50"
               >
-                {sendingNotif ? 'Sending...' : 'Send Now'}
+                {sendingNotif ? t("sending") : t("sendNow")}
               </button>
             </div>
           </div>

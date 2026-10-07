@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE } from "@/i18n/config";
 import { authFetch } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
 import { clearAiAccessCache } from "@/lib/ai-access";
@@ -91,10 +93,10 @@ const PLAN_BADGE_COLOR: Record<string, string> = {
   topup:        "bg-green-100 text-green-700",
 };
 
-const MODEL_TIERS: Record<number, string> = {
-  1: "Basic",
-  2: "Standard",
-  3: "Advanced",
+const MODEL_TIER_KEYS: Record<number, "basic" | "standard" | "advanced"> = {
+  1: "basic",
+  2: "standard",
+  3: "advanced",
 };
 
 // Distinct, eye-catching colours per AI model tier so users can see at a
@@ -112,17 +114,14 @@ function tierBadgeClass(tier?: number): string {
   return TIER_BADGE_COLORS[(t - 1) % TIER_BADGE_COLORS.length] ?? TIER_BADGE_COLORS[0];
 }
 
-const FEATURE_LABELS: Record<string, string> = {
-  chat:           "AI Chat / Tutoring",
-  quiz:           "Practice Quiz",
-  explain_topic:  "Explain Topic",
-  lesson_plan:    "Lesson Plan Generator",
-  question_paper: "Question Paper Generator",
-  worksheet:      "Worksheet Generator",
-  assignment:     "Assignment Suggestions",
-  learning_path:  "Personalized Learning Path",
-  teacher_chat:   "Teacher Chat",
-};
+// Labels live in messages (ai.tools.plan.feature.*).
+const FEATURE_KEYS = [
+  "chat", "quiz", "explain_topic", "lesson_plan", "question_paper",
+  "worksheet", "assignment", "learning_path", "teacher_chat",
+] as const;
+type FeatureKey = (typeof FEATURE_KEYS)[number];
+const isFeatureKey = (key: string): key is FeatureKey =>
+  (FEATURE_KEYS as readonly string[]).includes(key);
 
 // ─── Razorpay loader ──────────────────────────────────────────────────────────
 function loadRazorpay(): Promise<boolean> {
@@ -137,6 +136,12 @@ function loadRazorpay(): Promise<boolean> {
 }
 
 export function AiPlanTool() {
+  const t = useTranslations("ai.tools");
+  const locale = useLocale();
+  const tierName = (tier?: number) => {
+    const key = MODEL_TIER_KEYS[tier ?? 1];
+    return key ? t(`plan.tier.${key}`) : undefined;
+  };
   const [status, setStatus]             = useState<SubStatus | null>(null);
   const [plans, setPlans]               = useState<AvailablePlan[]>([]);
   const [topupPlans, setTopupPlans]     = useState<AvailablePlan[]>([]);
@@ -155,7 +160,7 @@ export function AiPlanTool() {
       const res = await authFetch(`${API_BASE_URL}/ai/subscription-status`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body?.message ?? `Error ${res.status}`);
+        throw new Error(body?.message ?? t("plan.error.status", { status: res.status }));
       }
       const json = await res.json();
       const raw = json?.data ?? json;
@@ -172,11 +177,11 @@ export function AiPlanTool() {
       // FeatureGate may have cached before this plan became active.
       clearAiAccessCache();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load subscription");
+      setError(e instanceof Error ? e.message : t("plan.error.load"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const loadPlans = useCallback(async () => {
     setPlansLoading(true);
@@ -219,7 +224,7 @@ export function AiPlanTool() {
         const res = await authFetch(`${API_BASE_URL}/ai/claim-free`, { method: "POST" });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          throw new Error(body?.message ?? "Could not activate free plan.");
+          throw new Error(body?.message ?? t("plan.error.claimFree"));
         }
         await loadStatus();
         setShowPlans(false);
@@ -228,7 +233,7 @@ export function AiPlanTool() {
 
       // ── Paid plan: Razorpay checkout ──────────────────────────────────────
       const loaded = await loadRazorpay();
-      if (!loaded) throw new Error("Failed to load payment gateway. Please refresh and try again.");
+      if (!loaded) throw new Error(t("plan.error.gateway"));
 
       // 1. Create order on backend (sms-backend → school-ai)
       const billingMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
@@ -239,18 +244,18 @@ export function AiPlanTool() {
       });
       if (!orderRes.ok) {
         const body = await orderRes.json().catch(() => ({}));
-        throw new Error(body?.message ?? "Could not create payment order.");
+        throw new Error(body?.message ?? t("plan.error.order"));
       }
       const orderJson = await orderRes.json();
       const orderData = orderJson?.data ?? orderJson;
 
       // Surface proration info for mid-month signups before opening checkout
       const preview = orderData.subscription_preview;
-      let description = `${plan.display_name} Plan — ${billingMonth}`;
+      let description = t("plan.checkoutDescription", { plan: plan.display_name, month: billingMonth });
       if (preview?.is_prorated) {
-        const note = `Prorated for ${preview.days_remaining} of ${preview.days_in_month} days — ₹${orderData.amount_inr} now (full price ₹${preview.full_price_inr}/mo from the 1st)`;
+        const note = t("plan.proration", { days: preview.days_remaining, daysInMonth: preview.days_in_month, amount: orderData.amount_inr, fullPrice: preview.full_price_inr });
         setProrationNote(note);
-        description = `${plan.display_name} Plan — ${note}`;
+        description = t("plan.checkoutDescriptionProrated", { plan: plan.display_name, note });
       } else {
         setProrationNote(null);
       }
@@ -286,7 +291,7 @@ export function AiPlanTool() {
               });
               if (!verifyRes.ok) {
                 const body = await verifyRes.json().catch(() => ({}));
-                throw new Error(body?.message ?? "Payment verification failed.");
+                throw new Error(body?.message ?? t("plan.error.verify"));
               }
               resolve();
             } catch (err) {
@@ -302,13 +307,13 @@ export function AiPlanTool() {
       setShowPlans(false);
 
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Payment failed.";
+      const msg = e instanceof Error ? e.message : t("plan.error.payment");
       if (msg !== "Payment cancelled.") setError(msg);
     } finally {
       setPayingPlanId(null);
       setProrationNote(null);
     }
-  }, [payingPlanId, loadStatus]);
+  }, [payingPlanId, loadStatus, t]);
 
   const pct = status
     ? Math.min(100, Math.round((status.credits_used / (status.credits_total || 1)) * 100))
@@ -340,14 +345,14 @@ export function AiPlanTool() {
           <Sparkles className="w-5 h-5 text-violet-600 dark:text-violet-400" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-ink">My AI Plan</h1>
-          <p className="text-sm text-ink-muted">Your subscription &amp; usage for this month</p>
+          <h1 className="text-xl font-bold text-ink">{t("plan.title")}</h1>
+          <p className="text-sm text-ink-muted">{t("plan.subtitle")}</p>
         </div>
         <button
           onClick={loadStatus}
           disabled={loading}
           className="ml-auto p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-secondary transition-colors"
-          title="Refresh"
+          title={t("plan.refresh")}
         >
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
         </button>
@@ -356,14 +361,14 @@ export function AiPlanTool() {
       {/* ── Expiry Warning ─────────────────────────────────────────── */}
       {status?.is_expired && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex justify-between items-center">
-          <span><strong>Plan Expired.</strong> Subscribe again to continue using AI features. Unused credits have expired.</span>
-          <button onClick={handleShowPlans} className="bg-red-600 hover:bg-red-700 transition-colors text-white px-3 py-1.5 rounded-lg font-medium text-xs">Renew</button>
+          <span><strong>{t("plan.expiredTitle")}</strong> {t("plan.expiredBody")}</span>
+          <button onClick={handleShowPlans} className="bg-red-600 hover:bg-red-700 transition-colors text-white px-3 py-1.5 rounded-lg font-medium text-xs">{t("plan.renew")}</button>
         </div>
       )}
       {status?.is_expiring_soon && !status?.is_expired && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 flex justify-between items-center">
-          <span><strong>Plan expires in {status.days_remaining} days.</strong> Renew soon to avoid interruption.</span>
-          <button onClick={handleShowPlans} className="bg-amber-600 hover:bg-amber-700 transition-colors text-white px-3 py-1.5 rounded-lg font-medium text-xs">Renew Early</button>
+          <span><strong>{t("plan.expiringTitle", { days: status.days_remaining ?? "" })}</strong> {t("plan.expiringBody")}</span>
+          <button onClick={handleShowPlans} className="bg-amber-600 hover:bg-amber-700 transition-colors text-white px-3 py-1.5 rounded-lg font-medium text-xs">{t("plan.renewEarly")}</button>
         </div>
       )}
 
@@ -390,17 +395,17 @@ export function AiPlanTool() {
             <div className="rounded-2xl border border-violet-200 dark:border-violet-900/50 bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/20 px-5 py-4 space-y-2">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-violet-500" />
-                <p className="font-semibold text-violet-800 dark:text-violet-300 text-sm">You don&apos;t have an active plan</p>
+                <p className="font-semibold text-violet-800 dark:text-violet-300 text-sm">{t("plan.noPlanTitle")}</p>
               </div>
               <p className="text-xs text-violet-600 dark:text-violet-400">
-                You&apos;re currently using limited free features. Upgrade to a paid plan to unlock AI-powered lesson plans, question papers, worksheets and more.
+                {t("plan.noPlanBody")}
               </p>
               {!showPlans && (
                 <button
                   onClick={handleShowPlans}
                   className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 transition-colors"
                 >
-                  <ArrowUpCircle className="w-3.5 h-3.5" /> View Plans
+                  <ArrowUpCircle className="w-3.5 h-3.5" /> {t("plan.viewPlans")}
                 </button>
               )}
             </div>
@@ -416,17 +421,17 @@ export function AiPlanTool() {
                   </span>
                   <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide bg-white/20 px-2 py-0.5 rounded-full">
                     <Cpu className="w-3 h-3" />
-                    AI Tier: {status.plan?.model_tier_label ?? MODEL_TIERS[(status.plan?.model_tier as 1 | 2 | 3) ?? 1]}
+                    {t("plan.aiTier", { tier: status.plan?.model_tier_label ?? tierName(status.plan?.model_tier) ?? "" })}
                   </span>
                   {status.paid_by === "school" && (
                     <span className="text-[10px] font-semibold uppercase tracking-wide bg-white/20 px-2 py-0.5 rounded-full">
-                      School-paid
+                      {t("plan.schoolPaid")}
                     </span>
                   )}
                 </div>
-                <h2 className="text-2xl font-bold">{status.plan?.display_name ?? "Free"} Plan</h2>
+                <h2 className="text-2xl font-bold">{t("plan.planName", { name: status.plan?.display_name ?? t("plan.free") })}</h2>
                 <p className="text-sm opacity-80 capitalize mt-0.5">
-                  {status.plan?.plan_type ?? "individual"} · Resets 1st of each month
+                  {t("plan.resets", { type: status.plan?.plan_type ?? t("plan.individual") })}
                 </p>
               </div>
               <Crown className="w-8 h-8 opacity-40 shrink-0" />
@@ -435,30 +440,31 @@ export function AiPlanTool() {
             {/* Credits progress */}
             <div className="mt-4 space-y-1.5">
               <div className="flex justify-between text-xs font-semibold opacity-90">
-                <span>{status.credits_remaining.toLocaleString()} credits remaining</span>
-                <span>{status.credits_total.toLocaleString()} total</span>
+                <span>{t("plan.creditsRemaining", { count: status.credits_remaining.toLocaleString() })}</span>
+                <span>{t("plan.creditsTotal", { count: status.credits_total.toLocaleString() })}</span>
               </div>
               <div className="h-2.5 w-full rounded-full bg-white/20">
                 <div className="h-full rounded-full bg-white/80 transition-all" style={{ width: `${pct}%` }} />
               </div>
               <div className="flex justify-between text-[11px] opacity-75">
-                <span>{status.credits_used.toLocaleString()} used ({pct}%)</span>
+                <span>{t("plan.creditsUsedPct", { count: status.credits_used.toLocaleString(), pct })}</span>
                 <span>
-                  Valid till{" "}
-                  {status.valid_till
-                    ? new Date(status.valid_till).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
-                    : "end of month"}
+                  {t("plan.validTill", {
+                    date: status.valid_till
+                      ? new Date(status.valid_till).toLocaleDateString(INTL_LOCALE[locale], { day: "numeric", month: "short" })
+                      : t("plan.endOfMonth"),
+                  })}
                 </span>
               </div>
               {status.is_first_period_prorated && !!status.plan_monthly_credits && (
                 <div className="mt-1 text-[11px] opacity-80 bg-white/10 rounded-lg px-2 py-1.5">
-                  First-cycle credits prorated for the remaining days this month ({status.credits_total.toLocaleString()} of {status.plan_monthly_credits.toLocaleString()}). Full credits from the 1st.
+                  {t("plan.prorated", { credits: status.credits_total.toLocaleString(), monthly: status.plan_monthly_credits.toLocaleString() })}
                 </div>
               )}
             </div>
 
             <div className="mt-4 pt-3 border-t border-white/20 text-[10px] font-medium opacity-80">
-              Unused credits expire at the end of the billing period and do not carry over.
+              {t("plan.expiryNote")}
             </div>
 
             {/* Upgrade CTA */}
@@ -468,7 +474,7 @@ export function AiPlanTool() {
                 className="mt-4 flex items-center gap-2 px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white text-sm font-semibold transition-colors"
               >
                 <ArrowUpCircle className="w-4 h-4" />
-                Upgrade Plan
+                {t("plan.upgrade")}
               </button>
             )}
           </div>}
@@ -476,17 +482,18 @@ export function AiPlanTool() {
           {/* ── Stats grid ────────────────────────────────────────── */}
           {status.has_active_plan && <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "Credits Used",  value: status.credits_used.toLocaleString(),      icon: <Zap className="w-4 h-4 text-amber-500" /> },
-              { label: "Credits Left",  value: status.credits_remaining.toLocaleString(), icon: <TrendingUp className="w-4 h-4 text-emerald-500" /> },
+              { key: "used",    label: t("plan.stat.used"),  value: status.credits_used.toLocaleString(),      icon: <Zap className="w-4 h-4 text-amber-500" /> },
+              { key: "left",    label: t("plan.stat.left"),  value: status.credits_remaining.toLocaleString(), icon: <TrendingUp className="w-4 h-4 text-emerald-500" /> },
               {
-                label: "Credits Expire On",
+                key: "expires",
+                label: t("plan.stat.expires"),
                 value: status.valid_till
-                  ? new Date(status.valid_till).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                  ? new Date(status.valid_till).toLocaleDateString(INTL_LOCALE[locale], { day: "numeric", month: "short", year: "numeric" })
                   : status.billing_month,
                 icon: <Calendar className="w-4 h-4 text-violet-500" />,
               },
             ].map((s) => (
-              <div key={s.label} className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface p-3">
+              <div key={s.key} className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface p-3">
                 <div className="flex items-center gap-1.5 text-ink-muted mb-1.5">
                   {s.icon}
                   <span className="text-[10px] font-semibold uppercase tracking-wider">{s.label}</span>
@@ -499,14 +506,14 @@ export function AiPlanTool() {
           {/* ── Usage bar ─────────────────────────────────────────── */}
           {status.has_active_plan && (
             <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted mb-2">Monthly Usage</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted mb-2">{t("plan.monthlyUsage")}</p>
               <div className="w-full h-3 rounded-full bg-slate-100 dark:bg-white/10">
                 <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
               </div>
               <div className="mt-1.5 flex justify-between text-xs text-ink-muted">
-                <span>{pct}% of {status.credits_total.toLocaleString()} credits used</span>
+                <span>{t("plan.usageOf", { pct, total: status.credits_total.toLocaleString() })}</span>
                 {pct >= 80 && (
-                  <span className="text-amber-600 dark:text-amber-400 font-medium">Running low — consider upgrading</span>
+                  <span className="text-amber-600 dark:text-amber-400 font-medium">{t("plan.runningLow")}</span>
                 )}
               </div>
             </div>
@@ -521,15 +528,15 @@ export function AiPlanTool() {
             }`}>
               <div>
                 <p className={`text-sm font-semibold ${status.has_active_plan ? "text-emerald-800 dark:text-emerald-300" : "text-slate-500"}`}>
-                  Top Up Credits
+                  {t("plan.topUpTitle")}
                 </p>
                 {status.has_active_plan ? (
                   <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
-                    Add extra credits to your current plan without changing your subscription.
+                    {t("plan.topUpBody")}
                   </p>
                 ) : (
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Subscribe to a plan first to be able to top up your credits.
+                    {t("plan.topUpNeedPlan")}
                   </p>
                 )}
               </div>
@@ -543,12 +550,12 @@ export function AiPlanTool() {
                       : "bg-slate-300 dark:bg-slate-600 cursor-not-allowed"
                     }`}
                 >
-                  <Zap className="w-3.5 h-3.5" /> Top Up
+                  <Zap className="w-3.5 h-3.5" /> {t("plan.topUp")}
                 </button>
                 {!status.has_active_plan && (
                   <div className="absolute bottom-full right-0 mb-2 w-52 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <div className="bg-slate-800 text-white text-xs rounded-xl px-3 py-2 shadow-lg leading-relaxed">
-                      You need an active plan to top up credits.
+                      {t("plan.topUpTooltip")}
                       <div className="absolute top-full right-4 border-4 border-transparent border-t-slate-800" />
                     </div>
                   </div>
@@ -559,16 +566,16 @@ export function AiPlanTool() {
             <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-white dark:bg-surface p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-bold text-ink flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-emerald-500" /> Top Up Packs
+                  <Zap className="w-4 h-4 text-emerald-500" /> {t("plan.topUpPacks")}
                 </h2>
                 <div className="flex items-center gap-2">
                   {plansLoading && <RefreshCw className="w-4 h-4 animate-spin text-ink-muted" />}
-                  <button onClick={() => setShowTopup(false)} className="text-xs text-ink-muted hover:text-ink">Hide</button>
+                  <button onClick={() => setShowTopup(false)} className="text-xs text-ink-muted hover:text-ink">{t("plan.hide")}</button>
                 </div>
               </div>
 
               {topupPlans.length === 0 && !plansLoading && (
-                <p className="text-sm text-ink-muted text-center py-3">No top-up packs available right now.</p>
+                <p className="text-sm text-ink-muted text-center py-3">{t("plan.noTopUps")}</p>
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -578,15 +585,15 @@ export function AiPlanTool() {
                     <div key={plan.id} className="rounded-xl ring-1 ring-emerald-200 dark:ring-emerald-900/50 p-3 flex items-center justify-between gap-3 hover:shadow-sm transition-shadow">
                       <div>
                         <p className="text-sm font-semibold text-ink">{plan.display_name}</p>
-                        <p className="text-xs text-ink-muted">+{plan.monthly_credits.toLocaleString()} credits</p>
-                        <p className="text-base font-bold text-emerald-600 mt-0.5">₹{plan.price_inr.toLocaleString("en-IN")}</p>
+                        <p className="text-xs text-ink-muted">{t("plan.plusCredits", { count: plan.monthly_credits.toLocaleString() })}</p>
+                        <p className="text-base font-bold text-emerald-600 mt-0.5">₹{plan.price_inr.toLocaleString(INTL_LOCALE[locale])}</p>
                       </div>
                       <button
                         onClick={() => handleBuyPlan(plan)}
                         disabled={!!payingPlanId}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-green-400 to-emerald-600 text-white text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 whitespace-nowrap"
                       >
-                        {isPaying ? <><RefreshCw className="w-3 h-3 animate-spin" /> Processing…</> : <><Zap className="w-3 h-3" /> Buy</>}
+                        {isPaying ? <><RefreshCw className="w-3 h-3 animate-spin" /> {t("plan.processing")}</> : <><Zap className="w-3 h-3" /> {t("plan.buy")}</>}
                       </button>
                     </div>
                   );
@@ -600,18 +607,18 @@ export function AiPlanTool() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold text-ink">
-                  {status.has_active_plan ? "Upgrade Options" : "Available Plans"}
+                  {status.has_active_plan ? t("plan.upgradeOptions") : t("plan.availablePlans")}
                 </h2>
                 <div className="flex items-center gap-2">
                   {plansLoading && <RefreshCw className="w-4 h-4 animate-spin text-ink-muted" />}
-                  <button onClick={() => setShowPlans(false)} className="text-xs text-ink-muted hover:text-ink">Hide</button>
+                  <button onClick={() => setShowPlans(false)} className="text-xs text-ink-muted hover:text-ink">{t("plan.hide")}</button>
                 </div>
               </div>
 
               {upgradeablePlans.length === 0 && !plansLoading && (
                 <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface px-4 py-6 text-center space-y-1">
-                  <p className="text-sm font-medium text-ink">You&apos;re on the best available plan!</p>
-                  <p className="text-xs text-ink-muted">No higher plans are available for your account.</p>
+                  <p className="text-sm font-medium text-ink">{t("plan.bestPlanTitle")}</p>
+                  <p className="text-xs text-ink-muted">{t("plan.bestPlanBody")}</p>
                 </div>
               )}
 
@@ -633,14 +640,14 @@ export function AiPlanTool() {
                           </span>
                           <span className={`inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${tierBadgeClass(plan.model_tier)}`}>
                             <Cpu className="w-3 h-3" />
-                            {plan.model_tier_label ?? MODEL_TIERS[(plan.model_tier as 1 | 2 | 3) ?? 1] ?? `Tier ${plan.model_tier}`} AI
+                            {t("plan.tierAi", { tier: plan.model_tier_label ?? tierName(plan.model_tier) ?? t("plan.tierN", { n: String(plan.model_tier) }) })}
                           </span>
                         </div>
                         <p className="mt-1.5 text-2xl font-bold text-ink">
-                          {plan.price_inr === 0 ? "Free" : `₹${plan.price_inr.toLocaleString("en-IN")}`}
-                          {plan.price_inr > 0 && <span className="text-sm font-normal text-ink-muted">/month</span>}
+                          {plan.price_inr === 0 ? t("plan.free") : `₹${plan.price_inr.toLocaleString(INTL_LOCALE[locale])}`}
+                          {plan.price_inr > 0 && <span className="text-sm font-normal text-ink-muted">{t("plan.perMonth")}</span>}
                         </p>
-                        <p className="text-xs text-ink-muted mt-0.5">{plan.monthly_credits.toLocaleString()} credits/month</p>
+                        <p className="text-xs text-ink-muted mt-0.5">{t("plan.creditsPerMonth", { count: plan.monthly_credits.toLocaleString() })}</p>
                       </div>
                       <button
                         onClick={() => plan.price_inr === 0 ? handleBuyPlan(plan) : handleBuyPlan(plan)}
@@ -648,11 +655,11 @@ export function AiPlanTool() {
                         className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-semibold ${accent.btn} hover:opacity-90 transition-opacity disabled:opacity-50 whitespace-nowrap`}
                       >
                         {isPaying ? (
-                          <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Processing…</>
+                          <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> {t("plan.processing")}</>
                         ) : plan.price_inr === 0 ? (
-                          <><Check className="w-3.5 h-3.5" /> Start Free</>
+                          <><Check className="w-3.5 h-3.5" /> {t("plan.startFree")}</>
                         ) : (
-                          <><ArrowUpCircle className="w-3.5 h-3.5" /> Buy Now</>
+                          <><ArrowUpCircle className="w-3.5 h-3.5" /> {t("plan.buyNow")}</>
                         )}
                       </button>
                     </div>
@@ -660,7 +667,7 @@ export function AiPlanTool() {
                       {Object.entries(plan.features).filter(([, v]) => v).map(([key]) => (
                         <div key={key} className="flex items-center gap-1.5 text-xs text-ink-muted">
                           <Check className="w-3 h-3 text-emerald-500 shrink-0" />
-                          {FEATURE_LABELS[key] ?? key.replace(/_/g, " ")}
+                          {isFeatureKey(key) ? t(`plan.feature.${key}`) : key.replace(/_/g, " ")}
                         </div>
                       ))}
                     </div>
@@ -670,8 +677,9 @@ export function AiPlanTool() {
 
               {upgradeablePlans.length > 0 && (
                 <p className="text-xs text-ink-muted text-center">
-                  Need a school-wide plan?{" "}
-                  <a href="mailto:support@colegios.in" className="underline underline-offset-2">Contact us</a>.
+                  {t.rich("plan.schoolWide", {
+                    link: (c) => <a href="mailto:support@colegios.in" className="underline underline-offset-2">{c}</a>,
+                  })}
                 </p>
               )}
             </div>

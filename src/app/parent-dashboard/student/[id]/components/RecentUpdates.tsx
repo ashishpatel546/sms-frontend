@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/skeleton';
 
 /* What has happened lately, in one list. The notices carry a timestamp so
@@ -22,16 +23,16 @@ interface RecentUpdatesProps {
   onOpenHomework: () => void;
 }
 
-function relativeTime(iso: string): string {
+function relativeTime(iso: string, t: ReturnType<typeof useTranslations<'parent.updates'>>): string {
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return '';
   const mins = Math.round((Date.now() - then) / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t('justNow');
+  if (mins < 60) return t('minutesAgo', { count: mins });
   const hrs = Math.round(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return t('hoursAgo', { count: hrs });
   const days = Math.round(hrs / 24);
-  return days === 1 ? 'yesterday' : `${days}d ago`;
+  return days === 1 ? t('yesterday') : t('daysAgo', { count: days });
 }
 
 export const RecentUpdates = ({
@@ -40,18 +41,20 @@ export const RecentUpdates = ({
   isLoading,
   onOpenHomework,
 }: RecentUpdatesProps) => {
+  const t = useTranslations('parent.updates');
+  const tc = useTranslations('common');
   const hasRows = notifications.length > 0 || homeworkSubjects.length > 0;
   if (!isLoading && !hasRows) return null;
 
   return (
     <div className="rounded-xl border border-line bg-surface p-3.5 shadow-soft">
       <div className="mb-1 flex items-center justify-between gap-3">
-        <p className="eyebrow">Recent updates</p>
+        <p className="eyebrow">{t("title")}</p>
         <Link
           href="/parent-dashboard/notifications"
           className="group/va flex shrink-0 items-center gap-0.5 text-[11.5px] font-semibold text-brand hover:underline"
         >
-          View all
+          {tc('action.viewAll')}
           <ChevronRight className="size-3.5 transition-transform group-hover/va:translate-x-0.5" aria-hidden />
         </Link>
       </div>
@@ -72,10 +75,10 @@ export const RecentUpdates = ({
                 <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-accent-info" aria-hidden />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[12.5px] leading-tight font-semibold text-ink">
-                    {subject} homework posted
+                    {t('homeworkPosted', { subject })}
                   </span>
                 </span>
-                <span className="shrink-0 text-[10.5px] text-ink-faint">Today</span>
+                <span className="shrink-0 text-[10.5px] text-ink-faint">{t("today")}</span>
               </button>
             </li>
           ))}
@@ -92,7 +95,7 @@ export const RecentUpdates = ({
                 </span>
               </span>
               <span className="tabular shrink-0 text-[10.5px] text-ink-faint">
-                {relativeTime(n.createdAt)}
+                {relativeTime(n.createdAt, t)}
               </span>
             </li>
           ))}

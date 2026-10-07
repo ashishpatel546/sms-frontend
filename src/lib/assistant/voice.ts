@@ -235,7 +235,7 @@ export class Speaker {
     this.stop();
     const line = speakableText(text);
     if (!line) return;
-    const lang = /[ऀ-ॿ]/.test(line) ? 'hi-IN' : 'en-IN';
+    const lang = /[ऀ-ॿ]/.test(line) ? 'hi-IN' : /[ঀ-৿]/.test(line) ? 'bn-IN' : 'en-IN';
     const useServer =
       this.server &&
       !this.serverFailed &&

@@ -32,6 +32,8 @@ import { PanelSkeleton } from '@/components/ui/Skeletons';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { StatusChip } from '@/components/ui/StatusChip';
 import type { Pigment } from '@/components/ui/pigment';
+import { useTranslations } from 'next-intl';
+import { ATTENDANCE_TONE } from '@/lib/attendanceColors';
 
 interface RegisterRow {
   classId: number;
@@ -91,16 +93,20 @@ function stateOf(row: RegisterRow): RowState {
   return 'pending';
 }
 
-function stateLabel(row: RegisterRow): string {
+type AttendanceT = ReturnType<typeof useTranslations<'attendance'>>;
+
+function stateLabel(row: RegisterRow, t: AttendanceT): string {
   switch (stateOf(row)) {
     case 'pending':
-      return 'Not taken';
+      return t('register.notTaken');
     case 'taken':
-      return 'Taken';
+      return t('register.taken');
     case 'settled':
-      return row.dayType === 'SUNDAY' ? 'Sunday' : row.holidayDescription || 'Holiday';
+      return row.dayType === 'SUNDAY'
+        ? t(ATTENDANCE_TONE.SUNDAY.labelKey)
+        : row.holidayDescription || t(ATTENDANCE_TONE.HOLIDAY.labelKey);
     case 'empty':
-      return 'No students';
+      return t('register.noStudents');
   }
 }
 
@@ -124,6 +130,7 @@ function initials(name: string): string {
 /** One class-section slot. State is inverted from the usual card: settled
  *  work recedes, a pending register is the one that has to shout. */
 function SectionTile({ row, date }: { row: RegisterRow; date: string }) {
+  const t = useTranslations('attendance');
   const state = stateOf(row);
   const base =
     'flex min-h-16 flex-col justify-between gap-1 rounded-lg border px-2.5 py-2 text-left transition-all';
@@ -132,7 +139,7 @@ function SectionTile({ row, date }: { row: RegisterRow; date: string }) {
     return (
       <div className={cn(base, 'cursor-default border-line bg-surface-inset')}>
         <span className="text-[12.5px] font-semibold text-ink-faint">{row.sectionName}</span>
-        <span className="text-[11px] text-ink-faint">No students</span>
+        <span className="text-[11px] text-ink-faint">{t('register.noStudents')}</span>
       </div>
     );
   }
@@ -141,8 +148,8 @@ function SectionTile({ row, date }: { row: RegisterRow; date: string }) {
     return (
       <div className={cn(base, 'border-accent-info-edge bg-accent-info-tint')}>
         <span className="text-[12.5px] font-semibold text-accent-info-deep">{row.sectionName}</span>
-        <span className="truncate text-[11px] text-accent-info-deep/80" title={stateLabel(row)}>
-          {stateLabel(row)}
+        <span className="truncate text-[11px] text-accent-info-deep/80" title={stateLabel(row, t)}>
+          {stateLabel(row, t)}
         </span>
       </div>
     );
@@ -160,7 +167,7 @@ function SectionTile({ row, date }: { row: RegisterRow; date: string }) {
         <span className="text-[12.5px] font-semibold text-accent-warn-deep">{row.sectionName}</span>
         <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-accent-warn-deep">
           <AlertCircle className="size-3" />
-          Not taken
+          {t('register.notTaken')}
         </span>
       </Link>
     );
@@ -174,7 +181,7 @@ function SectionTile({ row, date }: { row: RegisterRow; date: string }) {
         <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-accent-success" />
       </div>
       <span className="tabular text-[11px] text-ink-muted">
-        {row.present}/{row.strength} present
+        {t('register.presentOf', { present: row.present, strength: row.strength })}
       </span>
       {row.takenBy && (
         <span className="truncate text-[10.5px] text-ink-faint" title={row.takenBy.name}>
@@ -193,6 +200,8 @@ const ROWS_PER_PAGE = 25;
 
 export default function DailyAttendanceRegister() {
   const router = useRouter();
+  const t = useTranslations('attendance');
+  const tc = useTranslations('common');
   const [date, setDate] = React.useState(todayLocalDate());
   const [onlyPending, setOnlyPending] = React.useState(false);
   const [view, setView] = React.useState<'board' | 'details'>('board');
@@ -229,34 +238,34 @@ export default function DailyAttendanceRegister() {
   const columns: Column<RegisterRow>[] = [
     {
       key: 'className',
-      header: 'Class',
+      header: tc('field.class'),
       accessor: (r) => r.className,
       sortable: true,
       card: 'title',
     },
     {
       key: 'sectionName',
-      header: 'Section',
+      header: tc('field.section'),
       accessor: (r) => r.sectionName,
       sortable: true,
       card: 'meta',
     },
     {
       key: 'status',
-      header: 'Status',
-      render: (r) => <StatusChip label={stateLabel(r)} pigment={STATE_PIGMENT[stateOf(r)]} />,
+      header: tc('field.status'),
+      render: (r) => <StatusChip label={stateLabel(r, t)} pigment={STATE_PIGMENT[stateOf(r)]} />,
       card: 'trailing',
     },
     {
       key: 'strength',
-      header: 'Strength',
+      header: t('register.colStrength'),
       accessor: (r) => r.strength,
       sortable: true,
       align: 'right',
     },
     {
       key: 'present',
-      header: 'Present',
+      header: t(ATTENDANCE_TONE.PRESENT.labelKey),
       accessor: (r) => (r.marked ? r.present : '—'),
       sortValue: (r) => r.present,
       sortable: true,
@@ -265,7 +274,7 @@ export default function DailyAttendanceRegister() {
     },
     {
       key: 'absent',
-      header: 'Absent',
+      header: t(ATTENDANCE_TONE.ABSENT.labelKey),
       accessor: (r) => (r.marked ? r.absent : '—'),
       sortValue: (r) => r.absent,
       sortable: true,
@@ -274,7 +283,7 @@ export default function DailyAttendanceRegister() {
     },
     {
       key: 'late',
-      header: 'Late',
+      header: t(ATTENDANCE_TONE.LATE.labelKey),
       accessor: (r) => (r.marked ? r.late : '—'),
       sortValue: (r) => r.late,
       sortable: true,
@@ -283,7 +292,7 @@ export default function DailyAttendanceRegister() {
     },
     {
       key: 'halfDay',
-      header: 'Half day',
+      header: t(ATTENDANCE_TONE.HALF_DAY.labelKey),
       accessor: (r) => (r.marked ? r.halfDay : '—'),
       sortValue: (r) => r.halfDay,
       sortable: true,
@@ -292,7 +301,7 @@ export default function DailyAttendanceRegister() {
     },
     {
       key: 'leave',
-      header: 'Leave',
+      header: t(ATTENDANCE_TONE.LEAVE.labelKey),
       accessor: (r) => (r.marked ? r.leave : '—'),
       sortValue: (r) => r.leave,
       sortable: true,
@@ -309,7 +318,7 @@ export default function DailyAttendanceRegister() {
     },
     {
       key: 'takenBy',
-      header: 'Taken by',
+      header: t('register.colTakenBy'),
       accessor: (r) => r.takenBy?.name ?? '—',
       hideBelow: 'md',
     },
@@ -341,8 +350,8 @@ export default function DailyAttendanceRegister() {
   return (
     <Panel>
       <PanelHeader
-        title="Daily register"
-        description="Which classes have taken attendance for the selected date"
+        title={t('register.title')}
+        description={t('register.description')}
       />
       <PanelBody className="space-y-4">
         <FilterBar
@@ -352,17 +361,17 @@ export default function DailyAttendanceRegister() {
               onValueChange={changeView}
               size="sm"
               options={[
-                { value: 'board', label: 'Board' },
-                { value: 'details', label: 'Details' },
+                { value: 'board', label: t('register.board') },
+                { value: 'details', label: t('register.details') },
               ]}
             />
           }
         >
-          <FilterField label="Date" width="md">
+          <FilterField label={tc('field.date')} width="md">
             <AppDatePicker value={date} onChange={changeDate} max={todayLocalDate()} />
           </FilterField>
           <Checkbox
-            label="Only pending"
+            label={t('register.onlyPending')}
             checked={onlyPending}
             onChange={(e) => changeOnlyPending(e.target.checked)}
             className="py-0"
@@ -372,22 +381,22 @@ export default function DailyAttendanceRegister() {
         {isLoading && <PanelSkeleton rows={3} title={false} />}
 
         {error && (
-          <ErrorState description="The register for this date couldn't be loaded." />
+          <ErrorState description={t('register.loadError')} />
         )}
 
         {data && !data.academicSession && (
           <EmptyState
             compact
-            title="No academic session covers this date"
-            description="Set up a session that spans this date to see its register."
+            title={t('register.noSessionTitle')}
+            description={t('register.noSessionDescription')}
           />
         )}
 
         {data && data.academicSession && data.rows.length === 0 && (
           <EmptyState
             compact
-            title="No classes to report on"
-            description="No class has any actively enrolled students this session."
+            title={t('register.noClassesTitle')}
+            description={t('register.noClassesDescription')}
           />
         )}
 
@@ -396,17 +405,20 @@ export default function DailyAttendanceRegister() {
             {due.length === 0 ? (
               <p className="text-[13.5px] text-ink-muted">
                 {data.isSunday
-                  ? 'Sunday — no registers were due.'
-                  : 'No registers were due on this date.'}
+                  ? t('register.sundayNoneDue')
+                  : t('register.noneDue')}
               </p>
             ) : (
               <div>
                 <p className="text-[13.5px] text-ink">
-                  <span className="tabular font-semibold">{takenDue}</span> of{' '}
-                  <span className="tabular font-semibold">{due.length}</span> registers taken
+                  {t.rich('register.takenCount', {
+                    taken: takenDue,
+                    due: due.length,
+                    b: (c) => <span className="tabular font-semibold">{c}</span>,
+                  })}
                   {data.summary.pending > 0 && (
                     <span className="ml-1.5 font-medium text-accent-warn-deep">
-                      — {data.summary.pending} pending
+                      {t('register.pendingCount', { count: data.summary.pending })}
                     </span>
                   )}
                 </p>
@@ -415,7 +427,7 @@ export default function DailyAttendanceRegister() {
                   aria-valuemin={0}
                   aria-valuemax={due.length}
                   aria-valuenow={takenDue}
-                  aria-label="Registers taken"
+                  aria-label={t('register.progressLabel')}
                   className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-inset"
                 >
                   <div
@@ -430,8 +442,8 @@ export default function DailyAttendanceRegister() {
               <EmptyState
                 compact
                 icon={<CalendarCheck />}
-                title="All registers taken"
-                description="Every class has recorded attendance for this date."
+                title={t('register.allTakenTitle')}
+                description={t('register.allTakenDescription')}
               />
             ) : view === 'board' ? (
               <div className="space-y-3">
@@ -481,7 +493,7 @@ export default function DailyAttendanceRegister() {
                     `/dashboard/attendance?classId=${r.classId}&sectionId=${r.sectionId}&date=${data.date}`,
                   )
                 }
-                emptyMessage="No classes to report on"
+                emptyMessage={t('register.noClassesTitle')}
               />
             )}
           </>

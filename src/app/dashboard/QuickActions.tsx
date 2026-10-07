@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Settings, X } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { usePinnedActions, defaultPinnedActions } from '@/hooks/usePinnedActions';
 import { useQuickActionTiles } from '@/lib/quickActions';
 import { QuickActionPicker } from '@/components/dashboard/QuickActionPicker';
@@ -19,6 +20,8 @@ import { PIGMENT_CLASS } from '@/components/ui/pigment';
  * A horizontal scroll strip on mobile so nothing shrinks, a wrapping grid above.
  */
 export default function QuickActions() {
+    const t = useTranslations('dashboard');
+    const tc = useTranslations('common');
     const [isCustomizing, setIsCustomizing] = useState(false);
     const { tiles } = useQuickActionTiles();
     const { pinned, isLoaded, togglePin } = usePinnedActions();
@@ -31,14 +34,14 @@ export default function QuickActions() {
     return (
         <Panel>
             <PanelHeader
-                title="Quick actions"
+                title={t('quickActions.title')}
                 action={
                     <button
                         onClick={() => setIsCustomizing(true)}
                         className="hidden cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-semibold text-ink-muted transition-colors hover:bg-brand-tint hover:text-brand md:flex"
                     >
                         <Settings className="size-3.5" />
-                        Customize
+                        {t('quickActions.customize')}
                     </button>
                 }
             />
@@ -67,7 +70,7 @@ export default function QuickActions() {
                     </div>
                 ) : (
                     <div className="flex min-h-25 items-center justify-center rounded-lg border-2 border-dashed border-line px-4 text-center text-[13px] text-ink-muted">
-                        No actions pinned yet — choose the ones you use most.
+                        {t('quickActions.empty')}
                     </div>
                 )}
             </div>
@@ -83,22 +86,22 @@ export default function QuickActions() {
                     <div
                         role="dialog"
                         aria-modal="true"
-                        aria-label="Customize dashboard actions"
+                        aria-label={t('quickActions.customizeAria')}
                         className="fixed top-1/2 left-1/2 z-70 hidden w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border border-line bg-surface shadow-glass md:block"
                     >
                         <div className="flex flex-col border-b border-line bg-surface-secondary px-5 py-4">
                             <div className="mb-1 flex items-center justify-between">
-                                <h3 className="font-display text-[16px] font-semibold text-ink">Dashboard shortcuts</h3>
+                                <h3 className="font-display text-[16px] font-semibold text-ink">{t('quickActions.dialogTitle')}</h3>
                                 <button
                                     onClick={() => setIsCustomizing(false)}
                                     className="cursor-pointer rounded-md p-1.5 text-ink-muted transition-colors hover:bg-surface-inset hover:text-ink"
-                                    aria-label="Close"
+                                    aria-label={tc('action.close')}
                                 >
                                     <X className="size-5" />
                                 </button>
                             </div>
                             <p className="text-[12.5px] text-ink-muted">
-                                Pick the actions you use most. They appear as tiles on your dashboard.
+                                {t('quickActions.dialogBody')}
                             </p>
                         </div>
                         <div className="no-scrollbar max-h-[60vh] overflow-y-auto p-5">

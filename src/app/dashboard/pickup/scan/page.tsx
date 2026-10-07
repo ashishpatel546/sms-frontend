@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { Toaster } from "react-hot-toast";
+import { useTranslations } from "next-intl";
 
 const PickupScanner = dynamic(() => import("@/components/PickupScanner"), {
   ssr: false,
@@ -13,6 +14,7 @@ const PickupScanner = dynamic(() => import("@/components/PickupScanner"), {
 });
 
 export default function PickupScanPage() {
+  const t = useTranslations("pickup.scanPage");
   return (
     <div className="min-h-screen bg-slate-950 p-4 sm:p-6">
       <Toaster position="top-center" />
@@ -23,8 +25,8 @@ export default function PickupScanPage() {
             📷
           </div>
           <div>
-            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Scan QR</h1>
-            <p className="text-slate-400 text-sm">Pickup, visitor, ID card and stock codes — detected automatically</p>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t("title")}</h1>
+            <p className="text-slate-400 text-sm">{t("subtitle")}</p>
           </div>
         </div>
 

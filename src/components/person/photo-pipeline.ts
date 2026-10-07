@@ -1,3 +1,4 @@
+import type { HelperKey } from '@/i18n/helper-message';
 /**
  * photo-pipeline.ts — pick → crop → downscale → encode, entirely in the browser.
  *
@@ -60,6 +61,20 @@ export interface PreparedPhoto {
 
 /* ── Input ──────────────────────────────────────────────────────────────── */
 
+/**
+ * A failure the person can act on. `key` is its translation under
+ * `common.helper`; `message` stays English for logs and older callers.
+ */
+export class PhotoError extends Error {
+  constructor(
+    readonly key: HelperKey,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'PhotoError';
+  }
+}
+
 export function isImageFile(file: File): boolean {
   return typeof file.type === 'string' && file.type.startsWith('image/');
 }
@@ -78,7 +93,7 @@ export function loadImageFromFile(
     image.onload = () => resolve({ image, objectUrl });
     image.onerror = () => {
       URL.revokeObjectURL(objectUrl);
-      reject(new Error('That image could not be read. Try a different file.'));
+      reject(new PhotoError('photoUnreadable', 'That image could not be read. Try a different file.'));
     };
     image.src = objectUrl;
   });
@@ -97,7 +112,7 @@ function rotatedSize(width: number, height: number, degrees: number) {
 
 function context2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('This browser could not prepare the image.');
+  if (!ctx) throw new PhotoError('photoCannotPrepare', 'This browser could not prepare the image.');
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
   return ctx;
@@ -220,7 +235,7 @@ async function encodeUnder(
   }
 
   if (last) return last;
-  throw new Error('This browser could not save the cropped image.');
+  throw new PhotoError('photoCannotSave', 'This browser could not save the cropped image.');
 }
 
 /* ── The one entry point ────────────────────────────────────────────────── */

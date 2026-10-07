@@ -12,6 +12,7 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useRbac } from '@/lib/rbac';
 import { useSchoolFeatures } from '@/lib/useSchoolFeatures';
 import { isNavItemUnlocked } from '@/lib/navConfig';
@@ -50,42 +51,43 @@ export function useQuickActionTiles(): {
    */
   tilesInPlan: QuickActionTile[];
 } {
+  const t = useTranslations('dashboard');
   const rbac = useRbac();
   const { features, status } = useSchoolFeatures();
 
   // GUARD is deny-by-default: a gate-focused set, no student/fee/homework work.
   const tiles: QuickActionTile[] = rbac.isGuard
     ? [
-        { label: 'Scan QR', href: '/dashboard/pickup/scan', icon: QrCode, pigment: 'info', featureFlag: SCANNER_FLAGS },
-        { label: 'Visitors', href: '/dashboard/visitors', icon: Users, pigment: 'info', featureFlag: 'visitor_management' },
-        { label: 'My attendance', href: '/dashboard/my-attendance', icon: Clock, pigment: 'success', featureFlag: 'hr_portal' },
-        { label: 'Notifications', href: '/dashboard/notifications', icon: Bell, pigment: 'attn' },
+        { label: t('quickActions.tile.scanQr'), href: '/dashboard/pickup/scan', icon: QrCode, pigment: 'info', featureFlag: SCANNER_FLAGS },
+        { label: t('quickActions.tile.visitors'), href: '/dashboard/visitors', icon: Users, pigment: 'info', featureFlag: 'visitor_management' },
+        { label: t('quickActions.tile.myAttendance'), href: '/dashboard/my-attendance', icon: Clock, pigment: 'success', featureFlag: 'hr_portal' },
+        { label: t('quickActions.tile.notifications'), href: '/dashboard/notifications', icon: Bell, pigment: 'attn' },
       ]
     : [
-        { label: 'Take attendance', href: '/dashboard/attendance', icon: CalendarCheck, pigment: 'success', featureFlag: 'attendance_management' },
-        { label: 'Notifications', href: '/dashboard/notifications', icon: Bell, pigment: 'attn' },
-        { label: 'Homework', href: '/dashboard/homework', icon: Pencil, pigment: 'info', featureFlag: 'homework_management' },
-        { label: 'Students', href: '/dashboard/students', icon: Users, pigment: 'info' },
+        { label: t('quickActions.tile.takeAttendance'), href: '/dashboard/attendance', icon: CalendarCheck, pigment: 'success', featureFlag: 'attendance_management' },
+        { label: t('quickActions.tile.notifications'), href: '/dashboard/notifications', icon: Bell, pigment: 'attn' },
+        { label: t('quickActions.tile.homework'), href: '/dashboard/homework', icon: Pencil, pigment: 'info', featureFlag: 'homework_management' },
+        { label: t('quickActions.tile.students'), href: '/dashboard/students', icon: Users, pigment: 'info' },
         ...(rbac.canManageStudents
-          ? [{ label: 'Add student', href: '/dashboard/students/new', icon: GraduationCap, pigment: 'info' as Pigment }]
+          ? [{ label: t('quickActions.tile.addStudent'), href: '/dashboard/students/new', icon: GraduationCap, pigment: 'info' as Pigment }]
           : []),
         ...(rbac.canAccessFees
-          ? [{ label: 'Collect fee', href: '/dashboard/fees', icon: IndianRupee, pigment: 'attn' as Pigment, featureFlag: 'fee_management' }]
+          ? [{ label: t('quickActions.tile.collectFee'), href: '/dashboard/fees', icon: IndianRupee, pigment: 'attn' as Pigment, featureFlag: 'fee_management' }]
           : []),
         ...(rbac.canManageTeachers
-          ? [{ label: 'Add staff', href: '/dashboard/staff/new', icon: Users, pigment: 'info' as Pigment }]
+          ? [{ label: t('quickActions.tile.addStaff'), href: '/dashboard/staff/new', icon: Users, pigment: 'info' as Pigment }]
           : []),
         ...(rbac.isTeacher
-          ? [{ label: 'Scan QR', href: '/dashboard/pickup/scan', icon: QrCode, pigment: 'info' as Pigment, featureFlag: SCANNER_FLAGS }]
+          ? [{ label: t('quickActions.tile.scanQr'), href: '/dashboard/pickup/scan', icon: QrCode, pigment: 'info' as Pigment, featureFlag: SCANNER_FLAGS }]
           : []),
         ...(rbac.isTeacher
-          ? [{ label: 'Visitors', href: '/dashboard/visitors', icon: Users, pigment: 'info' as Pigment, featureFlag: 'visitor_management' }]
+          ? [{ label: t('quickActions.tile.visitors'), href: '/dashboard/visitors', icon: Users, pigment: 'info' as Pigment, featureFlag: 'visitor_management' }]
           : []),
         ...(rbac.isAdmin
-          ? [{ label: 'Reports', href: '/dashboard/reports', icon: BarChart2, pigment: 'info' as Pigment, featureFlag: 'reports_analytics' }]
+          ? [{ label: t('quickActions.tile.reports'), href: '/dashboard/reports', icon: BarChart2, pigment: 'info' as Pigment, featureFlag: 'reports_analytics' }]
           : []),
         ...(rbac.canAccessHRSelfService
-          ? [{ label: 'My attendance', href: '/dashboard/my-attendance', icon: Clock, pigment: 'success' as Pigment, featureFlag: 'hr_portal' }]
+          ? [{ label: t('quickActions.tile.myAttendance'), href: '/dashboard/my-attendance', icon: Clock, pigment: 'success' as Pigment, featureFlag: 'hr_portal' }]
           : []),
       ];
 

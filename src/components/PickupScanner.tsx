@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { API_BASE_URL } from "@/lib/api";
 import { authFetch } from "@/lib/auth";
 import toast from "react-hot-toast";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE } from "@/i18n/config";
 import { GraduationCap, ClipboardCheck, Hash } from "lucide-react";
 import VisitorScanPanel from "./VisitorScanPanel";
 import IdCardScanPanel from "./IdCardScanPanel";
@@ -43,6 +45,9 @@ interface Html5QrcodeInstance {
 }
 
 export default function PickupScanner() {
+  const t = useTranslations("pickup");
+  const tc = useTranslations("common");
+  const intlLocale = INTL_LOCALE[useLocale()];
   const [scanState, setScanState] = useState<ScanState>("idle");
   // confirmStep: 1 = verify name, 2 = enter PIN
   const [confirmStep, setConfirmStep] = useState<1 | 2>(1);
@@ -98,8 +103,8 @@ export default function PickupScanner() {
         name === "NotAllowedError" || name === "PermissionDeniedError";
       setErrorMsg(
         denied
-          ? "Camera access was denied. Open your browser's site settings, allow the camera for this page, then try again."
-          : `Could not access camera: ${err instanceof Error ? err.message : String(err)}`,
+          ? t("errors.cameraDenied")
+          : t("errors.cameraError", { error: err instanceof Error ? err.message : String(err) }),
       );
       setScanState("error");
       return;
@@ -117,7 +122,7 @@ export default function PickupScanner() {
       // Pick the back-facing camera automatically
       const cameras = await Html5Qrcode.getCameras();
       if (!cameras || cameras.length === 0) {
-        setErrorMsg("No camera found on this device.");
+        setErrorMsg(t("errors.noCamera"));
         setScanState("error");
         return;
       }
@@ -170,7 +175,7 @@ export default function PickupScanner() {
       );
     } catch (err) {
       console.error("Scanner init error", err);
-      setErrorMsg("Failed to start scanner. Please reload the page and try again.");
+      setErrorMsg(t("errors.startFailed"));
       setScanState("error");
     }
   };
@@ -224,10 +229,10 @@ export default function PickupScanner() {
           return;
         }
       }
-      setErrorMsg(err.message || "Invalid or expired QR code");
+      setErrorMsg(err.message || t("errors.invalidQr"));
       setScanState("error");
     } catch {
-      setErrorMsg("Network error. Please try again.");
+      setErrorMsg(t("errors.network"));
       setScanState("error");
     }
   };
@@ -237,7 +242,7 @@ export default function PickupScanner() {
     e.preventDefault();
     if (!scannedToken || !verifyResult) return;
     if (enteredPin.length !== 4 || !/^\d{4}$/.test(enteredPin)) {
-      toast.error("PIN must be exactly 4 digits");
+      toast.error(t("errors.pinDigits"));
       return;
     }
 
@@ -258,10 +263,10 @@ export default function PickupScanner() {
         setScanState("success");
       } else {
         const err = await res.json();
-        toast.error(err.message || "Confirmation failed. Check name and PIN.");
+        toast.error(err.message || t("errors.confirmFailed"));
       }
     } catch {
-      toast.error("Network error. Please try again.");
+      toast.error(t("errors.network"));
     } finally {
       setSubmitting(false);
     }
@@ -345,20 +350,19 @@ export default function PickupScanner() {
           </svg>
         </div>
         <div className="text-center space-y-1">
-          <h2 className="text-white font-bold text-xl">QR Scanner</h2>
+          <h2 className="text-white font-bold text-xl">{t("scanner.idleTitle")}</h2>
           <p className="text-slate-400 text-sm">
-            Scan a pickup QR, a visitor entry QR, a printed ID card
-            {canLookUpStock ? " or a stock label" : ""} — the type is detected automatically
+            {canLookUpStock ? t("scanner.idleDescStock") : t("scanner.idleDesc")}
           </p>
         </div>
         <div className="px-4 py-3 bg-slate-800/60 border border-slate-700 rounded-xl text-slate-400 text-xs text-center max-w-xs">
-          📷 Camera access is required. Your browser will ask for permission when you tap Start Camera. Once allowed, it stays remembered for this site.
+          📷 {t("scanner.cameraNote")}
         </div>
         <button
           onClick={handleStartCamera}
           className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-all text-base"
         >
-          📷 Start Camera
+          📷 {t("scanner.startCamera")}
         </button>
       </div>
     );
@@ -375,8 +379,8 @@ export default function PickupScanner() {
           </svg>
         </div>
         <div>
-          <p className="text-white font-semibold text-base">Requesting Camera Access…</p>
-          <p className="text-slate-400 text-sm mt-1">Please allow camera access when your browser prompts you.</p>
+          <p className="text-white font-semibold text-base">{t("scanner.requesting")}</p>
+          <p className="text-slate-400 text-sm mt-1">{t("scanner.requestingHint")}</p>
         </div>
       </div>
     );
@@ -386,14 +390,13 @@ export default function PickupScanner() {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-white font-bold text-lg">Scan QR Code</h2>
+          <h2 className="text-white font-bold text-lg">{t("scanner.scanTitle")}</h2>
           <button onClick={stopScanner} className="text-slate-400 hover:text-white text-sm transition-colors">
-            ✕ Cancel
+            ✕ {tc("action.cancel")}
           </button>
         </div>
         <p className="text-slate-400 text-sm">
-          Point the back camera at the code — pickup, visitor pass, ID card
-          {canLookUpStock ? " or stock label" : ""}
+          {canLookUpStock ? t("scanner.scanHintStock") : t("scanner.scanHint")}
         </p>
         <div id="pickup-qr-reader" ref={scannerRef} className="overflow-hidden rounded-2xl border border-slate-700" />
       </div>
@@ -404,14 +407,14 @@ export default function PickupScanner() {
     return (
       <div className="flex flex-col items-center gap-4 py-12">
         <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-slate-400 text-sm">Verifying QR code…</p>
+        <p className="text-slate-400 text-sm">{t("scanner.verifying")}</p>
       </div>
     );
   }
 
   if (scanState === "confirming" && verifyResult) {
     const expiresAt = new Date(verifyResult.expiresAt);
-    const expiryStr = expiresAt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+    const expiryStr = expiresAt.toLocaleTimeString(intlLocale, { hour: "2-digit", minute: "2-digit", hour12: true });
     const isExpiringSoon = expiringSoon;
 
     const studentCard = (
@@ -423,23 +426,24 @@ export default function PickupScanner() {
           <div>
             <h3 className="text-white font-bold text-base">{verifyResult.studentName}</h3>
             <p className="text-slate-400 text-sm">
-              Class {verifyResult.className}
-              {verifyResult.sectionName ? ` — Section ${verifyResult.sectionName}` : ""}
+              {verifyResult.sectionName
+                ? t("scanner.classSectionLine", { className: verifyResult.className, section: verifyResult.sectionName })
+                : t("scanner.classLine", { className: verifyResult.className })}
             </p>
           </div>
         </div>
         <div className="border-t border-slate-800 pt-3 space-y-1 text-sm">
-          <p className="text-slate-400"><span className="text-slate-500">Parent:</span> <span className="text-white">{verifyResult.parentName}</span></p>
-          <p className="text-slate-400"><span className="text-slate-500">Authorised for:</span> <span className="text-emerald-300 font-medium">{verifyResult.authorizedPersonName}</span></p>
+          <p className="text-slate-400"><span className="text-slate-500">{t("scanner.parent")}</span> <span className="text-white">{verifyResult.parentName}</span></p>
+          <p className="text-slate-400"><span className="text-slate-500">{t("scanner.authorisedFor")}</span> <span className="text-emerald-300 font-medium">{verifyResult.authorizedPersonName}</span></p>
           {verifyResult.authorizedPersonMobile && (
-            <p className="text-slate-400"><span className="text-slate-500">Mobile:</span> <span className="text-white">{verifyResult.authorizedPersonMobile}</span></p>
+            <p className="text-slate-400"><span className="text-slate-500">{t("scanner.mobile")}</span> <span className="text-white">{verifyResult.authorizedPersonMobile}</span></p>
           )}
           {verifyResult.notes && (
-            <p className="text-slate-400"><span className="text-slate-500">Note:</span> <span className="text-white">{verifyResult.notes}</span></p>
+            <p className="text-slate-400"><span className="text-slate-500">{t("scanner.note")}</span> <span className="text-white">{verifyResult.notes}</span></p>
           )}
           <p className={isExpiringSoon ? "text-red-400" : "text-slate-400"}>
-            <span className="text-slate-500">Expires:</span> <span>{expiryStr}</span>
-            {isExpiringSoon && <span className="ml-1 text-xs">(expiring soon!)</span>}
+            <span className="text-slate-500">{t("scanner.expires")}</span> <span>{expiryStr}</span>
+            {isExpiringSoon && <span className="ml-1 text-xs">{t("scanner.expiringSoon")}</span>}
           </p>
         </div>
       </div>
@@ -451,12 +455,12 @@ export default function PickupScanner() {
           <span className={`w-6 h-6 rounded-full text-white text-xs flex items-center justify-center font-bold ${step > 1 ? "bg-emerald-600" : "bg-indigo-600"}`}>
             {step > 1 ? "✓" : "1"}
           </span>
-          <span className={`text-sm ${step > 1 ? "text-slate-500 line-through" : "text-white font-medium"}`}>Verify Identity</span>
+          <span className={`text-sm ${step > 1 ? "text-slate-500 line-through" : "text-white font-medium"}`}>{t("scanner.stepIdentity")}</span>
         </div>
         <div className="flex-1 h-px bg-slate-700" />
         <div className="flex items-center gap-1.5">
           <span className={`w-6 h-6 rounded-full text-xs flex items-center justify-center font-bold ${step === 2 ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-400"}`}>2</span>
-          <span className={`text-sm ${step === 2 ? "text-white font-medium" : "text-slate-500"}`}>Verify PIN</span>
+          <span className={`text-sm ${step === 2 ? "text-white font-medium" : "text-slate-500"}`}>{t("scanner.stepPin")}</span>
         </div>
       </div>
     );
@@ -471,30 +475,30 @@ export default function PickupScanner() {
             <div>
               <p className="text-white font-semibold text-sm mb-1 flex items-center gap-1.5">
                 <ClipboardCheck className="w-4 h-4 text-indigo-400" aria-hidden />
-                Step 1 — Confirm the person&apos;s name
+                {t("scanner.step1Title")}
               </p>
-              <p className="text-slate-400 text-xs">Ask the person to state their full name. Confirm it matches the authorised name.</p>
+              <p className="text-slate-400 text-xs">{t("scanner.step1Hint")}</p>
             </div>
             <div>
-              <label className="block text-slate-400 text-xs mb-1.5">Name stated by the person</label>
+              <label className="block text-slate-400 text-xs mb-1.5">{t("scanner.nameLabel")}</label>
               <input
                 type="text"
                 value={enteredName}
                 onChange={(e) => setEnteredName(e.target.value)}
-                placeholder="Enter the name they stated"
+                placeholder={t("scanner.namePlaceholder")}
                 className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 placeholder-slate-600"
                 autoFocus
               />
-              <p className="text-slate-600 text-xs mt-1">Expected: <span className="text-slate-400">{verifyResult.authorizedPersonName}</span></p>
+              <p className="text-slate-600 text-xs mt-1">{t("scanner.expected")} <span className="text-slate-400">{verifyResult.authorizedPersonName}</span></p>
             </div>
             <div className="flex gap-2">
               <button type="button" onClick={handleReset}
                 className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-medium transition-all">
-                ✕ Wrong QR
+                ✕ {t("scanner.wrongQr")}
               </button>
               <button type="button" onClick={() => setConfirmStep(2)} disabled={!enteredName.trim()}
                 className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-all">
-                Name Confirmed →
+                {t("scanner.nameConfirmed")}
               </button>
             </div>
           </div>
@@ -511,7 +515,7 @@ export default function PickupScanner() {
           <span className="text-emerald-300 text-sm font-medium">{enteredName.trim()}</span>
           <button type="button" onClick={() => setConfirmStep(1)}
             className="ml-auto text-slate-500 hover:text-slate-300 text-xs underline">
-            Edit
+            {tc("action.edit")}
           </button>
         </div>
         {studentCard}
@@ -519,12 +523,12 @@ export default function PickupScanner() {
           <div>
             <p className="text-white font-semibold text-sm mb-1 flex items-center gap-1.5">
                 <Hash className="w-4 h-4 text-indigo-400" aria-hidden />
-                Step 2 — Enter their 4-digit PIN
+                {t("scanner.step2Title")}
               </p>
-            <p className="text-slate-400 text-xs">Ask the person to verbally state the 4-digit PIN the parent shared with them. Enter it below.</p>
+            <p className="text-slate-400 text-xs">{t("scanner.step2Hint")}</p>
           </div>
           <div>
-            <label className="block text-slate-400 text-xs mb-1.5">4-Digit PIN</label>
+            <label className="block text-slate-400 text-xs mb-1.5">{t("scanner.pinLabel")}</label>
             <input
               type="text"
               inputMode="numeric"
@@ -543,13 +547,13 @@ export default function PickupScanner() {
           <div className="flex gap-2">
             <button type="button" onClick={() => setConfirmStep(1)}
               className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-medium transition-all">
-              ← Back
+              ← {tc("action.back")}
             </button>
             <button type="submit" disabled={submitting || enteredPin.length !== 4}
               className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2">
               {submitting
                 ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                : "✓ Confirm Handover"}
+                : `✓ ${t("scanner.confirmHandover")}`}
             </button>
           </div>
         </div>
@@ -559,7 +563,7 @@ export default function PickupScanner() {
 
   if (scanState === "success" && verifyResult) {
     const timeStr = confirmedAt
-      ? new Date(confirmedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })
+      ? new Date(confirmedAt).toLocaleTimeString(intlLocale, { hour: "2-digit", minute: "2-digit", hour12: true })
       : "";
 
     return (
@@ -570,27 +574,27 @@ export default function PickupScanner() {
           </svg>
         </div>
         <div>
-          <h2 className="text-white font-bold text-xl mb-1">Handover Confirmed</h2>
+          <h2 className="text-white font-bold text-xl mb-1">{t("scanner.successTitle")}</h2>
           <p className="text-emerald-400 text-sm font-medium">{timeStr}</p>
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-full text-left space-y-1.5 text-sm">
-          <p className="text-slate-400"><span className="text-slate-500">Student:</span> <span className="text-white">{verifyResult.studentName}</span></p>
-          <p className="text-slate-400"><span className="text-slate-500">Handed to:</span> <span className="text-white">{enteredName.trim() || verifyResult.authorizedPersonName}</span></p>
+          <p className="text-slate-400"><span className="text-slate-500">{t("scanner.student")}</span> <span className="text-white">{verifyResult.studentName}</span></p>
+          <p className="text-slate-400"><span className="text-slate-500">{t("scanner.handedTo")}</span> <span className="text-white">{enteredName.trim() || verifyResult.authorizedPersonName}</span></p>
           {verifyResult.authorizedPersonMobile && (
-            <p className="text-slate-400"><span className="text-slate-500">Mobile:</span> <span className="text-white">{verifyResult.authorizedPersonMobile}</span></p>
+            <p className="text-slate-400"><span className="text-slate-500">{t("scanner.mobile")}</span> <span className="text-white">{verifyResult.authorizedPersonMobile}</span></p>
           )}
         </div>
-        <p className="text-slate-500 text-xs">A push notification has been sent to the parent.</p>
+        <p className="text-slate-500 text-xs">{t("scanner.pushSent")}</p>
         <button onClick={restartScanner}
           className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-all">
-          📷 Scan Another QR
+          📷 {t("scanner.scanAnother")}
         </button>
       </div>
     );
   }
 
   if (scanState === "error") {
-    const isCameraDenied = errorMsg.toLowerCase().includes("denied") || errorMsg.toLowerCase().includes("settings");
+    const isCameraDenied = errorMsg === t("errors.cameraDenied") || errorMsg.toLowerCase().includes("denied") || errorMsg.toLowerCase().includes("settings");
     return (
       <div className="flex flex-col items-center gap-5 py-8 text-center">
         <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center">
@@ -599,17 +603,17 @@ export default function PickupScanner() {
           </svg>
         </div>
         <div className="space-y-1 px-2">
-          <h2 className="text-white font-bold text-xl">{isCameraDenied ? "Camera Access Denied" : "QR Verification Failed"}</h2>
+          <h2 className="text-white font-bold text-xl">{isCameraDenied ? t("scanner.deniedTitle") : t("scanner.failedTitle")}</h2>
           <p className="text-red-400 text-sm">{errorMsg}</p>
           {isCameraDenied && (
             <p className="text-slate-500 text-xs mt-2">
-              On Android: tap the lock icon 🔒 in the address bar → Site settings → Camera → Allow.
+              {t("scanner.androidHint")}
             </p>
           )}
         </div>
         <button onClick={handleReset}
           className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-all">
-          {isCameraDenied ? "Go Back" : "Try Again"}
+          {isCameraDenied ? t("scanner.goBack") : tc("action.retry")}
         </button>
       </div>
     );

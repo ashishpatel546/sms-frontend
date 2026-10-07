@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   AssistantError,
   cancelDrafts,
@@ -57,6 +58,7 @@ function outcomeState(r: ActionResult): DraftState {
 }
 
 export function useAssistantChat(active: boolean) {
+  const t = useTranslations('assistant');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const [credits, setCredits] = useState<Credits | null>(null);
@@ -97,7 +99,7 @@ export function useAssistantChat(active: boolean) {
         setStartError(
           err instanceof AssistantError
             ? err
-            : new AssistantError('FAILED', 'The assistant is unavailable right now.'),
+            : new AssistantError('FAILED', t('error.unavailable')),
         );
         return;
       }
@@ -116,7 +118,7 @@ export function useAssistantChat(active: boolean) {
             })),
       );
     })();
-  }, [active, attempt]);
+  }, [active, attempt, t]);
 
   /**
    * Fetches the balance again: after Stop (the reply's own figure never
@@ -275,7 +277,7 @@ export function useAssistantChat(active: boolean) {
           const e =
             err instanceof AssistantError
               ? err
-              : new AssistantError('FAILED', 'The assistant could not answer. Try again.');
+              : new AssistantError('FAILED', t('error.couldNotAnswer'));
           patch(reply.id, (m) => ({ ...m, error: { code: e.code, message: e.message } }));
           final = { ...final, error: { code: e.code, message: e.message } };
         }
@@ -284,7 +286,7 @@ export function useAssistantChat(active: boolean) {
           ...m,
           streaming: false,
           status: undefined,
-          text: m.text || (ctrl.signal.aborted && !m.error ? 'Stopped.' : m.text),
+          text: m.text || (ctrl.signal.aborted && !m.error ? t('message.stopped') : m.text),
         }));
         abort.current = null;
         setBusy(false);
@@ -292,7 +294,7 @@ export function useAssistantChat(active: boolean) {
       }
       return final;
     },
-    [busy, markDrafts, patch, refreshCredits],
+    [busy, markDrafts, patch, refreshCredits, t],
   );
 
   const stop = useCallback(() => abort.current?.abort(), []);
@@ -329,7 +331,7 @@ export function useAssistantChat(active: boolean) {
         const e =
           err instanceof AssistantError
             ? err
-            : new AssistantError('FAILED', 'That did not go through. Try again.');
+            : new AssistantError('FAILED', t('error.didNotGoThrough'));
         patch(messageId, (m) => ({
           ...m,
           drafts: m.drafts?.map((d, i) => (i === draftIndex ? { ...d, working: undefined } : d)),
@@ -344,7 +346,7 @@ export function useAssistantChat(active: boolean) {
         return note;
       }
     },
-    [caps, markDrafts, messages, patch, refreshCredits],
+    [caps, markDrafts, messages, patch, refreshCredits, t],
   );
 
   /** Ends the conversation (and its assistant session); the next message starts fresh. */

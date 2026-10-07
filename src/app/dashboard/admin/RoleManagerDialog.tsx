@@ -28,6 +28,7 @@ import {
   UserCog,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslations } from 'next-intl';
 import { API_BASE_URL } from '@/lib/api';
 import { authFetch, getToken } from '@/lib/auth';
 import { READ_ONLY_TITLE } from '@/lib/support-session';
@@ -44,47 +45,43 @@ import { cn } from '@/lib/utils';
 
 /* ── The catalogue ───────────────────────────────────────────────────────── */
 
-export const ROLE_LABELS: Record<string, { label: string; chip: string }> = {
+export const ROLE_LABELS: Record<string, { chip: string }> = {
   SUPER_ADMIN: {
-    label: 'Super Admin',
     chip: 'bg-iris-100 text-iris-700 border-iris-200',
   },
   ADMIN: {
-    label: 'Admin',
     chip: 'bg-accent-info-tint text-accent-info-deep border-accent-info-edge',
   },
   SUB_ADMIN: {
-    label: 'Sub Admin',
     chip: 'bg-lapis-100 text-lapis-700 border-lapis-200',
   },
   HR_ADMIN: {
-    label: 'HR Admin',
     chip: 'bg-brand-tint text-brand-deep border-brand-edge',
   },
   LIBRARIAN: {
-    label: 'Librarian',
     chip: 'bg-accent-success-tint text-accent-success-deep border-accent-success-edge',
   },
   TEACHER: {
-    label: 'Teacher',
     chip: 'bg-sage-100 text-sage-800 border-sage-200',
   },
   GUARD: {
-    label: 'Guard',
     chip: 'bg-surface-inset text-ink-muted border-line-strong',
   },
   STUDENT: {
-    label: 'Student',
     chip: 'bg-accent-warn-tint text-accent-warn-deep border-accent-warn-edge',
   },
   PARENT: {
-    label: 'Parent',
     chip: 'bg-accent-ai-tint text-accent-ai border-accent-ai-edge',
   },
 };
 
-export function roleLabel(role: string): string {
-  return ROLE_LABELS[role]?.label ?? role;
+/** Role name in the reader's language (nav.role), or the raw value for an unknown role. */
+export function useRoleLabeler(): (role: string) => string {
+  const t = useTranslations('nav.role');
+  return (role: string) => {
+    const key = role as Parameters<typeof t>[0];
+    return t.has(key) ? t(key) : role;
+  };
 }
 
 /**
@@ -94,29 +91,24 @@ export function roleLabel(role: string): string {
  * the server's `grantable` array the moment it arrives.
  */
 const GRANTABLE: {
-  role: string;
+  role: 'HR_ADMIN' | 'SUB_ADMIN' | 'LIBRARIAN' | 'TEACHER';
   icon: typeof ShieldCheck;
-  unlocks: string;
 }[] = [
   {
     role: 'HR_ADMIN',
     icon: Briefcase,
-    unlocks: 'HR Portal — staff attendance, leave policies, payroll and salary setup.',
   },
   {
     role: 'SUB_ADMIN',
     icon: UserCog,
-    unlocks: 'Day-to-day admin — students, staff, subjects, sections, enrolment and fees.',
   },
   {
     role: 'LIBRARIAN',
     icon: BookOpen,
-    unlocks: 'Library — book catalogue, issuing, returns and overdue tracking.',
   },
   {
     role: 'TEACHER',
     icon: GraduationCap,
-    unlocks: 'Classroom tools — attendance, homework, marks entry and AI teaching aids.',
   },
 ];
 
@@ -144,6 +136,7 @@ export function RoleChip({
   className?: string;
 }) {
   const meta = ROLE_LABELS[role];
+  const roleLabel = useRoleLabeler();
   return (
     <span
       className={cn(
@@ -160,7 +153,7 @@ export function RoleChip({
           primary ? 'bg-current' : 'border border-current bg-transparent',
         )}
       />
-      {meta?.label ?? role}
+      {roleLabel(role)}
     </span>
   );
 }
@@ -271,6 +264,9 @@ export function RoleManagerDialog({
   onRolesChanged: (userId: number, secondary: string[]) => void;
   onPrimaryChanged: () => void;
 }) {
+  const t = useTranslations('admin.roles');
+  const tc = useTranslations('common');
+  const roleLabel = useRoleLabeler();
   const [loading, setLoading] = useState(true);
   const [primary, setPrimary] = useState<string>(user?.role ?? '');
   const [secondary, setSecondary] = useState<string[]>([]);
@@ -289,7 +285,7 @@ export function RoleManagerDialog({
   const userId = user?.id;
   const firstName = user?.firstName ?? '';
   const lastName = user?.lastName ?? '';
-  const shortName = firstName || lastName || 'This user';
+  const shortName = firstName || lastName || t('thisUser');
 
   // The sheet is remounted (keyed on the person) each time it opens, so
   // `loading` starts true and there is nothing to reset on the way in. State
@@ -312,12 +308,12 @@ export function RoleManagerDialog({
       .catch(() => {
         if (cancelled) return;
         setLoading(false);
-        toast.error("Couldn't load this person's roles.");
+        toast.error(t('loadFailed'));
       });
     return () => {
       cancelled = true;
     };
-  }, [open, userId]);
+  }, [open, userId, t]);
 
   const held = primary ? [primary, ...secondary.filter((r) => r !== primary)] : secondary;
   const blocked = NO_ADDITIONAL_ROLES.includes(primary);
@@ -371,17 +367,17 @@ export function RoleManagerDialog({
         onRolesChanged(userId, after);
         toast.success(
           next
-            ? `${roleLabel(role)} added — active at next sign-in`
-            : `${roleLabel(role)} removed — applies at next sign-in`,
+            ? t('added', { role: roleLabel(role) })
+            : t('removed', { role: roleLabel(role) }),
         );
       } else {
         setSecondary(before);
         const d = await res.json().catch(() => null);
-        toast.error(d?.message || `Couldn't ${next ? 'add' : 'remove'} ${roleLabel(role)}`);
+        toast.error(d?.message || (next ? t('addFailed', { role: roleLabel(role) }) : t('removeFailed', { role: roleLabel(role) })));
       }
     } catch {
       setSecondary(before);
-      toast.error('Network error — nothing was changed.');
+      toast.error(t('networkError'));
     }
     setBusyRole(null);
   };
@@ -406,15 +402,15 @@ export function RoleManagerDialog({
         setSecondary(after);
         onRolesChanged(userId, after);
         onPrimaryChanged();
-        toast.success(`Primary role is now ${roleLabel(role)}`);
+        toast.success(t('primaryNow', { role: roleLabel(role) }));
       } else {
         setPrimary(before);
         const d = await res.json().catch(() => null);
-        toast.error(d?.message || "Couldn't change the primary role");
+        toast.error(d?.message || t('primaryFailed'));
       }
     } catch {
       setPrimary(before);
-      toast.error('Network error — nothing was changed.');
+      toast.error(t('networkError'));
     }
     setSavingPrimary(false);
   };
@@ -447,7 +443,7 @@ export function RoleManagerDialog({
                 {firstName} {lastName}
               </DialogTitle>
               <DialogDescription className="text-ink-muted mt-0.5 truncate text-[12.5px]">
-                {user.email || user.mobile || 'No contact on file'}
+                {user.email || user.mobile || t('noContact')}
               </DialogDescription>
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 {held.map((r) => (
@@ -459,7 +455,7 @@ export function RoleManagerDialog({
               variant="ghost"
               size="icon-sm"
               onClick={() => onOpenChange(false)}
-              aria-label="Close"
+              aria-label={tc('action.close')}
               className="-mt-1 -mr-1 shrink-0"
             >
               ✕
@@ -480,11 +476,10 @@ export function RoleManagerDialog({
               {/* Primary role — one choice, framed */}
               <section>
                 <h3 className="text-ink-muted text-[11px] font-semibold tracking-[0.09em] uppercase">
-                  Primary role
+                  {t('primaryRole')}
                 </h3>
                 <p className="text-ink-faint mt-1 text-[12.5px] leading-relaxed">
-                  Who this person is in the school. One only, and it is the role their
-                  dashboard is built around.
+                  {t('primaryHint')}
                 </p>
                 <div className="border-line bg-surface-secondary mt-2.5 flex flex-wrap items-center gap-3 rounded-xl border px-3.5 py-3">
                   {canEditPrimary && !isSelf ? (
@@ -494,7 +489,7 @@ export function RoleManagerDialog({
                         onChange={(e) => void changePrimary(e.target.value)}
                         disabled={locked || savingPrimary}
                         title={lockTitle}
-                        aria-label="Primary role"
+                        aria-label={t('primaryRole')}
                         className={cn(
                           'border-line-strong bg-surface text-ink h-9 min-w-40 flex-1 rounded-md border px-2.5',
                           'cursor-pointer text-[13.5px] font-medium',
@@ -523,8 +518,8 @@ export function RoleManagerDialog({
                       <RoleChip role={primary} primary />
                       <span className="text-ink-faint text-[12px]">
                         {isSelf
-                          ? 'You cannot change your own primary role.'
-                          : 'Only a super admin can change the primary role.'}
+                          ? t('cannotChangeOwn')
+                          : t('onlySuperAdmin')}
                       </span>
                     </>
                   )}
@@ -534,26 +529,23 @@ export function RoleManagerDialog({
               {/* Additional roles — capabilities, switched on and off */}
               <section className="mt-6">
                 <h3 className="text-ink-muted text-[11px] font-semibold tracking-[0.09em] uppercase">
-                  Additional roles
+                  {t('additionalRoles')}
                 </h3>
                 <p className="text-ink-faint mt-1 text-[12.5px] leading-relaxed">
-                  Extra work this person also does. Access adds up — an admin who also
-                  holds HR Admin keeps the admin panel and gains the HR Portal.
+                  {t('additionalHint')}
                 </p>
 
                 {blocked ? (
                   <Note
                     pigment="neutral"
                     className="mt-3"
-                    title={`${roleLabel(primary)} accounts can't hold additional roles`}
+                    title={t('blockedTitle', { role: roleLabel(primary) })}
                   >
-                    A {roleLabel(primary).toLowerCase()} login is a portal identity tied to
-                    one person&apos;s relationship with the school. Staff access belongs on a
-                    separate staff account.
+                    {t('blockedBody', { role: roleLabel(primary).toLowerCase() })}
                   </Note>
                 ) : (
                   <ul className="mt-3 space-y-2">
-                    {rows.map(({ role, icon: Icon, unlocks }) => {
+                    {rows.map(({ role, icon: Icon }) => {
                       const isPrimary = role === primary;
                       const on = isPrimary || secondary.includes(role);
                       const busy = busyRole === role;
@@ -586,14 +578,14 @@ export function RoleManagerDialog({
                               </span>
                               {isPrimary && (
                                 <span className="border-line-strong bg-surface-inset text-ink-muted rounded-full border px-1.5 py-px text-[10.5px] font-semibold tracking-wide uppercase">
-                                  Primary
+                                  {t('primaryBadge')}
                                 </span>
                               )}
                             </div>
                             <p className="text-ink-muted mt-0.5 text-[12px] leading-relaxed">
                               {isPrimary
-                                ? 'Already held as the primary role — nothing to add.'
-                                : unlocks}
+                                ? t('alreadyPrimary')
+                                : t(`unlocks.${role}`)}
                             </p>
                           </div>
                           <RoleSwitch
@@ -601,10 +593,10 @@ export function RoleManagerDialog({
                             busy={busy}
                             disabled={isPrimary || locked || !!busyRole || savingPrimary}
                             onToggle={() => void toggle(role, !on)}
-                            label={`${roleLabel(role)} for ${shortName}`}
+                            label={t('switchLabel', { role: roleLabel(role), name: shortName })}
                             title={
                               isPrimary
-                                ? 'This is already the primary role'
+                                ? t('alreadyPrimaryTitle')
                                 : lockTitle
                             }
                           />
@@ -621,7 +613,7 @@ export function RoleManagerDialog({
         {/* ── When ────────────────────────────────────────────────────── */}
         <footer className="border-line bg-surface-secondary border-t px-4 py-3.5 sm:px-6">
           {ledger.length > 0 ? (
-            <Note pigment="attn" title="Takes effect at next sign-in">
+            <Note pigment="attn" title={t('ledgerTitle')}>
               <ul className="mt-1 space-y-0.5">
                 {ledger.map((entry) => (
                   <li key={entry.kind + entry.role} className="flex items-center gap-1.5">
@@ -630,23 +622,22 @@ export function RoleManagerDialog({
                     </span>
                     <span>
                       {entry.kind === 'primary'
-                        ? 'Primary role set to ' + roleLabel(entry.role)
-                        : roleLabel(entry.role) +
-                          (entry.kind === 'add' ? ' added' : ' removed')}
+                        ? t('ledgerPrimary', { role: roleLabel(entry.role) })
+                        : entry.kind === 'add'
+                          ? t('ledgerAdded', { role: roleLabel(entry.role) })
+                          : t('ledgerRemoved', { role: roleLabel(entry.role) })}
                     </span>
                   </li>
                 ))}
               </ul>
               <p className="mt-1.5 opacity-90">
-                {shortName} keeps their current access until they sign out and sign in
-                again.
+                {t('keepsAccess', { name: shortName })}
               </p>
             </Note>
           ) : (
             <p className="text-ink-muted flex items-start gap-2 text-[12px] leading-relaxed">
               <ShieldCheck className="text-ink-faint mt-px size-4 shrink-0" />
-              Role changes are written into the sign-in token, so they reach this person
-              the next time they sign in — not straight away.
+              {t('tokenNote')}
             </p>
           )}
         </footer>

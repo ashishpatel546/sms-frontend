@@ -1,0 +1,45 @@
+{
+  "title": "My Profile",
+  "tabs": {
+    "generalShort": "General",
+    "general": "General Information",
+    "securityShort": "Security",
+    "security": "Security & Login",
+    "idCardShort": "ID Card",
+    "idCard": "My ID Card"
+  },
+  "general": {
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "email": "Email Address",
+    "mobile": "Mobile Number"
+  },
+  "password": {
+    "title": "Change Password",
+    "subtitle": "Update your account password to stay secure.",
+    "current": "Current Password",
+    "new": "New Password",
+    "confirm": "Confirm Password",
+    "update": "Update Password",
+    "updating": "Updating...",
+    "mismatch": "New passwords do not match",
+    "tooShort": "Password must be at least 6 characters",
+    "sameAsCurrent": "New password must be different from current password",
+    "failed": "Failed to change password",
+    "success": "Password changed successfully!"
+  },
+  "sessions": {
+    "title": "Active Sessions",
+    "subtitle": "You’re currently logged in on these devices. If you don’t recognize a device, log out of it immediately.",
+    "loading": "Loading sessions...",
+    "unknownDevice": "Unknown Device",
+    "unknown": "Unknown",
+    "current": "Current",
+    "ip": "IP: {ip}",
+    "lastActive": "Last active: {time}",
+    "logOut": "Log Out",
+    "logoutAllTitle": "Logout capability",
+    "logoutAllBody": "If you lost your device or notice suspicious activity, you can log out of all devices immediately. You will need to log back in on this device.",
+    "logoutAll": "Log out of all devices"
+  }
+}

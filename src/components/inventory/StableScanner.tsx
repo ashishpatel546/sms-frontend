@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { X, Camera } from 'lucide-react';
 import {
@@ -122,29 +123,32 @@ async function loadScannerLib(): Promise<typeof import('html5-qrcode')> {
  * any other app using the camera", which is useless advice when the real
  * problem is a chunk that failed to download or a permission that was denied.
  */
-function describeScannerError(err: unknown): string {
+type ScannerErrorKey = 'error.chunk' | 'error.denied' | 'error.noCamera' | 'error.busy' | 'error.timeout' | 'error.failed';
+
+function describeScannerError(err: unknown, t: (key: ScannerErrorKey) => string): string {
   const name = err instanceof Error ? err.name : '';
   const message = err instanceof Error ? err.message : String(err ?? '');
 
   if (name === 'ChunkLoadError' || /Failed to load chunk|Loading chunk|dynamically imported module/i.test(message)) {
-    return 'Could not download the scanner. Check your connection and reload the page.';
+    return t('error.chunk');
   }
   if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
-    return 'Camera access was denied. Allow the camera for this page in your browser settings, then try again.';
+    return t('error.denied');
   }
   if (name === 'NotFoundError' || name === 'DevicesNotFoundError' || name === 'OverconstrainedError') {
-    return 'No usable camera was found on this device.';
+    return t('error.noCamera');
   }
   if (name === 'NotReadableError' || name === 'TrackStartError') {
-    return 'The camera is being used by another app. Close it (Teams, Zoom, the Camera app) and try again.';
+    return t('error.busy');
   }
   if (/did not start in time/i.test(message)) {
-    return 'The camera did not start in time. Close any other app using it, then try again.';
+    return t('error.timeout');
   }
-  return message || 'Failed to start the scanner. Reload the page and try again.';
+  return message || t('error.failed');
 }
 
 export default function StableScanner({ onCode, config, onClose }: StableScannerProps) {
+  const t = useTranslations('inventory.scanner');
   const [state, setState] = useState<CameraState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   // html5-qrcode mounts into an element found by id, so a hard-coded one would
@@ -254,7 +258,7 @@ export default function StableScanner({ onCode, config, onClose }: StableScanner
         // library grabs it again.
         await new Promise((resolve) => setTimeout(resolve, 200));
       } catch (err) {
-        setErrorMsg(describeScannerError(err));
+        setErrorMsg(describeScannerError(err, t));
         setState('error');
         return;
       }
@@ -271,7 +275,7 @@ export default function StableScanner({ onCode, config, onClose }: StableScanner
       // open/close cycles on the same device.
       const cameras = await Html5Qrcode.getCameras();
       if (!cameras || cameras.length === 0) {
-        setErrorMsg('No camera found on this device.');
+        setErrorMsg(t('noCameraFound'));
         setState('error');
         return;
       }
@@ -283,7 +287,7 @@ export default function StableScanner({ onCode, config, onClose }: StableScanner
       // and only has a width once it has been laid out.
       const readerEl = readerRef.current;
       if (!readerEl) {
-        setErrorMsg('Scanner viewport was not ready. Try again.');
+        setErrorMsg(t('viewportNotReady'));
         setState('error');
         return;
       }
@@ -383,7 +387,7 @@ export default function StableScanner({ onCode, config, onClose }: StableScanner
     } catch (err) {
       console.error('Inventory scanner init error', err);
       await teardown();
-      setErrorMsg(describeScannerError(err));
+      setErrorMsg(describeScannerError(err, t));
       setState('error');
     }
   };
@@ -407,7 +411,7 @@ export default function StableScanner({ onCode, config, onClose }: StableScanner
         className="flex h-32 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line-strong bg-surface-secondary text-ink-muted transition-colors hover:border-brand hover:bg-brand-tint hover:text-brand"
       >
         <Camera className="size-6" aria-hidden />
-        <span className="text-[13.5px] font-semibold">Tap to scan a QR or barcode</span>
+        <span className="text-[13.5px] font-semibold">{t('tapToScan')}</span>
       </button>
     );
   }
@@ -416,7 +420,7 @@ export default function StableScanner({ onCode, config, onClose }: StableScanner
     return (
       <div className="flex h-32 w-full flex-col items-center justify-center gap-2 rounded-xl border border-line bg-surface-secondary">
         <div className="size-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-        <span className="text-[12.5px] text-ink-muted">Requesting camera access…</span>
+        <span className="text-[12.5px] text-ink-muted">{t('requesting')}</span>
       </div>
     );
   }
@@ -430,7 +434,7 @@ export default function StableScanner({ onCode, config, onClose }: StableScanner
           onClick={start}
           className="text-[12.5px] font-semibold text-brand underline"
         >
-          Try again
+          {t('tryAgain')}
         </button>
       </div>
     );
@@ -440,8 +444,7 @@ export default function StableScanner({ onCode, config, onClose }: StableScanner
     <div className="space-y-2">
       <div className="flex items-start justify-between gap-2">
         <span className="text-[12.5px] font-medium text-ink-muted">
-          Hold steady on one label — it accepts once the same code reads consistently.
-          For a printed barcode, fill the box edge to edge and hold ~15 cm away.
+          {t('holdSteady')}
         </span>
         <button
           type="button"
@@ -449,7 +452,7 @@ export default function StableScanner({ onCode, config, onClose }: StableScanner
             void stop().then(() => onClose?.());
           }}
           className="shrink-0 rounded-full p-1 text-ink-faint hover:bg-surface-secondary hover:text-ink"
-          aria-label="Stop scanning"
+          aria-label={t('stop')}
         >
           <X className="size-4" />
         </button>

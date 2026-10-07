@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 import { Star, ImageOff, MapPin, CalendarDays } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 import FeatureNotAvailableNotice from '@/components/parent/FeatureNotAvailableNotice';
 import {
-  ACTIVITY_CATEGORY_LABELS,
   ActivitiesApiError,
   fetchStudentActivities,
   fetchStudentActivity,
@@ -31,6 +31,7 @@ export function ActivitiesSection({
   /** Auto-opens this activity's card — the target of a "new activity" push notification. */
   initialActivityId?: string | null;
 }) {
+  const t = useTranslations('parent.activities');
   const [state, setState] = React.useState<'loading' | 'ready' | 'off' | 'error'>('loading');
   const [message, setMessage] = React.useState('');
   const [activities, setActivities] = React.useState<Activity[]>([]);
@@ -51,17 +52,17 @@ export function ActivitiesSection({
           setState('off');
           return;
         }
-        setMessage(e instanceof Error ? e.message : 'We could not load activities just now.');
+        setMessage(e instanceof Error ? e.message : t('loadFailed'));
         setState('error');
       });
     return () => { cancelled = true; };
-  }, [studentId]);
+  }, [studentId, t]);
 
   if (state === 'off') {
     return (
       <FeatureNotAvailableNotice
-        title="Activities"
-        description="You would see the school's events, results and photos here."
+        title={t("title")}
+        description={t("featureDescription")}
       />
     );
   }
@@ -87,7 +88,7 @@ export function ActivitiesSection({
   if (activities.length === 0) {
     return (
       <div className="rounded-xl border border-line bg-surface-secondary p-4 text-center">
-        <p className="text-[13px] text-ink-muted">Nothing published yet. Check back after the next school event.</p>
+        <p className="text-[13px] text-ink-muted">{t("empty")}</p>
       </div>
     );
   }
@@ -118,6 +119,8 @@ function ActivityCard({
   open: boolean;
   onToggle: () => void;
 }) {
+  const t = useTranslations('parent.activities');
+  const tc = useTranslations('common');
   const [detail, setDetail] = React.useState<Activity | null>(null);
   const [loadingDetail, setLoadingDetail] = React.useState(false);
   const [photos, setPhotos] = React.useState<ActivityPhoto[] | null>(null);
@@ -160,7 +163,7 @@ function ActivityCard({
           <p className="truncate text-[14px] font-semibold text-ink">{activity.title}</p>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-ink-muted">
             <span className="inline-flex items-center gap-1"><CalendarDays className="size-3.5" /> {activity.startDate}{activity.endDate ? ` – ${activity.endDate}` : ''}</span>
-            <span>· {ACTIVITY_CATEGORY_LABELS[activity.category]}</span>
+            <span>· {t(`category.${activity.category}`)}</span>
             {activity.venue && <span className="inline-flex items-center gap-1"><MapPin className="size-3.5" /> {activity.venue}</span>}
           </p>
         </div>
@@ -184,7 +187,7 @@ function ActivityCard({
 
               {winners.length > 0 && (
                 <div>
-                  <p className="eyebrow mb-1.5">Winners</p>
+                  <p className="eyebrow mb-1.5">{t("winners")}</p>
                   <ul className="space-y-1">
                     {winners
                       .sort((a, b) => (a.position ?? 99) - (b.position ?? 99))
@@ -192,7 +195,7 @@ function ActivityCard({
                         <li key={w.studentId} className="flex items-center gap-2 text-[13px] text-ink">
                           <Star className="size-3.5 shrink-0 fill-accent-warn text-accent-warn" />
                           <span className="font-medium">
-                            {w.student?.user ? `${w.student.user.firstName} ${w.student.user.lastName}` : `Student #${w.studentId}`}
+                            {w.student?.user ? `${w.student.user.firstName} ${w.student.user.lastName}` : t('studentNumber', { id: w.studentId })}
                           </span>
                           {w.position && <span className="text-ink-muted">· #{w.position}</span>}
                           {w.award && <span className="text-ink-muted">· {w.award}</span>}
@@ -211,13 +214,13 @@ function ActivityCard({
                       disabled={loadingPhotos}
                       className="text-[12.5px] font-semibold text-brand hover:text-brand-deep"
                     >
-                      {loadingPhotos ? 'Loading…' : `Load photos (${activity.photoCount})`}
+                      {loadingPhotos ? tc('state.loading') : t('loadPhotos', { count: activity.photoCount })}
                     </button>
                   ) : (
-                    <p className="flex items-center gap-1.5 text-[12px] text-ink-faint"><ImageOff className="size-3.5" /> No photos</p>
+                    <p className="flex items-center gap-1.5 text-[12px] text-ink-faint"><ImageOff className="size-3.5" /> {t("noPhotos")}</p>
                   )
                 ) : photos.length === 0 ? (
-                  <p className="text-[12px] text-ink-faint">No photos</p>
+                  <p className="text-[12px] text-ink-faint">{t("noPhotos")}</p>
                 ) : (
                   <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                     {photos.map((p) => (

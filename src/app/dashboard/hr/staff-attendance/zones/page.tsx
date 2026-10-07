@@ -7,17 +7,29 @@ import { useRbac } from "@/lib/rbac";
 import {
   acquirePreciseFix,
   describeAccuracy,
-  explainFixError,
+  fixErrorMessage,
   GeolocationFixError,
 } from "@/lib/geolocation";
 import {
-  formatArea,
+  areaMessage,
+  boundaryProblem,
   ringAreaSqMetres,
   ringCentroid,
-  validateBoundary,
 } from "@/lib/geo-boundary";
+import { useHelperMessage } from "@/i18n/useHelperMessage";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE } from "@/i18n/config";
+
+function MapLoading() {
+  const t = useTranslations("hr.zones");
+  return (
+    <div className="h-95 w-full rounded-xl border border-gray-300 bg-gray-50 grid place-items-center text-sm text-gray-500">
+      {t("loadingMap")}
+    </div>
+  );
+}
 
 /**
  * Leaflet reads `window` when its module loads, so the map cannot be part of
@@ -28,11 +40,7 @@ const ZoneBoundaryMap = dynamic(
   () => import("@/components/attendance/ZoneBoundaryMap"),
   {
     ssr: false,
-    loading: () => (
-      <div className="h-95 w-full rounded-xl border border-gray-300 bg-gray-50 grid place-items-center text-sm text-gray-500">
-        Loading map…
-      </div>
-    ),
+    loading: () => <MapLoading />,
   },
 );
 
@@ -70,7 +78,11 @@ const EMPTY_FORM: ZoneFormState = {
 const FALLBACK_CENTRE: BoundaryPoint = { lat: 28.6139, lng: 77.209 };
 
 export default function AttendanceZonesPage() {
+  const helperText = useHelperMessage();
+  const intlLocale = INTL_LOCALE[useLocale()];
   const rbac = useRbac();
+  const t = useTranslations("hr.zones");
+  const tc = useTranslations("common");
   const [zones, setZones] = useState<AttendanceZone[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<ZoneFormState>(EMPTY_FORM);
@@ -90,7 +102,7 @@ export default function AttendanceZonesPage() {
   const load = async () => {
     setLoading(true);
     try { setZones(await hrApi.attendance.zones.list()); }
-    catch { toast.error("Failed to load zones"); }
+    catch { toast.error(t("loadFailed")); }
     finally { setLoading(false); }
   };
 
@@ -136,23 +148,23 @@ export default function AttendanceZonesPage() {
     const drawn = shapeMode === "polygon" && form.boundary?.length ? form.boundary : null;
 
     const errors: ZoneFormErrors = {};
-    if (!name) errors.name = "Zone name is required";
+    if (!name) errors.name = t("nameRequired");
 
     // Coordinates are only something the operator must supply for a circle.
     // With an outline drawn they are derived from it below, so demanding them
     // would be asking for a centre the shape already knows.
     if (!drawn) {
-      if (form.latStr.trim() === "") errors.lat = "Latitude is required";
-      else if (!Number.isFinite(lat) || lat < -90 || lat > 90) errors.lat = "Must be a number between -90 and 90";
-      if (form.lngStr.trim() === "") errors.lng = "Longitude is required";
-      else if (!Number.isFinite(lng) || lng < -180 || lng > 180) errors.lng = "Must be a number between -180 and 180";
-      if (radius !== undefined && (!Number.isFinite(radius) || radius < 10)) errors.radius = "Radius must be at least 10 metres";
+      if (form.latStr.trim() === "") errors.lat = t("latRequired");
+      else if (!Number.isFinite(lat) || lat < -90 || lat > 90) errors.lat = t("latRange");
+      if (form.lngStr.trim() === "") errors.lng = t("lngRequired");
+      else if (!Number.isFinite(lng) || lng < -180 || lng > 180) errors.lng = t("lngRange");
+      if (radius !== undefined && (!Number.isFinite(radius) || radius < 10)) errors.radius = t("radiusMin");
     } else {
       // Half-drawn outlines are rejected rather than silently discarded: saving
       // as a circle when the operator believes they traced a boundary is the
       // worse failure of the two.
-      const problem = validateBoundary(drawn);
-      if (problem) errors.boundary = problem;
+      const problem = boundaryProblem(drawn);
+      if (problem) errors.boundary = helperText(problem);
     }
 
     if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
@@ -179,22 +191,22 @@ export default function AttendanceZonesPage() {
           boundary: drawn,
           isActive: form.isActive,
         });
-        toast.success("Zone updated");
+        toast.success(t("updated"));
       } else {
         await hrApi.attendance.zones.create({
           ...payload,
           ...(drawn ? { boundary: drawn } : {}),
         });
-        toast.success("Zone created");
+        toast.success(t("created"));
       }
       setShowForm(false); load();
-    } catch (e: any) { toast.error(e?.info?.message ?? "Save failed"); }
+    } catch (e: any) { toast.error(e?.info?.message ?? t("saveFailed")); }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this zone?")) return;
-    try { await hrApi.attendance.zones.remove(id); toast.success("Deleted"); load(); }
-    catch (e: any) { toast.error(e?.info?.message ?? "Delete failed"); }
+    if (!confirm(t("deleteConfirm"))) return;
+    try { await hrApi.attendance.zones.remove(id); toast.success(tc("state.deleted")); load(); }
+    catch (e: any) { toast.error(e?.info?.message ?? t("deleteFailed")); }
   };
 
   /**
@@ -213,7 +225,7 @@ export default function AttendanceZonesPage() {
     try {
       const fix = await acquirePreciseFix({
         onProgress: ({ accuracy }) =>
-          setLocationWarning(`Locating… currently ${describeAccuracy(accuracy)}`),
+          setLocationWarning(t("locatingProgress", { accuracy: describeAccuracy(accuracy) })),
       });
       setForm((f) => ({
         ...f,
@@ -223,14 +235,14 @@ export default function AttendanceZonesPage() {
       setFormErrors((e) => ({ ...e, lat: undefined, lng: undefined }));
       setLocationWarning(
         fix.accuracy > 30
-          ? `Placed the centre, but only to ${describeAccuracy(fix.accuracy)}. Check it against the map below and drag it onto the building if it is off.`
-          : `Centre placed, accurate to ${describeAccuracy(fix.accuracy)}.`,
+          ? t("placedImprecise", { accuracy: describeAccuracy(fix.accuracy) })
+          : t("placedPrecise", { accuracy: describeAccuracy(fix.accuracy) }),
       );
     } catch (e: any) {
       setLocationWarning(
         e instanceof GeolocationFixError
-          ? explainFixError(e)
-          : "Could not get your location. Drop the centre on the map instead.",
+          ? helperText(fixErrorMessage(e))
+          : t("locationFailed"),
       );
     } finally {
       setLocatingCentre(false);
@@ -241,36 +253,31 @@ export default function AttendanceZonesPage() {
     <div className="p-3 sm:p-6 space-y-4">
       <Toaster />
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/hr/staff-attendance" className="text-gray-400 hover:text-gray-700 transition-colors" title="Back to Staff Attendance">
-          ← Back
+        <Link href="/dashboard/hr/staff-attendance" className="text-gray-400 hover:text-gray-700 transition-colors" title={t("backTitle")}>
+          ← {tc("action.back")}
         </Link>
-        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Attendance Geo-Zones</h1>
+        <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t("title")}</h1>
         <div className="flex-1" />
         {rbac.canManageHR && (
           <button onClick={openCreate} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
-            + New Zone
+            {t("newZone")}
           </button>
         )}
       </div>
       <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
-        <h2 className="text-sm font-semibold text-teal-900 mb-1">About Attendance Geo-Zones</h2>
+        <h2 className="text-sm font-semibold text-teal-900 mb-1">{t("aboutTitle")}</h2>
         <p className="text-xs text-teal-800 leading-relaxed">
-          Geo-zones define <strong>where staff are allowed to mark attendance</strong>. Trace your campus outline on the
-          satellite map, or set a centre point and radius. Staff must be inside at least one active zone, and their phone
-          must be precise enough to <strong>prove</strong> it — a check-in is only accepted when the whole GPS accuracy
-          circle falls within the boundary, so a phone guessing from the network is never admitted.
+          {t.rich("aboutBody1", { strong: (c) => <strong>{c}</strong> })}
         </p>
         <p className="text-xs text-teal-800 leading-relaxed mt-2">
-          Leave the edges some room. A phone accurate to ±20m must stand at least 20m inside the line, so a boundary drawn
-          tight to the walls will turn people away who are genuinely on site. Tracing the real outline beats a circle on
-          any campus that is not round — a circle inside a long, narrow plot covers only a fraction of the grounds.
+          {t("aboutBody2")}
         </p>
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-500">Loading…</p>
+        <p className="text-sm text-gray-500">{tc("state.loading")}</p>
       ) : zones.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 text-sm">No zones defined yet.</div>
+        <div className="text-center py-12 text-gray-500 text-sm">{t("empty")}</div>
       ) : (
         <>
           {/* Mobile cards */}
@@ -279,20 +286,20 @@ export default function AttendanceZonesPage() {
               <div key={z.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-medium text-gray-900 text-sm">{z.name}</p>
-                  <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs border ${z.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}>{z.isActive ? "Active" : "Inactive"}</span>
+                  <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs border ${z.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}>{z.isActive ? tc("status.active") : tc("status.inactive")}</span>
                 </div>
                 <div className="text-xs text-gray-600 font-mono space-y-0.5">
                   <div>{Number(z.lat).toFixed(6)}, {Number(z.lng).toFixed(6)}</div>
                   <div className="text-gray-500">
                     {z.boundary?.length
-                      ? `Boundary: ${z.boundary.length} points · ${formatArea(ringAreaSqMetres(z.boundary))}`
-                      : `Radius: ${z.radiusMeters}m`}
+                      ? t("boundaryPoints", { count: z.boundary.length, area: helperText(areaMessage(ringAreaSqMetres(z.boundary), intlLocale)) })
+                      : t("radiusShort", { radius: z.radiusMeters })}
                   </div>
                 </div>
                 {rbac.canManageHR && (
                   <div className="flex gap-3">
-                    <button onClick={() => openEdit(z)} className="text-blue-600 hover:underline text-xs">Edit</button>
-                    <button onClick={() => handleDelete(z.id)} className="text-red-600 hover:underline text-xs">Delete</button>
+                    <button onClick={() => openEdit(z)} className="text-blue-600 hover:underline text-xs">{tc("action.edit")}</button>
+                    <button onClick={() => handleDelete(z.id)} className="text-red-600 hover:underline text-xs">{tc("action.delete")}</button>
                   </div>
                 )}
               </div>
@@ -304,12 +311,12 @@ export default function AttendanceZonesPage() {
             <table className="min-w-full text-sm">
               <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
                 <tr>
-                  <th className="px-4 py-3 text-left">Name</th>
-                  <th className="px-4 py-3 text-left">Latitude</th>
-                  <th className="px-4 py-3 text-left">Longitude</th>
-                  <th className="px-4 py-3 text-left">Shape</th>
-                  <th className="px-4 py-3 text-left">Status</th>
-                  {rbac.canManageHR && <th className="px-4 py-3 text-left">Actions</th>}
+                  <th className="px-4 py-3 text-left">{tc("field.name")}</th>
+                  <th className="px-4 py-3 text-left">{t("latitude")}</th>
+                  <th className="px-4 py-3 text-left">{t("longitude")}</th>
+                  <th className="px-4 py-3 text-left">{t("shape")}</th>
+                  <th className="px-4 py-3 text-left">{tc("field.status")}</th>
+                  {rbac.canManageHR && <th className="px-4 py-3 text-left">{tc("action.actions")}</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -321,20 +328,19 @@ export default function AttendanceZonesPage() {
                     <td className="px-4 py-3 text-xs">
                       {z.boundary?.length ? (
                         <span className="text-gray-700">
-                          Boundary · {z.boundary.length} pts ·{" "}
-                          {formatArea(ringAreaSqMetres(z.boundary))}
+                          {t("boundaryPts", { count: z.boundary.length, area: helperText(areaMessage(ringAreaSqMetres(z.boundary), intlLocale)) })}
                         </span>
                       ) : (
-                        <span className="text-gray-500">Circle · {z.radiusMeters}m</span>
+                        <span className="text-gray-500">{t("circleRadius", { radius: z.radiusMeters })}</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs border ${z.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}>{z.isActive ? "Active" : "Inactive"}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs border ${z.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}>{z.isActive ? tc("status.active") : tc("status.inactive")}</span>
                     </td>
                     {rbac.canManageHR && (
                       <td className="px-4 py-3 flex gap-2">
-                        <button onClick={() => openEdit(z)} className="text-blue-600 hover:underline text-xs">Edit</button>
-                        <button onClick={() => handleDelete(z.id)} className="text-red-600 hover:underline text-xs">Delete</button>
+                        <button onClick={() => openEdit(z)} className="text-blue-600 hover:underline text-xs">{tc("action.edit")}</button>
+                        <button onClick={() => handleDelete(z.id)} className="text-red-600 hover:underline text-xs">{tc("action.delete")}</button>
                       </td>
                     )}
                   </tr>
@@ -353,10 +359,10 @@ export default function AttendanceZonesPage() {
       {showForm && (
         <div className="fixed inset-0 bg-walnut-950/55 flex items-end sm:items-center justify-center z-[80] p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-xl w-full sm:max-w-2xl flex flex-col max-h-[85dvh]">
-            <h2 className="font-semibold text-lg px-5 pt-5 pb-3 shrink-0">{editId ? "Edit" : "New"} Geo-Zone</h2>
+            <h2 className="font-semibold text-lg px-5 pt-5 pb-3 shrink-0">{editId ? t("editTitle") : t("newTitle")}</h2>
             <div className="px-5 space-y-4 overflow-y-auto flex-1 min-h-0">
             <div>
-              <label className="text-sm font-medium">Zone Name</label>
+              <label className="text-sm font-medium">{t("zoneName")}</label>
               <input
                 value={form.name}
                 onChange={(e) => { setForm((f) => ({ ...f, name: e.target.value })); setFormErrors((er) => ({ ...er, name: undefined })); }}
@@ -371,9 +377,9 @@ export default function AttendanceZonesPage() {
                 corner somewhere the operator never clicked. */}
             <div className="space-y-2">
               <div className="flex items-baseline justify-between gap-2">
-                <label className="text-sm font-medium">Campus boundary</label>
+                <label className="text-sm font-medium">{t("campusBoundary")}</label>
                 <span className="text-xs text-gray-500">
-                  {shapeMode === "polygon" ? "Drawn outline" : "Circle"}
+                  {shapeMode === "polygon" ? t("drawnOutline") : t("circle")}
                 </span>
               </div>
               {/* Editable on a phone too. Tapping each corner of a campus is
@@ -418,12 +424,12 @@ export default function AttendanceZonesPage() {
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-sm font-medium">Latitude</label>
+                    <label className="text-sm font-medium">{t("latitude")}</label>
                     <input
                       type="number"
                       step="any"
                       inputMode="decimal"
-                      placeholder="e.g. 28.6139"
+                      placeholder={t("latPlaceholder")}
                       value={form.latStr}
                       onChange={(e) => { setForm((f) => ({ ...f, latStr: e.target.value })); setFormErrors((er) => ({ ...er, lat: undefined })); }}
                       className={`w-full border rounded-lg px-3 py-2 text-sm mt-1 font-mono ${formErrors.lat ? "border-red-400" : ""}`}
@@ -431,12 +437,12 @@ export default function AttendanceZonesPage() {
                     {formErrors.lat && <p className="text-xs text-red-500 mt-1">{formErrors.lat}</p>}
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Longitude</label>
+                    <label className="text-sm font-medium">{t("longitude")}</label>
                     <input
                       type="number"
                       step="any"
                       inputMode="decimal"
-                      placeholder="e.g. 77.2090"
+                      placeholder={t("lngPlaceholder")}
                       value={form.lngStr}
                       onChange={(e) => { setForm((f) => ({ ...f, lngStr: e.target.value })); setFormErrors((er) => ({ ...er, lng: undefined })); }}
                       className={`w-full border rounded-lg px-3 py-2 text-sm mt-1 font-mono ${formErrors.lng ? "border-red-400" : ""}`}
@@ -446,7 +452,7 @@ export default function AttendanceZonesPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium">Radius (metres)</label>
+                  <label className="text-sm font-medium">{t("radiusLabel")}</label>
                   <input
                     type="number"
                     min={10}
@@ -465,7 +471,7 @@ export default function AttendanceZonesPage() {
                     disabled={locatingCentre}
                     className="text-sm text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline min-h-9"
                   >
-                    {locatingCentre ? "Locating…" : "📍 Use my current location"}
+                    {locatingCentre ? t("locating") : t("useLocation")}
                   </button>
                   {locationWarning && (
                     <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
@@ -477,12 +483,12 @@ export default function AttendanceZonesPage() {
             )}
             <div className="flex items-center gap-2">
               <input id="za" type="checkbox" checked={form.isActive} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} className="rounded" />
-              <label htmlFor="za" className="text-sm">Active</label>
+              <label htmlFor="za" className="text-sm">{tc("status.active")}</label>
             </div>
             </div>
             <div className="flex gap-2 justify-end shrink-0 px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] border-t border-gray-100 mt-3">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleSave} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
+              <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">{tc("action.cancel")}</button>
+              <button onClick={handleSave} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">{tc("action.save")}</button>
             </div>
           </div>
         </div>

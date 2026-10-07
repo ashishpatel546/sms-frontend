@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslations } from "next-intl";
 import { Panel } from "@/components/ui/Panel";
 import { useStudentInfo } from "../hooks/useStudentData";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -6,6 +7,7 @@ import { InitialsAvatar, initialsOf } from "@/components/ui/InitialsAvatar";
 
 export const StudentBanner = ({ studentId }: { studentId: string }) => {
   const { data: info, isLoading } = useStudentInfo(studentId);
+  const t = useTranslations("parent.home");
 
   if (isLoading) {
     return (
@@ -40,10 +42,10 @@ export const StudentBanner = ({ studentId }: { studentId: string }) => {
               "Class Class 9 - A" on screen. */}
           <span className="inline-flex items-center rounded border border-line bg-surface-secondary px-2 py-0.5 text-xs font-medium text-ink-muted">
             {info.className}
-            {info.sectionName ? ` · Section ${info.sectionName}` : ''}
+            {info.sectionName ? ` · ${t("sectionName", { section: info.sectionName })}` : ''}
           </span>
           <span className="inline-flex items-center rounded border border-line bg-surface-secondary px-2 py-0.5 text-xs font-medium text-ink-muted">
-            Roll {info.rollNo || '—'}
+            {t("rollShort", { roll: info.rollNo || '—' })}
           </span>
         </div>
       </div>

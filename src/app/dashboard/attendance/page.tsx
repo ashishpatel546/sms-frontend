@@ -13,6 +13,8 @@ import { ATTENDANCE_TONE } from "@/lib/attendanceColors";
 import { CHART_TOOLTIP } from "@/lib/chartTokens";
 import { useMemo } from "react";
 import { sortByName } from "@/lib/utils";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 
 interface Student {
     id: number;
@@ -35,6 +37,9 @@ export default function AttendancePage() {
     const user = getUser();
     const { isSubAdmin } = useRbac();
     const readOnly = useReadOnlySession();
+    const t = useTranslations("attendance");
+    const tc = useTranslations("common");
+    const locale = useLocale() as Locale;
 
     // Lightweight class list (id + name only) — loaded once on mount
     const [classes, setClasses] = useState<ClassData[]>([]);
@@ -270,7 +275,7 @@ export default function AttendancePage() {
                     targetDate.setHours(0, 0, 0, 0);
 
                     if (targetDate.getDay() === 0) {
-                        setActiveHolidayInfo({ description: "Sunday Weekly Off" });
+                        setActiveHolidayInfo({ description: t("page.sundayOff") });
                         return;
                     }
 
@@ -315,7 +320,7 @@ export default function AttendancePage() {
             fetchAttendance();
             fetchHolidayForDate();
         }
-    }, [selectedClassId, selectedSectionId, selectedDate, students]);
+    }, [selectedClassId, selectedSectionId, selectedDate, students, t]);
 
     const handleStatusChange = (studentId: number, status: string) => {
         setAttendanceRecords(prev => ({
@@ -378,12 +383,12 @@ export default function AttendancePage() {
             // Status colour comes from ATTENDANCE_TONE, never a literal: the
             // donut sits beside a calendar and a legend that read the same
             // statuses, and three separate lists of hexes is how they drift.
-            { name: 'Present', value: stats.PRESENT, color: ATTENDANCE_TONE.PRESENT.fill, fill: ATTENDANCE_TONE.PRESENT.fill },
-            { name: 'Absent', value: stats.ABSENT, color: ATTENDANCE_TONE.ABSENT.fill, fill: ATTENDANCE_TONE.ABSENT.fill },
-            { name: 'Leave', value: stats.LEAVE, color: ATTENDANCE_TONE.LEAVE.fill, fill: ATTENDANCE_TONE.LEAVE.fill },
-            { name: 'Late', value: stats.LATE, color: ATTENDANCE_TONE.LATE.fill, fill: ATTENDANCE_TONE.LATE.fill },
-            { name: 'Half Day', value: stats.HALF_DAY, color: ATTENDANCE_TONE.HALF_DAY.fill, fill: ATTENDANCE_TONE.HALF_DAY.fill },
-            { name: 'Holiday', value: stats.HOLIDAY, color: ATTENDANCE_TONE.HOLIDAY.fill, fill: ATTENDANCE_TONE.HOLIDAY.fill }
+            { name: t(ATTENDANCE_TONE.PRESENT.labelKey), value: stats.PRESENT, color: ATTENDANCE_TONE.PRESENT.fill, fill: ATTENDANCE_TONE.PRESENT.fill },
+            { name: t(ATTENDANCE_TONE.ABSENT.labelKey), value: stats.ABSENT, color: ATTENDANCE_TONE.ABSENT.fill, fill: ATTENDANCE_TONE.ABSENT.fill },
+            { name: t(ATTENDANCE_TONE.LEAVE.labelKey), value: stats.LEAVE, color: ATTENDANCE_TONE.LEAVE.fill, fill: ATTENDANCE_TONE.LEAVE.fill },
+            { name: t(ATTENDANCE_TONE.LATE.labelKey), value: stats.LATE, color: ATTENDANCE_TONE.LATE.fill, fill: ATTENDANCE_TONE.LATE.fill },
+            { name: t(ATTENDANCE_TONE.HALF_DAY.labelKey), value: stats.HALF_DAY, color: ATTENDANCE_TONE.HALF_DAY.fill, fill: ATTENDANCE_TONE.HALF_DAY.fill },
+            { name: t(ATTENDANCE_TONE.HOLIDAY.labelKey), value: stats.HOLIDAY, color: ATTENDANCE_TONE.HOLIDAY.fill, fill: ATTENDANCE_TONE.HOLIDAY.fill }
         ].filter(item => item.value > 0);
     };
 
@@ -427,12 +432,12 @@ export default function AttendancePage() {
 
             const savedData = await res.json();
             setExistingAttendance(savedData);
-            setMessage({ text: "Attendance saved successfully!", type: "success" });
+            setMessage({ text: t("page.saved"), type: "success" });
 
             // clear msg after 3s
             setTimeout(() => setMessage({ text: "", type: "" }), 3000);
         } catch {
-            setMessage({ text: "Failed to submit attendance. Please try again.", type: "error" });
+            setMessage({ text: t("page.saveFailed"), type: "error" });
         } finally {
             setLoading(false);
         }
@@ -477,23 +482,23 @@ export default function AttendancePage() {
         setFilterSearchQuery("");
     }, [selectedClassId, selectedSectionId, selectedDate]);
 
-    if (loadingClasses) return <Loader fullScreen text="Loading attendance dashboard..." />;
+    if (loadingClasses) return <Loader fullScreen text={t("page.loading")} />;
 
     return (
         <main className="p-4 flex-1 h-full overflow-y-auto w-full max-w-7xl mx-auto relative">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <div className="flex items-center gap-4">
-                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Attendance Dashboard</h1>
+                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t("page.heading")}</h1>
                 </div>
                 {activeSession && (
                     <div className="bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-lg w-full sm:w-auto flex justify-between sm:justify-start items-center">
-                        <span className="text-sm text-indigo-600 font-medium">Active Session:</span>
+                        <span className="text-sm text-indigo-600 font-medium">{t("page.activeSession")}</span>
                         <span className="ml-2 text-indigo-900 font-bold">{activeSession.name}</span>
                     </div>
                 )}
             </div>
 
-            {loadingSession && <p className="text-sm text-gray-500 mb-4 animate-pulse">Loading academic session...</p>}
+            {loadingSession && <p className="text-sm text-gray-500 mb-4 animate-pulse">{t("page.loadingSession")}</p>}
 
             {/* Error Message */}
             {message.text && (
@@ -506,7 +511,7 @@ export default function AttendancePage() {
             <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 mb-6 relative z-10">
                 <form className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div>
-                        <label className="block mb-2 text-sm font-medium text-gray-900">Date</label>
+                        <label className="block mb-2 text-sm font-medium text-gray-900">{tc("field.date")}</label>
                         <input
                             type="date"
                             value={selectedDate}
@@ -516,32 +521,32 @@ export default function AttendancePage() {
                         />
                     </div>
                     <div>
-                        <label className="block mb-2 text-sm font-medium text-gray-900">Taken By</label>
+                        <label className="block mb-2 text-sm font-medium text-gray-900">{t("page.takenBy")}</label>
                         <input
                             type="text"
                             value={existingAttendance
-                                ? (existingAttendance.takenBy ? `${existingAttendance.takenBy.firstName} ${existingAttendance.takenBy.lastName}` : 'Unknown')
-                                : (user ? `${user.firstName} ${user.lastName}` : "Unknown")}
+                                ? (existingAttendance.takenBy ? `${existingAttendance.takenBy.firstName} ${existingAttendance.takenBy.lastName}` : t("page.unknown"))
+                                : (user ? `${user.firstName} ${user.lastName}` : t("page.unknown"))}
                             className="bg-gray-100 border border-gray-300 text-gray-500 text-sm rounded-lg block w-full p-2.5 cursor-not-allowed"
                             disabled
                         />
                     </div>
                     <div>
-                        <label className="block mb-2 text-sm font-medium text-gray-900">Class</label>
+                        <label className="block mb-2 text-sm font-medium text-gray-900">{tc("field.class")}</label>
                         <select
                             value={selectedClassId}
                             onChange={(e) => setSelectedClassId(e.target.value)}
                             className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2.5"
                             required
                         >
-                            <option value="">Select Class</option>
+                            <option value="">{t("page.selectClass")}</option>
                             {classes.map(c => (
                                 <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
                         </select>
                     </div>
                     <div>
-                        <label className="block mb-2 text-sm font-medium text-gray-900">Section</label>
+                        <label className="block mb-2 text-sm font-medium text-gray-900">{tc("field.section")}</label>
                         <select
                             value={selectedSectionId}
                             onChange={(e) => setSelectedSectionId(e.target.value)}
@@ -549,7 +554,7 @@ export default function AttendancePage() {
                             disabled={!selectedClassId || loadingSections}
                             required
                         >
-                            <option value="">{loadingSections ? "Loading sections..." : "Select Section"}</option>
+                            <option value="">{loadingSections ? t("page.loadingSections") : t("page.selectSection")}</option>
                             {availableSections.map((s: any) => (
                                 <option key={s.id} value={s.id}>{s.name}</option>
                             ))}
@@ -561,10 +566,10 @@ export default function AttendancePage() {
                 {students.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-slate-100 flex gap-4">
                         <div className="flex-1 max-w-md">
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Search Student</label>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">{t("page.searchStudent")}</label>
                             <input 
                                 type="text" 
-                                placeholder="Search by ID, Roll No, or Name..." 
+                                placeholder={t("page.searchPlaceholder")} 
                                 value={filterSearchQuery}
                                 onChange={(e) => setFilterSearchQuery(e.target.value)}
                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2"
@@ -577,7 +582,7 @@ export default function AttendancePage() {
                                     onClick={() => setFilterSearchQuery('')}
                                     className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200"
                                 >
-                                    Clear Filter
+                                    {t("page.clearFilter")}
                                 </button>
                             </div>
                         )}
@@ -587,7 +592,7 @@ export default function AttendancePage() {
 
             {loadingStudents && (
                 <div className="flex justify-center py-12">
-                    <Loader text="Loading students..." />
+                    <Loader text={t("page.loadingStudents")} />
                 </div>
             )}
 
@@ -599,26 +604,26 @@ export default function AttendancePage() {
                             {/* Consolidated Report & Chart */}
                             <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 lg:col-span-2 flex flex-col md:flex-row items-center gap-8 min-w-0">
                                 <div className="flex-1 w-full min-w-0">
-                                    <h3 className="text-lg font-bold text-slate-800 mb-4">Consolidated Report</h3>
+                                    <h3 className="text-lg font-bold text-slate-800 mb-4">{t("page.consolidatedReport")}</h3>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                         <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-center">
-                                            <p className="text-xs text-blue-600 font-bold uppercase">Total</p>
+                                            <p className="text-xs text-blue-600 font-bold uppercase">{tc("field.total")}</p>
                                             <p className="text-2xl font-black text-blue-900">{students.length}</p>
                                         </div>
                                         <div className="bg-green-50 p-4 rounded-lg border border-green-100 text-center">
-                                            <p className="text-xs text-green-600 font-bold uppercase">Present</p>
+                                            <p className="text-xs text-green-600 font-bold uppercase">{t(ATTENDANCE_TONE.PRESENT.labelKey)}</p>
                                             <p className="text-2xl font-black text-green-900">
                                                 {Object.values(attendanceRecords).filter(r => r.status === 'PRESENT').length}
                                             </p>
                                         </div>
                                         <div className="bg-red-50 p-4 rounded-lg border border-red-100 text-center">
-                                            <p className="text-xs text-red-600 font-bold uppercase">Absent</p>
+                                            <p className="text-xs text-red-600 font-bold uppercase">{t(ATTENDANCE_TONE.ABSENT.labelKey)}</p>
                                             <p className="text-2xl font-black text-red-900">
                                                 {Object.values(attendanceRecords).filter(r => r.status === 'ABSENT').length}
                                             </p>
                                         </div>
                                         <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-100 text-center">
-                                            <p className="text-xs text-yellow-600 font-bold uppercase">Other</p>
+                                            <p className="text-xs text-yellow-600 font-bold uppercase">{t("page.other")}</p>
                                             <p className="text-2xl font-black text-yellow-900">
                                                 {Object.values(attendanceRecords).filter(r => r.status === 'LATE' || r.status === 'HALF_DAY' || r.status === 'LEAVE' || r.status === 'HOLIDAY').length}
                                             </p>
@@ -646,28 +651,30 @@ export default function AttendancePage() {
 
                             {activeHolidayInfo && (
                                 <div className="mt-4 p-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 border border-yellow-200" role="alert">
-                                    <span className="font-bold mr-2">🏖️ Holiday Declared:</span>
-                                    {activeHolidayInfo.description}. Attendance marking is disabled for this date.
+                                    {t.rich("page.holidayNotice", {
+                                        description: activeHolidayInfo.description,
+                                        b: (c) => <span className="font-bold mr-2">{c}</span>,
+                                    })}
                                 </div>
                             )}
 
                             {/* Absentee List Widget */}
                             <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 lg:col-span-1 h-full max-h-75 flex flex-col">
                                 <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center justify-between">
-                                    <span>Absent / On Leave</span>
+                                    <span>{t("page.absentOnLeave")}</span>
                                     <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full font-bold">
                                         {getAbsentStudents().length}
                                     </span>
                                 </h3>
                                 <div className="overflow-y-auto flex-1 pr-2 space-y-3 custom-scrollbar">
                                     {getAbsentStudents().length === 0 ? (
-                                        <p className="text-sm text-gray-500 italic text-center py-8">Everyone is present!</p>
+                                        <p className="text-sm text-gray-500 italic text-center py-8">{t("page.everyonePresent")}</p>
                                     ) : (
                                         getAbsentStudents().map(student => (
                                             <div key={student.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors">
                                                 <div className="flex flex-col">
                                                     <span className="font-semibold text-gray-800 text-sm">{student.firstName} {student.lastName}</span>
-                                                    <span className="text-xs text-gray-500">Roll No: {student.rollNo || student.id}</span>
+                                                    <span className="text-xs text-gray-500">{t("page.rollNo", { roll: student.rollNo || student.id })}</span>
                                                 </div>
                                             </div>
                                         ))
@@ -682,16 +689,16 @@ export default function AttendancePage() {
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                             <div>
                                 <h2 className="text-xl font-bold text-slate-800">
-                                    Student List ({students.length})
+                                    {t("page.studentList", { count: students.length })}
                                 </h2>
                                 {existingAttendance && (
                                     <div className="text-sm text-gray-600 mt-1">
-                                        <p><span className="font-semibold">Initially saved by:</span> {existingAttendance.takenBy ? `${existingAttendance.takenBy.firstName} ${existingAttendance.takenBy.lastName}` : 'Unknown'}</p>
+                                        <p>{t.rich("page.initiallySavedBy", { name: existingAttendance.takenBy ? `${existingAttendance.takenBy.firstName} ${existingAttendance.takenBy.lastName}` : t("page.unknown"), b: (c) => <span className="font-semibold">{c}</span> })}</p>
                                         {existingAttendance.updatedBy && (
-                                            <p><span className="font-semibold">Last updated by:</span> {existingAttendance.updatedBy.firstName} {existingAttendance.updatedBy.lastName} at {new Date(existingAttendance.updatedAt).toLocaleString()}</p>
+                                            <p>{t.rich("page.lastUpdatedBy", { name: `${existingAttendance.updatedBy.firstName} ${existingAttendance.updatedBy.lastName}`, time: new Date(existingAttendance.updatedAt).toLocaleString(INTL_LOCALE[locale]), b: (c) => <span className="font-semibold">{c}</span> })}</p>
                                         )}
                                         {!existingAttendance.updatedBy && (
-                                            <p><span className="font-semibold">Saved at:</span> {new Date(existingAttendance.timestamp).toLocaleString()}</p>
+                                            <p>{t.rich("page.savedAt", { time: new Date(existingAttendance.timestamp).toLocaleString(INTL_LOCALE[locale]), b: (c) => <span className="font-semibold">{c}</span> })}</p>
                                         )}                        </div>
                                 )}
                             </div>
@@ -702,7 +709,7 @@ export default function AttendancePage() {
                                     disabled={disableEdit}
                                     className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors ${disableEdit ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed shadow-none' : 'bg-white text-green-700 shadow-sm border-gray-200 hover:bg-gray-50'}`}
                                 >
-                                    Mark All Present
+                                    {t("page.markAllPresent")}
                                 </button>
                                 <button
                                     type="button"
@@ -710,22 +717,22 @@ export default function AttendancePage() {
                                     disabled={disableEdit}
                                     className={`px-4 py-2 ml-2 text-sm font-medium rounded-md border transition-colors ${disableEdit ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed shadow-none' : 'bg-white text-red-700 shadow-sm border-gray-200 hover:bg-gray-50'}`}
                                 >
-                                    Mark All Absent
+                                    {t("page.markAllAbsent")}
                                 </button>
                             </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200 mb-4">
-                            <span className="font-semibold text-gray-700">Legend:</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-500"></span> P - Present</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500"></span> A - Absent</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-500"></span> L - Leave</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-yellow-400"></span> LT - Late</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-purple-500"></span> HD - Half Day</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-sky-500"></span> HL - Holiday</span>
+                            <span className="font-semibold text-gray-700">{t("page.legend")}</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-500"></span> {t("page.legendPresent")}</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500"></span> {t("page.legendAbsent")}</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-500"></span> {t("page.legendLeave")}</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-yellow-400"></span> {t("page.legendLate")}</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-purple-500"></span> {t("page.legendHalfDay")}</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-sky-500"></span> {t("page.legendHoliday")}</span>
                         </div>
 
                         {students.length === 0 && !loading && (
-                            <div className="text-center py-8 text-gray-500">No students enrolled in this section for the selected session.</div>
+                            <div className="text-center py-8 text-gray-500">{t("page.noStudents")}</div>
                         )}
 
                         {students.length > 0 && (
@@ -735,7 +742,7 @@ export default function AttendancePage() {
                                         <tr>
                                             <th scope="col" className="px-6 py-3 cursor-pointer hover:bg-gray-200 transition-colors group select-none" onClick={() => handleSort('id')}>
                                                 <div className="flex items-center gap-1">
-                                                    ID 
+                                                    {t("page.colId")} 
                                                     <span className="text-gray-400 text-xs">
                                                         {sortColumn === 'id' ? (sortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
                                                     </span>
@@ -743,7 +750,7 @@ export default function AttendancePage() {
                                             </th>
                                             <th scope="col" className="px-6 py-3 cursor-pointer hover:bg-gray-200 transition-colors group select-none" onClick={() => handleSort('rollNo')}>
                                                 <div className="flex items-center gap-1">
-                                                    Roll No. 
+                                                    {tc("field.rollNo")} 
                                                     <span className="text-gray-400 text-xs">
                                                         {sortColumn === 'rollNo' ? (sortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
                                                     </span>
@@ -751,15 +758,15 @@ export default function AttendancePage() {
                                             </th>
                                             <th scope="col" className="px-6 py-3 cursor-pointer hover:bg-gray-200 transition-colors group select-none" onClick={() => handleSort('firstName')}>
                                                 <div className="flex items-center gap-1">
-                                                    Name 
+                                                    {tc("field.name")} 
                                                     <span className="text-gray-400 text-xs">
                                                         {sortColumn === 'firstName' ? (sortDirection === 'asc' ? '↑' : '↓') : <span className="opacity-0 group-hover:opacity-50">↕</span>}
                                                     </span>
                                                 </div>
                                             </th>
-                                            <th scope="col" className="px-6 py-3 text-center">Status</th>
-                                            <th scope="col" className="px-6 py-3">Remarks</th>
-                                            <th scope="col" className="px-6 py-3 text-center">Attendance</th>
+                                            <th scope="col" className="px-6 py-3 text-center">{tc("field.status")}</th>
+                                            <th scope="col" className="px-6 py-3">{tc("field.remarks")}</th>
+                                            <th scope="col" className="px-6 py-3 text-center">{t("page.colAttendance")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -844,7 +851,7 @@ export default function AttendancePage() {
                                                             type="text"
                                                             value={record.remarks}
                                                             onChange={(e) => handleRemarksChange(student.id, e.target.value)}
-                                                            placeholder="Notes (optional)"
+                                                            placeholder={t("page.notesPlaceholder")}
                                                             disabled={disableEdit}
                                                             className={`bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg focus:ring-brand/40 focus:border-brand block w-full p-2 ${disableEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                         />
@@ -857,10 +864,10 @@ export default function AttendancePage() {
                                                                 setAttendanceModalStudentName(`${student.firstName} ${student.lastName}`); 
                                                             }}
                                                             className="inline-flex items-center gap-1 font-medium text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200"
-                                                            title="View Attendance"
+                                                            title={t("page.viewAttendance")}
                                                         >
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                                            <span className="text-xs">View</span>
+                                                            <span className="text-xs">{tc("action.view")}</span>
                                                         </button>
                                                     </td>
                                                 </tr>
@@ -877,7 +884,7 @@ export default function AttendancePage() {
                                         title={readOnly ? READ_ONLY_TITLE : undefined}
                                         className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-brand/40 font-medium rounded-lg text-sm px-6 py-2.5 disabled:opacity-50"
                                     >
-                                        {loading ? 'Saving...' : 'Save Attendance'}
+                                        {loading ? tc("action.saving") : t("page.saveAttendance")}
                                     </button>
                                 </div>
                             </div>

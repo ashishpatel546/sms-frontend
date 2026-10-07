@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { Cake, User as UserIcon } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { authFetch } from '@/lib/auth';
+import { INTL_LOCALE, type Locale } from '@/i18n/config';
 import { getEnv } from '@/lib/env';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -44,11 +46,12 @@ function Avatar({ photoUrl, name }: { photoUrl: string | null; name: string }) {
     );
 }
 
-function formatUpcomingDate(iso: string): string {
-    return new Date(`${iso}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+function formatUpcomingDate(iso: string, locale: Locale): string {
+    return new Date(`${iso}T00:00:00`).toLocaleDateString(INTL_LOCALE[locale], { day: 'numeric', month: 'short' });
 }
 
 function StudentRow({ s }: { s: BirthdayStudent }) {
+    const locale = useLocale() as Locale;
     const classSection = [s.className, s.sectionName].filter(Boolean).join(' - ');
     return (
         <li className="flex items-center gap-2.5 py-2">
@@ -57,7 +60,7 @@ function StudentRow({ s }: { s: BirthdayStudent }) {
                 <p className="truncate text-[13px] font-semibold text-ink">{s.firstName} {s.lastName}</p>
                 <p className="truncate text-[11.5px] text-ink-muted">
                     {classSection || '—'}
-                    {s.date && <span className="ml-1.5 text-ink-faint">· {formatUpcomingDate(s.date)}</span>}
+                    {s.date && <span className="ml-1.5 text-ink-faint">· {formatUpcomingDate(s.date, locale)}</span>}
                 </p>
             </div>
         </li>
@@ -65,6 +68,7 @@ function StudentRow({ s }: { s: BirthdayStudent }) {
 }
 
 function StaffRow({ s }: { s: BirthdayStaff }) {
+    const locale = useLocale() as Locale;
     return (
         <li className="flex items-center gap-2.5 py-2">
             <Avatar photoUrl={s.photoUrl} name={`${s.firstName} ${s.lastName}`} />
@@ -72,7 +76,7 @@ function StaffRow({ s }: { s: BirthdayStaff }) {
                 <p className="truncate text-[13px] font-semibold text-ink">{s.firstName} {s.lastName}</p>
                 <p className="truncate text-[11.5px] text-ink-muted">
                     {s.designation || '—'}
-                    {s.date && <span className="ml-1.5 text-ink-faint">· {formatUpcomingDate(s.date)}</span>}
+                    {s.date && <span className="ml-1.5 text-ink-faint">· {formatUpcomingDate(s.date, locale)}</span>}
                 </p>
             </div>
         </li>
@@ -94,6 +98,7 @@ function Panel({
     renderRow: (row: any) => React.ReactNode;
     emptyLabel: string;
 }) {
+    const t = useTranslations('dashboard');
     const showingUpcoming = !loading && today.length === 0 && upcoming.length > 0;
     const rows = today.length > 0 ? today : upcoming;
 
@@ -105,7 +110,7 @@ function Panel({
                 </div>
                 <p className="text-[13px] font-semibold text-ink">
                     {title}
-                    {showingUpcoming && <span className="ml-1.5 font-normal text-ink-muted">(upcoming)</span>}
+                    {showingUpcoming && <span className="ml-1.5 font-normal text-ink-muted">{t('birthdays.upcoming')}</span>}
                 </p>
             </div>
 
@@ -133,6 +138,7 @@ function Panel({
  * see `dashboard.service.ts#getBirthdays` for the server-side fallback logic.
  */
 export default function Birthdays({ selectedDate }: { selectedDate: string }) {
+    const t = useTranslations('dashboard');
     const [data, setData] = useState<BirthdaysResponse | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -157,20 +163,20 @@ export default function Birthdays({ selectedDate }: { selectedDate: string }) {
     return (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Panel
-                title="Student birthdays"
+                title={t('birthdays.students')}
                 loading={loading}
                 today={data?.students ?? []}
                 upcoming={data?.upcoming.students ?? []}
                 renderRow={(s: BirthdayStudent) => <StudentRow key={s.id} s={s} />}
-                emptyLabel="No birthdays coming up."
+                emptyLabel={t('birthdays.empty')}
             />
             <Panel
-                title="Staff birthdays"
+                title={t('birthdays.staff')}
                 loading={loading}
                 today={data?.staff ?? []}
                 upcoming={data?.upcoming.staff ?? []}
                 renderRow={(s: BirthdayStaff) => <StaffRow key={s.id} s={s} />}
-                emptyLabel="No birthdays coming up."
+                emptyLabel={t('birthdays.empty')}
             />
         </div>
     );

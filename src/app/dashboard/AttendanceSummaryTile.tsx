@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Lock, Sparkles, CalendarCheck2, ArrowUpRight } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { useFeatureFlag } from '@/lib/useSchoolFeatures';
+import { INTL_LOCALE, type Locale } from '@/i18n/config';
 import { useRbac } from '@/lib/rbac';
 import { attendanceSettingsApi, type AttendanceTodaySummary } from '@/lib/attendance-settings-api';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,6 +29,10 @@ import { cn } from '@/lib/utils';
  * nobody who cannot call the API is shown a tile promising it.
  */
 export default function AttendanceSummaryTile() {
+  const t = useTranslations('dashboard');
+  const tc = useTranslations('common');
+  const tu = useTranslations('ui');
+  const locale = useLocale() as Locale;
   const rbac = useRbac();
   const { enabled, status } = useFeatureFlag('hr_portal');
   const [summary, setSummary] = useState<AttendanceTodaySummary | null>(null);
@@ -81,11 +87,11 @@ export default function AttendanceSummaryTile() {
             </span>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[13.5px] font-semibold text-ink">Attendance insights</p>
+            <p className="text-[13.5px] font-semibold text-ink">{t('staffAttendance.lockedTitle')}</p>
             <p className="mt-0.5 text-[12px] text-ink-muted">
               {status === 'error'
-                ? "We couldn't check your plan. Refresh to try again."
-                : 'Available on a higher plan.'}
+                ? t('staffAttendance.planCheckFailed')
+                : t('staffAttendance.higherPlan')}
             </p>
             {status !== 'error' && (
               rbac.isSuperAdmin ? (
@@ -94,10 +100,10 @@ export default function AttendanceSummaryTile() {
                   className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-brand hover:text-brand-deep"
                 >
                   <Sparkles className="size-3.5" aria-hidden />
-                  See plans and upgrade
+                  {t('featureGate.seePlans')}
                 </Link>
               ) : (
-                <p className="mt-2 text-[11.5px] text-ink-faint">Ask your super admin to add it.</p>
+                <p className="mt-2 text-[11.5px] text-ink-faint">{t('staffAttendance.askSuperAdmin')}</p>
               )
             )}
           </div>
@@ -110,14 +116,14 @@ export default function AttendanceSummaryTile() {
   const s = summary?.summary;
   const cells = s
     ? [
-        { label: 'Present', value: s.PRESENT },
-        { label: 'Absent', value: s.ABSENT },
+        { label: 'Present', text: tc('status.present'), value: s.PRESENT },
+        { label: 'Absent', text: tc('status.absent'), value: s.ABSENT },
         // `lateArrivals` (isLate=true today), not `summary.LATE` — that
         // legacy status bucket goes stale now that auto-compute never
         // assigns it. See the field doc on AttendanceTodaySummary.
-        { label: 'Late', value: summary?.lateArrivals ?? 0 },
-        { label: 'Half day', value: s.HALF_DAY },
-        { label: 'Not marked', value: s.NOT_MARKED ?? 0 },
+        { label: 'Late', text: tc('status.late'), value: summary?.lateArrivals ?? 0 },
+        { label: 'Half day', text: tc('status.halfDay'), value: s.HALF_DAY },
+        { label: 'Not marked', text: tu('stamp.notMarked'), value: s.NOT_MARKED ?? 0 },
       ]
     : [];
 
@@ -132,10 +138,10 @@ export default function AttendanceSummaryTile() {
             <CalendarCheck2 aria-hidden />
           </div>
           <div>
-            <p className="text-[13.5px] font-semibold text-ink leading-tight">Staff attendance today</p>
+            <p className="text-[13.5px] font-semibold text-ink leading-tight">{t('staffAttendance.title')}</p>
             {summary && (
               <p className="text-[11.5px] text-ink-muted">
-                {summary.totalStaff.toLocaleString('en-IN')} staff expected
+                {t('staffAttendance.expected', { count: summary.totalStaff, formatted: summary.totalStaff.toLocaleString(INTL_LOCALE[locale]) })}
               </p>
             )}
           </div>
@@ -147,7 +153,7 @@ export default function AttendanceSummaryTile() {
       </div>
 
       {loadError ? (
-        <p className="mt-3 text-[12.5px] text-accent-danger-deep">Couldn&apos;t load today&apos;s attendance.</p>
+        <p className="mt-3 text-[12.5px] text-accent-danger-deep">{t('staffAttendance.loadFailed')}</p>
       ) : !summary ? (
         <div className="mt-3 grid grid-cols-3 gap-2.5 sm:grid-cols-5">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -161,7 +167,7 @@ export default function AttendanceSummaryTile() {
             return (
               <div key={c.label} className={cn('rounded-lg px-2 py-2 text-center', p.tint)}>
                 <div className={cn('tabular text-[18px] font-semibold leading-none', p.text)}>{c.value}</div>
-                <div className="mt-1 text-[10px] font-medium uppercase tracking-wide text-ink-muted">{c.label}</div>
+                <div className="mt-1 text-[10px] font-medium uppercase tracking-wide text-ink-muted">{c.text}</div>
               </div>
             );
           })}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { authFetch } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
 
@@ -38,6 +39,7 @@ function rememberDismissal(state: BannerState): void {
 }
 
 export default function NotificationPermissionBanner() {
+  const t = useTranslations("notifications");
   const [state, setState] = useState<BannerState>('hidden');
   const [isSubscribing, setIsSubscribing] = useState(false);
 
@@ -126,19 +128,19 @@ export default function NotificationPermissionBanner() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span>
-              <strong>Push notifications blocked by your browser.</strong>
-              {" "}If using <strong>Brave</strong>: go to{" "}
-              <code className="bg-amber-100 border border-amber-300 px-1 rounded text-xs">brave://settings/privacy</code>
-              {" "}and enable <em>"Use Google services for push messaging"</em>.
-              You will still see notifications in the bell icon when using the app.
+              {t.rich("permission.pushBlocked", {
+                strong: (c) => <strong>{c}</strong>,
+                em: (c) => <em>{c}</em>,
+                code: (c) => <code className="bg-amber-100 border border-amber-300 px-1 rounded text-xs">{c}</code>,
+              })}
             </span>
           </div>
           <button
             onClick={() => dismiss('push_blocked')}
-            aria-label="Dismiss notification"
+            aria-label={t("permission.dismissAria")}
             className="text-xs text-amber-700 underline whitespace-nowrap hover:no-underline shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded"
           >
-            Dismiss
+            {t("permission.dismiss")}
           </button>
         </div>
       </div>
@@ -154,14 +156,14 @@ export default function NotificationPermissionBanner() {
             <svg className="w-4 h-4 shrink-0 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Notifications are blocked. To receive alerts, click the lock icon in your browser address bar and allow notifications for this site.
+            {t("permission.denied")}
           </div>
           <button
             onClick={() => dismiss('denied')}
-            aria-label="Dismiss notification"
+            aria-label={t("permission.dismissAria")}
             className="text-xs text-red-700 underline whitespace-nowrap hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded"
           >
-            Dismiss
+            {t("permission.dismiss")}
           </button>
         </div>
       </div>
@@ -177,22 +179,22 @@ export default function NotificationPermissionBanner() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
           </svg>
           <span>
-            Enable push notifications to get <strong>instant alerts</strong> for fees, attendance &amp; school announcements — even when the app is closed.
+            {t.rich("permission.prompt", { strong: (c) => <strong>{c}</strong> })}
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={handleEnable}
             disabled={isSubscribing}
-            aria-label={isSubscribing ? "Enabling notifications…" : "Enable push notifications"}
+            aria-label={isSubscribing ? t("permission.enablingAria") : t("permission.enableAria")}
             className="bg-brand text-white px-5 py-1.5 rounded-lg text-sm font-bold shadow hover:bg-brand-light transition-colors disabled:opacity-50 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
           >
-            {isSubscribing ? "Enabling…" : "Enable Alerts"}
+            {isSubscribing ? t("permission.enabling") : t("permission.enable")}
           </button>
           <button
             onClick={() => dismiss('prompt')}
-            aria-label="Dismiss notification banner"
-            title="Dismiss (you can enable later from the bell icon)"
+            aria-label={t("permission.dismissBannerAria")}
+            title={t("permission.dismissTitle")}
             className="p-1 text-ink-muted hover:text-ink hover:bg-surface-secondary rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

@@ -3,6 +3,7 @@
 import * as React from 'react';
 import QRCode from 'react-qr-code';
 import { RotateCw } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
   formatIdCardDate,
   getSchoolSignature,
@@ -855,6 +856,7 @@ export function IdCardPreview({
   school: IdCardBranding;
   className?: string;
 }) {
+  const t = useTranslations('idCards.preview');
   const [face, setFace] = React.useState<'front' | 'back'>('front');
 
   // A new holder always opens on the front — nobody wants to land on the back
@@ -880,8 +882,9 @@ export function IdCardPreview({
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-[12px] text-ink-muted">
-          <span className="tabular">85.6 × 54 mm</span> — standard CR80, shown
-          to scale.
+          {t.rich('size', {
+            num: (c) => <span className="tabular">{c}</span>,
+          })}
         </p>
         <button
           type="button"
@@ -890,7 +893,7 @@ export function IdCardPreview({
           className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-line-strong bg-surface px-3 text-[13px] font-semibold text-ink transition-colors hover:border-brand hover:text-brand"
         >
           <RotateCw className="size-3.5" aria-hidden />
-          {face === 'front' ? 'Show the back' : 'Show the front'}
+          {face === 'front' ? t('showBack') : t('showFront')}
         </button>
       </div>
     </div>

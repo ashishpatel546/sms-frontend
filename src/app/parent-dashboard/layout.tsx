@@ -30,6 +30,7 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
     const t = useTranslations("nav");
     const tc = useTranslations("common");
     const tp = useTranslations("product");
+    const tl = useTranslations("parent.layout");
     const locale = useLocale();
     const [user, setUser] = useState<any>(null);
     const schoolInfo = useSchoolInfo();
@@ -98,7 +99,7 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
                 href="#main-content"
                 className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-100 focus:rounded-md focus:bg-brand focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-brand-contrast"
             >
-                Skip to main content
+                {tl("skipToContent")}
             </a>
             <NotificationPermissionBanner />
 
@@ -128,7 +129,7 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
                         </span>
                         <span className="min-w-0">
                             <span className="block truncate font-display text-[15px] leading-tight font-semibold text-rail-ink">
-                                {schoolInfo?.name || 'School'}
+                                {schoolInfo?.name || t("chrome.school")}
                             </span>
                             <span className="block font-mono text-[9px] tracking-[0.14em] text-rail-ink-muted uppercase">
                                 {tp("module.parentPortal")}

@@ -1,5 +1,10 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
+
+type TimelineT = ReturnType<typeof useTranslations<"hr.timeline">>;
+
 type ActorUser = { id?: number; firstName: string; lastName: string; role?: string };
 
 export interface LeaveForTimeline {
@@ -32,27 +37,20 @@ interface TimelineEvent {
     labelColorClass: string;
 }
 
-const ROLE_LABELS: Record<string, string> = {
-    ADMIN: "Admin",
-    SUB_ADMIN: "Sub-Admin",
-    TEACHER: "Teacher",
-    PARENT: "Parent",
-    STUDENT: "Student",
-    SUPER_ADMIN: "Super Admin",
-    SYSTEM_ADMIN: "System Admin",
-};
+const ROLE_KEYS = ["ADMIN", "SUB_ADMIN", "TEACHER", "PARENT", "STUDENT", "SUPER_ADMIN", "SYSTEM_ADMIN"] as const;
+type RoleKey = (typeof ROLE_KEYS)[number];
 
-function fullName(u?: ActorUser) {
+function fullName(t: TimelineT, u?: ActorUser) {
     if (!u) return "";
     const name = `${u.firstName} ${u.lastName}`;
-    const role = u.role ? ROLE_LABELS[u.role] ?? u.role : null;
+    const role = u.role ? ((ROLE_KEYS as readonly string[]).includes(u.role) ? t(`roles.${u.role as RoleKey}`) : u.role) : null;
     const tag = role && u.id ? `${role}-${u.id}` : role ?? (u.id ? `#${u.id}` : null);
     return tag ? `${name} (${tag})` : name;
 }
 
-function formatDateTime(d: string | Date) {
+function formatDateTime(d: string | Date, locale: Locale) {
     const date = new Date(d);
-    return date.toLocaleString("en-IN", {
+    return date.toLocaleString(INTL_LOCALE[locale], {
         day: "2-digit",
         month: "short",
         year: "numeric",
@@ -62,7 +60,7 @@ function formatDateTime(d: string | Date) {
     });
 }
 
-function buildEvents(leave: LeaveForTimeline, theme: "light" | "dark"): TimelineEvent[] {
+function buildEvents(leave: LeaveForTimeline, theme: "light" | "dark", t: TimelineT): TimelineEvent[] {
     const events: TimelineEvent[] = [];
 
     const add = (
@@ -129,13 +127,13 @@ function buildEvents(leave: LeaveForTimeline, theme: "light" | "dark"): Timeline
         });
     };
 
-    add(leave.createdAt, "Applied", undefined, "gray");
-    add(leave.firstApprovedAt, `1st Approved${leave.firstApprover ? ` by ${fullName(leave.firstApprover)}` : ""}`, undefined, "blue");
-    add(leave.actionRequiredAt, `Info Requested${leave.actionRequiredBy ? ` by ${fullName(leave.actionRequiredBy)}` : ""}`, leave.actionRequiredMessage, "orange");
-    add(leave.parentResponseAt, "Parent Replied", leave.parentResponseNote, "slate");
-    add(leave.secondApprovedAt, `Approved${leave.secondApprover ? ` by ${fullName(leave.secondApprover)}` : ""}`, undefined, "green");
-    add(leave.rejectedAt, `Rejected${leave.rejectedBy ? ` by ${fullName(leave.rejectedBy)}` : ""}`, leave.rejectionReason, "red");
-    add(leave.cancelledAt, `Cancelled${leave.cancelledBy ? ` by ${fullName(leave.cancelledBy)}` : ""}`, leave.cancellationNote, "gray");
+    add(leave.createdAt, t("applied"), undefined, "gray");
+    add(leave.firstApprovedAt, leave.firstApprover ? t("firstApprovedBy", { name: fullName(t, leave.firstApprover) }) : t("firstApproved"), undefined, "blue");
+    add(leave.actionRequiredAt, leave.actionRequiredBy ? t("infoRequestedBy", { name: fullName(t, leave.actionRequiredBy) }) : t("infoRequested"), leave.actionRequiredMessage, "orange");
+    add(leave.parentResponseAt, t("parentReplied"), leave.parentResponseNote, "slate");
+    add(leave.secondApprovedAt, leave.secondApprover ? t("approvedBy", { name: fullName(t, leave.secondApprover) }) : t("approved"), undefined, "green");
+    add(leave.rejectedAt, leave.rejectedBy ? t("rejectedBy", { name: fullName(t, leave.rejectedBy) }) : t("rejected"), leave.rejectionReason, "red");
+    add(leave.cancelledAt, leave.cancelledBy ? t("cancelledBy", { name: fullName(t, leave.cancelledBy) }) : t("cancelled"), leave.cancellationNote, "gray");
 
     // Sort chronologically
     events.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
@@ -149,7 +147,9 @@ export default function LeaveTimeline({
     leave: LeaveForTimeline;
     theme?: "light" | "dark";
 }) {
-    const events = buildEvents(leave, theme);
+    const t = useTranslations("hr.timeline");
+    const locale = useLocale() as Locale;
+    const events = buildEvents(leave, theme, t);
     const connectorClass = theme === "light" ? "bg-gray-200" : "bg-slate-700";
     const headingClass = theme === "light"
         ? "text-xs font-semibold text-gray-500 uppercase tracking-wider"
@@ -157,7 +157,7 @@ export default function LeaveTimeline({
 
     return (
         <div>
-            <p className={`${headingClass} mb-3`}>Timeline</p>
+            <p className={`${headingClass} mb-3`}>{t("title")}</p>
             <div className="relative">
                 {/* Vertical connector line */}
                 <div className={`absolute left-[9px] top-3 bottom-3 w-0.5 ${connectorClass}`} />
@@ -174,7 +174,7 @@ export default function LeaveTimeline({
                                 <div className="flex items-baseline justify-between gap-2 flex-wrap">
                                     <p className={`text-sm font-medium ${ev.labelColorClass}`}>{ev.label}</p>
                                     <p className={`text-xs shrink-0 ${theme === "light" ? "text-gray-400" : "text-slate-500"}`}>
-                                        {formatDateTime(ev.timestamp)}
+                                        {formatDateTime(ev.timestamp, locale)}
                                     </p>
                                 </div>
                                 {ev.note && (

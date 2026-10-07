@@ -6,11 +6,16 @@ import { getUser } from "@/lib/auth";
 import { generateSalarySlipPdf } from "@/lib/salary-slip-pdf";
 import { useSchoolInfo } from "@/lib/useSchoolInfo";
 import toast, { Toaster } from "react-hot-toast";
+import { useLocale, useTranslations } from "next-intl";
+import { INTL_LOCALE, type Locale } from "@/i18n/config";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 export default function MySalaryPage() {
   const user = getUser();
+  const t = useTranslations("hr");
+  const locale = useLocale() as Locale;
+  const monthName = (m: number) => new Date(2000, m - 1, 1).toLocaleDateString(INTL_LOCALE[locale], { month: "long" });
   const [entries, setEntries] = useState<PayrollEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
@@ -22,7 +27,7 @@ export default function MySalaryPage() {
       try {
         const data = await hrApi.payroll.mySlips(user?.staffId);
         setEntries(data);
-      } catch { toast.error("Failed to load salary slips"); }
+      } catch { toast.error(t("mySalary.loadFailed")); }
       finally { setLoading(false); }
     };
     load();
@@ -46,29 +51,29 @@ export default function MySalaryPage() {
         schoolInfo: schoolInfo || undefined,
       });
     } catch (e: any) {
-      toast.error("PDF generation failed: " + (e?.message ?? ""));
+      toast.error(t("mySalary.pdfFailed", { error: e?.message ?? "" }));
     } finally {
       setDownloadingId(null);
     }
   };
 
-  const fmt = (n: number) => `Rs. ${Number(n).toLocaleString("en-IN")}`;
+  const fmt = (n: number) => `Rs. ${Number(n).toLocaleString(INTL_LOCALE[locale])}`;
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
       <Toaster />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">My Salary Slips</h1>
-          <p className="text-sm text-gray-500 mt-1">View and download your finalized payslips.</p>
+          <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t("mySalary.title")}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t("mySalary.subtitle")}</p>
         </div>
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gray-500">Loading your salary slips...</div>
+        <div className="text-center py-12 text-gray-500">{t("mySalary.loading")}</div>
       ) : entries.length === 0 ? (
         <div className="text-center py-12 bg-white border border-gray-200 rounded-xl">
-          <p className="text-gray-500">No finalized salary slips found.</p>
+          <p className="text-gray-500">{t("mySalary.empty")}</p>
         </div>
       ) : (
         <>
@@ -78,22 +83,22 @@ export default function MySalaryPage() {
               <div key={entry.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-3 shadow-sm">
                 <div className="flex justify-between items-center border-b pb-2">
                   <h3 className="font-bold text-gray-800">
-                    {entry.payrollRun ? `${MONTHS[entry.payrollRun.month - 1]} ${entry.payrollRun.year}` : `Run #${entry.payrollRunId}`}
+                    {entry.payrollRun ? `${monthName(entry.payrollRun.month)} ${entry.payrollRun.year}` : t("mySalary.runNo", { id: entry.payrollRunId })}
                   </h3>
-                  <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-medium">Finalized</span>
+                  <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-medium">{t("payrollStatus.FINALIZED")}</span>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
-                    <span className="block text-gray-500 text-xs">Gross Earnings</span>
+                    <span className="block text-gray-500 text-xs">{t("mySalary.gross")}</span>
                     <span className="font-medium">{fmt(Number(entry.grossEarnings))}</span>
                   </div>
                   <div>
-                    <span className="block text-gray-500 text-xs">Total Deductions</span>
+                    <span className="block text-gray-500 text-xs">{t("mySalary.totalDeductions")}</span>
                     <span className="font-medium text-red-600">{fmt(Number(entry.totalDeductions))}</span>
                   </div>
                   <div className="col-span-2 mt-1">
-                    <span className="block text-gray-500 text-xs">Net Pay</span>
+                    <span className="block text-gray-500 text-xs">{t("mySalary.netPay")}</span>
                     <span className="font-bold text-lg text-green-700">{fmt(Number(entry.netPay))}</span>
                   </div>
                 </div>
@@ -104,7 +109,7 @@ export default function MySalaryPage() {
                     disabled={downloadingId === entry.id}
                     className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-700 font-medium py-2 rounded-lg hover:bg-blue-100 disabled:opacity-50"
                   >
-                    {downloadingId === entry.id ? 'Generating...' : 'Download PDF'}
+                    {downloadingId === entry.id ? t("mySalary.generating") : t("mySalary.downloadPdf")}
                   </button>
                 </div>
               </div>
@@ -116,22 +121,22 @@ export default function MySalaryPage() {
             <table className="min-w-full text-sm">
               <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-semibold">
                 <tr>
-                  <th className="px-6 py-4 text-left">Salary Month</th>
-                  <th className="px-6 py-4 text-right">Working Days</th>
-                  <th className="px-6 py-4 text-right">Gross Earnings</th>
-                  <th className="px-6 py-4 text-right">Deductions</th>
-                  <th className="px-6 py-4 text-right">Net Pay</th>
-                  <th className="px-6 py-4 text-right">Action</th>
+                  <th className="px-6 py-4 text-left">{t("mySalary.salaryMonth")}</th>
+                  <th className="px-6 py-4 text-right">{t("mySalary.workingDays")}</th>
+                  <th className="px-6 py-4 text-right">{t("mySalary.gross")}</th>
+                  <th className="px-6 py-4 text-right">{t("mySalary.deductions")}</th>
+                  <th className="px-6 py-4 text-right">{t("mySalary.netPay")}</th>
+                  <th className="px-6 py-4 text-right">{t("mySalary.action")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {entries.map((entry) => (
                   <tr key={entry.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 font-medium text-gray-900">
-                      {entry.payrollRun ? `${MONTHS[entry.payrollRun.month - 1]} ${entry.payrollRun.year}` : `Run #${entry.payrollRunId}`}
+                      {entry.payrollRun ? `${monthName(entry.payrollRun.month)} ${entry.payrollRun.year}` : t("mySalary.runNo", { id: entry.payrollRunId })}
                     </td>
                     <td className="px-6 py-4 text-right text-gray-600">
-                      {entry.workingDays} <span className="text-xs text-gray-400">({entry.paidDays} Paid)</span>
+                      {entry.workingDays} <span className="text-xs text-gray-400">({t("mySalary.paidDays", { count: entry.paidDays })})</span>
                     </td>
                     <td className="px-6 py-4 text-right text-gray-900">{fmt(Number(entry.grossEarnings))}</td>
                     <td className="px-6 py-4 text-right text-red-600">{fmt(Number(entry.totalDeductions))}</td>
@@ -142,7 +147,7 @@ export default function MySalaryPage() {
                         disabled={downloadingId === entry.id}
                         className="text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50 bg-blue-50 px-3 py-1.5 rounded"
                       >
-                        {downloadingId === entry.id ? 'Generating...' : 'Download PDF'}
+                        {downloadingId === entry.id ? t("mySalary.generating") : t("mySalary.downloadPdf")}
                       </button>
                     </td>
                   </tr>

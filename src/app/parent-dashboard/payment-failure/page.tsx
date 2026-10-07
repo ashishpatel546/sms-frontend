@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { useTranslations } from "next-intl";
 
 function PaymentFailureContent() {
+    const t = useTranslations("fees.payment");
+    const tc = useTranslations("common");
     const searchParams = useSearchParams();
     const orderId = searchParams.get('order_id') || searchParams.get('razorpay_order_id');
-    const errorMsg = searchParams.get('error') || "The transaction could not be completed securely. Please try again or use another payment method.";
+    const errorMsg = searchParams.get('error') || t("failure.defaultError");
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex flex-col items-center justify-center p-4">
@@ -17,7 +20,7 @@ function PaymentFailureContent() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </div>
-                <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">Payment Failed</h1>
+                <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{t("failure.title")}</h1>
                 <p className="text-ink-muted mb-8">
                     {errorMsg}
                 </p>
@@ -25,7 +28,7 @@ function PaymentFailureContent() {
                 {orderId && (
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left mb-8">
                         <div className="flex justify-between items-center text-sm">
-                            <span className="text-ink-muted">Failed Order ID:</span>
+                            <span className="text-ink-muted">{t("failure.orderId")}</span>
                             <span className="text-ink font-mono text-xs bg-slate-100 px-2 py-1 rounded">{orderId}</span>
                         </div>
                     </div>
@@ -33,10 +36,10 @@ function PaymentFailureContent() {
 
                 <div className="flex gap-3">
                     <Link href="/parent-dashboard" className="flex-1 inline-flex justify-center items-center py-3 px-4 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-ink font-semibold rounded-xl transition-all">
-                        Cancel
+                        {tc("action.cancel")}
                     </Link>
                     <button onClick={() => window.history.back()} className="flex-1 inline-flex justify-center items-center py-3 px-4 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-red-500/25">
-                        Try Again
+                        {tc("action.retry")}
                     </button>
                 </div>
             </div>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import DashboardDatePicker from "./DashboardDatePicker";
 import QuickActions from "./QuickActions";
 import DashboardStats from "./DashboardStats";
@@ -11,15 +12,17 @@ import BillingDueBanner from "@/components/dashboard/BillingDueBanner";
 import { PageBody, PageHeader, PageShell } from "@/components/ui/PageHeader";
 import { todayLocalDate } from "@/lib/utils";
 
-export const metadata: Metadata = {
-    title: "Dashboard",
-};
+export async function generateMetadata(): Promise<Metadata> {
+    const t = await getTranslations("dashboard");
+    return { title: t("home.metaTitle") };
+}
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
     const resolvedSearchParams = await searchParams;
     const todayIST = todayLocalDate();
     const selectedDate = resolvedSearchParams.date || todayIST;
     const isToday = selectedDate === todayIST;
+    const t = await getTranslations("dashboard");
 
     return (
         <GuardSwitch>
@@ -28,12 +31,12 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                 <BillingDueBanner />
 
                 <PageHeader
-                    section="Overview"
-                    title="Today at a glance"
+                    section={t("home.section")}
+                    title={t("home.title")}
                     description={
                         isToday
-                            ? "Roll call, collections and activity for today."
-                            : `Roll call, collections and activity for ${selectedDate}.`
+                            ? t("home.descriptionToday")
+                            : t("home.descriptionDate", { date: selectedDate })
                     }
                     actions={<DashboardDatePicker defaultDate={selectedDate} />}
                 />

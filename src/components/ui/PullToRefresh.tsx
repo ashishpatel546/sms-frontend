@@ -8,6 +8,7 @@ import {
     type ReactNode,
 } from "react";
 import { mutate } from "swr";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { isAppOutOfDate } from "@/lib/app-version";
 
@@ -142,16 +143,18 @@ async function refreshPwaCaches(): Promise<boolean> {
     return false;
 }
 
-const CAPTIONS: Record<Exclude<Phase, "idle">, string> = {
-    pulling: "Pull to refresh",
-    armed: "Release to refresh",
-    refreshing: "Refreshing…",
-    settling: "Up to date",
-};
+/** Caption per phase — keys in `ui.pullToRefresh`. */
+const CAPTIONS = {
+    pulling: "pulling",
+    armed: "armed",
+    refreshing: "refreshing",
+    settling: "settling",
+} as const satisfies Record<Exclude<Phase, "idle">, string>;
 
 export default function PullToRefresh({ children }: { children: ReactNode }) {
     const wrapRef = useRef<HTMLDivElement>(null);
     const zoneRef = useRef<HTMLDivElement>(null);
+    const t = useTranslations("ui");
     const [phase, setPhase] = useState<Phase>("idle");
     const phaseRef = useRef(phase);
     useEffect(() => {
@@ -298,7 +301,7 @@ export default function PullToRefresh({ children }: { children: ReactNode }) {
                             phase === "settling" && "text-ink-muted",
                         )}
                     >
-                        {phase === "idle" ? "" : CAPTIONS[phase]}
+                        {phase === "idle" ? "" : t(`pullToRefresh.${CAPTIONS[phase]}`)}
                     </p>
                 </div>
             </div>

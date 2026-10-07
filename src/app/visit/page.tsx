@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import QRCode from "react-qr-code";
+import { useTranslations } from "next-intl";
 import { API_BASE_URL } from "@/lib/api";
 import { getSchoolSlug } from "@/lib/env";
 import {
@@ -10,14 +11,15 @@ import {
 } from "lucide-react";
 
 const PURPOSES = ["ADMISSION", "OFFICIAL", "INQUIRY", "PTM", "OTHERS"] as const;
+// `label` is a key under `publicPages.visit.idProof`.
 const ID_PROOFS = [
-    { value: "", label: "None" },
-    { value: "AADHAAR", label: "Aadhaar" },
-    { value: "DL", label: "Driving License" },
-    { value: "VOTER_ID", label: "Voter ID" },
-    { value: "PAN", label: "PAN" },
-    { value: "OTHER", label: "Other" },
-];
+    { value: "", label: "none" },
+    { value: "AADHAAR", label: "aadhaar" },
+    { value: "DL", label: "dl" },
+    { value: "VOTER_ID", label: "voterId" },
+    { value: "PAN", label: "pan" },
+    { value: "OTHER", label: "other" },
+] as const;
 
 interface QrResult {
     token: string;
@@ -38,6 +40,8 @@ const emptyForm = {
 };
 
 export default function VisitorFormPage() {
+    const t = useTranslations("publicPages.visit");
+    const tc = useTranslations("common");
     const [school, setSchool] = useState<{ name: string; logoUrl: string | null } | null>(null);
     // null = still checking; the form only renders once the feature is confirmed on
     const [featureEnabled, setFeatureEnabled] = useState<boolean | null>(null);
@@ -110,10 +114,10 @@ export default function VisitorFormPage() {
                 }),
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(Array.isArray(data.message) ? data.message[0] : data.message || "Failed to generate visitor QR");
+            if (!res.ok) throw new Error(Array.isArray(data.message) ? data.message[0] : data.message || t("generateFailed"));
             setQr(data);
         } catch (err: any) {
-            setError(err.message || "Failed to generate visitor QR");
+            setError(err.message || t("generateFailed"));
         } finally {
             setSubmitting(false);
         }
@@ -133,14 +137,14 @@ export default function VisitorFormPage() {
                 <div className="flex flex-col items-center mb-6 text-center">
                     {school?.logoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={school.logoUrl} alt="School logo" className="w-14 h-14 rounded-2xl object-contain bg-white p-1 shadow-lg mb-3" />
+                        <img src={school.logoUrl} alt={t("logoAlt")} className="w-14 h-14 rounded-2xl object-contain bg-white p-1 shadow-lg mb-3" />
                     ) : (
                         <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-500/30 mb-3">
                             <QrCode className="w-7 h-7 text-white" />
                         </div>
                     )}
-                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{school?.name || "Visitor Entry"}</h1>
-                    <p className="text-brass-100/70 text-sm mt-1">Fill this form to get your gate-entry QR code</p>
+                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-ink">{school?.name || t("title")}</h1>
+                    <p className="text-brass-100/70 text-sm mt-1">{t("subtitle")}</p>
                 </div>
 
                 {featureEnabled === null ? (
@@ -150,21 +154,21 @@ export default function VisitorFormPage() {
                 ) : !featureEnabled ? (
                     <div className="bg-walnut-850 border border-white/10 rounded-2xl p-8 shadow-2xl text-center space-y-3">
                         <div className="text-5xl">🛂</div>
-                        <h2 className="text-white font-bold text-lg">Visitor registration is not available</h2>
+                        <h2 className="text-white font-bold text-lg">{t("unavailableTitle")}</h2>
                         <p className="text-brass-100/70 text-sm">
-                            This school has not enabled online visitor registration. Please contact the staff at the school gate.
+                            {t("unavailableBody")}
                         </p>
                     </div>
                 ) : !qr ? (
                     <form onSubmit={handleSubmit} className="bg-walnut-850 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
                         <div>
-                            <label className={labelCls}><UserRound className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />Full Name *</label>
-                            <input type="text" value={form.visitorName} onChange={set("visitorName")} maxLength={150} placeholder="Your name" className={inputCls} required />
+                            <label className={labelCls}><UserRound className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />{t("fullName")} *</label>
+                            <input type="text" value={form.visitorName} onChange={set("visitorName")} maxLength={150} placeholder={t("namePlaceholder")} className={inputCls} required />
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className={labelCls}><Phone className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />Mobile *</label>
+                                <label className={labelCls}><Phone className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />{tc("field.mobile")} *</label>
                                 <input
                                     type="tel" value={form.mobile}
                                     onChange={e => setForm(p => ({ ...p, mobile: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
@@ -172,44 +176,44 @@ export default function VisitorFormPage() {
                                 />
                             </div>
                             <div>
-                                <label className={labelCls}><Users className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />No. of Persons *</label>
+                                <label className={labelCls}><Users className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />{t("persons")} *</label>
                                 <input type="number" min={1} max={50} value={form.personsCount} onChange={set("personsCount")} className={inputCls} required />
                             </div>
                         </div>
 
                         <div>
-                            <label className={labelCls}>Purpose of Visit *</label>
+                            <label className={labelCls}>{t("purposeLabel")} *</label>
                             <select value={form.purpose} onChange={set("purpose")} className={inputCls} required>
-                                <option value="" disabled>Select purpose…</option>
-                                {PURPOSES.map(p => <option key={p} value={p}>{p.charAt(0) + p.slice(1).toLowerCase()}</option>)}
+                                <option value="" disabled>{t("selectPurpose")}</option>
+                                {PURPOSES.map(p => <option key={p} value={p}>{t(`purpose.${p}`)}</option>)}
                             </select>
                         </div>
 
                         <div>
-                            <label className={labelCls}>Whom to Meet <span className="text-brass-100/55">(optional)</span></label>
-                            <input type="text" value={form.toMeet} onChange={set("toMeet")} maxLength={150} placeholder="e.g. Principal, Class Teacher of 5-A" className={inputCls} />
+                            <label className={labelCls}>{t("toMeet")} <span className="text-brass-100/55">{t("optional")}</span></label>
+                            <input type="text" value={form.toMeet} onChange={set("toMeet")} maxLength={150} placeholder={t("toMeetPlaceholder")} className={inputCls} />
                         </div>
 
                         <div>
-                            <label className={labelCls}><MessageSquareText className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />Description <span className="text-brass-100/55">(optional)</span></label>
-                            <textarea value={form.description} onChange={set("description")} maxLength={500} rows={2} placeholder="Briefly describe the purpose of your visit" className={inputCls} />
+                            <label className={labelCls}><MessageSquareText className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />{tc("field.description")} <span className="text-brass-100/55">{t("optional")}</span></label>
+                            <textarea value={form.description} onChange={set("description")} maxLength={500} rows={2} placeholder={t("descriptionPlaceholder")} className={inputCls} />
                         </div>
 
                         <div>
-                            <label className={labelCls}><Car className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />Vehicle Number <span className="text-brass-100/55">(optional)</span></label>
-                            <input type="text" value={form.vehicleNumber} onChange={set("vehicleNumber")} maxLength={20} placeholder="e.g. GJ01AB1234" className={inputCls} />
+                            <label className={labelCls}><Car className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />{t("vehicleNumber")} <span className="text-brass-100/55">{t("optional")}</span></label>
+                            <input type="text" value={form.vehicleNumber} onChange={set("vehicleNumber")} maxLength={20} placeholder={t("vehiclePlaceholder")} className={inputCls} />
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className={labelCls}><IdCard className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />ID Proof <span className="text-brass-100/55">(optional)</span></label>
+                                <label className={labelCls}><IdCard className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />{t("idProofLabel")} <span className="text-brass-100/55">{t("optional")}</span></label>
                                 <select value={form.idProofType} onChange={set("idProofType")} className={inputCls}>
-                                    {ID_PROOFS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                                    {ID_PROOFS.map(p => <option key={p.value} value={p.value}>{t(`idProof.${p.label}`)}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className={labelCls}>ID Number</label>
-                                <input type="text" value={form.idProofNumber} onChange={set("idProofNumber")} maxLength={30} placeholder="ID proof no." className={inputCls} disabled={!form.idProofType} />
+                                <label className={labelCls}>{t("idNumber")}</label>
+                                <input type="text" value={form.idProofNumber} onChange={set("idProofNumber")} maxLength={30} placeholder={t("idNumberPlaceholder")} className={inputCls} disabled={!form.idProofType} />
                             </div>
                         </div>
 
@@ -226,14 +230,14 @@ export default function VisitorFormPage() {
                             className="w-full py-3 rounded-xl font-semibold text-white bg-linear-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                         >
                             {submitting ? (
-                                <><RefreshCw className="w-4 h-4 animate-spin" /> Generating…</>
+                                <><RefreshCw className="w-4 h-4 animate-spin" /> {t("generating")}</>
                             ) : (
-                                <><QrCode className="w-4 h-4" /> Get My Entry QR</>
+                                <><QrCode className="w-4 h-4" /> {t("getQr")}</>
                             )}
                         </button>
 
                         <p className="text-brass-100/55 text-xs text-center">
-                            Nothing is saved until the gate staff scans and allows your entry.
+                            {t("nothingSaved")}
                         </p>
                     </form>
                 ) : (
@@ -241,7 +245,7 @@ export default function VisitorFormPage() {
                         <div className="flex flex-col items-center text-center">
                             <div className="flex items-center gap-2 text-emerald-400 mb-3">
                                 <CheckCircle2 className="w-5 h-5" />
-                                <span className="font-semibold">QR generated — show this at the gate</span>
+                                <span className="font-semibold">{t("generated")}</span>
                             </div>
                             <div className="bg-white p-4 rounded-2xl max-w-full">
                                 <QRCode
@@ -253,20 +257,20 @@ export default function VisitorFormPage() {
                             <div className={`mt-3 flex items-center gap-1.5 text-sm ${remaining > 0 ? "text-brass-100/85" : "text-red-400"}`}>
                                 <Clock className="w-4 h-4" />
                                 {remaining > 0
-                                    ? <>Valid for entry: <span className="font-mono font-semibold">{fmtRemaining}</span></>
-                                    : <>This QR has expired — please generate a new one</>}
+                                    ? <>{t.rich("validFor", { time: fmtRemaining, b: (c) => <span className="font-mono font-semibold">{c}</span> })}</>
+                                    : <>{t("expired")}</>}
                             </div>
                         </div>
 
                         {/* Summary */}
                         <div className="border border-white/10 rounded-xl divide-y divide-slate-800 text-sm">
                             {[
-                                ["Name", form.visitorName],
-                                ["Mobile", form.mobile],
-                                ["Purpose", form.purpose],
-                                ["Persons", String(form.personsCount)],
-                                ...(form.toMeet ? [["To Meet", form.toMeet]] : []),
-                                ...(form.vehicleNumber ? [["Vehicle", form.vehicleNumber]] : []),
+                                [tc("field.name"), form.visitorName],
+                                [tc("field.mobile"), form.mobile],
+                                [t("summary.purpose"), (PURPOSES as readonly string[]).includes(form.purpose) ? t(`purpose.${form.purpose as (typeof PURPOSES)[number]}`) : form.purpose],
+                                [t("summary.persons"), String(form.personsCount)],
+                                ...(form.toMeet ? [[t("summary.toMeet"), form.toMeet]] : []),
+                                ...(form.vehicleNumber ? [[t("summary.vehicle"), form.vehicleNumber]] : []),
                             ].map(([k, v]) => (
                                 <div key={k} className="flex justify-between px-4 py-2.5">
                                     <span className="text-brass-100/70">{k}</span>
@@ -279,7 +283,7 @@ export default function VisitorFormPage() {
                             onClick={resetAll}
                             className="w-full py-3 rounded-xl font-semibold text-brass-100/85 border border-white/12 hover:bg-walnut-800 transition-all flex items-center justify-center gap-2"
                         >
-                            <RefreshCw className="w-4 h-4" /> New Visitor Entry
+                            <RefreshCw className="w-4 h-4" /> {t("newEntry")}
                         </button>
                     </div>
                 )}

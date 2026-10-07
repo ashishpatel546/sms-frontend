@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { API_BASE_URL } from "@/lib/api";
 import { setToken, setTokens } from "@/lib/auth";
 import { getSchoolSlug } from "@/lib/env";
@@ -11,6 +12,7 @@ type Step = "mobile" | "otp" | "students" | "details";
 
 export default function RegisterParentPage() {
     const router = useRouter();
+    const t = useTranslations("publicPages.registerParent");
 
     const [step, setStep] = useState<Step>("mobile");
 
@@ -140,11 +142,11 @@ export default function RegisterParentPage() {
                 body: JSON.stringify({ mobile }),
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.message || "Failed to send OTP");
+            if (!res.ok) throw new Error(data.message || t("otpSendFailed"));
             setStep("otp");
             setCountdown(600); // 10 min countdown display
         } catch (err: any) {
-            setOtpSendError(err.message || "Failed to send OTP. Please try again.");
+            setOtpSendError(err.message || t("otpSendFailedRetry"));
         } finally {
             setSendingOtp(false);
         }
@@ -162,12 +164,12 @@ export default function RegisterParentPage() {
                 body: JSON.stringify({ mobile, otp }),
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.message || "Invalid OTP");
+            if (!res.ok) throw new Error(data.message || t("otpInvalid"));
             setRegistrationToken(data.registrationToken);
             setLinkedStudents(data.students || []);
             setStep("students");
         } catch (err: any) {
-            setOtpError(err.message || "Invalid OTP");
+            setOtpError(err.message || t("otpInvalid"));
         } finally {
             setVerifying(false);
         }
@@ -177,8 +179,8 @@ export default function RegisterParentPage() {
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         setSubmitError("");
-        if (form.password !== form.confirmPassword) { setSubmitError("Passwords do not match"); return; }
-        if (!form.parentType) { setSubmitError("Please select a registration role"); return; }
+        if (form.password !== form.confirmPassword) { setSubmitError(t("pwMismatch")); return; }
+        if (!form.parentType) { setSubmitError(t("roleRequired")); return; }
         setSubmitting(true);
         try {
             const res = await fetch(`${API_BASE_URL}/auth/parent/register`, {
@@ -193,11 +195,11 @@ export default function RegisterParentPage() {
                 }),
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.message || "Registration failed");
+            if (!res.ok) throw new Error(data.message || t("registerFailed"));
             setTokens(data.access_token, data.refresh_token);
             router.push("/parent-dashboard");
         } catch (err: any) {
-            setSubmitError(err.message || "Registration failed");
+            setSubmitError(err.message || t("registerFailed"));
             // If it's a duplicate role error, unlock fields to let them change it
             if (err.message && err.message.includes('already registered as')) {
                 setNamesLocked(false);
@@ -219,8 +221,8 @@ export default function RegisterParentPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                         </svg>
                     </div>
-                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-white">Register as Parent</h1>
-                    <p className="text-brass-100/70 text-sm mt-1">Access your child&apos;s school information</p>
+                    <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-[-0.02em] text-white">{t("title")}</h1>
+                    <p className="text-brass-100/70 text-sm mt-1">{t("subtitle")}</p>
                 </div>
 
                 {/* Progress Steps */}
@@ -247,12 +249,12 @@ export default function RegisterParentPage() {
                     {step === "mobile" && (
                         <div className="space-y-5">
                             <div>
-                                <h2 className="text-white font-bold text-lg mb-1">Enter your mobile number</h2>
-                                <p className="text-brass-100/70 text-sm">Use the number registered at school for your child</p>
+                                <h2 className="text-white font-bold text-lg mb-1">{t("mobileTitle")}</h2>
+                                <p className="text-brass-100/70 text-sm">{t("mobileHint")}</p>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-brass-100/85 mb-2">Mobile Number</label>
+                                <label className="block text-sm font-medium text-brass-100/85 mb-2">{t("mobileLabel")}</label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                                         <svg className="w-4 h-4 text-brass-100/55" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -275,13 +277,13 @@ export default function RegisterParentPage() {
                                 {mobileCheck.status === "found" && (
                                     <div className="mt-2 flex items-center gap-2 text-green-400 text-sm">
                                         <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                        {mobileCheck.students.length} student{mobileCheck.students.length > 1 ? "s" : ""} found linked to this number
+                                        {t("studentsFound", { count: mobileCheck.students.length })}
                                     </div>
                                 )}
                                 {mobileCheck.status === "not_found" && (
                                     <div className="mt-2 flex items-start gap-2 text-red-400 text-sm">
                                         <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        <span>This number is not linked to any student. Please ask the school to update your mobile number in the student record first.</span>
+                                        <span>{t("notLinked")}</span>
                                     </div>
                                 )}
                             </div>
@@ -298,7 +300,7 @@ export default function RegisterParentPage() {
                                 disabled={mobileCheck.status !== "found" || sendingOtp}
                                 className="w-full py-3 rounded-xl font-semibold text-white bg-brand hover:bg-brand-deep disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                             >
-                                {sendingOtp ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Sending...</> : "Send OTP →"}
+                                {sendingOtp ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> {t("sending")}</> : t("sendOtp")}
                             </button>
                         </div>
                     )}
@@ -307,20 +309,20 @@ export default function RegisterParentPage() {
                     {step === "otp" && (
                         <form onSubmit={handleVerifyOtp} className="space-y-5">
                             <div>
-                                <h2 className="text-white font-bold text-lg mb-1">Enter OTP</h2>
+                                <h2 className="text-white font-bold text-lg mb-1">{t("otpTitle")}</h2>
                                 <p className="text-brass-100/70 text-sm">
-                                    OTP sent to <span className="text-white font-medium">{mobile}</span>
+                                    {t.rich("otpSentTo", { mobile, b: (c) => <span className="text-white font-medium">{c}</span> })}
                                 </p>
                                 <p className="text-brass-100/55 text-xs mt-1">
-                                    {countdown > 0 ? `Expires in ${Math.floor(countdown / 60)}:${String(countdown % 60).padStart(2, "0")}` : "OTP expired"}
+                                    {countdown > 0 ? t("expiresIn", { time: `${Math.floor(countdown / 60)}:${String(countdown % 60).padStart(2, "0")}` }) : t("otpExpired")}
                                 </p>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-brass-100/85 mb-2">One-Time Password</label>
+                                <label className="block text-sm font-medium text-brass-100/85 mb-2">{t("otpLabel")}</label>
                                 <input
                                     type="text" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/, "").slice(0, 6))}
-                                    placeholder="Enter OTP" maxLength={6} autoFocus
+                                    placeholder={t("otpPlaceholder")} maxLength={6} autoFocus
                                     className="w-full bg-walnut-800 border border-white/12 text-white placeholder-brass-100/40 rounded-xl px-4 py-3 text-2xl tracking-widest text-center font-mono focus:outline-none focus:ring-2 focus:ring-brand/40"
                                 />
                                 {otpError && (
@@ -332,15 +334,15 @@ export default function RegisterParentPage() {
                             </div>
 
                             <div className="flex gap-3">
-                                <button type="button" onClick={() => setStep("mobile")} className="px-4 py-3 bg-walnut-800 hover:bg-slate-700 text-brass-100/85 rounded-xl text-sm transition-colors">← Back</button>
+                                <button type="button" onClick={() => setStep("mobile")} className="px-4 py-3 bg-walnut-800 hover:bg-slate-700 text-brass-100/85 rounded-xl text-sm transition-colors">← {t("back")}</button>
                                 <button type="submit" disabled={otp.length < 4 || verifying}
                                     className="flex-1 py-3 rounded-xl font-semibold text-white bg-brand hover:bg-brand-deep disabled:opacity-40 transition-all flex items-center justify-center gap-2">
-                                    {verifying ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Verifying...</> : "Verify OTP"}
+                                    {verifying ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> {t("verifying")}</> : t("verifyOtp")}
                                 </button>
                             </div>
                             <button type="button" onClick={handleSendOtp} disabled={sendingOtp}
                                 className="w-full text-center text-brass-100/55 hover:text-brass-100/85 text-sm transition-colors">
-                                Didn&apos;t receive? Resend OTP
+                                {t("resend")}
                             </button>
                         </form>
                     )}
@@ -350,12 +352,12 @@ export default function RegisterParentPage() {
                         <div className="space-y-5">
                             <div>
                                 <h2 className="text-white font-bold text-lg mb-1">
-                                    {linkedStudents.length > 0 ? "Confirm your children" : "No students found"}
+                                    {linkedStudents.length > 0 ? t("confirmChildren") : t("noStudents")}
                                 </h2>
                                 <p className="text-brass-100/70 text-sm">
                                     {linkedStudents.length > 0
-                                        ? "These students are linked to your mobile number"
-                                        : "Your mobile is verified, but no active students are found"}
+                                        ? t("linkedHint")
+                                        : t("noStudentsHint")}
                                 </p>
                             </div>
 
@@ -368,7 +370,7 @@ export default function RegisterParentPage() {
                                             </div>
                                             <div>
                                                 <p className="text-white font-semibold text-sm">{s.firstName} {s.lastName}</p>
-                                                <p className="text-brass-100/70 text-xs">{s.className ? `Enrolled in ${s.className}${s.sectionName ? ` – ${s.sectionName}` : ""}` : "Details pending"}</p>
+                                                <p className="text-brass-100/70 text-xs">{s.className ? t("enrolledIn", { class: `${s.className}${s.sectionName ? ` – ${s.sectionName}` : ""}` }) : t("detailsPending")}</p>
                                             </div>
                                             <svg className="w-5 h-5 text-green-400 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                                         </div>
@@ -376,15 +378,15 @@ export default function RegisterParentPage() {
                                 </div>
                             ) : (
                                 <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 text-sm">
-                                    Contact the school to link students to your mobile number.
+                                    {t("contactSchool")}
                                 </div>
                             )}
 
                             <div className="flex gap-3">
-                                <button onClick={() => setStep("otp")} className="px-4 py-3 bg-walnut-800 hover:bg-slate-700 text-brass-100/85 rounded-xl text-sm transition-colors">← Back</button>
+                                <button onClick={() => setStep("otp")} className="px-4 py-3 bg-walnut-800 hover:bg-slate-700 text-brass-100/85 rounded-xl text-sm transition-colors">← {t("back")}</button>
                                 <button onClick={() => setStep("details")}
                                     className="flex-1 py-3 rounded-xl font-semibold text-white bg-brand hover:bg-brand-deep transition-all">
-                                    {linkedStudents.length > 0 ? "Looks Good, Continue →" : "Continue Anyway →"}
+                                    {linkedStudents.length > 0 ? t("looksGood") : t("continueAnyway")}
                                 </button>
                             </div>
                         </div>
@@ -394,48 +396,48 @@ export default function RegisterParentPage() {
                     {step === "details" && (
                         <form onSubmit={handleRegister} className="space-y-4">
                             <div>
-                                <h2 className="text-white font-bold text-lg mb-1">Create your account</h2>
-                                <p className="text-brass-100/70 text-sm">Almost done! Fill in your details.</p>
+                                <h2 className="text-white font-bold text-lg mb-1">{t("createTitle")}</h2>
+                                <p className="text-brass-100/70 text-sm">{t("createHint")}</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3 mb-4">
                                 <div className="col-span-2">
-                                    <label className="block text-sm font-medium text-brass-100/85 mb-1">Register As <span className="text-red-500">*</span></label>
+                                    <label className="block text-sm font-medium text-brass-100/85 mb-1">{t("registerAs")} <span className="text-red-500">*</span></label>
                                     <select
                                         value={form.parentType}
                                         onChange={e => handleRoleSelection(e.target.value)}
                                         required
                                         className="w-full bg-walnut-800 border border-white/12 text-white placeholder-brass-100/40 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
                                     >
-                                        <option value="" disabled>Select Role</option>
-                                        <option value="FATHER">Father</option>
-                                        <option value="MOTHER">Mother</option>
-                                        <option value="GUARDIAN">Guardian</option>
+                                        <option value="" disabled>{t("selectRole")}</option>
+                                        <option value="FATHER">{t("father")}</option>
+                                        <option value="MOTHER">{t("mother")}</option>
+                                        <option value="GUARDIAN">{t("guardian")}</option>
                                     </select>
-                                    {namesLocked && <p className="text-xs text-green-400 mt-1">Name auto-filled from student records.</p>}
+                                    {namesLocked && <p className="text-xs text-green-400 mt-1">{t("nameAutofilled")}</p>}
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-brass-100/85 mb-1">First Name <span className="text-red-500">*</span></label>
+                                    <label className="block text-sm font-medium text-brass-100/85 mb-1">{t("firstName")} <span className="text-red-500">*</span></label>
                                     <input value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })} disabled={namesLocked} required placeholder="Raj"
                                         className="w-full bg-walnut-800 border border-white/12 text-white placeholder-brass-100/40 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 disabled:opacity-50" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-brass-100/85 mb-1">Last Name</label>
+                                    <label className="block text-sm font-medium text-brass-100/85 mb-1">{t("lastName")}</label>
                                     <input value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })} disabled={namesLocked} placeholder="Patel"
                                         className="w-full bg-walnut-800 border border-white/12 text-white placeholder-brass-100/40 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 disabled:opacity-50" />
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-brass-100/85 mb-1">Email (optional)</label>
+                                <label className="block text-sm font-medium text-brass-100/85 mb-1">{t("emailOptional")}</label>
                                 <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="raj@example.com"
                                     className="w-full bg-walnut-800 border border-white/12 text-white placeholder-brass-100/40 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40" />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-brass-100/85 mb-1">Password <span className="text-red-500">*</span></label>
+                                <label className="block text-sm font-medium text-brass-100/85 mb-1">{t("password")} <span className="text-red-500">*</span></label>
                                 <div className="relative">
-                                    <input type={showPw ? "text" : "password"} value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required minLength={6} placeholder="Min. 6 characters"
+                                    <input type={showPw ? "text" : "password"} value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required minLength={6} placeholder={t("minChars")}
                                         className="w-full bg-walnut-800 border border-white/12 text-white placeholder-brass-100/40 rounded-xl px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40" />
                                     <button type="button" onClick={() => setShowPw(!showPw)} className="absolute inset-y-0 right-3 flex items-center text-brass-100/55 hover:text-brass-100/85">
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showPw ? "M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" : "M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"} /></svg>
@@ -452,8 +454,8 @@ export default function RegisterParentPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-brass-100/85 mb-1">Confirm Password <span className="text-red-500">*</span></label>
-                                <input type="password" value={form.confirmPassword} onChange={e => setForm({ ...form, confirmPassword: e.target.value })} required placeholder="Re-enter password"
+                                <label className="block text-sm font-medium text-brass-100/85 mb-1">{t("confirmPassword")} <span className="text-red-500">*</span></label>
+                                <input type="password" value={form.confirmPassword} onChange={e => setForm({ ...form, confirmPassword: e.target.value })} required placeholder={t("reenter")}
                                     className={`w-full bg-walnut-800 border text-white placeholder-brass-100/40 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all ${form.confirmPassword && form.confirmPassword !== form.password ? "border-red-500/70 focus:ring-red-500" : "border-white/12 focus:ring-brand/40"}`} />
                             </div>
 
@@ -465,10 +467,10 @@ export default function RegisterParentPage() {
                             )}
 
                             <div className="flex gap-3">
-                                <button type="button" onClick={() => setStep("students")} className="px-4 py-3 bg-walnut-800 hover:bg-slate-700 text-brass-100/85 rounded-xl text-sm transition-colors">← Back</button>
+                                <button type="button" onClick={() => setStep("students")} className="px-4 py-3 bg-walnut-800 hover:bg-slate-700 text-brass-100/85 rounded-xl text-sm transition-colors">← {t("back")}</button>
                                 <button type="submit" disabled={submitting}
                                     className="flex-1 py-3 rounded-xl font-semibold text-white bg-brand hover:bg-brand-deep disabled:opacity-50 transition-all flex items-center justify-center gap-2">
-                                    {submitting ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Creating...</> : "✓ Create Account"}
+                                    {submitting ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> {t("creating")}</> : `✓ ${t("createAccount")}`}
                                 </button>
                             </div>
                         </form>
@@ -476,8 +478,7 @@ export default function RegisterParentPage() {
                 </div>
 
                 <p className="text-center text-slate-600 text-sm mt-6">
-                    Already have an account?{" "}
-                    <Link href="/" className="text-marigold-300 hover:text-marigold-200 font-medium transition-colors">Sign In</Link>
+                    {t.rich("haveAccount", { link: (c) => <Link href="/" className="text-marigold-300 hover:text-marigold-200 font-medium transition-colors">{c}</Link> })}
                 </p>
             </div>
         </div>

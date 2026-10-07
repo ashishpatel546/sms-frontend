@@ -1,0 +1,89 @@
+{
+  "name": "Assistant",
+  "launcher": {
+    "title": "Assistant (Ctrl+J)",
+    "open": "Open the assistant"
+  },
+  "greeting": {
+    "morning": "Good morning.",
+    "afternoon": "Good afternoon.",
+    "evening": "Good evening."
+  },
+  "greetingNamed": {
+    "morning": "Good morning, {name}.",
+    "afternoon": "Good afternoon, {name}.",
+    "evening": "Good evening, {name}."
+  },
+  "intro": "Ask about attendance, leaves, homework, fees or the day ahead, by typing or speaking. Nothing is saved until you confirm it.",
+  "suggestion": {
+    "today": "What's happening today?",
+    "attendancePending": "Which classes haven't taken attendance yet?",
+    "markAttendance": "Mark attendance for my class",
+    "leaveRequests": "Leave requests waiting for me",
+    "leavesLeft": "How many leaves do I have left?"
+  },
+  "credits": {
+    "noneUser": "You have no assistant credits this month",
+    "noneSchool": "No assistant credits this month",
+    "usedUpUser": "Your credits for this month are used up",
+    "usedUpSchool": "No credits left this month",
+    "leftUser": "{remaining} of your {limit} credits left",
+    "leftSchool": "{remaining} of {limit} credits left"
+  },
+  "header": {
+    "speakOnTitle": "Spoken questions get spoken answers",
+    "speakOffTitle": "Answers are not read aloud",
+    "stopReading": "Stop reading answers aloud",
+    "readAloud": "Read answers aloud",
+    "newChatTitle": "Start a new conversation",
+    "newChat": "New chat",
+    "close": "Close the assistant"
+  },
+  "start": {
+    "forbidden": "The assistant is not available to you",
+    "failed": "The assistant can't start right now",
+    "connecting": "Connecting"
+  },
+  "message": {
+    "thinking": "Thinking",
+    "stopped": "Stopped."
+  },
+  "error": {
+    "unavailable": "The assistant is unavailable right now.",
+    "couldNotAnswer": "The assistant could not answer. Try again.",
+    "didNotGoThrough": "That did not go through. Try again."
+  },
+  "voice": {
+    "switchedToServer": "Switched to the assistant’s voice input. Hold the mic and say it again.",
+    "switchedToDevice": "Switched to this device’s voice input. Hold the mic and say it again.",
+    "micFailed": "Couldn't start the microphone.",
+    "notCaught": "I didn't catch that. Hold the mic while you speak, a little closer to it.",
+    "audioFailed": "Couldn't make out the audio. Try again.",
+    "dismiss": "Dismiss",
+    "listening": "Listening",
+    "discard": "Discard",
+    "done": "Done",
+    "releaseToCancel": "Release to cancel",
+    "releaseToSend": "Release to send",
+    "slideToCancel": "Slide to cancel",
+    "holdToTalk": "Hold to talk"
+  },
+  "composer": {
+    "label": "Message the assistant",
+    "transcribing": "Writing down what you said…",
+    "noCredits": "No assistant credits left this month",
+    "placeholder": "Ask, or say what to do",
+    "stop": "Stop answering",
+    "disclaimer": "Answers come from your school's records and can still be wrong. Check before acting on them."
+  },
+  "draft": {
+    "pending": "Draft, not saved yet",
+    "expired": "Draft expired. Ask again to prepare it.",
+    "done": "Saved",
+    "cancelled": "Cancelled, nothing was changed",
+    "failed": "Not saved",
+    "confirm": "Confirm and save",
+    "expiresSoon": "Expires in a minute",
+    "expiresIn": "Expires in {count} min"
+  }
+}

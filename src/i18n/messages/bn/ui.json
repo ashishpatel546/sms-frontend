@@ -1,0 +1,74 @@
+{
+  "error": {
+    "didNotLoad": "এটি লোড হয়নি"
+  },
+  "table": {
+    "empty": "এখানে এখনও কিছু নেই",
+    "noData": "কোনো ডেটা পাওয়া যায়নি"
+  },
+  "filter": {
+    "clearSearch": "খোঁজ মুছুন"
+  },
+  "pagination": {
+    "label": "পেজ নেভিগেশন",
+    "showing": "<n>{total}</n>-এর মধ্যে <n>{range}</n> দেখানো হচ্ছে",
+    "records": "<n>{total}</n>টি রেকর্ড",
+    "page": "পেজ {page}"
+  },
+  "stamp": {
+    "notMarked": "নথিভুক্ত হয়নি",
+    "todayAria": "আজকের উপস্থিতি: {status}",
+    "markedAt": "{time}-এ নথিভুক্ত"
+  },
+  "skeleton": {
+    "children": "আপনার সন্তানদের তথ্য লোড হচ্ছে",
+    "childrenLong": "আপনার সন্তানদের তথ্য লোড হচ্ছে…",
+    "studentRecord": "ছাত্রছাত্রীর রেকর্ড লোড হচ্ছে",
+    "studentRecordLong": "ছাত্রছাত্রীর রেকর্ড লোড হচ্ছে…",
+    "section": "অংশটি লোড হচ্ছে"
+  },
+  "pullToRefresh": {
+    "pulling": "রিফ্রেশ করতে নিচে টানুন",
+    "armed": "রিফ্রেশ করতে ছেড়ে দিন",
+    "refreshing": "রিফ্রেশ হচ্ছে…",
+    "settling": "সব আপডেট আছে"
+  },
+  "theme": {
+    "title": "থিম",
+    "appearance": "চেহারা",
+    "palette": "রঙের প্যালেট",
+    "mode": {
+      "light": "লাইট",
+      "dark": "ডার্ক",
+      "auto": "অটো"
+    },
+    "paletteName": {
+      "ink": "রেজিস্টার ও কালি",
+      "assembly": "অ্যাসেম্বলি"
+    },
+    "paletteHint": {
+      "ink": "আখরোট রঙের পাশের বার, পিতল রঙের ব্র্যান্ড",
+      "assembly": "সাদা পটভূমি, পতাকার মতো রং"
+    }
+  },
+  "serviceUnavailable": {
+    "title": "পরিষেবা সাময়িকভাবে বন্ধ",
+    "body": "এই মুহূর্তে সার্ভারের সঙ্গে যোগাযোগ করা যাচ্ছে না। সাহায্যের জন্য আপনার স্কুলের প্রশাসকের সঙ্গে যোগাযোগ করুন।"
+  },
+  "pwa": {
+    "fallbackName": "স্কুল ম্যানেজমেন্ট সিস্টেম",
+    "installName": "{name} ইনস্টল করুন",
+    "iosHint": "<share></share>-এ ট্যাপ করুন, তারপর “Add to Home Screen” বেছে নিন",
+    "menuHint": "<b>⋯</b> মেনু → “Add to phone”-এ ট্যাপ করে ইনস্টল করুন",
+    "benefit": "দ্রুত খোলা ও অফলাইনে ব্যবহারের জন্য অ্যাপটি ইনস্টল করুন",
+    "install": "ইনস্টল করুন",
+    "dismissAria": "ইনস্টল ব্যানার বন্ধ করুন"
+  },
+  "manifest": {
+    "description": "Colegios-চালিত একটি সম্পূর্ণ স্কুল ম্যানেজমেন্ট সিস্টেম।",
+    "dashboard": "ড্যাশবোর্ড",
+    "dashboardHint": "অ্যাডমিন ড্যাশবোর্ডে যান",
+    "parentPortal": "অভিভাবক পোর্টাল",
+    "parentPortalHint": "অভিভাবক পোর্টালে যান"
+  }
+}

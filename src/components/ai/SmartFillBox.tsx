@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Loader2, Wand2 } from "lucide-react";
 import { postAiJson } from "@/lib/ai-json";
 
@@ -19,13 +20,6 @@ export interface ExtractedFields {
 
 export type SmartFillTool = "lesson_plan" | "question_paper" | "worksheet" | "assignment";
 
-const PLACEHOLDERS: Record<SmartFillTool, string> = {
-  lesson_plan: "e.g. 45 minute lesson on photosynthesis for class 8 CBSE in Hindi",
-  question_paper: "e.g. 40 marks physics paper on laws of motion for class 10, MCQ and short answers, hard",
-  worksheet: "e.g. worksheet on fractions for class 6 CBSE in Hindi, revision type",
-  assignment: "e.g. assignment ideas on the water cycle for class 7 science",
-};
-
 interface SmartFillBoxProps {
   tool: SmartFillTool;
   onExtracted: (fields: ExtractedFields) => void;
@@ -37,6 +31,7 @@ interface SmartFillBoxProps {
  * any failure the manual form is left untouched.
  */
 export function SmartFillBox({ tool, onExtracted }: SmartFillBoxProps) {
+  const t = useTranslations("ai.smartFill");
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -54,7 +49,7 @@ export function SmartFillBox({ tool, onExtracted }: SmartFillBoxProps) {
       });
       onExtracted(fields);
     } catch {
-      setError("Couldn't auto-fill — please fill the form manually.");
+      setError(t("failed"));
     } finally {
       setLoading(false);
     }
@@ -71,7 +66,7 @@ export function SmartFillBox({ tool, onExtracted }: SmartFillBoxProps) {
     <div className="rounded-2xl border border-violet-200 dark:border-violet-500/20 bg-violet-50/50 dark:bg-violet-950/20 p-4 space-y-2.5">
       <label className="flex items-center gap-1.5 text-xs font-semibold text-violet-700 dark:text-violet-300 uppercase tracking-wider">
         <Wand2 className="w-3.5 h-3.5" />
-        Smart Auto-Fill — just describe what you need
+        {t("label")}
       </label>
       <textarea
         value={text}
@@ -79,18 +74,18 @@ export function SmartFillBox({ tool, onExtracted }: SmartFillBoxProps) {
         onKeyDown={handleKey}
         rows={2}
         maxLength={300}
-        placeholder={PLACEHOLDERS[tool]}
+        placeholder={t(`placeholder.${tool}`)}
         className="w-full rounded-xl border border-violet-200 dark:border-violet-500/20 bg-white dark:bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted resize-none focus:outline-none focus:ring-2 focus:ring-violet-500/40"
       />
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs text-ink-muted">{text.length}/300 · Free — no credits used</p>
+        <p className="text-xs text-ink-muted">{t("counter", { count: text.length })}</p>
         <button
           onClick={autoFill}
           disabled={!canSubmit}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors"
         >
           {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
-          {loading ? "Understanding..." : "Auto-fill form"}
+          {loading ? t("understanding") : t("autoFill")}
         </button>
       </div>
       {error && <p className="text-xs text-red-500">{error}</p>}

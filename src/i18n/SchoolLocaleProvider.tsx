@@ -1,5 +1,6 @@
 "use client";
 
+import "./latin-digits";
 import { createContext, useContext, type ReactNode } from "react";
 import { DEFAULT_LOCALE, type Locale } from "./config";
 

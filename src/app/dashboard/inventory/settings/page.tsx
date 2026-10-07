@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import useSWR from 'swr';
+import { useTranslations } from 'next-intl';
 import toast, { Toaster } from 'react-hot-toast';
 
 import { errorMessage, fetchInventorySettings, updateInventorySettings } from '@/lib/inventory-api';
@@ -17,6 +18,8 @@ interface SettingsOverrides {
 }
 
 export default function InventorySettingsPage() {
+  const t = useTranslations('inventory.settings');
+  const tc = useTranslations('common');
   const { data, mutate } = useSWR('/inventory/settings', fetchInventorySettings);
   // Local edits overlay the fetched values — no effect needed to seed the
   // form once data arrives, and no risk of clobbering an in-progress edit.
@@ -35,11 +38,11 @@ export default function InventorySettingsPage() {
         maxLoanDays: Number(maxLoanDays),
         receiptPrefix,
       });
-      toast.success('Settings saved');
+      toast.success(t('saved'));
       setOverrides({});
       mutate();
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not save settings'));
+      toast.error(errorMessage(err, t('saveFailed')));
     } finally {
       setSaving(false);
     }
@@ -48,29 +51,29 @@ export default function InventorySettingsPage() {
   return (
     <PageShell measure="reading">
       <Toaster position="top-center" />
-      <PageHeader section="Inventory" title="Settings" description="Loan defaults and receipt numbering." />
+      <PageHeader section={t('section')} title={t('title')} description={t('description')} />
       <PageBody>
         <form onSubmit={submit}>
           <Panel>
-            <PanelHeader title="Borrow / lend defaults" />
+            <PanelHeader title={t('loanDefaults')} />
             <PanelBody>
               <FieldGrid>
-                <Field label="Default loan period (days)" hint="Used when no due date is entered at issue">
+                <Field label={t('defaultLoan')} hint={t('defaultLoanHint')}>
                   <Input type="number" min="1" max="365" value={defaultLoanDays} onChange={(e) => setOverrides((prev) => ({ ...prev, defaultLoanDays: e.target.value }))} required />
                 </Field>
-                <Field label="Maximum loan period (days)" hint="The furthest a due date can be pushed out">
+                <Field label={t('maxLoan')} hint={t('maxLoanHint')}>
                   <Input type="number" min="1" max="365" value={maxLoanDays} onChange={(e) => setOverrides((prev) => ({ ...prev, maxLoanDays: e.target.value }))} required />
                 </Field>
               </FieldGrid>
             </PanelBody>
-            <PanelHeader title="Receipts" />
+            <PanelHeader title={t('receipts')} />
             <PanelBody>
-              <Field label="Receipt number prefix" hint='e.g. "INV" produces INV/2026-27/000123'>
+              <Field label={t('receiptPrefix')} hint={t('receiptPrefixHint')}>
                 <Input value={receiptPrefix} onChange={(e) => setOverrides((prev) => ({ ...prev, receiptPrefix: e.target.value }))} maxLength={8} required />
               </Field>
             </PanelBody>
             <PanelFooter className="justify-end">
-              <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save settings'}</Button>
+              <Button type="submit" disabled={saving}>{saving ? tc('action.saving') : t('save')}</Button>
             </PanelFooter>
           </Panel>
         </form>

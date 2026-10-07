@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
+import { useLocale, useTranslations } from 'next-intl';
 import toast, { Toaster } from 'react-hot-toast';
 import { Minus, Plus, Printer, Trash2, User, Users, UserRoundSearch } from 'lucide-react';
 
@@ -11,7 +12,6 @@ import {
   createSale,
   errorMessage,
   PAYMENT_MODES,
-  PAYMENT_MODE_LABELS,
   type InventoryBuyerType,
   type InventoryItem,
   type InventoryPaymentMode,
@@ -27,6 +27,7 @@ import ItemFinder from '@/components/inventory/ItemFinder';
 import StudentPicker from '@/components/inventory/StudentPicker';
 import StaffPicker from '@/components/StaffPicker';
 import AuthorizerPicker from '@/components/inventory/AuthorizerPicker';
+import { INTL_LOCALE, type Locale } from '@/i18n/config';
 
 interface CartLine {
   itemId: number;
@@ -38,6 +39,9 @@ interface CartLine {
 }
 
 export default function SellCounterPage() {
+  const t = useTranslations('inventory.sell');
+  const tc = useTranslations('common');
+  const ti = useTranslations('inventory');
   const router = useRouter();
   const [cart, setCart] = React.useState<CartLine[]>([]);
 
@@ -72,14 +76,14 @@ export default function SellCounterPage() {
     const existing = cart.find((l) => l.itemId === item.id);
     if (existing) {
       if (existing.qty >= item.availableQty) {
-        toast.error(`Only ${item.availableQty} of "${item.name}" available`);
+        toast.error(t('onlyAvailable', { count: item.availableQty, name: item.name }));
         return false;
       }
       setCart(cart.map((l) => (l.itemId === item.id ? { ...l, qty: l.qty + 1 } : l)));
       return true;
     }
     if (item.availableQty <= 0) {
-      toast.error(`"${item.name}" is out of stock`);
+      toast.error(t('outOfStock', { name: item.name }));
       return false;
     }
     setCart([
@@ -92,7 +96,7 @@ export default function SellCounterPage() {
   /** What the finder hands back — scanned, typed, or chosen from a name search. */
   const onPickItem = (item: InventoryItem): boolean => {
     const added = addToCart(item);
-    if (added) toast.success(`Added ${item.name}`);
+    if (added) toast.success(t('added', { name: item.name }));
     return added;
   };
 
@@ -131,7 +135,7 @@ export default function SellCounterPage() {
 
   const submit = async () => {
     if (!canSubmit) {
-      toast.error('Fill in the buyer and required fields first');
+      toast.error(t('fillRequired'));
       return;
     }
     setSubmitting(true);
@@ -152,9 +156,9 @@ export default function SellCounterPage() {
             : undefined,
       });
       setReceipt(sale);
-      toast.success(`Sale recorded — ${sale.receiptNumber}`);
+      toast.success(t('recorded', { receipt: sale.receiptNumber }));
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not record the sale'));
+      toast.error(errorMessage(err, t('recordFailed')));
     } finally {
       setSubmitting(false);
     }
@@ -167,34 +171,34 @@ export default function SellCounterPage() {
   return (
     <PageShell measure="reading">
       <Toaster position="top-center" />
-      <PageHeader section="Inventory" title="Sell" description="Scan or search an item to add it to the cart." />
+      <PageHeader section={t('section')} title={t('title')} description={t('description')} />
 
       <PageBody className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">
         <div className="space-y-4">
           <Panel>
-            <PanelHeader title="Scan or search" />
+            <PanelHeader title={t('scanOrSearch')} />
             <PanelBody>
               <ItemFinder
                 onPick={onPickItem}
-                submitLabel="Add"
-                scanLabel={cart.length > 0 ? 'Scan next item' : 'Open camera scanner'}
+                submitLabel={tc('action.add')}
+                scanLabel={cart.length > 0 ? t('scanNext') : t('openScanner')}
                 autoFocus
               />
             </PanelBody>
           </Panel>
 
           <Panel>
-            <PanelHeader title="Cart" description={cart.length ? `${cart.length} item(s)` : undefined} />
+            <PanelHeader title={t('cart')} description={cart.length ? t('itemCount', { count: cart.length }) : undefined} />
             <PanelBody>
               {cart.length === 0 ? (
-                <p className="py-6 text-center text-[13.5px] text-ink-muted">Cart is empty — scan or search an item to begin</p>
+                <p className="py-6 text-center text-[13.5px] text-ink-muted">{t('cartEmpty')}</p>
               ) : (
                 <ul className="divide-y divide-line">
                   {cart.map((line) => (
                     <li key={line.itemId} className="flex items-center gap-3 py-2.5">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13.5px] font-medium text-ink">{line.name}</p>
-                        <p className="text-[12px] text-ink-muted">{line.code} · <Money amount={line.sellingPrice} symbol /> each</p>
+                        <p className="text-[12px] text-ink-muted">{line.code} · {t.rich('each', { price: () => <Money amount={line.sellingPrice} symbol /> })}</p>
                       </div>
                       <div className="flex items-center gap-1">
                         <button type="button" onClick={() => setQty(line.itemId, line.qty - 1)} className="grid size-8 place-items-center rounded-md border border-line-strong text-ink hover:bg-surface-secondary">
@@ -222,15 +226,15 @@ export default function SellCounterPage() {
               the panel ("hidden behind the box") — Panel is overflow-hidden by
               default for its rounded corners, so the header re-rounds itself. */}
           <Panel className="overflow-visible">
-            <PanelHeader title="Buyer" className="rounded-t-[11px]" />
+            <PanelHeader title={t('buyer')} className="rounded-t-[11px]" />
             <PanelBody className="space-y-3">
               <SegmentedControl
                 value={buyerType}
                 onValueChange={(v) => setBuyerType(v as InventoryBuyerType)}
                 options={[
-                  { value: 'STUDENT', label: 'Student', icon: <User /> },
-                  { value: 'STAFF', label: 'Staff', icon: <Users /> },
-                  { value: 'WALK_IN', label: 'Walk-in', icon: <UserRoundSearch /> },
+                  { value: 'STUDENT', label: tc('field.student'), icon: <User /> },
+                  { value: 'STAFF', label: t('staff'), icon: <Users /> },
+                  { value: 'WALK_IN', label: t('walkIn'), icon: <UserRoundSearch /> },
                 ]}
               />
               {buyerType === 'STUDENT' && <StudentPicker value={studentId} onChange={(id) => setStudentId(id)} />}
@@ -239,10 +243,10 @@ export default function SellCounterPage() {
               )}
               {buyerType === 'WALK_IN' && (
                 <FieldGrid columns={2}>
-                  <Field label="Name" required>
+                  <Field label={tc('field.name')} required>
                     <Input value={walkInName} onChange={(e) => setWalkInName(e.target.value)} />
                   </Field>
-                  <Field label="Mobile" hint={balance > 0 ? 'Required — a balance is left on this sale' : undefined}>
+                  <Field label={tc('field.mobile')} hint={balance > 0 ? t('mobileRequired') : undefined}>
                     <Input value={walkInMobile} onChange={(e) => setWalkInMobile(e.target.value)} />
                   </Field>
                 </FieldGrid>
@@ -251,17 +255,17 @@ export default function SellCounterPage() {
           </Panel>
 
           <Panel className="overflow-visible">
-            <PanelHeader title="Discount" className="rounded-t-[11px]" />
+            <PanelHeader title={t('discount')} className="rounded-t-[11px]" />
             <PanelBody className="space-y-3">
-              <Field label="Discount amount">
+              <Field label={t('discountAmount')}>
                 <Input type="number" min="0" step="0.01" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value)} />
               </Field>
               {discount > 0 && (
                 <>
-                  <Field label="Permitted by" required>
-                    <AuthorizerPicker value={discountPermittedBy} onChange={(id) => setDiscountPermittedBy(id)} placeholder="Who authorized this discount?" />
+                  <Field label={t('permittedBy')} required>
+                    <AuthorizerPicker value={discountPermittedBy} onChange={(id) => setDiscountPermittedBy(id)} placeholder={t('permittedByPlaceholder')} />
                   </Field>
-                  <Field label="Reason">
+                  <Field label={t('reason')}>
                     <Input value={discountReason} onChange={(e) => setDiscountReason(e.target.value)} />
                   </Field>
                 </>
@@ -270,19 +274,19 @@ export default function SellCounterPage() {
           </Panel>
 
           <Panel>
-            <PanelHeader title="Payment" />
+            <PanelHeader title={t('payment')} />
             <PanelBody className="space-y-3">
               <SegmentedControl
                 value={paymentType}
                 onValueChange={(v) => setPaymentType(v as 'full' | 'partial' | 'none')}
                 options={[
-                  { value: 'full', label: 'Full' },
-                  { value: 'partial', label: 'Partial' },
-                  { value: 'none', label: 'Pay later' },
+                  { value: 'full', label: t('payFull') },
+                  { value: 'partial', label: t('payPartial') },
+                  { value: 'none', label: t('payLater') },
                 ]}
               />
               {paymentType === 'partial' && (
-                <Field label="Amount now">
+                <Field label={t('amountNow')}>
                   <Input type="number" min="0" step="0.01" max={net} value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} />
                 </Field>
               )}
@@ -296,15 +300,15 @@ export default function SellCounterPage() {
                         onClick={() => setPaymentMode(mode)}
                         className={`rounded-md border px-2 py-2 text-[12.5px] font-semibold transition-colors ${paymentMode === mode ? 'border-brand bg-brand-tint text-brand' : 'border-line-strong text-ink-muted hover:bg-surface-secondary'}`}
                       >
-                        {PAYMENT_MODE_LABELS[mode]}
+                        {ti(`paymentMode.${mode}`)}
                       </button>
                     ))}
                   </div>
                   <FieldGrid columns={2}>
-                    <Field label="Reference" hint="UPI txn / cheque no.">
+                    <Field label={t('reference')} hint={t('referenceHint')}>
                       <Input value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} />
                     </Field>
-                    <Field label="Remarks">
+                    <Field label={tc('field.remarks')}>
                       <Input value={paymentRemarks} onChange={(e) => setPaymentRemarks(e.target.value)} />
                     </Field>
                   </FieldGrid>
@@ -315,12 +319,12 @@ export default function SellCounterPage() {
 
           <Panel className="sticky bottom-3">
             <PanelBody className="space-y-2">
-              <div className="flex justify-between text-[13px] text-ink-muted"><span>Gross</span><Money amount={gross} symbol /></div>
-              {discount > 0 && <div className="flex justify-between text-[13px] text-ink-muted"><span>Discount</span><span>−<Money amount={discount} symbol /></span></div>}
-              <div className="flex justify-between text-[15px] font-semibold text-ink"><span>Net</span><Money amount={net} symbol /></div>
-              {balance > 0 && <div className="flex justify-between text-[13px] text-accent-warn-deep"><span>Balance due</span><Money amount={balance} symbol tone="owing" /></div>}
+              <div className="flex justify-between text-[13px] text-ink-muted"><span>{t('gross')}</span><Money amount={gross} symbol /></div>
+              {discount > 0 && <div className="flex justify-between text-[13px] text-ink-muted"><span>{t('discount')}</span><span>−<Money amount={discount} symbol /></span></div>}
+              <div className="flex justify-between text-[15px] font-semibold text-ink"><span>{t('net')}</span><Money amount={net} symbol /></div>
+              {balance > 0 && <div className="flex justify-between text-[13px] text-accent-warn-deep"><span>{t('balanceDue')}</span><Money amount={balance} symbol tone="owing" /></div>}
               <Button type="button" block size="lg" disabled={!canSubmit || submitting} onClick={submit} className="mt-2">
-                {submitting ? 'Recording sale…' : `Complete sale · ₹${net.toFixed(2)}`}
+                {submitting ? t('recording') : t('complete', { amount: `₹${net.toFixed(2)}` })}
               </Button>
             </PanelBody>
           </Panel>
@@ -343,6 +347,9 @@ function ReceiptView({ sale, onNewSale, onViewSale }: { sale: InventorySale; onN
   // Same identity block the fee receipt carries — a counter slip with no
   // school name on it reads as scrap paper the moment it leaves the counter.
   const { data: school } = useSWR<SchoolInfo>('/school/info', fetcher);
+  const t = useTranslations('inventory.receipt');
+  const tc = useTranslations('common');
+  const locale = useLocale() as Locale;
 
   return (
     <PageShell measure="reading">
@@ -365,9 +372,9 @@ function ReceiptView({ sale, onNewSale, onViewSale }: { sale: InventorySale; onN
               </p>
             )}
           </div>
-          <PanelHeader title={`Receipt ${sale.receiptNumber}`} description={new Date(sale.createdAt).toLocaleString('en-IN')} />
+          <PanelHeader title={t('title', { receipt: sale.receiptNumber })} description={new Date(sale.createdAt).toLocaleString(INTL_LOCALE[locale])} />
           <PanelBody className="space-y-3">
-            <p className="text-[13.5px] text-ink"><span className="text-ink-muted">Buyer:</span> {sale.buyerName}{sale.buyerMobile ? ` · ${sale.buyerMobile}` : ''}</p>
+            <p className="text-[13.5px] text-ink"><span className="text-ink-muted">{t('buyer')}</span> {sale.buyerName}{sale.buyerMobile ? ` · ${sale.buyerMobile}` : ''}</p>
             <ul className="divide-y divide-line rounded-md border border-line">
               {sale.lines.map((l) => (
                 <li key={l.id} className="flex justify-between px-3 py-2 text-[13px]">
@@ -377,22 +384,22 @@ function ReceiptView({ sale, onNewSale, onViewSale }: { sale: InventorySale; onN
               ))}
             </ul>
             <div className="space-y-1 text-[13.5px]">
-              <div className="flex justify-between"><span className="text-ink-muted">Gross</span><Money amount={sale.grossAmount} symbol /></div>
-              {sale.discountAmount > 0 && <div className="flex justify-between"><span className="text-ink-muted">Discount</span><Money amount={sale.discountAmount} symbol /></div>}
-              <div className="flex justify-between font-semibold"><span>Net</span><Money amount={sale.netAmount} symbol /></div>
-              <div className="flex justify-between"><span className="text-ink-muted">Paid</span><Money amount={sale.paidAmount} symbol /></div>
-              {sale.balanceAmount > 0 && <div className="flex justify-between text-accent-warn-deep"><span>Balance due</span><Money amount={sale.balanceAmount} symbol tone="owing" /></div>}
+              <div className="flex justify-between"><span className="text-ink-muted">{t('gross')}</span><Money amount={sale.grossAmount} symbol /></div>
+              {sale.discountAmount > 0 && <div className="flex justify-between"><span className="text-ink-muted">{t('discount')}</span><Money amount={sale.discountAmount} symbol /></div>}
+              <div className="flex justify-between font-semibold"><span>{t('net')}</span><Money amount={sale.netAmount} symbol /></div>
+              <div className="flex justify-between"><span className="text-ink-muted">{t('paid')}</span><Money amount={sale.paidAmount} symbol /></div>
+              {sale.balanceAmount > 0 && <div className="flex justify-between text-accent-warn-deep"><span>{t('balanceDue')}</span><Money amount={sale.balanceAmount} symbol tone="owing" /></div>}
             </div>
             <p className="border-t border-line pt-2 text-center text-[11px] text-ink-faint">
-              School store receipt · Not a tax invoice
+              {t('footer')}
             </p>
           </PanelBody>
         </Panel>
       </div>
       <div className="no-print mt-4 flex flex-wrap gap-2">
-        <Button variant="outline" onClick={() => window.print()}><Printer /> Print</Button>
-        <Button variant="outline" onClick={onViewSale}>View sale</Button>
-        <Button onClick={onNewSale}>New sale</Button>
+        <Button variant="outline" onClick={() => window.print()}><Printer /> {tc('action.print')}</Button>
+        <Button variant="outline" onClick={onViewSale}>{t('viewSale')}</Button>
+        <Button onClick={onNewSale}>{t('newSale')}</Button>
       </div>
       <style jsx global>{`
         @media print {
