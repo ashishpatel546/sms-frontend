@@ -1,0 +1,9 @@
+{
+  "language": {
+    "title": "Portal language",
+    "description": "The app opens in this language for everyone at your school. Each person can still choose another language for themselves from the top bar.",
+    "saved": "Portal language updated",
+    "saveFailed": "Could not save the portal language",
+    "readOnly": "Only the super admin can change the portal language."
+  }
+}

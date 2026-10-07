@@ -50,6 +50,10 @@ This is a single deployed codebase serving many schools. There is no build-per-s
 - Every request to `sms-backend` must carry the resolved slug as an `X-School-Slug` header (see `getAuthHeaders()` in `src/lib/auth.ts`) so the backend can scope to the correct tenant.
 - `src/lib/useSchoolInfo.ts` fetches branding (`GET /school/info`) once per slug and caches it (in-memory + localStorage) so components like the receipt modal don't refetch. The endpoint no longer returns the base64 logo — PDF/print flows that need one call `getSchoolLogoDataUrl()` (same file), which lazily fetches the API's `/school/logo` proxy and caches the data URL per tab. `useSchoolInfoState()` additionally exposes `settled` so `SplashScreen` can fall back to a welcome message when the fetch fails, instead of waiting out its timeout.
 
+## Translations (en / hi / bn)
+
+UI text goes through next-intl (`useTranslations` / `getTranslations`); never hardcode new user-visible English. A page renders in the user's own choice (`sms_locale` cookie), else the school's `defaultLanguage` from sms-backend, else English, with no locale in the URL. `src/i18n/README.md` covers how it works, adding keys (tsc fails until en, hi and bn all have one), and the Hindi/Bengali writing rules and glossary. Not yet translated: PDFs and backend error messages.
+
 ## Auth & API client pattern
 
 - JWTs (access + refresh) are stored in `localStorage` (`src/lib/auth.ts`). `getUser()` decodes the access token's payload client-side (no server verification) to get `{ sub, role, firstName, lastName, mustChangePassword, staffId }` — treat this as a UI convenience, not a security boundary.

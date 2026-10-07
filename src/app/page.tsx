@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { API_BASE_URL } from "@/lib/api";
 import { getSchoolSlug } from "@/lib/env";
 import { setTokens, getDashboardRoute, getUser, markMustChangePasswordFlow } from "@/lib/auth";
-import { formatMobileInput, isValidMobile, MOBILE_ERROR } from "@/lib/mobile";
+import { formatMobileInput, isValidMobile } from "@/lib/mobile";
 import SplashScreen from "@/components/SplashScreen";
 import { BorderBeam } from "@/components/ui/BorderBeam";
+import { LanguagePicker } from "@/components/ui/LanguagePicker";
 import {
   AlertCircle,
   BarChart2,
@@ -39,6 +41,8 @@ type Tab = "parent" | "staff";
  */
 export default function LoginPage() {
   const router = useRouter();
+  const t = useTranslations("auth");
+  const tp = useTranslations("product");
   const [activeTab, setActiveTab] = useState<Tab>("staff");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -81,7 +85,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     if (!isValidMobile(mobile)) {
-      setError(MOBILE_ERROR);
+      setError(t("invalidMobile"));
       return;
     }
     setIsLoading(true);
@@ -93,7 +97,7 @@ export default function LoginPage() {
         body: JSON.stringify({ mobile, password }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || "Invalid mobile number or password");
+      if (!res.ok) throw new Error(data.message || t("invalidCredentials"));
       setTokens(data.access_token, data.refresh_token);
       setShowSplash(true);
       setTimeout(() => {
@@ -105,7 +109,7 @@ export default function LoginPage() {
         }
       }, 1500);
     } catch (err: any) {
-      setError(err.message || "Invalid mobile number or password");
+      setError(err.message || t("invalidCredentials"));
     } finally {
       setIsLoading(false);
     }
@@ -118,7 +122,7 @@ export default function LoginPage() {
     // identifier is mobile-or-email; only mobile-looking input is checked
     // against isValidMobile so email logins are never blocked here.
     if (/^[+\d\s\-().]+$/.test(identifier) && !isValidMobile(formatMobileInput(identifier))) {
-      setError(MOBILE_ERROR);
+      setError(t("invalidMobile"));
       return;
     }
     setIsLoading(true);
@@ -130,7 +134,7 @@ export default function LoginPage() {
         body: JSON.stringify({ identifier, password }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || "Invalid mobile number or password");
+      if (!res.ok) throw new Error(data.message || t("invalidCredentials"));
       setTokens(data.access_token, data.refresh_token);
       setShowSplash(true);
       setTimeout(() => {
@@ -142,18 +146,18 @@ export default function LoginPage() {
         }
       }, 1500);
     } catch (err: any) {
-      setError(err.message || "Invalid mobile number or password");
+      setError(err.message || t("invalidCredentials"));
     } finally {
       setIsLoading(false);
     }
   };
 
   const MODULES = [
-    { Icon: CalendarCheck2, label: "Attendance" },
-    { Icon: IndianRupee, label: "Fees & receipts" },
-    { Icon: FileText, label: "Examinations" },
-    { Icon: BarChart2, label: "Reports" },
-    { Icon: Users, label: "Parent portal" },
+    { Icon: CalendarCheck2, label: tp("module.attendance") },
+    { Icon: IndianRupee, label: tp("module.fees") },
+    { Icon: FileText, label: tp("module.exams") },
+    { Icon: BarChart2, label: tp("module.reports") },
+    { Icon: Users, label: tp("module.parentPortal") },
   ];
 
   const inputClass =
@@ -196,20 +200,19 @@ export default function LoginPage() {
                   Colegios
                 </a>
                 <p className="mt-1.5 font-mono text-[9.5px] tracking-[0.16em] text-brass-200/70 uppercase sm:text-[10.5px]">
-                  School management system
+                  {tp("tagline")}
                 </p>
               </div>
             </div>
 
             <h1 className="mt-8 max-w-md font-display text-[27px] leading-[1.14] font-semibold tracking-tight text-white sm:mt-10 sm:text-[34px] lg:text-[38px]">
-              Every register, ledger and mark sheet,
-              <span className="text-marigold-300"> in one place.</span>
+              {tp.rich("headline", {
+                em: (chunks) => <span className="text-marigold-300">{chunks}</span>,
+              })}
             </h1>
 
             <p className="mt-4 max-w-md text-[14.5px] leading-relaxed text-brass-100/72 sm:mt-5 sm:text-[15.5px]">
-              Attendance at the classroom door, fees at the counter, results at the end of term —
-              recorded once and visible to everyone who needs them, from the principal&apos;s desk to
-              a parent&apos;s phone.
+              {tp("intro")}
             </p>
 
             {/* Modules — a plain list of what's inside, not a feature pitch */}
@@ -235,22 +238,23 @@ export default function LoginPage() {
               {/* z-0 keeps the card *below* the storm ring (z-3) even though it
                   comes later in the DOM — otherwise it paints over the light. */}
               <div className="relative z-0 overflow-hidden rounded-xl bg-surface shadow-glass">
-                <div className="px-6 pt-6 pb-1 sm:px-7">
-                  <h2 className="font-display text-[23px] font-semibold text-ink">Sign in</h2>
-                  <p className="mt-1 text-[13.5px] text-ink-muted">
-                    Use the account your school set up for you.
-                  </p>
+                <div className="flex items-start gap-3 px-6 pt-6 pb-1 sm:px-7">
+                  <div className="min-w-0 flex-1">
+                    <h2 className="font-display text-[23px] font-semibold text-ink">{t("signIn")}</h2>
+                    <p className="mt-1 text-[13.5px] text-ink-muted">{t("signInHint")}</p>
+                  </div>
+                  <LanguagePicker className="shrink-0" />
                 </div>
 
                 {/* Which door */}
                 <div
                   role="tablist"
-                  aria-label="Account type"
+                  aria-label={t("accountType")}
                   className="mx-6 mt-4 flex gap-0.5 rounded-lg border border-line bg-surface-secondary p-0.5 sm:mx-7"
                 >
                   {([
-                    { id: "staff" as Tab, label: "Staff", Icon: UserRound },
-                    { id: "parent" as Tab, label: "Parent", Icon: Users },
+                    { id: "staff" as Tab, label: t("staff"), Icon: UserRound },
+                    { id: "parent" as Tab, label: t("parent"), Icon: Users },
                   ]).map(({ id, label, Icon }) => (
                     <button
                       key={id}
@@ -275,7 +279,7 @@ export default function LoginPage() {
                     <form onSubmit={handleStaffLogin} className="space-y-4">
                       <div>
                         <label htmlFor="staff-id" className="eyebrow mb-1.5 block">
-                          Mobile or email
+                          {t("mobileOrEmail")}
                         </label>
                         <div className="relative">
                           <Phone
@@ -304,7 +308,7 @@ export default function LoginPage() {
 
                       <div>
                         <label htmlFor="staff-password" className="eyebrow mb-1.5 block">
-                          Password
+                          {t("password")}
                         </label>
                         <div className="relative">
                           <Lock
@@ -326,7 +330,7 @@ export default function LoginPage() {
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
                             suppressHydrationWarning
-                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            aria-label={showPassword ? t("hidePassword") : t("showPassword")}
                             className="absolute top-1/2 right-2 grid size-8 -translate-y-1/2 cursor-pointer place-items-center rounded text-ink-faint transition-colors hover:bg-surface-secondary hover:text-ink"
                           >
                             {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -344,10 +348,10 @@ export default function LoginPage() {
                       >
                         {isLoading ? (
                           <>
-                            <Loader2 className="size-4 animate-spin" /> Signing in…
+                            <Loader2 className="size-4 animate-spin" /> {t("signingIn")}
                           </>
                         ) : (
-                          "Sign in"
+                          t("signIn")
                         )}
                       </button>
                     </form>
@@ -357,14 +361,13 @@ export default function LoginPage() {
                         <div className="flex items-start gap-2.5 rounded-lg border border-accent-info-edge bg-accent-info-tint px-3.5 py-3 text-[12.5px] text-accent-info-deep">
                           <Info className="mt-px size-4 shrink-0" aria-hidden />
                           <span>
-                            Sign in with the mobile number registered against your child&apos;s
-                            account at the school.
+                            {t("parentHint")}
                           </span>
                         </div>
 
                         <div>
                           <label htmlFor="parent-mobile" className="eyebrow mb-1.5 block">
-                            Registered mobile number
+                            {t("registeredMobile")}
                           </label>
                           <div className="relative">
                             <Phone
@@ -389,7 +392,7 @@ export default function LoginPage() {
 
                         <div>
                           <label htmlFor="parent-password" className="eyebrow mb-1.5 block">
-                            Password
+                            {t("password")}
                           </label>
                           <div className="relative">
                             <Lock
@@ -411,7 +414,7 @@ export default function LoginPage() {
                               type="button"
                               onClick={() => setShowPassword(!showPassword)}
                               suppressHydrationWarning
-                              aria-label={showPassword ? "Hide password" : "Show password"}
+                              aria-label={showPassword ? t("hidePassword") : t("showPassword")}
                               className="absolute top-1/2 right-2 grid size-8 -translate-y-1/2 cursor-pointer place-items-center rounded text-ink-faint transition-colors hover:bg-surface-secondary hover:text-ink"
                             >
                               {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -429,21 +432,21 @@ export default function LoginPage() {
                         >
                           {isLoading ? (
                             <>
-                              <Loader2 className="size-4 animate-spin" /> Signing in…
+                              <Loader2 className="size-4 animate-spin" /> {t("signingIn")}
                             </>
                           ) : (
-                            "Sign in"
+                            t("signIn")
                           )}
                         </button>
                       </form>
 
                       <p className="mt-4 text-center text-[13px] text-ink-muted">
-                        First time here?{" "}
+                        {t("firstTime")}{" "}
                         <a
                           href="/register-parent"
                           className="font-semibold text-brand transition-colors hover:underline"
                         >
-                          Register as a parent
+                          {t("registerParent")}
                         </a>
                       </p>
                     </>
@@ -453,9 +456,9 @@ export default function LoginPage() {
             </div>
 
             <p className="mt-5 text-center text-[13px] text-ink-muted">
-              Trouble signing in?{" "}
+              {t("trouble")}{" "}
               <a href="/contact-us" className="font-semibold text-brand transition-colors hover:underline">
-                Contact support
+                {t("contactSupport")}
               </a>
             </p>
 
@@ -467,10 +470,13 @@ export default function LoginPage() {
                 </a>
               </p>
               <p>
-                Built by{" "}
-                <a href="https://appme.in" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-ink-muted">
-                  AppMe Soft Pvt Ltd
-                </a>
+                {tp.rich("builtBy", {
+                  company: (chunks) => (
+                    <a href="https://appme.in" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-ink-muted">
+                      {chunks}
+                    </a>
+                  ),
+                })}
               </p>
             </div>
           </div>

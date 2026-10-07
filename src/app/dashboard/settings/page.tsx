@@ -9,6 +9,7 @@ import { Plus, Trash2, Edit2, CheckCircle2, XCircle, Settings2, GraduationCap, C
 import { useRbac } from "@/lib/rbac";
 import { authFetch } from "@/lib/auth";
 import { useReadOnlySession, READ_ONLY_TITLE } from "@/lib/support-session";
+import { SchoolLanguageCard } from "./SchoolLanguageCard";
 
 type SettingsTab = 'system' | 'examination' | 'holidays';
 
@@ -560,6 +561,8 @@ export default function SettingsPage() {
 
             {activeTab === 'system' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <SchoolLanguageCard canEdit={rbac.canEditSettings} readOnly={readOnly} />
+
                     {/* Academic Sessions panel */}
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                         <h2 className="text-xl font-bold mb-4 text-slate-800">Academic Sessions</h2>

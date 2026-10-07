@@ -33,9 +33,16 @@ import {
   PartyPopper,
   type LucideIcon,
 } from 'lucide-react';
+import type { Messages } from '@/i18n/messages/en';
+
+/** Menu ids are translation keys, so a new item without a label fails tsc. */
+export type NavItemId = keyof Messages['nav']['item'];
+export type NavGroupId = keyof Messages['nav']['group'];
 
 export interface NavItem {
-  id: string;
+  /** Also the translation key under nav.item.* */
+  id: NavItemId;
+  /** English label; the UI shows t(`nav.item.${id}`). */
   label: string;
   href: string;
   icon: LucideIcon;
@@ -81,7 +88,9 @@ export function isNavItemUnlocked(
 }
 
 export interface NavGroup {
-  /** Section header label. If omitted, no header is rendered (always visible). */
+  /** Translation key under nav.group.* — present whenever `label` is. */
+  id?: NavGroupId;
+  /** Section header label (English). If omitted, no header is rendered (always visible). */
   label?: string;
   items: NavItem[];
   /** Whether this group starts expanded. Defaults to false (collapsed). */
@@ -121,6 +130,7 @@ export const NAV_CONFIG: NavGroup[] = [
     ],
   },
   {
+    id: 'academics',
     label: 'Academics',
     items: [
       {
@@ -212,6 +222,7 @@ export const NAV_CONFIG: NavGroup[] = [
     ],
   },
   {
+    id: 'gate',
     label: 'Gate',
     items: [
       {
@@ -246,6 +257,7 @@ export const NAV_CONFIG: NavGroup[] = [
     ],
   },
   {
+    id: 'reports',
     label: 'Reports',
     items: [
       {
@@ -259,6 +271,7 @@ export const NAV_CONFIG: NavGroup[] = [
     ],
   },
   {
+    id: 'library',
     label: 'Library',
     items: [
       {
@@ -271,6 +284,7 @@ export const NAV_CONFIG: NavGroup[] = [
     ],
   },
   {
+    id: 'activities',
     label: 'Activities',
     items: [
       {
@@ -283,6 +297,7 @@ export const NAV_CONFIG: NavGroup[] = [
     ],
   },
   {
+    id: 'inventory',
     label: 'Inventory',
     items: [
       {
@@ -309,6 +324,7 @@ export const NAV_CONFIG: NavGroup[] = [
     ],
   },
   {
+    id: 'hr',
     label: 'HR Portal',
     items: [
       {
@@ -370,6 +386,7 @@ export const NAV_CONFIG: NavGroup[] = [
     ],
   },
   {
+    id: 'myHr',
     label: 'My HR',
     items: [
       {
@@ -400,6 +417,7 @@ export const NAV_CONFIG: NavGroup[] = [
     ],
   },
   {
+    id: 'administration',
     label: 'Administration',
     items: [
       {
@@ -420,6 +438,7 @@ export const NAV_CONFIG: NavGroup[] = [
     ],
   },
   {
+    id: 'more',
     label: 'More',
     items: [
       {
@@ -443,6 +462,7 @@ export const NAV_CONFIG: NavGroup[] = [
     ],
   },
   {
+    id: 'ai',
     label: 'AI Assist',
     items: [
       {

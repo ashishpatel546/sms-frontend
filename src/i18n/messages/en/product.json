@@ -1,0 +1,19 @@
+{
+  "tagline": "School management system",
+  "headline": "Every register, ledger and mark sheet, <em>in one place.</em>",
+  "intro": "Attendance at the classroom door, fees at the counter, results at the end of term — recorded once and visible to everyone who needs them, from the principal's desk to a parent's phone.",
+  "module": {
+    "attendance": "Attendance",
+    "fees": "Fees & receipts",
+    "exams": "Examinations",
+    "reports": "Reports",
+    "parentPortal": "Parent portal"
+  },
+  "line": {
+    "attendance": "Attendance at the classroom door.",
+    "fees": "Fees at the counter, receipts in hand.",
+    "exams": "Mark sheets ready by the end of term.",
+    "reach": "From the principal's desk to a parent's phone."
+  },
+  "builtBy": "Built by <company>AppMe Soft Pvt Ltd</company>"
+}

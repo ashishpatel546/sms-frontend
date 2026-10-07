@@ -1,5 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Sora, Figtree, IBM_Plex_Mono } from "next/font/google";
+import { Sora, Figtree, IBM_Plex_Mono, Noto_Sans_Devanagari, Noto_Sans_Bengali } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale } from "next-intl/server";
+import { getSchoolLocale } from "@/i18n/school-locale";
+import { getUserLocale } from "@/i18n/request";
+import { SchoolLocaleProvider } from "@/i18n/SchoolLocaleProvider";
 import "./globals.css";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
@@ -29,6 +34,27 @@ const figtree = Figtree({
   variable: "--font-figtree",
   subsets: ["latin"],
   display: "swap",
+});
+
+/**
+ * Hindi and Bengali glyphs. Sora/Figtree are Latin-only, so these sit behind
+ * them in --font-sans/--font-display (globals.css): Latin text keeps its look
+ * and only Devanagari/Bengali characters fall through to Noto. Not preloaded,
+ * and their @font-face rules carry a unicode-range, so a page with no such
+ * characters never downloads them.
+ */
+const notoDevanagari = Noto_Sans_Devanagari({
+  variable: "--font-noto-devanagari",
+  subsets: ["devanagari"],
+  display: "swap",
+  preload: false,
+});
+
+const notoBengali = Noto_Sans_Bengali({
+  variable: "--font-noto-bengali",
+  subsets: ["bengali"],
+  display: "swap",
+  preload: false,
 });
 
 const plexMono = IBM_Plex_Mono({
@@ -90,11 +116,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // The school's language, or the user's own choice (src/i18n/request.ts).
+  const locale = await getLocale();
+  const localePrefs = { school: await getSchoolLocale(), user: await getUserLocale() };
+
   const envConfig = {
     API_URL: process.env.API_URL,
     SCHOOL_SLUG: process.env.SCHOOL_SLUG,
@@ -109,13 +139,18 @@ export default function RootLayout({
     // --font-sans/--font-display at :root in terms of these, and a var() that
     // cannot resolve where it is *declared* computes to invalid and then
     // inherits as empty — so putting them on <body> silently kills every font.
+    // translate="no": the app has its own language switch. Chrome's built-in
+    // translation rewrites text nodes behind React's back, which mixes
+    // languages and crashes later updates with a removeChild error.
     <html
-      lang="en"
-      className={`${sora.variable} ${figtree.variable} ${plexMono.variable}`}
+      lang={locale}
+      translate="no"
+      className={`${sora.variable} ${figtree.variable} ${plexMono.variable} ${notoDevanagari.variable} ${notoBengali.variable}`}
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <head>
+        <meta name="google" content="notranslate" />
         <script
           dangerouslySetInnerHTML={{
             __html: `window.__ENV__ = ${JSON.stringify(envConfig)};`,
@@ -149,11 +184,15 @@ if(t==='dark'||t==='light'){d.setAttribute('data-theme',t);}
           disableTransitionOnChange
         >
           <PaletteProvider>
-            {children}
-            <PWAInstallBanner />
-            <ServiceWorkerRegistrar />
-            <ServiceUnavailableBanner />
-            <SupportSessionNotices />
+            <NextIntlClientProvider>
+              <SchoolLocaleProvider value={localePrefs}>
+                {children}
+                <PWAInstallBanner />
+                <ServiceWorkerRegistrar />
+                <ServiceUnavailableBanner />
+                <SupportSessionNotices />
+              </SchoolLocaleProvider>
+            </NextIntlClientProvider>
           </PaletteProvider>
         </ThemeProvider>
       </body>

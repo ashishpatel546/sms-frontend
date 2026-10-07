@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import { useSchoolInfoState } from "@/lib/useSchoolInfo";
+import { useTranslations } from "next-intl";
 
 import { useEffect, useRef, useState } from "react";
 import {
@@ -45,26 +46,23 @@ const FADE_MS = 500;
 const LINE_INTERVAL_MS = 2400;
 
 /** What the app is, in the register's own voice — one line at a time. */
-const PRODUCT_LINES = [
-  "Attendance at the classroom door.",
-  "Fees at the counter, receipts in hand.",
-  "Mark sheets ready by the end of term.",
-  "From the principal's desk to a parent's phone.",
-];
+const PRODUCT_LINES = ["attendance", "fees", "exams", "reach"] as const;
 
 /** The same quiet inventory the sign-in panel shows — what's inside. */
 const MODULES = [
-  { Icon: CalendarCheck2, label: "Attendance" },
-  { Icon: IndianRupee, label: "Fees & receipts" },
-  { Icon: FileText, label: "Examinations" },
-  { Icon: BarChart2, label: "Reports" },
-  { Icon: Users, label: "Parent portal" },
-];
+  { Icon: CalendarCheck2, key: "attendance" },
+  { Icon: IndianRupee, key: "fees" },
+  { Icon: FileText, key: "exams" },
+  { Icon: BarChart2, key: "reports" },
+  { Icon: Users, key: "parentPortal" },
+] as const;
 
 type Phase = "loading" | "reveal" | "welcome";
 
 export default function SplashScreen({ onDone }: { onDone?: () => void }) {
   const [show, setShow] = useState(true);
+  const t = useTranslations("splash");
+  const tp = useTranslations("product");
   const [holdDone, setHoldDone] = useState(false);
   const [minHoldDone, setMinHoldDone] = useState(false);
   // Ref so the dismissal effect never runs with a stale callback and never
@@ -157,7 +155,7 @@ export default function SplashScreen({ onDone }: { onDone?: () => void }) {
   return (
     <div
       role="status"
-      aria-label="Opening"
+      aria-label={t("opening")}
       className={`fixed inset-0 z-9999 flex flex-col items-center justify-center overflow-y-auto bg-walnut-950 px-4 py-10 transition-opacity duration-500 ease-in-out motion-reduce:transition-none ${
         fade ? "opacity-0" : "opacity-100"
       }`}
@@ -214,7 +212,7 @@ export default function SplashScreen({ onDone }: { onDone?: () => void }) {
       {phase === "reveal" && schoolInfo?.name && (
         <div className="relative z-10 mt-5 px-6 text-center">
           <p className="tabular text-[10px] font-semibold tracking-[0.2em] text-brass-300/90 uppercase">
-            Welcome to
+            {t("welcomeEyebrow")}
           </p>
           <p className="mt-1.5 font-display text-[18px] font-semibold text-paper-50 sm:text-[19px]">
             {schoolInfo.name}
@@ -224,28 +222,27 @@ export default function SplashScreen({ onDone }: { onDone?: () => void }) {
 
       {phase === "welcome" && (
         <p className="relative z-10 mt-5 max-w-md px-6 text-center font-display text-[18px] leading-snug font-semibold text-paper-50 sm:text-[20px]">
-          {schoolInfo?.name ? (
-            <>
-              Welcome to the digital campus of{" "}
-              <span className="text-marigold-300">{schoolInfo.name}</span>
-            </>
-          ) : (
-            "Welcome to your digital campus"
-          )}
+          {schoolInfo?.name
+            ? t.rich("welcomeSchool", {
+                name: schoolInfo.name,
+                school: (chunks) => <span className="text-marigold-300">{chunks}</span>,
+              })
+            : t("welcome")}
         </p>
       )}
 
       {/* The thesis — the same headline the sign-in panel opens with. */}
       <p className="relative z-10 mt-5 max-w-md px-6 text-center font-display text-[19px] leading-[1.22] font-semibold tracking-tight text-paper-50 sm:text-[22px] md:text-[24px]">
-        Every register, ledger and mark sheet,
-        <span className="text-marigold-300"> in one place.</span>
+        {tp.rich("headline", {
+          em: (chunks) => <span className="text-marigold-300">{chunks}</span>,
+        })}
       </p>
 
       {/* One line at a time about life inside the app; the welcome act closes
           with an invitation instead. */}
       {phase === "welcome" ? (
         <p className="relative z-10 mt-3 h-5 px-6 text-center text-[13px] text-brass-100/72 sm:text-[13.5px]">
-          Sign in to open today&apos;s registers.
+          {t("signInPrompt")}
         </p>
       ) : (
         <p
@@ -254,7 +251,7 @@ export default function SplashScreen({ onDone }: { onDone?: () => void }) {
             lineVisible ? "opacity-100" : "opacity-0"
           }`}
         >
-          {PRODUCT_LINES[lineIdx]}
+          {tp(`line.${PRODUCT_LINES[lineIdx]}`)}
         </p>
       )}
 
@@ -264,20 +261,20 @@ export default function SplashScreen({ onDone }: { onDone?: () => void }) {
         aria-hidden
         className="relative z-10 mt-7 flex max-w-md flex-wrap items-center justify-center gap-2 px-4"
       >
-        {MODULES.map(({ Icon, label }) => (
+        {MODULES.map(({ Icon, key }) => (
           <li
-            key={label}
+            key={key}
             className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/6 px-2.5 py-1.5 text-[11px] font-medium text-brass-100/80 backdrop-blur-sm sm:text-[11.5px]"
           >
             <Icon className="size-3 text-marigold-300/90" aria-hidden />
-            {label}
+            {tp(`module.${key}`)}
           </li>
         ))}
       </ul>
 
       {/* The register hand, as everywhere else. */}
       <p className="tabular relative z-10 mt-6 text-[11px] font-semibold tracking-[0.2em] text-brass-300 uppercase">
-        Opening
+        {t("opening")}
         <span className="ml-0.5 inline-block animate-pulse">…</span>
       </p>
 
@@ -294,7 +291,7 @@ export default function SplashScreen({ onDone }: { onDone?: () => void }) {
 
       {/* Whose hands built it, at the foot of the page. */}
       <p className="relative z-10 mt-8 px-6 text-center font-mono text-[10px] tracking-wide text-brass-200/50">
-        © {new Date().getFullYear()} Colegios · Built by AppMe Soft Pvt Ltd
+        © {new Date().getFullYear()} Colegios · {tp.rich("builtBy", { company: (chunks) => chunks })}
       </p>
 
       {/* Global so styled-jsx doesn't rename the keyframes out from under the

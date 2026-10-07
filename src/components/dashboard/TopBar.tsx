@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { PanelLeftClose, PanelLeftOpen, Menu } from "lucide-react";
 import { ThemePicker } from "@/components/ui/ThemePicker";
 import { NotificationBell } from "@/components/NotificationBell";
-import { NAV_CONFIG } from "@/lib/navConfig";
+import { NAV_CONFIG, type NavGroupId, type NavItemId } from "@/lib/navConfig";
+import { LanguagePicker } from "@/components/ui/LanguagePicker";
+import { useRoleLabel } from "@/i18n/useRoleLabel";
 import { AssistantLauncher } from "@/components/assistant/AssistantLauncher";
 
 interface TopBarProps {
@@ -24,12 +27,12 @@ interface TopBarProps {
  * (/dashboard/students/42/edit) resolve to their nearest nav ancestor rather
  * than inventing a label from the URL.
  */
-function useCrumb(pathname: string): { group?: string; page: string } {
+function useCrumb(pathname: string): { group?: NavGroupId; page: NavItemId } {
     // Flatten and try the longest href first, ACROSS groups — otherwise
     // /dashboard (the overview item) prefix-matches every route in the app and
     // every page would call itself "Dashboard".
     const all = NAV_CONFIG.flatMap(group =>
-        group.items.map(item => ({ ...item, group: group.label })),
+        group.items.map(item => ({ ...item, group: group.id })),
     ).sort((a, b) => b.href.length - a.href.length);
 
     for (const item of all) {
@@ -39,9 +42,9 @@ function useCrumb(pathname: string): { group?: string; page: string } {
             item.href === "/dashboard"
                 ? pathname === "/dashboard"
                 : pathname === item.href || pathname.startsWith(`${item.href}/`);
-        if (matches) return { group: item.group, page: item.label };
+        if (matches) return { group: item.group, page: item.id };
     }
-    return { page: "Dashboard" };
+    return { page: "dashboard" };
 }
 
 /**
@@ -55,6 +58,8 @@ function useCrumb(pathname: string): { group?: string; page: string } {
 export function TopBar({ user, sidebarCollapsed, onToggleSidebar, onOpenMobileNav }: TopBarProps) {
     const pathname = usePathname();
     const { group, page } = useCrumb(pathname);
+    const t = useTranslations("nav");
+    const roleLabel = useRoleLabel(user?.role);
 
     return (
         <header
@@ -77,7 +82,7 @@ export function TopBar({ user, sidebarCollapsed, onToggleSidebar, onOpenMobileNa
                 <button
                     onClick={onToggleSidebar}
                     className="hidden size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink lg:flex"
-                    aria-label={sidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
+                    aria-label={sidebarCollapsed ? t("chrome.expandNav") : t("chrome.collapseNav")}
                 >
                     {sidebarCollapsed
                         ? <PanelLeftOpen className="size-4" />
@@ -88,32 +93,33 @@ export function TopBar({ user, sidebarCollapsed, onToggleSidebar, onOpenMobileNa
                 <button
                     onClick={onOpenMobileNav}
                     className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-surface-secondary hover:text-ink md:hidden"
-                    aria-label="Open navigation menu"
+                    aria-label={t("chrome.openMenu")}
                 >
                     <Menu className="size-5" />
                 </button>
 
-                <nav aria-label="Breadcrumb" className="min-w-0">
+                <nav aria-label={t("chrome.breadcrumb")} className="min-w-0">
                     <ol className="flex items-center gap-1.5 text-[12.5px]">
                         <li className="hidden sm:block">
                             <Link href="/dashboard" className="text-ink-faint transition-colors hover:text-brand">
-                                Home
+                                {t("chrome.home")}
                             </Link>
                         </li>
                         {group && (
                             <>
                                 <li aria-hidden className="hidden text-ink-faint sm:block">/</li>
-                                <li className="hidden truncate text-ink-muted sm:block">{group}</li>
+                                <li className="hidden truncate text-ink-muted sm:block">{t(`group.${group}`)}</li>
                             </>
                         )}
                         <li aria-hidden className="hidden text-ink-faint sm:block">/</li>
-                        <li className="truncate font-semibold text-ink" aria-current="page">{page}</li>
+                        <li className="truncate font-semibold text-ink" aria-current="page">{t(`item.${page}`)}</li>
                     </ol>
                 </nav>
 
                 {/* ── Right: theme, alerts, identity ── */}
                 <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
                     <AssistantLauncher />
+                    <LanguagePicker />
                     <ThemePicker />
                     <NotificationBell variant="light" />
 
@@ -127,7 +133,7 @@ export function TopBar({ user, sidebarCollapsed, onToggleSidebar, onOpenMobileNa
                                 {user?.firstName} {user?.lastName}
                             </span>
                             <span className="block max-w-36 truncate font-mono text-[9px] leading-tight tracking-widest text-ink-faint uppercase">
-                                {user?.role?.replace(/_/g, " ")}
+                                {roleLabel}
                             </span>
                         </span>
                     </div>

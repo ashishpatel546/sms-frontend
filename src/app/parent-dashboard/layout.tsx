@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { Bell, CalendarDays, House, LifeBuoy, LogOut, ScrollText, UserRound, type LucideIcon } from "lucide-react";
 import { getUser, logout, getRefreshToken, setTokens, resetRefreshState } from "@/lib/auth";
 import { getSchoolSlug } from "@/lib/env";
@@ -11,6 +12,8 @@ import { API_BASE_URL } from "@/lib/api";
 import NotificationPermissionBanner from "@/components/NotificationPermissionBanner";
 import { useSchoolInfo } from "@/lib/useSchoolInfo";
 import { ThemePicker } from "@/components/ui/ThemePicker";
+import { LanguagePicker } from "@/components/ui/LanguagePicker";
+import { INTL_LOCALE } from "@/i18n/config";
 import PullToRefresh from "@/components/ui/PullToRefresh";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +27,10 @@ import { cn } from "@/lib/utils";
 export default function ParentDashboardLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
+    const t = useTranslations("nav");
+    const tc = useTranslations("common");
+    const tp = useTranslations("product");
+    const locale = useLocale();
     const [user, setUser] = useState<any>(null);
     const schoolInfo = useSchoolInfo();
     // Prefer the lightweight S3 URL (same one the SplashScreen renders
@@ -124,37 +131,37 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
                                 {schoolInfo?.name || 'School'}
                             </span>
                             <span className="block font-mono text-[9px] tracking-[0.14em] text-rail-ink-muted uppercase">
-                                Parent portal
+                                {tp("module.parentPortal")}
                             </span>
                         </span>
                     </Link>
 
                     <div className="ml-auto flex shrink-0 items-center gap-2">
                         {/* Desktop destinations — the bottom bar covers mobile */}
-                        <nav className="hidden items-center gap-1 md:flex" aria-label="Sections">
-                            <BarLink href="/parent-dashboard" icon={House} label="Home" active={isHome} />
+                        <nav className="hidden items-center gap-1 md:flex" aria-label={t("parent.sections")}>
+                            <BarLink href="/parent-dashboard" icon={House} label={t("tab.home")} active={isHome} />
                             <BarLink
                                 href="/parent-dashboard/notifications"
                                 icon={Bell}
-                                label="Alerts"
+                                label={t("tab.alerts")}
                                 active={pathname === '/parent-dashboard/notifications'}
                             />
                             <BarLink
                                 href="/parent-dashboard/circulars"
                                 icon={ScrollText}
-                                label="Circulars"
+                                label={t("item.circulars")}
                                 active={pathname.startsWith('/parent-dashboard/circulars')}
                             />
                             <BarLink
                                 href="/parent-dashboard/support"
                                 icon={LifeBuoy}
-                                label="Help"
+                                label={t("parent.help")}
                                 active={pathname === '/parent-dashboard/support'}
                             />
                             <BarLink
                                 href="/parent-dashboard/profile"
                                 icon={UserRound}
-                                label="Profile"
+                                label={t("chrome.profile")}
                                 active={pathname === '/parent-dashboard/profile'}
                             />
                         </nav>
@@ -165,10 +172,11 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
                         >
                             <CalendarDays className="size-3.5 shrink-0" aria-hidden />
                             <span suppressHydrationWarning>
-                                {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
+                                {new Date().toLocaleDateString(INTL_LOCALE[locale], { weekday: 'short', day: 'numeric', month: 'short' })}
                             </span>
                         </span>
 
+                        <LanguagePicker onInk />
                         <ThemePicker onInk />
 
                         <span className="hidden items-center gap-2 rounded-lg border border-rail-line bg-rail-selected py-1 pr-3 pl-1 sm:flex">
@@ -183,8 +191,8 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
                         <button
                             onClick={() => logout()}
                             className="hidden size-9 cursor-pointer items-center justify-center rounded-md text-rail-ink-soft transition-colors hover:bg-rail-danger-bg hover:text-rail-danger-ink md:flex"
-                            aria-label="Sign out"
-                            title="Sign out"
+                            aria-label={tc("action.signOut")}
+                            title={tc("action.signOut")}
                         >
                             <LogOut className="size-4" />
                         </button>
@@ -198,33 +206,33 @@ export default function ParentDashboardLayout({ children }: { children: React.Re
 
             {/* ── Mobile bottom tabs ─────────────────────────────────────── */}
             <nav
-                aria-label="Primary"
+                aria-label={t("chrome.primaryNav")}
                 className="fixed right-0 bottom-0 left-0 z-50 border-t border-line bg-surface-glass pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_-2px_rgba(33,28,22,0.08)] backdrop-blur-xl md:hidden"
             >
                 <div className="flex h-15 items-stretch justify-around">
-                    <Tab href="/parent-dashboard" icon={House} label="Home" active={isHome} />
+                    <Tab href="/parent-dashboard" icon={House} label={t("tab.home")} active={isHome} />
                     <Tab
                         href="/parent-dashboard/notifications"
                         icon={Bell}
-                        label="Alerts"
+                        label={t("tab.alerts")}
                         active={pathname === '/parent-dashboard/notifications'}
                     />
                     <Tab
                         href="/parent-dashboard/circulars"
                         icon={ScrollText}
-                        label="Circulars"
+                        label={t("item.circulars")}
                         active={pathname.startsWith('/parent-dashboard/circulars')}
                     />
                     <Tab
                         href="/parent-dashboard/support"
                         icon={LifeBuoy}
-                        label="Help"
+                        label={t("parent.help")}
                         active={pathname === '/parent-dashboard/support'}
                     />
                     <Tab
                         href="/parent-dashboard/profile"
                         icon={UserRound}
-                        label="Profile"
+                        label={t("chrome.profile")}
                         active={pathname === '/parent-dashboard/profile'}
                     />
                 </div>
