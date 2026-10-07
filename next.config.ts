@@ -35,6 +35,14 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // The portal is a sign-in app, not a website: keep every school host
+        // (kps.colegios.in, *.test.colegios.in, and any made-up subdomain the
+        // *.colegios.in wildcard answers) out of search results. The public
+        // site Google should index is www.colegios.in, a separate app.
+        source: '/:path*',
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      },
+      {
         // The worker script must always be revalidated — everything else about
         // updating an installed PWA depends on the browser noticing a new one.
         source: '/sw.js',
