@@ -10,6 +10,7 @@ import { fetchTripTracker, secondsSince } from "@/lib/transport-api";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Ago } from "./Ago";
+import { useCrewAppRelease } from "./crewApp";
 import {
   detectPlatform,
   TRACCAR_APP_STORE_URL,
@@ -24,7 +25,8 @@ import {
 const STOP_PROMPT_SECONDS = 15 * 60;
 
 /**
- * The crew's way to keep the bus on the map with the screen locked: install
+ * The crew's way to keep the bus on the map with the screen locked: on
+ * Android, our Colegios Crew app (see /crew-app); otherwise install
  * Traccar Client, connect it to this bus with one tap, start it. Once the
  * app reports, this turns into a green "sharing" strip (and the trip
  * screen's own sharing stands down on the server).
@@ -47,6 +49,7 @@ export function TrackerAppCard({
   // Rendered only after the client fetch, so no server/client mismatch.
   const [platform] = React.useState<Platform>(detectPlatform);
   const [open, setOpen] = React.useState(false);
+  const release = useCrewAppRelease();
 
   if (!data) return null;
   const seenBefore = !!data.lastSeenAt;
@@ -89,6 +92,23 @@ export function TrackerAppCard({
           )}
         </p>
         <p className="mt-0.5 pl-6 text-[12px]">{t("canLock")}</p>
+      </div>
+    );
+  }
+
+  // On Android our own app shares with no setup here; Traccar Client stays
+  // for iPhones (and Android until this portal offers the app).
+  if (platform === "android" && release) {
+    return (
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2">
+        <Smartphone className="size-4 shrink-0 text-ink-muted" />
+        <p className="min-w-0 flex-1 text-[13px] text-ink">{t("ownPitch")}</p>
+        <a
+          href="/crew-app"
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+        >
+          {t("ownInstall")}
+        </a>
       </div>
     );
   }

@@ -150,5 +150,23 @@
     "saving": "Saving…",
     "submit": "Set Password & Continue",
     "back": "Back to Login"
+  },
+  "crewApp": {
+    "title": "Colegios Crew",
+    "subtitle": "The app for bus drivers and bus assistants",
+    "subtitleSchool": "The app for bus drivers and bus assistants of {school}",
+    "unavailable": "The app is not available here yet. Ask the school office.",
+    "iphone": "Colegios Crew is for Android phones. On an iPhone, log in to the school portal, open your trip and follow the steps shown there.",
+    "desktop": "Open this page on the Android phone of the driver or bus assistant, or scan this code with it.",
+    "step1": "Download the app",
+    "step1Hint": "If the phone says the file might be harmful, tap Download anyway. The file comes from your school portal.",
+    "download": "Download · {version} · {size} MB",
+    "step2": "Install it",
+    "step2Hint": "Open the downloaded file. If asked, allow your browser to install apps, then tap Install.",
+    "step3": "Enter the school code",
+    "step3Hint": "Open Colegios Crew and type this code:",
+    "step4": "Log in and open your trip",
+    "step4Hint": "The bus location is shared by itself during the trip, even with the phone locked. When asked, allow location all the time and let the app run in the background.",
+    "who": "Parents and staff do not need this app. They keep using the school portal."
   }
 }

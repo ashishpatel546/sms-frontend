@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Ago } from "./Ago";
+import { useCrewAppRelease } from "./crewApp";
 import {
   TRACCAR_APP_STORE_URL,
   TRACCAR_PLAY_URL,
@@ -54,6 +55,11 @@ export function VehicleTrackerDialog({
     },
   );
   const [busy, setBusy] = React.useState(false);
+  const release = useCrewAppRelease();
+  const [appLink, setAppLink] = React.useState("");
+  React.useEffect(() => {
+    queueMicrotask(() => setAppLink(`${window.location.origin}/crew-app`));
+  }, []);
 
   const run = async (fn: () => Promise<unknown>, done: string) => {
     setBusy(true);
@@ -119,6 +125,30 @@ export function VehicleTrackerDialog({
                 </span>
               )}
             </div>
+
+            {release && appLink && (
+              <div className="rounded-md border border-line bg-surface-sunk px-3 py-2 text-[13px]">
+                <p className="text-ink">{t("dialogOwnApp")}</p>
+                <p className="mt-1 flex items-center gap-1">
+                  <a
+                    href="/crew-app"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="tabular min-w-0 break-all text-brand underline-offset-4 hover:underline"
+                  >
+                    {appLink}
+                  </a>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={t("copy")}
+                    onClick={() => copy(appLink)}
+                  >
+                    <Copy />
+                  </Button>
+                </p>
+              </div>
+            )}
 
             <p className="text-[13px] text-ink-muted">{t("dialogIntro")}</p>
 

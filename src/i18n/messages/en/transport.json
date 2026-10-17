@@ -649,7 +649,10 @@
       "disconnect": "Disconnect",
       "disconnectConfirm": "Stop accepting the tracking app for this bus?",
       "disconnected": "Tracking app disconnected",
-      "failed": "Could not do that. Please try again."
+      "failed": "Could not do that. Please try again.",
+      "ownPitch": "Keep the bus on the map with the screen locked: install the Colegios Crew app.",
+      "ownInstall": "Get the app",
+      "dialogOwnApp": "Android phones: install the Colegios Crew app instead. It needs no setup here, it shares by itself during each trip. Send the crew this link:"
     },
     "crewApp": {
       "notification": "Sharing the location of {vehicle}",

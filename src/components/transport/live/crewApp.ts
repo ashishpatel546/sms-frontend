@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import useSWR from 'swr';
 
 /**
  * Our Android crew app (sms-crew-app) shows the portal in a WebView and
@@ -60,4 +61,37 @@ export function useCrewAppStatus(): CrewAppStatus | null {
     return () => window.removeEventListener(EVENT, on);
   }, []);
   return status;
+}
+
+/**
+ * The app is not in a store: each portal serves its build from
+ * public/downloads/ (written by sms-crew-app `scripts/release.sh`). The
+ * stage portal offers the test build, production the real one; the app
+ * reads the same file to offer updates.
+ */
+export interface CrewAppRelease {
+  versionCode: number;
+  versionName: string;
+  /** Path of the APK on this portal. */
+  apk: string;
+  /** Bytes. */
+  size: number;
+}
+
+export function crewAppChannel(): 'crew' | 'crew-test' | 'crew-dev' {
+  const host = typeof window === 'undefined' ? '' : window.location.hostname;
+  if (host.endsWith('.test.colegios.in')) return 'crew-test';
+  if (host.endsWith('.colegios.in')) return 'crew';
+  return 'crew-dev';
+}
+
+async function fetchCrewAppRelease(): Promise<CrewAppRelease | null> {
+  const r = await fetch(`/downloads/${crewAppChannel()}.json`, { cache: 'no-store' });
+  return r.ok ? r.json() : null;
+}
+
+/** The build on offer here: undefined while loading, null when there is none. */
+export function useCrewAppRelease(): CrewAppRelease | null | undefined {
+  const { data, error } = useSWR('crew-app-release', fetchCrewAppRelease, { revalidateOnFocus: false });
+  return error ? null : data;
 }

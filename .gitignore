@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local crew-app builds (sms-crew-app scripts/release.sh dev)
+/public/downloads/crew-dev.json
+/public/downloads/colegios-crew-dev-*.apk
