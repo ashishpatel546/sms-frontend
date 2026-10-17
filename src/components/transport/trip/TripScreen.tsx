@@ -37,6 +37,8 @@ import { useFeatureFlag } from '@/lib/useSchoolFeatures';
 import { useLocationSharing, type SharingStatus } from '@/components/transport/live/useLocationSharing';
 import { TripTrackPanel } from '@/components/transport/live/TripTrackPanel';
 import { TrackerAppCard } from '@/components/transport/live/TrackerAppCard';
+import { CrewAppTracking } from '@/components/transport/live/CrewAppTracking';
+import { useInCrewApp } from '@/components/transport/live/crewApp';
 
 const STATE_PIGMENT: Record<TripEventType, Pigment> = {
   BOARDED: 'info',
@@ -71,8 +73,10 @@ export function TripScreen({ tripId, backHref }: { tripId: number; backHref: str
   const rbac = useRbac();
   const liveOn = useFeatureFlag('transport_live_tracking').enabled === true;
   // Only a phone on the bus shares its position; a manager running the trip
-  // from the office must not move the bus to the office.
-  const sharing = useLocationSharing(tripId, liveOn && !!data?.canOperate && rbac.isTransportCrew);
+  // from the office must not move the bus to the office. Inside the crew
+  // app, the app shares in the background instead of this screen.
+  const inApp = useInCrewApp();
+  const sharing = useLocationSharing(tripId, liveOn && !!data?.canOperate && rbac.isTransportCrew && !inApp);
 
   if (error) {
     return (
@@ -140,12 +144,20 @@ export function TripScreen({ tripId, backHref }: { tripId: number; backHref: str
       <PageBody>
         <Counts trip={trip} />
         <CrewStrip trip={trip} />
-        {liveOn && trip.canOperate && rbac.isTransportCrew && (
-          <>
-            {sharing.status !== 'app' && <SharingStrip status={sharing.status} lastSentAt={sharing.lastSentAt} accuracy={sharing.accuracy} />}
-            <TrackerAppCard tripId={trip.id} running={trip.status === 'IN_PROGRESS'} />
-          </>
-        )}
+        {/* In the crew app the card stays after the trip ends: it stops the
+            app's sharing for this bus. */}
+        {liveOn &&
+          rbac.isTransportCrew &&
+          (inApp ? (
+            <CrewAppTracking tripId={trip.id} running={trip.status === 'IN_PROGRESS' && trip.canOperate} />
+          ) : (
+            trip.canOperate && (
+              <>
+                {sharing.status !== 'app' && <SharingStrip status={sharing.status} lastSentAt={sharing.lastSentAt} accuracy={sharing.accuracy} />}
+                <TrackerAppCard tripId={trip.id} running={trip.status === 'IN_PROGRESS'} />
+              </>
+            )
+          ))}
 
         {trip.forceClosed && (
           <p className="rounded-lg border border-accent-warn-edge bg-accent-warn-tint px-3 py-2 text-[13px] text-accent-warn-deep">

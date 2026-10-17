@@ -650,6 +650,19 @@
       "disconnectConfirm": "Stop accepting the tracking app for this bus?",
       "disconnected": "Tracking app disconnected",
       "failed": "Could not do that. Please try again."
+    },
+    "crewApp": {
+      "notification": "Sharing the location of {vehicle}",
+      "sharing": "Sharing the bus location from this phone",
+      "off": "Location sharing is off for this trip.",
+      "start": "Start sharing",
+      "waiting": "Starting… waiting for the first position.",
+      "notReaching": "Positions are not reaching the school. Check the internet and that location is on.",
+      "permission": "Allow location “All the time” for this app, or the bus disappears from the map when the phone is locked.",
+      "openSettings": "Open settings",
+      "tryAgain": "Try again",
+      "battery": "Battery saver may stop the sharing. Let the app run without restrictions.",
+      "allow": "Allow"
     }
   }
 }
