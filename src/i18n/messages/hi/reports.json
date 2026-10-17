@@ -88,7 +88,8 @@
     "waivedTrendTitle": "माफ़ी का रुझान",
     "waivedTrendHint": "माफ़ की गई फ़ीस की तुलना।",
     "waivedTrendSeries": "माफ़ी का रुझान",
-    "pendingTrendSeries": "बकाया का रुझान"
+    "pendingTrendSeries": "बकाया का रुझान",
+    "typeTransportExemption": "परिवहन छूट"
   },
   "pending": {
     "title": "बकाया फ़ीस रिपोर्ट",

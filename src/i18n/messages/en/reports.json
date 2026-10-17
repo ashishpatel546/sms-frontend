@@ -88,7 +88,8 @@
     "waivedTrendTitle": "Waived-off Trend",
     "waivedTrendHint": "Comparison of waived-off fees.",
     "waivedTrendSeries": "Waived-off Trend",
-    "pendingTrendSeries": "Pending Trend"
+    "pendingTrendSeries": "Pending Trend",
+    "typeTransportExemption": "Transport exemption"
   },
   "pending": {
     "title": "Pending Dues Report",

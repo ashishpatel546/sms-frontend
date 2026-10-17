@@ -25,7 +25,7 @@ import { PersonPhotosSection } from "@/components/person/PersonPhotosSection";
 import { PersonDocumentsSection } from "@/components/person/PersonDocumentsSection";
 import { personUserId } from "@/lib/person-documents-api";
 
-const KNOWN_ROLES = ["SUPER_ADMIN", "ADMIN", "HR_ADMIN", "SUB_ADMIN", "LIBRARIAN", "TEACHER", "GUARD", "PARENT", "STUDENT", "SYSTEM_ADMIN"] as const;
+const KNOWN_ROLES = ["SUPER_ADMIN", "ADMIN", "HR_ADMIN", "SUB_ADMIN", "LIBRARIAN", "TEACHER", "GUARD", "TRANSPORT_INCHARGE", "BUS_ASSISTANT", "DRIVER", "PARENT", "STUDENT", "SYSTEM_ADMIN"] as const;
 // Stored values → label keys (the value itself is what the API keeps).
 const STAFF_CATEGORY_KEYS = {
     "Teaching Staff": "teaching",

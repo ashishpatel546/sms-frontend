@@ -469,6 +469,7 @@
     "noDiscounts": "कोई सक्रिय छात्रवृत्ति या छूट नहीं दी गई है।",
     "scholarship": "{value}% छात्रवृत्ति",
     "monthlyRelief": "मासिक राहत",
-    "savingsPerMonth": "बचत / माह"
+    "savingsPerMonth": "बचत / माह",
+    "managedInTransport": "परिवहन से प्रबंधित"
   }
 }

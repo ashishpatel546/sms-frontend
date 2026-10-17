@@ -84,7 +84,8 @@
       "HR_ADMIN": "HR Portal — staff attendance, leave policies, payroll and salary setup.",
       "SUB_ADMIN": "Day-to-day admin — students, staff, subjects, sections, enrolment and fees.",
       "LIBRARIAN": "Library — book catalogue, issuing, returns and overdue tracking.",
-      "TEACHER": "Classroom tools — attendance, homework, marks entry and AI teaching aids."
+      "TEACHER": "Classroom tools — attendance, homework, marks entry and AI teaching aids.",
+      "TRANSPORT_INCHARGE": "Transport — vehicles, routes and stops, drivers and assistants, and student transport."
     },
     "loadFailed": "Couldn't load this person's roles.",
     "thisUser": "This user",

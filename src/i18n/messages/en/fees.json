@@ -469,6 +469,7 @@
     "noDiscounts": "No active scholarships or discounts assigned.",
     "scholarship": "{value}% Scholarship",
     "monthlyRelief": "Monthly Relief",
-    "savingsPerMonth": "Savings / month"
+    "savingsPerMonth": "Savings / month",
+    "managedInTransport": "Managed in Transport"
   }
 }

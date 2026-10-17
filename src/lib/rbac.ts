@@ -20,6 +20,9 @@ const ROLE_LEVEL: Record<string, number> = {
   LIBRARIAN: 50,
   TEACHER: 40,
   GUARD: 30,
+  TRANSPORT_INCHARGE: 28,
+  BUS_ASSISTANT: 26,
+  DRIVER: 25,
   PARENT: 20,
   STUDENT: 10,
 };
@@ -35,6 +38,10 @@ const ROLE_LEVEL: Record<string, number> = {
  * in — while a plain ADMIN still does not.
  */
 const HR_PORTAL_ROLES = ['HR_ADMIN', 'SUPER_ADMIN', 'SYSTEM_ADMIN'] as const;
+
+/** Driver and bus assistant: they work on a vehicle, not at a desk. */
+const TRANSPORT_CREW_ROLES = ['DRIVER', 'BUS_ASSISTANT'] as const;
+const TRANSPORT_ROLES = ['DRIVER', 'BUS_ASSISTANT', 'TRANSPORT_INCHARGE'] as const;
 
 /** Roles that may manage the library, by name rather than by rank. */
 const LIBRARY_ROLES = ['LIBRARIAN', 'ADMIN', 'SUPER_ADMIN', 'SYSTEM_ADMIN'] as const;
@@ -185,6 +192,20 @@ export interface RbacPermissions {
   canManageActivities: boolean;
 
   /**
+   * Transport: vehicles, routes, crew and student transport. SUB_ADMIN and
+   * above, or TRANSPORT_INCHARGE held as primary or granted role — mirrors
+   * `TransportManagerGuard` in sms-backend.
+   */
+  canManageTransport: boolean;
+  /** Driver or bus assistant. */
+  isTransportCrew: boolean;
+  /**
+   * The person holds only transport roles (all three rank below GUARD), so —
+   * like a guard — the menu shows only items flagged `transportAllowed`.
+   */
+  isTransportOnly: boolean;
+
+  /**
    * See one's own store purchases and borrowings. Everyone with an account:
    * a parent sees their children's, a student and a staff member their own —
    * the API scopes by the JWT, so the menu can afford to be generous.
@@ -302,6 +323,10 @@ export function useRbac(): RbacPermissions {
     canViewOwnInventory: level >= 10,
 
     canManageActivities: level >= 60,
+
+    canManageTransport: level >= 60 || has('TRANSPORT_INCHARGE'),
+    isTransportCrew: hasAny(TRANSPORT_CREW_ROLES),
+    isTransportOnly: hasAny(TRANSPORT_ROLES) && level < 30,
 
     hasRole: has,
     hasAnyRole: hasAny,

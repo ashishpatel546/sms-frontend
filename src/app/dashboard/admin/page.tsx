@@ -23,7 +23,7 @@ type Tab = "users" | "add-staff" | "school-setup" | "ai-assistant";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
-const ALL_ROLES = ["SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "HR_ADMIN", "LIBRARIAN", "TEACHER", "GUARD", "PARENT", "STUDENT"];
+const ALL_ROLES = ["SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "HR_ADMIN", "LIBRARIAN", "TEACHER", "GUARD", "TRANSPORT_INCHARGE", "BUS_ASSISTANT", "DRIVER", "PARENT", "STUDENT"];
 
 /**
  * Primary roles that can never carry an additional role, so there is nothing

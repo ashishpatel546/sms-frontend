@@ -2,6 +2,7 @@
   "group": {
     "academics": "शैक्षणिक",
     "gate": "गेट",
+    "transport": "परिवहन",
     "reports": "रिपोर्ट",
     "library": "पुस्तकालय",
     "activities": "गतिविधियाँ",
@@ -30,6 +31,7 @@
     "pickup-scan": "QR स्कैन करें",
     "visitors": "आगंतुक",
     "pickup-history": "पिकअप इतिहास",
+    "transport": "परिवहन",
     "reports": "रिपोर्ट",
     "library": "पुस्तकालय",
     "activities": "गतिविधियाँ",
@@ -94,6 +96,9 @@
     "LIBRARIAN": "पुस्तकालयाध्यक्ष",
     "TEACHER": "शिक्षक",
     "GUARD": "गार्ड",
+    "TRANSPORT_INCHARGE": "परिवहन प्रभारी",
+    "BUS_ASSISTANT": "बस सहायक",
+    "DRIVER": "ड्राइवर",
     "PARENT": "अभिभावक",
     "STUDENT": "विद्यार्थी",
     "SYSTEM_ADMIN": "सिस्टम एडमिन"

@@ -1133,8 +1133,18 @@ export default function ReportsDashboard() {
                                                     <td className="px-5 py-3 font-medium text-slate-800">{adj.student}</td>
                                                     <td className="px-5 py-3">
                                                         <span className={`px-2 py-1 rounded text-xs font-semibold ${adj.type === 'REFUND' ? 'bg-orange-100 text-orange-700' : 'bg-purple-100 text-purple-700'}`}>
-                                                            {adj.type === 'REFUND' ? t('fees.typeRefund') : adj.type === 'WAIVE_OFF' ? t('fees.typeWaiveOff') : adj.type}
+                                                            {adj.type === 'REFUND'
+                                                                ? t('fees.typeRefund')
+                                                                : adj.type === 'WAIVE_OFF'
+                                                                  ? t('fees.typeWaiveOff')
+                                                                  : adj.type === 'TRANSPORT_EXEMPTION'
+                                                                    ? t('fees.typeTransportExemption')
+                                                                    : adj.type}
                                                         </span>
+                                                        {/* A transport exemption is a standing concession, listed once per fee month. */}
+                                                        {adj.type === 'TRANSPORT_EXEMPTION' && adj.feeMonth && (
+                                                            <span className="ml-1.5 tabular text-[11px] text-ink-muted">{adj.feeMonth}</span>
+                                                        )}
                                                     </td>
                                                     <td className="px-5 py-3 text-right font-semibold">₹{adj.amount}</td>
                                                     <td className="px-5 py-3 text-gray-500">{adj.recordedBy}</td>

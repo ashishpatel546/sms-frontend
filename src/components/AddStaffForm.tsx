@@ -316,7 +316,9 @@ export default function AddStaffForm({
         }
     };
 
-    const editableRoles = isSuperAdmin ? (["ADMIN", "SUB_ADMIN", "LIBRARIAN", "TEACHER", "GUARD"] as const) : (["SUB_ADMIN", "LIBRARIAN", "TEACHER", "GUARD"] as const);
+    const editableRoles = isSuperAdmin
+        ? (["ADMIN", "SUB_ADMIN", "LIBRARIAN", "TEACHER", "GUARD", "TRANSPORT_INCHARGE", "BUS_ASSISTANT", "DRIVER"] as const)
+        : (["SUB_ADMIN", "LIBRARIAN", "TEACHER", "GUARD", "TRANSPORT_INCHARGE", "BUS_ASSISTANT", "DRIVER"] as const);
 
     return (
         <>

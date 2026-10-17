@@ -3287,8 +3287,20 @@ export default function FeesDashboardPage() {
                                                                         <span className="text-xs font-black text-orange-700">₹{Number(fee.amount).toLocaleString(intl)}</span>
                                                                         <span className="text-[10px] text-orange-400 font-bold uppercase tracking-tighter">· {fee.frequency ? frequencyLabel(fee.frequency) : fee.frequency}</span>
                                                                     </div>
+                                                                    {fee.source === 'TRANSPORT' && fee.description && (
+                                                                        <span className="mt-1 block truncate text-[11px] text-ink-muted">{fee.description}</span>
+                                                                    )}
                                                                 </div>
-                                                                {rbac.canConfigureFees && (
+                                                                {/* The transport fee follows the student's transport
+                                                                    assignment, so it is changed there, not unlinked here. */}
+                                                                {fee.readOnly ? (
+                                                                    <Link
+                                                                        href="/dashboard/transport/students"
+                                                                        className="shrink-0 text-[11px] font-semibold text-accent-info-deep hover:underline"
+                                                                    >
+                                                                        {t("details.managedInTransport")}
+                                                                    </Link>
+                                                                ) : rbac.canConfigureFees && (
                                                                     <button
                                                                         onClick={() => handleRemoveOptionalFee(fee.id)}
                                                                         disabled={removingFeeId === fee.id}

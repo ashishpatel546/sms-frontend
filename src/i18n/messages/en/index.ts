@@ -31,6 +31,7 @@ import staff from './staff.json';
 import students from './students.json';
 import subjects from './subjects.json';
 import support from './support.json';
+import transport from './transport.json';
 import ui from './ui.json';
 import visitors from './visitors.json';
 
@@ -67,6 +68,7 @@ const messages = {
   students,
   subjects,
   support,
+  transport,
   ui,
   visitors,
 };

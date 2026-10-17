@@ -76,7 +76,9 @@
       "addStudent": "Add student",
       "collectFee": "Collect fee",
       "addStaff": "Add staff",
-      "reports": "Reports"
+      "reports": "Reports",
+      "transport": "Transport",
+      "myVehicle": "My vehicle"
     }
   },
   "activity": {

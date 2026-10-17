@@ -25,8 +25,7 @@ import {
   GraduationCap,
   Loader2,
   ShieldCheck,
-  UserCog,
-} from 'lucide-react';
+  UserCog, Bus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { API_BASE_URL } from '@/lib/api';
@@ -91,7 +90,7 @@ export function useRoleLabeler(): (role: string) => string {
  * the server's `grantable` array the moment it arrives.
  */
 const GRANTABLE: {
-  role: 'HR_ADMIN' | 'SUB_ADMIN' | 'LIBRARIAN' | 'TEACHER';
+  role: 'HR_ADMIN' | 'SUB_ADMIN' | 'LIBRARIAN' | 'TEACHER' | 'TRANSPORT_INCHARGE';
   icon: typeof ShieldCheck;
 }[] = [
   {
@@ -109,6 +108,10 @@ const GRANTABLE: {
   {
     role: 'TEACHER',
     icon: GraduationCap,
+  },
+  {
+    role: 'TRANSPORT_INCHARGE',
+    icon: Bus,
   },
 ];
 

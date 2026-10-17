@@ -43,6 +43,7 @@ export type SectionKey =
   | 'exam-schedule'
   | 'leaves'
   | 'pickup'
+  | 'transport'
   | 'id-card'
   | 'holidays'
   | 'activities'
@@ -73,6 +74,7 @@ export const QUICK_ACCESS_PRIMARY: SectionKey[] = [
 export const QUICK_ACCESS_SECONDARY: SectionKey[] = [
   'leaves',
   'pickup',
+  'transport',
   'id-card',
   'holidays',
   'activities',
@@ -115,6 +117,12 @@ export const SECTION_STYLE: Record<SectionKey, SectionStyle> = {
   pickup: {
     gradient: 'bg-[linear-gradient(135deg,#f43f5e_0%,#be123c_100%)]', // rose 500→700
     path: 'M13 21v-2h2v2zm-2-2v-5h2v5zm8-3v-4h2v4zm-2-4v-2h2v2zM5 14v-2h2v2zm-2-2v-2h2v2zm9-7V3h2v2zM4.5 7.5h3v-3h-3zM3 8V4q0-.425.288-.712T4 3h4q.425 0 .713.288T9 4v4q0 .425-.288.713T8 9H4q-.425 0-.712-.288T3 8m1.5 11.5h3v-3h-3zM3 20v-4q0-.425.288-.712T4 15h4q.425 0 .713.288T9 16v4q0 .425-.288.713T8 21H4q-.425 0-.712-.288T3 20M16.5 7.5h3v-3h-3zM15 8V4q0-.425.288-.712T16 3h4q.425 0 .713.288T21 4v4q0 .425-.288.713T20 9h-4q-.425 0-.712-.288T15 8m2 13v-3h-2v-2h4v3h2v2zm-4-7v-2h4v2zm-4 0v-2H7v-2h6v2h-2v2zm1-5V5h2v2h2v2zM5.25 6.75v-1.5h1.5v1.5zm0 12v-1.5h1.5v1.5zm12-12v-1.5h1.5v1.5z',
+  },
+  transport: {
+    gradient: 'bg-[linear-gradient(135deg,#eab308_0%,#a16207_100%)]', // yellow 500→700 — the school bus
+    // A simple filled bus drawn for this file, NOT from Material Symbols —
+    // like the activities star, it needs no attribution.
+    path: 'M4 16q0 .875.375 1.675T5.5 19v1.5q0 .625.438 1.063T7 22t1.063-.437T8.5 20.5V20h7v.5q0 .625.438 1.063T17 22t1.063-.437T18.5 20.5V19q.75-.525 1.125-1.325T20 16V6q0-2.5-2.437-3.25T12 2T6.438 2.75T4 6zm3.5 0q-.625 0-1.062-.437T6 14.5t.438-1.062T7.5 13t1.063.438T9 14.5t-.437 1.063T7.5 16m9 0q-.625 0-1.062-.437T15 14.5t.438-1.062T16.5 13t1.063.438T18 14.5t-.437 1.063T16.5 16M6 11V7h12v4z',
   },
   'id-card': {
     gradient: 'bg-[linear-gradient(135deg,#d97706_0%,#92400e_100%)]', // amber 600→800

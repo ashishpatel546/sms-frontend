@@ -189,6 +189,10 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                         const visibleItems = group.items.filter(item => {
                             // GUARD is deny-by-default: only explicitly flagged items appear
                             if (rbac.isGuard) return item.guardAllowed === true;
+                            if (rbac.isTransportOnly) {
+                                if (item.transportAllowed !== true) return false;
+                                return !item.rbacKey || Boolean((rbac as any)[item.rbacKey]);
+                            }
                             if (item.rbacKey && !(rbac as any)[item.rbacKey]) return false;
                             return true;
                         });
