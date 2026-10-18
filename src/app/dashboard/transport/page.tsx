@@ -5,7 +5,7 @@ import Link from 'next/link';
 import useSWR from 'swr';
 import { useTranslations } from 'next-intl';
 import toast, { Toaster } from 'react-hot-toast';
-import { AlertTriangle, BadgePercent, Bus, FileWarning, Map, Users } from 'lucide-react';
+import { AlertTriangle, BadgePercent, Bus, FileWarning, Map, Smartphone, Users } from 'lucide-react';
 
 import {
   decideExemption,
@@ -21,7 +21,7 @@ import { Panel, PanelBody, PanelHeader } from '@/components/ui/Panel';
 import { StatGrid, StatTile } from '@/components/ui/StatTile';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Money } from '@/components/ui/Money';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ExpiryChip } from '@/components/transport/ExpiryChip';
 import { useFormatDate } from '@/components/transport/format';
@@ -48,7 +48,17 @@ export default function TransportOverviewPage() {
   return (
     <PageShell>
       <Toaster position="top-center" />
-      <PageHeader section={tt('section')} title={t('title')} description={t('description')} />
+      <PageHeader
+        section={tt('section')}
+        title={t('title')}
+        description={t('description')}
+        actions={
+          <Link href="/crew-app" target="_blank" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+            <Smartphone />
+            {t('crewApp')}
+          </Link>
+        }
+      />
       <PageBody>
         <StatGrid columns={4}>
           <StatTile label={t('stat.vehicles')} value={isLoading ? '—' : data?.vehicles ?? 0} icon={<Bus />} pigment="info" />

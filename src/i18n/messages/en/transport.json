@@ -81,7 +81,8 @@
     "decideFailed": "Couldn’t save the decision.",
     "documentsTitle": "Vehicle documents",
     "documentsEmpty": "No documents expire in the next {days} days.",
-    "openVehicles": "Open vehicles"
+    "openVehicles": "Open vehicles",
+    "crewApp": "Crew app"
   },
   "students": {
     "title": "Student transport",

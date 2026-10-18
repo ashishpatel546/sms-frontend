@@ -81,7 +81,8 @@
     "decideFailed": "निर्णय सहेजा नहीं जा सका।",
     "documentsTitle": "वाहन के दस्तावेज़",
     "documentsEmpty": "अगले {days} दिनों में कोई दस्तावेज़ समाप्त नहीं हो रहा।",
-    "openVehicles": "वाहन खोलें"
+    "openVehicles": "वाहन खोलें",
+    "crewApp": "क्रू ऐप"
   },
   "students": {
     "title": "विद्यार्थियों का परिवहन",

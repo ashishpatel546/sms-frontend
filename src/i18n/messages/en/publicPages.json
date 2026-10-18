@@ -158,6 +158,7 @@
     "unavailable": "The app is not available here yet. Ask the school office.",
     "iphone": "Colegios Crew is for Android phones. On an iPhone, log in to the school portal, open your trip and follow the steps shown there.",
     "desktop": "Open this page on the Android phone of the driver or bus assistant: scan this code with the phone's camera (not the school app's scanner), or send them the link.",
+    "desktopDirect": "Or download the app file here and send it to the phone.",
     "step1": "Download the app",
     "step1Hint": "If the phone says the file might be harmful, tap Download anyway. The file comes from your school portal.",
     "download": "Download · {version} · {size} MB",

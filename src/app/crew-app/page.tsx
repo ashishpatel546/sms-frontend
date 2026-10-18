@@ -60,6 +60,11 @@ export default function CrewAppPage() {
                 </div>
               )}
               <p className="tabular break-all text-[13px] text-ink-muted">{here}</p>
+              <p className="mt-2 text-[13px] text-ink">{t('desktopDirect')}</p>
+              <a href={release.apk} download className={buttonVariants({ variant: 'outline' })}>
+                <Download />
+                {t('download', { version: release.versionName, size: (release.size / 1_048_576).toFixed(1) })}
+              </a>
             </div>
           ) : (
             <ol className="space-y-4">

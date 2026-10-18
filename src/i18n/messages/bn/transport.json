@@ -81,7 +81,8 @@
     "decideFailed": "সিদ্ধান্ত সংরক্ষণ করা যায়নি।",
     "documentsTitle": "গাড়ির নথি",
     "documentsEmpty": "আগামী {days} দিনে কোনো নথির মেয়াদ শেষ হচ্ছে না।",
-    "openVehicles": "যানবাহন খুলুন"
+    "openVehicles": "যানবাহন খুলুন",
+    "crewApp": "ক্রু অ্যাপ"
   },
   "students": {
     "title": "ছাত্রছাত্রীদের পরিবহন",
