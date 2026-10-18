@@ -32,6 +32,7 @@ import { Checkbox, Field, FieldGrid, Fieldset, Input, Select, Textarea } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Note } from '@/components/ui/Panel';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
+import { SearchSelect } from '@/components/ui/SearchSelect';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { ExpiryChip } from '@/components/transport/ExpiryChip';
 import { daysUntil, useFormatDate } from '@/components/transport/format';
@@ -464,7 +465,6 @@ function CrewChangeForm({
   const { data: candidates } = useSWR(kind === 'assign' ? `/transport/crew-candidates?role=${role}` : null, () =>
     fetchCrewCandidates(role),
   );
-  const tRole = useTranslations('nav.role');
   const [staffId, setStaffId] = React.useState<number | ''>('');
   const [date, setDate] = React.useState(todayIst());
   const [reason, setReason] = React.useState('');
@@ -489,8 +489,6 @@ function CrewChangeForm({
     }
   };
 
-  const roleLabel = (r: string) => (tRole.has(r as never) ? tRole(r as never) : r);
-
   return (
     <form onSubmit={submit} className="space-y-4">
       <p className="font-display text-[15px] font-semibold text-ink">
@@ -502,17 +500,20 @@ function CrewChangeForm({
       </p>
       {kind === 'assign' && (
         <Field label={t('person')} required>
-          <Select value={staffId} onChange={(e) => setStaffId(e.target.value ? Number(e.target.value) : '')} required>
-            <option value="">{t('selectPerson')}</option>
-            {(candidates ?? [])
+          <SearchSelect
+            value={staffId}
+            onChange={setStaffId}
+            placeholder={t('selectPerson')}
+            required
+            options={(candidates ?? [])
               .filter((c) => c.staffId !== current?.staffId)
-              .map((c) => (
-                <option key={c.staffId} value={c.staffId}>
-                  {c.name} · {roleLabel(c.role)}
-                  {c.mobile ? ` · ${c.mobile}` : ''}
-                </option>
-              ))}
-          </Select>
+              .map((c) => ({
+                value: c.staffId,
+                label: c.name,
+                detail: c.mobile ?? undefined,
+                keywords: c.mobile ?? undefined,
+              }))}
+          />
         </Field>
       )}
       <Field label={kind === 'end' ? t('lastDay') : t('effectiveFrom')} required>
