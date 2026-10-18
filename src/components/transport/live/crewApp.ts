@@ -20,6 +20,10 @@ export interface CrewAppStatus {
   backgroundLocation: boolean;
   /** Exempt from battery optimisation, so the phone does not stop it. */
   batteryUnrestricted: boolean;
+  /** This install's Firebase token (crew push), null when unavailable. */
+  pushToken: string | null;
+  /** The phone lets the app show notifications. */
+  notifications: boolean;
   error: 'PERMISSION_DENIED' | null;
 }
 
@@ -28,6 +32,9 @@ interface CrewBridge {
   status(): void;
   start(key: string, label: string): void;
   stop(key: string): void;
+  enablePush(): void;
+  /** Last token from the status, or '' (synchronous, for logout). */
+  pushToken(): string;
   fixBattery(): void;
   openAppSettings(): void;
   changeSchool(): void;
