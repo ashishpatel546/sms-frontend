@@ -76,7 +76,9 @@
       "addStudent": "ছাত্রছাত্রী যোগ করুন",
       "collectFee": "ফি জমা নিন",
       "addStaff": "কর্মী যোগ করুন",
-      "reports": "রিপোর্ট"
+      "reports": "রিপোর্ট",
+      "transport": "পরিবহন",
+      "myVehicle": "আমার গাড়ি"
     }
   },
   "activity": {

@@ -2,6 +2,7 @@
   "group": {
     "academics": "পড়াশোনা",
     "gate": "গেট",
+    "transport": "পরিবহন",
     "reports": "রিপোর্ট",
     "library": "গ্রন্থাগার",
     "activities": "কার্যক্রম",
@@ -30,6 +31,7 @@
     "pickup-scan": "QR স্ক্যান করুন",
     "visitors": "দর্শনার্থী",
     "pickup-history": "পিকআপের ইতিহাস",
+    "transport": "পরিবহন",
     "reports": "রিপোর্ট",
     "library": "গ্রন্থাগার",
     "activities": "কার্যক্রম",
@@ -61,6 +63,7 @@
     "ai-subscription": "আমার AI প্ল্যান"
   },
   "chrome": {
+    "beta": "বেটা",
     "home": "হোম",
     "breadcrumb": "পথ",
     "expandNav": "মেনু বড় করুন",
@@ -94,6 +97,9 @@
     "LIBRARIAN": "গ্রন্থাগারিক",
     "TEACHER": "শিক্ষক",
     "GUARD": "গার্ড",
+    "TRANSPORT_INCHARGE": "পরিবহন ইনচার্জ",
+    "BUS_ASSISTANT": "বাস সহকারী",
+    "DRIVER": "চালক",
     "PARENT": "অভিভাবক",
     "STUDENT": "ছাত্র/ছাত্রী",
     "SYSTEM_ADMIN": "সিস্টেম অ্যাডমিন"

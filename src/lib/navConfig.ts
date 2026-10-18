@@ -31,6 +31,7 @@ import {
   Boxes,
   ShoppingBag,
   PartyPopper,
+  Bus,
   type LucideIcon,
 } from 'lucide-react';
 import type { Messages } from '@/i18n/messages/en';
@@ -60,6 +61,11 @@ export interface NavItem {
    */
   guardAllowed?: boolean;
   /**
+   * Transport-only people (driver, bus assistant, transport in-charge) are
+   * deny-by-default the same way: they see ONLY items with this flag.
+   */
+  transportAllowed?: boolean;
+  /**
    * Feature key from the school's plan that must be enabled for the item to
    * appear. Omit for modules that are part of every plan.
    *
@@ -72,6 +78,8 @@ export interface NavItem {
    * slow request shows the full menu rather than flashing a truncated one.
    */
   featureFlag?: string | string[];
+  /** Shows a "Beta" pill next to the label while the module is in beta. */
+  beta?: boolean;
 }
 
 /**
@@ -106,6 +114,7 @@ export const NAV_CONFIG: NavGroup[] = [
         href: '/dashboard',
         icon: LayoutDashboard,
         guardAllowed: true,
+        transportAllowed: true,
       },
       {
         id: 'notifications',
@@ -113,6 +122,7 @@ export const NAV_CONFIG: NavGroup[] = [
         href: '/dashboard/notifications',
         icon: Bell,
         guardAllowed: true,
+        transportAllowed: true,
       },
       {
         // Circulars sit beside Notifications because that is what they are to
@@ -126,6 +136,7 @@ export const NAV_CONFIG: NavGroup[] = [
         icon: ScrollText,
         rbacKey: 'canViewCirculars',
         guardAllowed: true,
+        transportAllowed: true,
       },
     ],
   },
@@ -253,6 +264,22 @@ export const NAV_CONFIG: NavGroup[] = [
         href: '/dashboard/pickup/history',
         icon: ClipboardList,
         featureFlag: 'pickup_management',
+      },
+    ],
+  },
+  {
+    id: 'transport',
+    label: 'Transport',
+    items: [
+      {
+        id: 'transport',
+        label: 'Transport',
+        href: '/dashboard/transport',
+        icon: Bus,
+        featureFlag: 'transport_management',
+        rbacKey: 'canManageTransport',
+        transportAllowed: true,
+        beta: true,
       },
     ],
   },

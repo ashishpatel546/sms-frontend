@@ -3,6 +3,7 @@
 import {
   BarChart2,
   Bell,
+  Bus,
   CalendarCheck,
   Clock,
   GraduationCap,
@@ -56,7 +57,15 @@ export function useQuickActionTiles(): {
   const { features, status } = useSchoolFeatures();
 
   // GUARD is deny-by-default: a gate-focused set, no student/fee/homework work.
-  const tiles: QuickActionTile[] = rbac.isGuard
+  // Transport-only people get the same treatment: their vehicle and notices.
+  const tiles: QuickActionTile[] = rbac.isTransportOnly
+    ? [
+        ...(rbac.canManageTransport
+          ? [{ label: t('quickActions.tile.transport'), href: '/dashboard/transport', icon: Bus, pigment: 'info' as Pigment, featureFlag: 'transport_management' }]
+          : [{ label: t('quickActions.tile.myVehicle'), href: '/dashboard', icon: Bus, pigment: 'info' as Pigment, featureFlag: 'transport_management' }]),
+        { label: t('quickActions.tile.notifications'), href: '/dashboard/notifications', icon: Bell, pigment: 'attn' },
+      ]
+    : rbac.isGuard
     ? [
         { label: t('quickActions.tile.scanQr'), href: '/dashboard/pickup/scan', icon: QrCode, pigment: 'info', featureFlag: SCANNER_FLAGS },
         { label: t('quickActions.tile.visitors'), href: '/dashboard/visitors', icon: Users, pigment: 'info', featureFlag: 'visitor_management' },
@@ -82,6 +91,9 @@ export function useQuickActionTiles(): {
           : []),
         ...(rbac.isTeacher
           ? [{ label: t('quickActions.tile.visitors'), href: '/dashboard/visitors', icon: Users, pigment: 'info' as Pigment, featureFlag: 'visitor_management' }]
+          : []),
+        ...(rbac.canManageTransport
+          ? [{ label: t('quickActions.tile.transport'), href: '/dashboard/transport', icon: Bus, pigment: 'info' as Pigment, featureFlag: 'transport_management' }]
           : []),
         ...(rbac.isAdmin
           ? [{ label: t('quickActions.tile.reports'), href: '/dashboard/reports', icon: BarChart2, pigment: 'info' as Pigment, featureFlag: 'reports_analytics' }]

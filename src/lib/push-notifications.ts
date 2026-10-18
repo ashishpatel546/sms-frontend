@@ -96,6 +96,14 @@ export async function subscribeToPushNotifications(): Promise<PushSubscribeResul
  * browser doesn't support push.
  */
 export async function unsubscribeFromPushNotifications(): Promise<string | null> {
+  // In the crew app the subscription is the app's Firebase token. The token
+  // stays with the install; removing the server row is what stops pushes.
+  const crewApp = (window as unknown as { ColegiosCrew?: { pushToken(): string } }).ColegiosCrew;
+  if (crewApp) {
+    const token = crewApp.pushToken();
+    return token ? `fcm:${token}` : null;
+  }
+
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
     return null;
   }

@@ -16,6 +16,7 @@ import { QuickActionPicker } from "@/components/dashboard/QuickActionPicker";
 import PullToRefresh from "@/components/ui/PullToRefresh";
 import { AssistantProvider } from "@/components/assistant/AssistantProvider";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
+import { CrewAppPush } from "@/components/transport/live/CrewAppPush";
 
 /**
  * The "+" bottom-tab sheet: choose which quick actions sit on the dashboard.
@@ -175,6 +176,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
                 {t("layout.skipToContent")}
             </a>
+
+            {/* Crew Android app only: its notifications (renders nothing). */}
+            <CrewAppPush />
 
             <TopBar
                 user={user}

@@ -7,18 +7,22 @@ import { useTranslations } from "next-intl";
 import { API_BASE_URL, fetcher } from "@/lib/api";
 import { useRbac } from "@/lib/rbac";
 import GreetingCard from "./GreetingCardDynamic";
+import TransportHome from "@/components/transport/TransportHome";
 import { GraduationCap, Users, QrCode, Clock, LogIn, LogOut } from "lucide-react";
 
 /**
  * Role gate for the dashboard home. GUARD sees ONLY aggregate counts
  * (students/staff/present/visitors) — no names, fees, or activity feed.
- * Every other role gets the regular dashboard passed as children.
+ * Driver, bus assistant and transport in-charge (when that is all they are)
+ * see their vehicle and routes instead. Every other role gets the regular
+ * dashboard passed as children.
  */
 export function GuardSwitch({ children }: { children: React.ReactNode }) {
     const rbac = useRbac();
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
     if (!mounted) return null; // role comes from localStorage — avoid hydration flash
+    if (rbac.isTransportOnly) return <TransportHome />;
     return rbac.isGuard ? <GuardDashboard /> : <>{children}</>;
 }
 

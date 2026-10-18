@@ -88,7 +88,8 @@
     "waivedTrendTitle": "মকুবের প্রবণতা",
     "waivedTrendHint": "মকুব করা ফি-র তুলনা।",
     "waivedTrendSeries": "মকুবের প্রবণতা",
-    "pendingTrendSeries": "বকেয়ার প্রবণতা"
+    "pendingTrendSeries": "বকেয়ার প্রবণতা",
+    "typeTransportExemption": "পরিবহন ছাড়"
   },
   "pending": {
     "title": "বকেয়া ফি রিপোর্ট",

@@ -2,6 +2,7 @@
   "group": {
     "academics": "Academics",
     "gate": "Gate",
+    "transport": "Transport",
     "reports": "Reports",
     "library": "Library",
     "activities": "Activities",
@@ -30,6 +31,7 @@
     "pickup-scan": "Scan QR",
     "visitors": "Visitors",
     "pickup-history": "Pickup History",
+    "transport": "Transport",
     "reports": "Reports",
     "library": "Library",
     "activities": "Activities",
@@ -61,6 +63,7 @@
     "ai-subscription": "My AI Plan"
   },
   "chrome": {
+    "beta": "Beta",
     "home": "Home",
     "breadcrumb": "Breadcrumb",
     "expandNav": "Expand navigation",
@@ -94,6 +97,9 @@
     "LIBRARIAN": "Librarian",
     "TEACHER": "Teacher",
     "GUARD": "Guard",
+    "TRANSPORT_INCHARGE": "Transport In-charge",
+    "BUS_ASSISTANT": "Bus Assistant",
+    "DRIVER": "Driver",
     "PARENT": "Parent",
     "STUDENT": "Student",
     "SYSTEM_ADMIN": "System Admin"

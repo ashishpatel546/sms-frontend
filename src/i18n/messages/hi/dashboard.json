@@ -76,7 +76,9 @@
       "addStudent": "विद्यार्थी जोड़ें",
       "collectFee": "फ़ीस जमा करें",
       "addStaff": "स्टाफ़ जोड़ें",
-      "reports": "रिपोर्ट"
+      "reports": "रिपोर्ट",
+      "transport": "परिवहन",
+      "myVehicle": "मेरा वाहन"
     }
   },
   "activity": {

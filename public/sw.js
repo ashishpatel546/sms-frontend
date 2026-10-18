@@ -87,6 +87,9 @@ self.addEventListener('fetch', (event) => {
     return; // no respondWith → browser handles the request natively
   }
 
+  // The crew app's APK and version file: always fresh, never cached here.
+  if (url.pathname.startsWith('/downloads/')) return;
+
   // Cache-first for app icons and static images (rarely change)
   if (
     url.pathname.startsWith('/icons/') ||

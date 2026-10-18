@@ -469,6 +469,7 @@
     "noDiscounts": "কোনো চালু বৃত্তি বা ছাড় দেওয়া হয়নি।",
     "scholarship": "{value}% বৃত্তি",
     "monthlyRelief": "মাসিক ছাড়",
-    "savingsPerMonth": "সাশ্রয় / মাস"
+    "savingsPerMonth": "সাশ্রয় / মাস",
+    "managedInTransport": "পরিবহন থেকে পরিচালিত"
   }
 }

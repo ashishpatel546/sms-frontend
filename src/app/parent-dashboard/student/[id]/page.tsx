@@ -19,6 +19,7 @@ import ApplyLeaveModal from "@/components/ApplyLeaveModal";
 import LeaveTimeline from "@/components/LeaveTimeline";
 import { AppMonthPicker } from "@/components/ui/AppDatePicker";
 import { HomeSection } from "./components/HomeSection";
+import { TransportSection } from "./components/TransportSection";
 import { SectionRail } from "./components/SectionRail";
 import type { SectionKey } from "./sectionStyle";
 import { StudentBanner } from "./components/StudentBanner";
@@ -62,12 +63,12 @@ const LEAVE_TYPE_KEYS = ["SICK_LEAVE", "CASUAL_LEAVE", "OTHER_LEAVE"] as const;
 const WEEKDAY_KEYS = ["su", "mo", "tu", "we", "th", "fr", "sa"] as const;
 const fmtDate = (d: string) => { const [y, m, day] = d.split("-"); return `${day}/${m}/${y}`; };
 
-type ActiveSection = "home" | "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework" | "pickup" | "id-card" | "leaves" | "library" | "ai-tutor" | "activities";
+type ActiveSection = "home" | "fees" | "attendance" | "results" | "holidays" | "info" | "exam-schedule" | "homework" | "pickup" | "transport" | "id-card" | "leaves" | "library" | "ai-tutor" | "activities";
 
 /** Allowlist for the `?section=` deep link — an unknown value falls back to "home" rather than rendering a blank panel. */
 const DEEP_LINK_SECTIONS: readonly ActiveSection[] = [
     "home", "fees", "attendance", "results", "holidays", "info", "exam-schedule",
-    "homework", "pickup", "id-card", "leaves", "library", "ai-tutor", "activities",
+    "homework", "pickup", "transport", "id-card", "leaves", "library", "ai-tutor", "activities",
 ];
 
 /**
@@ -1608,6 +1609,18 @@ export default function StudentDashboardPage() {
             {activeSection === "activities" && (
                 <div id="tabpanel-activities" role="tabpanel" aria-labelledby="tab-activities" className="animate-scale-in">
                     <ActivitiesSection studentId={String(studentId)} initialActivityId={deepLink.activityId} />
+                </div>
+            )}
+
+            {/* ════════════════════════════════
+                TRANSPORT TAB
+
+                Self-fetching like Activities; gated on the school's
+                `transport_management` flag via the API's own 403.
+            ════════════════════════════════ */}
+            {activeSection === "transport" && (
+                <div id="tabpanel-transport" role="tabpanel" aria-labelledby="tab-transport" className="animate-scale-in">
+                    <TransportSection key={String(studentId)} studentId={String(studentId)} />
                 </div>
             )}
 
