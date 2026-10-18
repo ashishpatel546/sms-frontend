@@ -27,7 +27,9 @@ import {
 import { PageBody, PageHeader, PageShell } from '@/components/ui/PageHeader';
 import { Panel, PanelBody, PanelHeader } from '@/components/ui/Panel';
 import { Button, IconButton } from '@/components/ui/button';
-import { Checkbox, Field, FieldGrid, Input, Select } from '@/components/ui/Field';
+import { Checkbox, Field, FieldGrid, Input } from '@/components/ui/Field';
+import { SearchSelect } from '@/components/ui/SearchSelect';
+import { AppTimePicker } from '@/components/ui/AppDatePicker';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Money } from '@/components/ui/Money';
@@ -345,16 +347,20 @@ function RouteVehicleDialog({
           </DialogHeader>
           <div className="mt-3 space-y-4">
             <Field label={t('vehicle')} required>
-              <Select value={vehicleId} onChange={(e) => setVehicleId(e.target.value ? Number(e.target.value) : '')} required>
-                <option value="">{tc('state.selectPlaceholder')}</option>
-                {(vehicles ?? [])
+              <SearchSelect
+                value={vehicleId}
+                onChange={setVehicleId}
+                placeholder={t('vehiclePlaceholder')}
+                required
+                options={(vehicles ?? [])
                   .filter((v) => v.isActive && v.id !== currentId)
-                  .map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {vehicleName(v)} · {tt(`vehicleType.${v.type}`)} · {v.capacity}
-                    </option>
-                  ))}
-              </Select>
+                  .map((v) => ({
+                    value: v.id,
+                    label: vehicleName(v),
+                    detail: `${tt(`vehicleType.${v.type}`)} · ${tt('routeDetail.seats', { count: v.capacity })}`,
+                    keywords: [v.registrationNumber, v.fleetNumber, v.makeModel].filter(Boolean).join(' '),
+                  }))}
+              />
             </Field>
             <Field label={t('effectiveFrom')} required>
               <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} required />
@@ -400,11 +406,26 @@ function StopFormDialog({
   const [pin, setPin] = React.useState<LatLng | null>(
     stop?.latitude != null && stop?.longitude != null ? { lat: Number(stop.latitude), lng: Number(stop.longitude) } : null,
   );
+  // Typed or pasted "lat, lng" (as Google Maps copies it); follows the pin.
+  const [coords, setCoords] = React.useState(pin ? `${pin.lat}, ${pin.lng}` : '');
+  const coordsBad = coords.trim() !== '' && parseLatLng(coords) === null;
   const [isActive, setIsActive] = React.useState(stop?.isActive ?? true);
   const [saving, setSaving] = React.useState(false);
 
+  const placePin = (v: LatLng) => {
+    setPin(v);
+    setCoords(`${v.lat}, ${v.lng}`);
+  };
+  const typeCoords = (text: string) => {
+    setCoords(text);
+    if (!text.trim()) setPin(null);
+    const v = parseLatLng(text);
+    if (v) setPin(v);
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (coordsBad) return;
     setSaving(true);
     const body = {
       name: name.trim(),
@@ -444,10 +465,10 @@ function StopFormDialog({
                 <Input value={landmark} onChange={(e) => setLandmark(e.target.value)} maxLength={160} />
               </Field>
               <Field label={t('pickupTime')}>
-                <Input type="time" value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} />
+                <AppTimePicker value={pickupTime} onChange={setPickupTime} />
               </Field>
               <Field label={t('dropTime')}>
-                <Input type="time" value={dropTime} onChange={(e) => setDropTime(e.target.value)} />
+                <AppTimePicker value={dropTime} onChange={setDropTime} />
               </Field>
               <Field label={t('fee')} hint={t('feeHint')}>
                 <Input type="number" inputMode="decimal" min={0} step="0.01" value={fee} onChange={(e) => setFee(e.target.value)} className="tabular" />
@@ -456,19 +477,33 @@ function StopFormDialog({
             <Field label={t('location')} hint={t('locationHint')}>
               <StopMapPicker
                 value={pin}
-                onChange={setPin}
+                onChange={placePin}
                 others={others.map((o) => ({ lat: Number(o.latitude), lng: Number(o.longitude), name: o.name }))}
               />
-              {pin && (
-                <div className="mt-1.5 flex items-center justify-between gap-2">
-                  <span className="tabular text-[12px] text-ink-muted">
-                    {pin.lat}, {pin.lng}
-                  </span>
-                  <Button type="button" size="xs" variant="ghost" onClick={() => setPin(null)}>
+              <div className="mt-2 flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <Input
+                    value={coords}
+                    onChange={(e) => typeCoords(e.target.value)}
+                    placeholder={t('coordsPlaceholder')}
+                    aria-label={t('coords')}
+                    aria-invalid={coordsBad || undefined}
+                    inputMode="decimal"
+                    className="tabular"
+                  />
+                  <p className={coordsBad ? 'mt-1 text-[12px] text-accent-danger-deep' : 'mt-1 text-[12px] text-ink-muted'}>
+                    {coordsBad ? t('coordsInvalid') : t('coordsHint')}
+                  </p>
+                </div>
+                {pin && (
+                  <Button type="button" variant="ghost" onClick={() => {
+                    setPin(null);
+                    setCoords('');
+                  }}>
                     {t('clearPin')}
                   </Button>
-                </div>
-              )}
+                )}
+              </div>
             </Field>
             {stop && <Checkbox label={t('active')} checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />}
           </div>
@@ -476,7 +511,7 @@ function StopFormDialog({
             <Button type="button" variant="ghost" onClick={onClose}>
               {tc('action.cancel')}
             </Button>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving || coordsBad}>
               {saving ? tc('action.saving') : t('save')}
             </Button>
           </DialogFooter>
@@ -484,4 +519,14 @@ function StopFormDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+/** "28.61234, 77.20123" (also space- or tab-separated) → a point, or null. */
+function parseLatLng(text: string): LatLng | null {
+  const m = text.trim().match(/^(-?\d{1,2}(?:\.\d+)?)\s*[,\s]\s*(-?\d{1,3}(?:\.\d+)?)$/);
+  if (!m) return null;
+  const lat = Number(m[1]);
+  const lng = Number(m[2]);
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { lat: Number(lat.toFixed(6)), lng: Number(lng.toFixed(6)) };
 }

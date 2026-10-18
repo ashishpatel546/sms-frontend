@@ -233,7 +233,9 @@
     "reason": "Reason for the change",
     "vehicleSaved": "Vehicle assigned",
     "vehicleFailed": "Couldn’t assign the vehicle.",
-    "changedBy": "by {name}"
+    "changedBy": "by {name}",
+    "vehiclePlaceholder": "Type a number or name to search",
+    "seats": "{count} seats"
   },
   "stopForm": {
     "addTitle": "Add stop",
@@ -245,12 +247,24 @@
     "fee": "Default monthly fee",
     "feeHint": "Prefilled when a student is assigned to this stop.",
     "location": "Location on map",
-    "locationHint": "Tap the map to drop a pin on the stop. Used for live tracking later.",
+    "locationHint": "Search for the area, use your location, or tap the map to drop the pin (tap again to move it). Used for live tracking.",
     "clearPin": "Clear pin",
     "active": "Stop is in use",
     "save": "Save stop",
     "saved": "Stop saved",
-    "failed": "Couldn’t save the stop."
+    "failed": "Couldn’t save the stop.",
+    "searchPlaceholder": "Search area, street or landmark",
+    "search": "Search",
+    "searching": "Searching…",
+    "searchFailed": "Couldn’t search right now. Tap the map or type the coordinates instead.",
+    "noPlaces": "No places found. Try a nearby landmark or locality.",
+    "useMyLocation": "My location",
+    "locating": "Locating…",
+    "locateFailed": "Couldn’t get this device’s location. Allow location access, or tap the map.",
+    "coords": "Latitude, longitude",
+    "coordsPlaceholder": "Latitude, longitude (e.g. 28.61234, 77.20123)",
+    "coordsHint": "Or type or paste the coordinates, as Google Maps copies them.",
+    "coordsInvalid": "Enter latitude and longitude separated by a comma, e.g. 28.61234, 77.20123."
   },
   "vehicles": {
     "title": "Vehicles",
@@ -301,7 +315,7 @@
     "assignTitle": "Assign {role}",
     "replaceTitle": "Replace {role}",
     "person": "Person",
-    "selectPerson": "Choose a staff member",
+    "selectPerson": "Type a name or mobile to search",
     "effectiveFrom": "From",
     "reason": "Reason",
     "replaceHint": "{name}’s record is kept and closed on the day before. Past trips still show {name}.",
@@ -316,7 +330,7 @@
     "historyEmpty": "Nobody has been assigned yet.",
     "since": "Since {date}",
     "period": "{from} to {to}",
-    "noStaffHint": "Add drivers and assistants under Staff with the Driver or Bus Assistant role."
+    "noStaffHint": "Nobody holds this role yet. Give staff the Driver or Bus Assistant role under Staff, then they appear here."
   },
   "settings": {
     "title": "Transport settings",

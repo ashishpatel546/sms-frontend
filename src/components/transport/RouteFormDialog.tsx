@@ -8,6 +8,7 @@ import { createRoute, errorMessage, hhmm, updateRoute, type Route } from '@/lib/
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox, Field, FieldGrid, Input, Textarea } from '@/components/ui/Field';
+import { AppTimePicker } from '@/components/ui/AppDatePicker';
 
 export function RouteFormDialog({
   route,
@@ -66,10 +67,10 @@ export function RouteFormDialog({
                 <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('namePlaceholder')} maxLength={100} required />
               </Field>
               <Field label={t('morningStart')}>
-                <Input type="time" value={morningStart} onChange={(e) => setMorningStart(e.target.value)} />
+                <AppTimePicker value={morningStart} onChange={setMorningStart} />
               </Field>
               <Field label={t('eveningStart')}>
-                <Input type="time" value={eveningStart} onChange={(e) => setEveningStart(e.target.value)} />
+                <AppTimePicker value={eveningStart} onChange={setEveningStart} />
               </Field>
             </FieldGrid>
             <Field label={t('notes')}>
