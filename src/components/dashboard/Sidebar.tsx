@@ -263,6 +263,11 @@ export function Sidebar({ collapsed, isMobileOpen, onMobileClose }: SidebarProps
                                                         <span className={['truncate', locked && 'opacity-50'].filter(Boolean).join(' ')}>
                                                             {t(`item.${item.id}`)}
                                                         </span>
+                                                        {item.beta && !locked && (
+                                                            <span className="ml-auto shrink-0 rounded-sm bg-accent/20 px-1.5 py-px font-mono text-[9.5px] font-semibold tracking-[0.08em] text-rail-ink uppercase">
+                                                                {t('chrome.beta')}
+                                                            </span>
+                                                        )}
                                                         {locked && (
                                                             <Lock aria-label={t("chrome.notInPlan")} className="ml-auto size-3 shrink-0 opacity-50" />
                                                         )}

@@ -42,7 +42,13 @@ export default function TransportLayout({ children }: { children: React.ReactNod
     >
       {rbac.canManageTransport ? (
         <>
-          <div className="mx-auto w-full max-w-wide px-3 pt-4 sm:px-5 sm:pt-6">
+          <div className="mx-auto w-full max-w-wide space-y-3 px-3 pt-4 sm:px-5 sm:pt-6">
+            <p className="flex items-start gap-2 rounded-md border border-line bg-surface px-3 py-2 text-[12.5px] text-ink-muted">
+              <span className="shrink-0 rounded-sm bg-accent/20 px-1.5 py-px font-mono text-[10px] font-semibold tracking-[0.08em] text-ink uppercase">
+                {t('beta')}
+              </span>
+              <span>{t('betaNote')}</span>
+            </p>
             <PageTabs
               value={active}
               onValueChange={(v) => router.push(`/dashboard/transport${v ? `/${v}` : ''}`)}

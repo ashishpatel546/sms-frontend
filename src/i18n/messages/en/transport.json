@@ -5,6 +5,8 @@
   },
   "section": "Transport",
   "noAccess": "Only admins and the transport in-charge can open Transport.",
+  "beta": "Beta",
+  "betaNote": "Transport is in beta. Everything works, and we are still improving it — tell us if something looks wrong.",
   "tabs": {
     "overview": "Overview",
     "students": "Students",

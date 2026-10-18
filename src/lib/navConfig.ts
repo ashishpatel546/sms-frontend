@@ -78,6 +78,8 @@ export interface NavItem {
    * slow request shows the full menu rather than flashing a truncated one.
    */
   featureFlag?: string | string[];
+  /** Shows a "Beta" pill next to the label while the module is in beta. */
+  beta?: boolean;
 }
 
 /**
@@ -277,6 +279,7 @@ export const NAV_CONFIG: NavGroup[] = [
         featureFlag: 'transport_management',
         rbacKey: 'canManageTransport',
         transportAllowed: true,
+        beta: true,
       },
     ],
   },
