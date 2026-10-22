@@ -15,6 +15,7 @@ import {
   fetchCrewHistory,
   fetchSettings,
   fetchVehicles,
+  fetchVehicleTracker,
   todayIst,
   updateVehicle,
   VEHICLE_TYPES,
@@ -176,6 +177,7 @@ export default function TransportVehiclesPage() {
         <VehicleFormDialog
           vehicle={editing === 'new' ? null : editing}
           reminderDays={reminderWindow}
+          liveOn={liveOn}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
@@ -198,11 +200,13 @@ export default function TransportVehiclesPage() {
 function VehicleFormDialog({
   vehicle,
   reminderDays,
+  liveOn,
   onClose,
   onSaved,
 }: {
   vehicle: Vehicle | null;
   reminderDays: number;
+  liveOn: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -219,10 +223,12 @@ function VehicleFormDialog({
     insuranceExpiry: vehicle?.insuranceExpiry ?? '',
     pucExpiry: vehicle?.pucExpiry ?? '',
     permitExpiry: vehicle?.permitExpiry ?? '',
-    gpsDeviceId: vehicle?.gpsDeviceId ?? '',
     notes: vehicle?.notes ?? '',
     isActive: vehicle?.isActive ?? true,
   });
+  // The GPS device ID is the tracker key the server issues (also shown in
+  // the Tracking app dialog, where it is reset); read-only here.
+  const { data: tracker } = useSWR(liveOn && vehicle ? ['vehicle-tracker', vehicle.id] : null, () => fetchVehicleTracker(vehicle!.id));
   const [saving, setSaving] = React.useState(false);
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -239,7 +245,6 @@ function VehicleFormDialog({
       insuranceExpiry: form.insuranceExpiry || null,
       pucExpiry: form.pucExpiry || null,
       permitExpiry: form.permitExpiry || null,
-      gpsDeviceId: form.gpsDeviceId.trim() || null,
       notes: form.notes.trim() || null,
       ...(vehicle ? { isActive: form.isActive } : {}),
     };
@@ -304,8 +309,8 @@ function VehicleFormDialog({
             </Fieldset>
 
             <FieldGrid>
-              <Field label={t('gpsDeviceId')} hint={t('gpsDeviceIdHint')}>
-                <Input value={form.gpsDeviceId} onChange={(e) => set('gpsDeviceId', e.target.value)} maxLength={64} />
+              <Field label={t('gpsDeviceId')} hint={!liveOn ? t('gpsDeviceIdOff') : vehicle ? t('gpsDeviceIdHint') : t('gpsDeviceIdNew')} wide>
+                <Input value={tracker?.key ?? ''} disabled readOnly className="tabular" />
               </Field>
             </FieldGrid>
             <Field label={t('notes')}>
