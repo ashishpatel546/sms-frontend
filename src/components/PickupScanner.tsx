@@ -9,6 +9,7 @@ import { INTL_LOCALE } from "@/i18n/config";
 import { GraduationCap, ClipboardCheck, Hash } from "lucide-react";
 import VisitorScanPanel from "./VisitorScanPanel";
 import IdCardScanPanel from "./IdCardScanPanel";
+import EventPassScanPanel from "./EventPassScanPanel";
 import InventoryScanPanel from "./InventoryScanPanel";
 import { useRbac } from "@/lib/rbac";
 import { useFeatureFlag } from "@/lib/useSchoolFeatures";
@@ -17,9 +18,10 @@ import { lookupItem, type InventoryItem } from "@/lib/inventory-api";
 // idle → requesting (camera perm) → scanning → verifying → confirming (step 1 & 2) → success | error
 // "visitor":   a V1:-prefixed visitor QR was decoded — VisitorScanPanel takes over
 // "idcard":    an IDC1:-prefixed printed ID card — IdCardScanPanel takes over
+// "eventpass": an EVP1:-prefixed event pass — EventPassScanPanel takes over
 // "inventory": an INV1:-prefixed stock label, or any code that turned out to
 //              be stock rather than a pass — InventoryScanPanel takes over
-type ScanState = "idle" | "requesting" | "scanning" | "verifying" | "confirming" | "success" | "error" | "visitor" | "idcard" | "inventory";
+type ScanState = "idle" | "requesting" | "scanning" | "verifying" | "confirming" | "success" | "error" | "visitor" | "idcard" | "eventpass" | "inventory";
 
 interface VerifyResult {
   id: string;
@@ -54,6 +56,7 @@ export default function PickupScanner() {
   const [scannedToken, setScannedToken] = useState<string | null>(null);
   const [visitorToken, setVisitorToken] = useState<string | null>(null);
   const [idCardToken, setIdCardToken] = useState<string | null>(null);
+  const [eventPassToken, setEventPassToken] = useState<string | null>(null);
   const [inventoryCode, setInventoryCode] = useState<string | null>(null);
   // Set only on the fallback path, where the lookup already happened — saves
   // the panel repeating a request whose answer we are holding.
@@ -148,6 +151,7 @@ export default function PickupScanner() {
           // the fallthrough rather than a case.
           //   V1:    visitor pass          → VisitorScanPanel
           //   IDC1:  printed ID card       → IdCardScanPanel
+          //   EVP1:  event pass            → EventPassScanPanel
           //   INV1:  inventory stock label → InventoryScanPanel
           if (decodedText.startsWith("V1:")) {
             setVisitorToken(decodedText.slice(3));
@@ -159,6 +163,12 @@ export default function PickupScanner() {
             // string, prefix included.
             setIdCardToken(decodedText);
             setScanState("idcard");
+            return;
+          }
+          if (decodedText.startsWith("EVP1:")) {
+            // Whole string — /event-passes/verify parses the prefix.
+            setEventPassToken(decodedText);
+            setScanState("eventpass");
             return;
           }
           if (decodedText.startsWith("INV1:")) {
@@ -276,6 +286,7 @@ export default function PickupScanner() {
     setScannedToken(null);
     setVisitorToken(null);
     setIdCardToken(null);
+    setEventPassToken(null);
     setInventoryCode(null);
     setInventoryItem(null);
     setVerifyResult(null);
@@ -293,6 +304,7 @@ export default function PickupScanner() {
     setScannedToken(null);
     setVisitorToken(null);
     setIdCardToken(null);
+    setEventPassToken(null);
     setInventoryCode(null);
     setInventoryItem(null);
     setVerifyResult(null);
@@ -322,6 +334,16 @@ export default function PickupScanner() {
     return (
       <IdCardScanPanel
         token={idCardToken}
+        onDone={restartScanner}
+        onCancel={handleReset}
+      />
+    );
+  }
+
+  if (scanState === "eventpass" && eventPassToken) {
+    return (
+      <EventPassScanPanel
+        token={eventPassToken}
         onDone={restartScanner}
         onCancel={handleReset}
       />

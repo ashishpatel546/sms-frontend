@@ -765,24 +765,43 @@ function backSlots(cards: PreparedIdCard[]): (PreparedIdCard | null)[] {
   return slots;
 }
 
-function chunk<T>(items: T[], size: number): T[][] {
+export function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
   return out;
 }
 
-function Sheet({
+/** Each child is one card. With a `gutter` the cards stand apart, each with
+ *  its own border, so there are no shared cuts and no cut guides; without one
+ *  they are butted for the guillotine (ID cards, where duplex must line up). */
+export function Sheet({
   children,
   caption,
+  gutter = 0,
 }: {
   children: React.ReactNode;
   caption: string;
+  gutter?: number;
 }) {
+  if (!gutter) {
+    return (
+      <Page size="A4" style={styles.sheet}>
+        <CutGuides />
+        <View style={styles.grid}>{children}</View>
+        <Text style={styles.sheetCaption}>{caption}</Text>
+      </Page>
+    );
+  }
+  const left = (A4_W - BLOCK_W - gutter * (COLS - 1)) / 2;
+  const top = (A4_H - BLOCK_H - gutter * (ROWS - 1)) / 2;
   return (
     <Page size="A4" style={styles.sheet}>
-      <CutGuides />
-      <View style={styles.grid}>{children}</View>
-      <Text style={styles.sheetCaption}>{caption}</Text>
+      <View style={[styles.grid, { top, left, width: (CARD_W + gutter) * COLS }]}>
+        {React.Children.map(children, (child) => (
+          <View style={{ marginRight: gutter, marginBottom: gutter }}>{child}</View>
+        ))}
+      </View>
+      <Text style={[styles.sheetCaption, { left, right: left, bottom: Math.min(14, top / 2) }]}>{caption}</Text>
     </Page>
   );
 }
@@ -1023,7 +1042,7 @@ async function toDataUrl(url: string): Promise<string | null> {
  * upload embedded at 20 pt is pure weight — one school's 1500 px logo was
  * 2 MB, more than every card on the sheet combined.
  */
-async function safeLogoDataUrl(): Promise<string | null> {
+export async function safeLogoDataUrl(): Promise<string | null> {
   return toPdfSafeLogo(await getSchoolLogoDataUrl());
 }
 
@@ -1100,7 +1119,7 @@ export async function prepareIdCards(
  *    tab strip to reveal that something opened). Opening the blob at least
  *    puts the PDF on screen, where the OS share sheet can save it.
  */
-function saveBlob(blob: Blob, fileName: string) {
+export function saveBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   // Checked on the prototype, not the instance: `'download' in a` narrows the
@@ -1125,7 +1144,7 @@ function saveBlob(blob: Blob, fileName: string) {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-function slugify(value: string): string {
+export function slugify(value: string): string {
   return (
     value
       .toLowerCase()

@@ -135,7 +135,9 @@
       "pickupHint": "{name} को लेने के लिए किसी को अनुमति दें",
       "pickupHintGeneric": "अपने बच्चे को लेने के लिए किसी को अनुमति दें",
       "visitHint": "स्कूल आने के लिए गेट-प्रवेश QR बनाएँ",
-      "typeLabel": "QR का प्रकार"
+      "typeLabel": "QR का प्रकार",
+      "event": "इवेंट पास",
+      "eventHint": "इवेंट के गेट पर यह पास दिखाएँ"
     },
     "leaves": {
       "status": {

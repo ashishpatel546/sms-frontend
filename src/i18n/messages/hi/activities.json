@@ -28,7 +28,8 @@
     "empty": "अभी कोई गतिविधि नहीं है",
     "colActivity": "गतिविधि",
     "colParticipants": "प्रतिभागी",
-    "colPhotos": "फ़ोटो"
+    "colPhotos": "फ़ोटो",
+    "passSettings": "पास सेटिंग"
   },
   "create": {
     "required": "शीर्षक, विवरण और आरंभ तिथि ज़रूरी हैं",
@@ -64,7 +65,8 @@
         "done": "संग्रह से निकाल दी गई",
         "failed": "संग्रह से नहीं निकाली जा सकी"
       }
-    }
+    },
+    "eventPasses": "इवेंट पास"
   },
   "details": {
     "title": "विवरण",

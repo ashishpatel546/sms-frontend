@@ -135,7 +135,9 @@
       "pickupHint": "Authorise someone to collect {name}",
       "pickupHintGeneric": "Authorise someone to collect your child",
       "visitHint": "Generate a gate-entry QR for your school visit",
-      "typeLabel": "QR type"
+      "typeLabel": "QR type",
+      "event": "Event passes",
+      "eventHint": "Show this pass at the event gate"
     },
     "leaves": {
       "status": {

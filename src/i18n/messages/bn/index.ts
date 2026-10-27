@@ -9,6 +9,7 @@ import circulars from './circulars.json';
 import classes from './classes.json';
 import common from './common.json';
 import dashboard from './dashboard.json';
+import eventPasses from './eventPasses.json';
 import exams from './exams.json';
 import fees from './fees.json';
 import homework from './homework.json';
@@ -48,6 +49,7 @@ const messages = {
   classes,
   common,
   dashboard,
+  eventPasses,
   exams,
   fees,
   homework,
