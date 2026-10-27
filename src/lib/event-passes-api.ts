@@ -61,10 +61,15 @@ export interface EventPass extends EventPassValidityFields {
   status: EventPassStatus;
   version: number;
   inside: boolean;
-  checkedInAt: string | null;
-  checkedInOn: string | null;
-  checkedInPeople: number | null;
-  checkedInByName: string | null;
+  /** People inside now (today), and which named ones. */
+  insideCount: number;
+  insideNames: string[];
+  /** Seats free right now: membersAllowed − insideCount. */
+  remaining: number;
+  /** Still inside from an earlier day — only the office can check them out. */
+  staleInside: boolean;
+  lastEntryAt: string | null;
+  lastEntryByName: string | null;
   printedAt: string | null;
   issuedByName: string | null;
   cancelledAt: string | null;
@@ -118,6 +123,8 @@ export interface EventPassMovement {
   /** DENIED = a guard refused entry (people 0, reason in `note`). */
   direction: 'IN' | 'OUT' | 'DENIED';
   people: number;
+  /** Named people who moved, when the pass has names. */
+  names: string[];
   eventDate: string;
   byName: string;
   note: string | null;
@@ -289,12 +296,19 @@ export function verifyEventPass(token: string): Promise<EventPassVerifyResult> {
   return send('POST', '/event-passes/verify', { token });
 }
 
-export function checkInEventPass(token: string, people: number): Promise<EventPassVerifyResult> {
-  return send('POST', '/event-passes/check-in', { token, people });
+/** Who is moving: named people from the pass, and a count of others. */
+export interface EventPassGateMove {
+  names: string[];
+  others: number;
 }
 
-export function checkOutEventPass(token: string): Promise<EventPassVerifyResult> {
-  return send('POST', '/event-passes/check-out', { token });
+export function checkInEventPass(token: string, move: EventPassGateMove): Promise<EventPassVerifyResult> {
+  return send('POST', '/event-passes/check-in', { token, ...move });
+}
+
+/** No `move` checks out everyone inside. */
+export function checkOutEventPass(token: string, move?: EventPassGateMove): Promise<EventPassVerifyResult> {
+  return send('POST', '/event-passes/check-out', { token, ...move });
 }
 
 export function denyEventPass(token: string, reason?: string): Promise<EventPassVerifyResult> {

@@ -118,7 +118,7 @@ export function EventPassViewDialog({
                   ) : (
                     <StatusChip status="ACTIVE" pigment="success" label={t('status.ACTIVE')} />
                   )}
-                  {shown.inside && <StatusChip status="INSIDE" pigment="info" label={t('list.inside', { people: shown.checkedInPeople ?? 0 })} />}
+                  {shown.inside && <StatusChip status="INSIDE" pigment="info" label={t('list.insideOf', { inside: shown.insideCount, total: shown.membersAllowed })} />}
                   {shown.status === 'ACTIVE' && shown.validity && (
                     <StatusChip
                       status={shown.validity}
@@ -133,9 +133,14 @@ export function EventPassViewDialog({
                 {shown.issuedByName ? t('view.byOn', { name: shown.issuedByName, when: when(shown.createdAt) }) : when(shown.createdAt)}
               </Fact>
               <Fact label={t('view.printed')}>{shown.printedAt ? when(shown.printedAt) : t('list.notPrinted')}</Fact>
-              {shown.inside && (
-                <Fact label={t('view.insideSince')} wide>
-                  {t('view.byOn', { name: shown.checkedInByName ?? '—', when: when(shown.checkedInAt) })}
+              {shown.inside && shown.insideNames.length > 0 && (
+                <Fact label={t('view.insideNames')} wide>
+                  {shown.insideNames.join(', ')}
+                </Fact>
+              )}
+              {shown.lastEntryAt && (
+                <Fact label={t('view.lastEntry')} wide>
+                  {t('view.byOn', { name: shown.lastEntryByName ?? '—', when: when(shown.lastEntryAt) })}
                 </Fact>
               )}
               {shown.remarks && (

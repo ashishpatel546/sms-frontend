@@ -383,7 +383,7 @@ export default function EventPassesPage() {
                           {p.status === 'CANCELLED' ? (
                             <StatusChip status="CANCELLED" pigment="danger" label={t('status.CANCELLED')} />
                           ) : p.inside ? (
-                            <StatusChip status="INSIDE" pigment="success" label={t('list.inside', { people: p.checkedInPeople ?? 0 })} />
+                            <StatusChip status="INSIDE" pigment="success" label={t('list.insideOf', { inside: p.insideCount, total: p.membersAllowed })} />
                           ) : null}
 {p.status === 'ACTIVE' && p.validity && p.validity !== 'VALID_TODAY' && (
                             <StatusChip
@@ -448,7 +448,7 @@ export default function EventPassesPage() {
                               icon: <History />,
                               onSelect: () => setHistoryPass(p),
                             },
-                            !!p.checkedInAt && {
+                            (p.inside || p.staleInside) && {
                               label: t('action.checkOut.menu'),
                               icon: <LogOut />,
                               onSelect: () => openAction(p, 'checkOut'),

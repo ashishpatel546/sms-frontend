@@ -170,6 +170,7 @@ export function EventPassHistoryDialog({
                   <p className="text-ink-muted text-[12px]">
                     {t('history.by', { name: m.byName, when: when.format(new Date(m.createdAt)) })}
                   </p>
+                  {m.names.length > 0 && <p className="text-ink mt-0.5 text-[12.5px]">{m.names.join(', ')}</p>}
                   {m.note && <p className="text-ink-muted mt-0.5 text-[12px] italic">{m.note}</p>}
                 </div>
               </li>
