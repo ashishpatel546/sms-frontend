@@ -765,13 +765,13 @@ function backSlots(cards: PreparedIdCard[]): (PreparedIdCard | null)[] {
   return slots;
 }
 
-function chunk<T>(items: T[], size: number): T[][] {
+export function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
   return out;
 }
 
-function Sheet({
+export function Sheet({
   children,
   caption,
 }: {
@@ -1023,7 +1023,7 @@ async function toDataUrl(url: string): Promise<string | null> {
  * upload embedded at 20 pt is pure weight — one school's 1500 px logo was
  * 2 MB, more than every card on the sheet combined.
  */
-async function safeLogoDataUrl(): Promise<string | null> {
+export async function safeLogoDataUrl(): Promise<string | null> {
   return toPdfSafeLogo(await getSchoolLogoDataUrl());
 }
 
@@ -1100,7 +1100,7 @@ export async function prepareIdCards(
  *    tab strip to reveal that something opened). Opening the blob at least
  *    puts the PDF on screen, where the OS share sheet can save it.
  */
-function saveBlob(blob: Blob, fileName: string) {
+export function saveBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   // Checked on the prototype, not the instance: `'download' in a` narrows the
@@ -1125,7 +1125,7 @@ function saveBlob(blob: Blob, fileName: string) {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-function slugify(value: string): string {
+export function slugify(value: string): string {
   return (
     value
       .toLowerCase()

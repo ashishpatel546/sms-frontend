@@ -6,7 +6,7 @@ import useSWR from 'swr';
 import toast, { Toaster } from 'react-hot-toast';
 import {
   ArrowLeft, Star, Trash2, Plus, Download, Bell, Archive, ArchiveRestore,
-  ImagePlus, ChevronUp, ChevronDown, ImageOff, Star as StarFilled,
+  ImagePlus, ChevronUp, ChevronDown, ImageOff, Star as StarFilled, Ticket,
 } from 'lucide-react';
 
 import {
@@ -46,6 +46,7 @@ import { Button } from '@/components/ui/button';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRbac } from '@/lib/rbac';
+import { useFeatureFlag } from '@/lib/useSchoolFeatures';
 import { READ_ONLY_TITLE, useReadOnlySession } from '@/lib/support-session';
 import { useTranslations } from 'next-intl';
 
@@ -72,6 +73,7 @@ export default function ActivityDetailPage() {
   const tc = useTranslations('common');
   const { data: activity, isLoading, mutate } = useSWR(id ? `/activities/${id}` : null, () => fetchActivity(id));
 
+  const { enabled: passesEnabled } = useFeatureFlag('event_passes');
   const canManage = rbac.canManageActivities && !readOnly;
 
   if (isLoading || !activity) {
@@ -112,6 +114,11 @@ export default function ActivityDetailPage() {
             <Button variant="ghost" onClick={() => router.push('/dashboard/activities')}>
               <ArrowLeft /> {tc('action.back')}
             </Button>
+            {rbac.canManageActivities && passesEnabled && (
+              <Button variant="outline" onClick={() => router.push(`/dashboard/activities/${activity.id}/passes`)}>
+                <Ticket /> {t('detail.eventPasses')}
+              </Button>
+            )}
             {canManage && activity.status === 'DRAFT' && (
               <Button onClick={() => runAction('publish', () => publishActivity(activity.id))}>
                 {t('detail.publish')}

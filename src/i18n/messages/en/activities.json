@@ -64,7 +64,8 @@
         "done": "Unarchived",
         "failed": "Could not unarchive"
       }
-    }
+    },
+    "eventPasses": "Event passes"
   },
   "details": {
     "title": "Details",
