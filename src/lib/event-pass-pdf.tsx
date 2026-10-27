@@ -23,8 +23,9 @@ import {
 /* ═══════════════════════════════════════════════════════════════════════════
    THE EVENT PASS
 
-   Same blank as the ID card — CR80, ten to an A4 sheet on the same grid and
-   cut guides — so the office's cutter, holders and habits all carry over.
+   Same blank as the ID card — CR80, ten to an A4 sheet — but with a small gap
+   between passes, so each is cut on its own border. Same size means the
+   office's holders and habits carry over.
 
    One face only. A pass is handed over the counter and shown at a gate; there
    is no lanyard to flip, and a single-sided sheet prints on any printer.
@@ -41,6 +42,9 @@ const INK_MUTED = '#756d65';
 const LINE = '#e2ddd3';
 const LINE_STRONG = '#cdc5b7';
 const PAPER = '#ffffff';
+
+/** ~3 mm between passes, so each one is cut out on its own border. */
+const PASS_GUTTER = 8.5;
 
 const VEHICLE_LABEL: Record<EventPassVehicleType, string> = {
   TWO_WHEELER: '2W',
@@ -181,7 +185,8 @@ export function EventPassBatchDocument({
       {sheets.map((sheet, index) => (
         <Sheet
           key={index}
-          caption={`Sheet ${index + 1} of ${sheets.length} · ${event.title} · Print at 100% (no "fit to page"), single-sided. Cut along the hairlines.`}
+          gutter={PASS_GUTTER}
+          caption={`Sheet ${index + 1} of ${sheets.length} · ${event.title} · Print at 100% (no "fit to page"), single-sided. Cut around each pass.`}
         >
           {sheet.map((p) => (
             <View key={p.pass.id} style={{ width: CARD_W, height: CARD_H }}>

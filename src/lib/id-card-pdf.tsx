@@ -771,18 +771,37 @@ export function chunk<T>(items: T[], size: number): T[][] {
   return out;
 }
 
+/** Each child is one card. With a `gutter` the cards stand apart, each with
+ *  its own border, so there are no shared cuts and no cut guides; without one
+ *  they are butted for the guillotine (ID cards, where duplex must line up). */
 export function Sheet({
   children,
   caption,
+  gutter = 0,
 }: {
   children: React.ReactNode;
   caption: string;
+  gutter?: number;
 }) {
+  if (!gutter) {
+    return (
+      <Page size="A4" style={styles.sheet}>
+        <CutGuides />
+        <View style={styles.grid}>{children}</View>
+        <Text style={styles.sheetCaption}>{caption}</Text>
+      </Page>
+    );
+  }
+  const left = (A4_W - BLOCK_W - gutter * (COLS - 1)) / 2;
+  const top = (A4_H - BLOCK_H - gutter * (ROWS - 1)) / 2;
   return (
     <Page size="A4" style={styles.sheet}>
-      <CutGuides />
-      <View style={styles.grid}>{children}</View>
-      <Text style={styles.sheetCaption}>{caption}</Text>
+      <View style={[styles.grid, { top, left, width: (CARD_W + gutter) * COLS }]}>
+        {React.Children.map(children, (child) => (
+          <View style={{ marginRight: gutter, marginBottom: gutter }}>{child}</View>
+        ))}
+      </View>
+      <Text style={[styles.sheetCaption, { left, right: left, bottom: Math.min(14, top / 2) }]}>{caption}</Text>
     </Page>
   );
 }
