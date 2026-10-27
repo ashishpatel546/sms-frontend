@@ -16,7 +16,6 @@ import {
   passShortDate,
   passStudentsLine,
   verifyEventPass,
-  type EventPass,
   type EventPassGateMove,
   type EventPassVerifyResult,
 } from '@/lib/event-passes-api';
@@ -48,21 +47,29 @@ interface Props {
 
 type Mode = 'enter' | 'leave';
 
-/** Who can move in `mode`: the named people available, and how many others at most. */
-function candidates(pass: EventPass, mode: Mode) {
+/**
+ * Who can move in `mode`: the named people available, how many unnamed at
+ * most, and the total. Entering also follows the school's re-entry rule —
+ * under NONE a named person who already came in today is not offered, and
+ * outside ANY the unnamed places are counted once a day (`unnamedLeft`).
+ */
+function candidates({ pass, reEntry, unnamedLeft }: EventPassVerifyResult, mode: Mode) {
   if (mode === 'enter') {
-    const names = pass.memberNames.filter((n) => !pass.insideNames.includes(n));
-    return { names, maxTotal: pass.remaining };
+    const names = pass.memberNames.filter(
+      (n) => !pass.insideNames.includes(n) && !(reEntry === 'NONE' && pass.enteredNames.includes(n)),
+    );
+    const othersLeft = Math.min(pass.remaining, unnamedLeft ?? pass.remaining);
+    return { names, othersLeft, maxTotal: Math.min(pass.remaining, names.length + othersLeft) };
   }
-  return { names: pass.insideNames, maxTotal: pass.insideCount };
+  return { names: pass.insideNames, othersLeft: pass.insideCount - pass.insideNames.length, maxTotal: pass.insideCount };
 }
 
 /** A sensible starting selection: named people ticked, others filling the rest (entering: only if unnamed). */
-function defaultMove(pass: EventPass, mode: Mode): EventPassGateMove {
-  const { names, maxTotal } = candidates(pass, mode);
+function defaultMove(result: EventPassVerifyResult, mode: Mode): EventPassGateMove {
+  const { names, othersLeft, maxTotal } = candidates(result, mode);
   const picked = names.slice(0, maxTotal);
   if (mode === 'leave') return { names: picked, others: maxTotal - picked.length };
-  return { names: picked, others: pass.memberNames.length ? 0 : maxTotal };
+  return { names: picked, others: result.pass.memberNames.length ? 0 : Math.min(othersLeft, maxTotal) };
 }
 
 export default function EventPassScanPanel({ token, onDone, onCancel }: Props) {
@@ -82,9 +89,9 @@ export default function EventPassScanPanel({ token, onDone, onCancel }: Props) {
   const [reason, setReason] = useState('');
   const [autoDenied, setAutoDenied] = useState(false);
 
-  const choose = (pass: EventPass, next: Mode) => {
+  const choose = (from: EventPassVerifyResult, next: Mode) => {
     setMode(next);
-    setMove(defaultMove(pass, next));
+    setMove(defaultMove(from, next));
   };
 
   useEffect(() => {
@@ -93,8 +100,8 @@ export default function EventPassScanPanel({ token, onDone, onCancel }: Props) {
       .then(async (data) => {
         if (cancelled) return;
         setResult(data);
-        const canEnter = data.verdict === 'VALID' && data.pass.remaining > 0;
-        choose(data.pass, canEnter || !data.pass.inside ? 'enter' : 'leave');
+        const canEnter = data.verdict === 'VALID' && candidates(data, 'enter').maxTotal > 0;
+        choose(data, canEnter || !data.pass.inside ? 'enter' : 'leave');
         // Nothing to decide on a pass that cannot be let in: record the refusal
         // now. People already inside are not refused — they may still leave.
         if (data.verdict !== 'VALID' && !data.pass.inside) {
@@ -137,7 +144,7 @@ export default function EventPassScanPanel({ token, onDone, onCancel }: Props) {
       verifyEventPass(token)
         .then((fresh) => {
           setResult(fresh);
-          choose(fresh.pass, mode);
+          choose(fresh, mode);
         })
         .catch(() => undefined);
     } finally {
@@ -179,7 +186,10 @@ export default function EventPassScanPanel({ token, onDone, onCancel }: Props) {
     ? tp('list.allDays')
     : pass.validDates.map((d) => passShortDate(d, intlLocale)).join(', ');
 
-  const canEnter = verdict === 'VALID' && pass.remaining > 0;
+  const enterMax = candidates(result, 'enter').maxTotal;
+  const canEnter = verdict === 'VALID' && enterMax > 0;
+  // Seats are free but the re-entry rule says no one else may come in today.
+  const ruleBlocks = verdict === 'VALID' && pass.remaining > 0 && enterMax === 0;
   const canLeave = pass.inside;
   const moving = move.names.length + move.others;
 
@@ -190,7 +200,7 @@ export default function EventPassScanPanel({ token, onDone, onCancel }: Props) {
         tone: 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300',
         icon: <LogIn className="h-5 w-5 shrink-0 text-emerald-400" aria-hidden />,
         headline: t('checkedIn', { people: done.people }),
-        detail: pass.remaining > 0 ? t('canEnterLater', { count: pass.remaining }) : t('checkedInDetail'),
+        detail: enterMax > 0 ? t('canEnterLater', { count: enterMax }) : t('checkedInDetail'),
       };
     }
     if (done?.kind === 'out') {
@@ -204,13 +214,21 @@ export default function EventPassScanPanel({ token, onDone, onCancel }: Props) {
     if (done?.kind === 'denied' && !autoDenied) {
       return { tone: red, icon: <ShieldX className="h-5 w-5 shrink-0 text-red-400" aria-hidden />, headline: t('deniedHeadline'), detail: t('deniedDetail') };
     }
+    if (ruleBlocks) {
+      return {
+        tone: 'bg-amber-500/10 border-amber-500/25 text-amber-300',
+        icon: <ShieldX className="h-5 w-5 shrink-0 text-amber-400" aria-hidden />,
+        headline: t('reEntry.blockedHeadline'),
+        detail: t(result.reEntry === 'NONE' ? 'reEntry.blockedNone' : 'reEntry.blockedNamed'),
+      };
+    }
     if (verdict === 'VALID' && pass.inside) {
       return pass.remaining > 0
         ? {
             tone: 'bg-sky-500/10 border-sky-500/25 text-sky-300',
             icon: <DoorOpen className="h-5 w-5 shrink-0 text-sky-400" aria-hidden />,
             headline: t('partlyInside', { inside: pass.insideCount, total: pass.membersAllowed }),
-            detail: t('canEnterMore', { count: pass.remaining }),
+            detail: t('canEnterMore', { count: enterMax }),
           }
         : {
             tone: 'bg-amber-500/10 border-amber-500/25 text-amber-300',
@@ -241,6 +259,7 @@ export default function EventPassScanPanel({ token, onDone, onCancel }: Props) {
   const deciding = !done;
   const reasonChips = [
     verdict !== 'VALID' ? t(`reason.${verdict}`) : null,
+    ruleBlocks ? t('reason.reEntry') : null,
     t('reason.tooMany'),
     t('reason.idMismatch'),
     t('reason.behaviour'),
@@ -259,10 +278,13 @@ export default function EventPassScanPanel({ token, onDone, onCancel }: Props) {
     { label: t('field.remarks'), value: pass.remarks },
   ].filter((d): d is { label: string; value: string; vehicle?: boolean } => Boolean(d.value));
 
-  const { names: pickable, maxTotal } = candidates(pass, mode);
-  const othersMax = Math.max(0, maxTotal - move.names.length);
-  const othersInside = pass.insideCount - pass.insideNames.length;
-  const othersCap = mode === 'leave' ? Math.min(othersMax, othersInside) : othersMax;
+  const { names: pickable, othersLeft, maxTotal } = candidates(result, mode);
+  const othersCap = Math.min(Math.max(0, maxTotal - move.names.length), othersLeft);
+  // Unnamed places the rule still allows today, when it limits them and some are used.
+  const unnamedNote =
+    mode === 'enter' && result.unnamedLeft !== null && pass.enteredOthers > 0 && pass.memberNames.length < pass.membersAllowed
+      ? t('reEntry.unnamedLeft', { count: result.unnamedLeft })
+      : null;
 
   return (
     <div className="space-y-4">
@@ -290,6 +312,11 @@ export default function EventPassScanPanel({ token, onDone, onCancel }: Props) {
           <h3 className="truncate text-lg font-bold text-white">
             {pass.holderName || (students ? tp('list.parentOf', { names: students }) : tp('list.guest'))}
           </h3>
+          {pass.zone && (
+            <p className="mt-1 flex items-center gap-1.5 text-base font-bold text-amber-300">
+              <DoorOpen className="h-4 w-4 shrink-0" aria-hidden /> {pass.zone}
+            </p>
+          )}
           <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-1">
             <span className="flex items-end gap-2">
               <Users className="mb-1 h-5 w-5 text-slate-400" aria-hidden />
@@ -308,12 +335,21 @@ export default function EventPassScanPanel({ token, onDone, onCancel }: Props) {
                 <li key={n} className="flex items-center gap-1.5 truncate">
                   <span className="text-slate-500">{i + 1}.</span>
                   {n}
-                  {pass.insideNames.includes(n) && <span className="text-[11px] font-semibold text-sky-300">· {t('inside')}</span>}
+                  {pass.insideNames.includes(n) ? (
+                    <span className="text-[11px] font-semibold text-sky-300">· {t('inside')}</span>
+                  ) : pass.enteredNames.includes(n) ? (
+                    <span className="text-[11px] font-semibold text-slate-400">· {t('steppedOut')}</span>
+                  ) : null}
                 </li>
               ))}
             </ol>
           ) : (
             <p className="mt-1 text-xs text-slate-500">{t('noNames')}</p>
+          )}
+          {result.reEntry !== 'ANY' && (
+            <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-slate-800 px-2.5 py-0.5 text-[11px] font-semibold text-slate-300">
+              <DoorOpen className="h-3 w-3" aria-hidden /> {t(`reEntry.rule.${result.reEntry}`)}
+            </p>
           )}
 
           {details.length > 0 && (
@@ -344,7 +380,7 @@ export default function EventPassScanPanel({ token, onDone, onCancel }: Props) {
                   key={m}
                   role="tab"
                   aria-selected={mode === m}
-                  onClick={() => choose(pass, m)}
+                  onClick={() => choose(result, m)}
                   className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold transition-colors ${mode === m ? 'bg-slate-950 text-white' : 'text-slate-400 hover:text-white'}`}
                 >
                   {m === 'enter' ? <LogIn className="h-4 w-4" aria-hidden /> : <LogOut className="h-4 w-4" aria-hidden />}
@@ -414,6 +450,7 @@ export default function EventPassScanPanel({ token, onDone, onCancel }: Props) {
               </span>
             </div>
           )}
+          {unnamedNote && <p className="mt-2 text-xs text-amber-300">{unnamedNote}</p>}
 
           {mode === 'enter' ? (
             <div className="mt-4 grid grid-cols-2 gap-2">

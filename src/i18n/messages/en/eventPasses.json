@@ -89,12 +89,18 @@
       "failed": "Could not cancel the pass."
     },
     "reissue": {
-      "menu": "Reissue (lost pass)",
-      "title": "Reissue pass {serial}",
-      "explain": "The pass gets a new QR code. Any earlier printout stops working; print the pass again. The parent's phone shows the new code.",
-      "confirm": "Reissue",
-      "done": "Pass reissued. Print it again.",
-      "failed": "Could not reissue the pass."
+      "menu": "Replace (lost or damaged)",
+      "title": "Replace pass {serial}",
+      "explain": "The pass gets a new QR code and the old one stops working. The parent's phone shows the new one and they are told. Print it again if they need paper.",
+      "confirm": "Replace pass",
+      "done": "Pass replaced. The parent's phone already shows the new QR.",
+      "failed": "Could not reissue the pass.",
+      "details": "Details",
+      "kind": {
+        "LOST": "Lost",
+        "DAMAGED": "Damaged",
+        "OTHER": "Other"
+      }
     },
     "checkOut": {
       "menu": "Check out",
@@ -144,7 +150,9 @@
     "issued": "Pass {serial} issued.",
     "saveFailed": "Could not save the pass.",
     "pickDay": "Choose at least one day, or make the pass valid on all days.",
-    "vehicleNumberRequired": "Enter the vehicle number."
+    "vehicleNumberRequired": "Enter the vehicle number.",
+    "membersHintMax": "In total, including the holder. Up to {max}.",
+    "addNamesReEntry": "Only named people can come back in after stepping out, so name everyone who may need to."
   },
   "scan": {
     "verifyFailed": "Could not check this pass.",
@@ -196,7 +204,8 @@
       "idMismatch": "Person does not match the pass",
       "behaviour": "Conduct at the gate",
       "NOT_YET": "Not valid yet",
-      "EXPIRED": "Pass expired"
+      "EXPIRED": "Pass expired",
+      "reEntry": "Re-entry not allowed"
     },
     "notYetHeadline": "Not valid yet",
     "notYetDetail": "Valid from {date} ({days}).",
@@ -217,7 +226,19 @@
     "whoEntering": "Who is entering? (up to {count})",
     "whoLeavingOf": "Who is leaving? ({count} inside)",
     "othersLabel": "others (not named)",
-    "peopleLabel": "of {count}"
+    "peopleLabel": "of {count}",
+    "steppedOut": "stepped out",
+    "reEntry": {
+      "blockedHeadline": "No one else can come in today",
+      "blockedNamed": "The unnamed places on this pass have been used today. Only people named on the pass can come back in.",
+      "blockedNone": "Everyone on this pass has already come in today. Re-entry is not allowed.",
+      "unnamedLeft": "{count, plural, =0 {No unnamed person can come in again today.} one {Only # unnamed person can still come in today.} other {Only # unnamed people can still come in today.}}",
+      "rule": {
+        "NAMED_ONLY": "Re-entry: named people only",
+        "NONE": "No re-entry today",
+        "ANY": "Re-entry allowed"
+      }
+    }
   },
   "parent": {
     "empty": "No event passes right now.",
@@ -233,7 +254,9 @@
       "UPCOMING": "Valid from {date}",
       "OFF_DAY": "Not valid today",
       "EXPIRED": "Expired"
-    }
+    },
+    "entry": "Entry: {zone}",
+    "newQr": "New QR code since {date}. Older copies no longer work."
   },
   "view": {
     "title": "Pass {serial}",
@@ -245,12 +268,52 @@
     "print": "Print this pass",
     "printed": "Printed",
     "insideNames": "Inside now",
-    "lastEntry": "Last entry"
+    "lastEntry": "Last entry",
+    "replaced": "Replaced"
   },
   "validity": {
     "VALID_TODAY": "Valid today",
     "UPCOMING": "From {date}",
     "OFF_DAY": "Not today",
     "EXPIRED": "Expired"
+  },
+  "settings": {
+    "title": "Event pass settings",
+    "subtitle": "Apply to every event's passes in this school.",
+    "loadFailed": "Could not load the settings.",
+    "reEntry": "Coming back in after checking out",
+    "recommended": "Recommended",
+    "option": {
+      "NAMED_ONLY": {
+        "label": "Named people only",
+        "hint": "People named on the pass can step out and come back; the guard can check who they are. Each unnamed place is used once a day."
+      },
+      "NONE": {
+        "label": "No re-entry",
+        "hint": "Every place is used once a day. Someone who checks out cannot come back in that day."
+      },
+      "ANY": {
+        "label": "Anyone",
+        "hint": "Anyone can come back in while the pass has room. The guard cannot tell whether it is the same person."
+      }
+    },
+    "maxPeople": "Most people on one pass",
+    "maxPeopleHint": "The issue form stops at this number. Passes already issued keep their count.",
+    "fewer": "Fewer",
+    "more": "More",
+    "adminOnly": "Only an admin can change these settings.",
+    "saved": "Settings saved.",
+    "saveFailed": "Could not save the settings."
+  },
+  "zones": {
+    "open": "Gates & zones",
+    "title": "Gates and zones",
+    "subtitle": "The gate or area each pass type uses at this event. It is printed on the pass and shown at the gate and on the parent's phone. Leave a type blank for none.",
+    "loadFailed": "Could not load the gates and zones.",
+    "placeholder": "e.g. Gate 2 · Front rows",
+    "forTier": "Gate or zone for {tier}",
+    "label": "Gate / zone",
+    "saved": "Gates and zones saved. Print passes again to show them on paper.",
+    "saveFailed": "Could not save the gates and zones."
   }
 }

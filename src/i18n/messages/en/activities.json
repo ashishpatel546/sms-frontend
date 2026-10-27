@@ -28,7 +28,8 @@
     "empty": "No activities yet",
     "colActivity": "Activity",
     "colParticipants": "Participants",
-    "colPhotos": "Photos"
+    "colPhotos": "Photos",
+    "passSettings": "Pass settings"
   },
   "create": {
     "required": "Title, description and start date are required",

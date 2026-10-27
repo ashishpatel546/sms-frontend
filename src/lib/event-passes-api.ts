@@ -58,6 +58,8 @@ export interface EventPass extends EventPassValidityFields {
   allDays: boolean;
   validDates: string[];
   remarks: string | null;
+  /** The gate or area this pass's tier uses at this event. */
+  zone: string | null;
   status: EventPassStatus;
   version: number;
   inside: boolean;
@@ -68,6 +70,10 @@ export interface EventPass extends EventPassValidityFields {
   remaining: number;
   /** Still inside from an earlier day — only the office can check them out. */
   staleInside: boolean;
+  /** Named people who have come in at least once today. */
+  enteredNames: string[];
+  /** Unnamed people who have come in today. */
+  enteredOthers: number;
   lastEntryAt: string | null;
   lastEntryByName: string | null;
   printedAt: string | null;
@@ -75,6 +81,9 @@ export interface EventPass extends EventPassValidityFields {
   cancelledAt: string | null;
   cancelledByName: string | null;
   cancelReason: string | null;
+  reissuedAt: string | null;
+  reissuedByName: string | null;
+  reissueReason: string | null;
   createdAt: string;
   updatedAt: string;
   /** Present on single-pass reads, print data and the parent view. */
@@ -143,9 +152,23 @@ interface EventPassValidityFields {
   validUntil: string | null;
 }
 
+/** Who may come back in after checking out, the same day. */
+export type EventPassReEntry = 'ANY' | 'NAMED_ONLY' | 'NONE';
+export const EVENT_PASS_RE_ENTRY: EventPassReEntry[] = ['NAMED_ONLY', 'NONE', 'ANY'];
+
+export interface EventPassSettings {
+  reEntry: EventPassReEntry;
+  maxPeoplePerPass: number;
+}
+
+export type EventPassZones = Record<EventPassTier, string | null>;
+
 export interface EventPassVerifyResult {
   verdict: EventPassVerdict;
   today: string;
+  reEntry: EventPassReEntry;
+  /** Unnamed people who may still come in today; null = only the free seats limit them. */
+  unnamedLeft: number | null;
   event: EventPassEvent;
   pass: EventPass;
   todayMovements: EventPassMovement[];
@@ -163,6 +186,8 @@ export interface ParentEventPass extends EventPassValidityFields {
   vehicleNumber: string | null;
   allDays: boolean;
   validDates: string[];
+  zone: string | null;
+  reissuedAt: string | null;
   inside: boolean;
   token: string;
   event: EventPassEvent;
@@ -230,7 +255,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
-function send<T>(method: 'POST' | 'PATCH', path: string, body?: unknown): Promise<T> {
+function send<T>(method: 'POST' | 'PATCH' | 'PUT', path: string, body?: unknown): Promise<T> {
   return request<T>(path, {
     method,
     headers: { 'Content-Type': 'application/json' },
@@ -288,6 +313,24 @@ export function fetchEventPassPrintData(
   markPrinted: boolean,
 ): Promise<{ event: EventPassEvent; passes: EventPass[] }> {
   return send('POST', `${base(activityId)}/print`, { passIds, markPrinted });
+}
+
+export function fetchEventPassZones(activityId: string): Promise<EventPassZones> {
+  return request(`${base(activityId)}/zones`);
+}
+
+export function saveEventPassZones(activityId: string, zones: Partial<Record<EventPassTier, string>>): Promise<EventPassZones> {
+  return send('PUT', `${base(activityId)}/zones`, zones);
+}
+
+/* ── School settings ────────────────────────────────────────────────────── */
+
+export function fetchEventPassSettings(): Promise<EventPassSettings> {
+  return request('/event-passes/settings');
+}
+
+export function saveEventPassSettings(settings: Partial<EventPassSettings>): Promise<EventPassSettings> {
+  return send('PUT', '/event-passes/settings', settings);
 }
 
 /* ── Gate ───────────────────────────────────────────────────────────────── */

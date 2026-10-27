@@ -85,12 +85,24 @@ const s = StyleSheet.create({
   qr: { width: 76, height: 76 },
   serial: { fontFamily: 'Courier-Bold', fontSize: 8, color: INK, marginTop: 3, letterSpacing: 0.6 },
   scan: { fontFamily: 'Helvetica', fontSize: 5, color: INK_MUTED, marginTop: 1 },
+  zone: { fontFamily: 'Helvetica-Bold', fontSize: 7, color: INK, marginTop: 4, maxLines: 1, textOverflow: 'ellipsis' },
 });
 
 /** Just what is printed — an office pass and a parent's pass both fit. */
 export type PrintableEventPass = Pick<
   EventPass,
-  'id' | 'serial' | 'tier' | 'holderName' | 'membersAllowed' | 'memberNames' | 'vehicleType' | 'vehicleNumber' | 'allDays' | 'validDates' | 'token'
+  | 'id'
+  | 'serial'
+  | 'tier'
+  | 'holderName'
+  | 'membersAllowed'
+  | 'memberNames'
+  | 'vehicleType'
+  | 'vehicleNumber'
+  | 'allDays'
+  | 'validDates'
+  | 'zone'
+  | 'token'
 > & { students: { name: string; className: string | null; section: string | null }[] };
 
 export interface PreparedEventPass {
@@ -157,6 +169,12 @@ export function EventPassFace({
               </Text>
             ) : null}
           </View>
+          {pass.zone ? (
+            <Text style={s.zone}>
+              <Text style={s.label}>ENTRY </Text>
+              {pass.zone}
+            </Text>
+          ) : null}
         </View>
         <View style={s.right}>
           <Image src={prepared.qrDataUrl} style={s.qr} />

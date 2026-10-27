@@ -28,7 +28,8 @@
     "empty": "এখনও কোনো কার্যক্রম নেই",
     "colActivity": "কার্যক্রম",
     "colParticipants": "অংশগ্রহণকারী",
-    "colPhotos": "ছবি"
+    "colPhotos": "ছবি",
+    "passSettings": "পাস সেটিংস"
   },
   "create": {
     "required": "শিরোনাম, বিবরণ ও শুরুর তারিখ আবশ্যক",

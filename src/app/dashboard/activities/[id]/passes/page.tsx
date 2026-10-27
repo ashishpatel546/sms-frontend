@@ -43,6 +43,7 @@ import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EventPassFormDialog } from '@/components/event-passes/EventPassFormDialog';
 import { EventPassViewDialog } from '@/components/event-passes/EventPassViewDialog';
+import { EventPassZonesDialog } from '@/components/event-passes/EventPassSettingsDialogs';
 import {
   EventPassHistoryDialog,
   EventPassReasonDialog,
@@ -88,6 +89,7 @@ export default function EventPassesPage() {
   const [historyPass, setHistoryPass] = React.useState<EventPass | null>(null);
   const [viewing, setViewing] = React.useState<EventPass | null>(null);
   const [printing, setPrinting] = React.useState(false);
+  const [zonesOpen, setZonesOpen] = React.useState(false);
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
@@ -212,6 +214,9 @@ export default function EventPassesPage() {
         actions={
           canManage && (
             <>
+              <Button variant="ghost" onClick={() => setZonesOpen(true)} disabled={archived || readOnly}>
+                <DoorOpen /> {t('zones.open')}
+              </Button>
               <Button variant="outline" onClick={print} disabled={!selected.size || printing || !school}>
                 {printing ? <Loader2 className="animate-spin" /> : <Printer />}
                 {t('print.button', { count: selected.size })}
@@ -513,6 +518,7 @@ export default function EventPassesPage() {
         onChanged={refresh}
       />
       <EventPassHistoryDialog activityId={id} pass={historyPass} onClose={() => setHistoryPass(null)} />
+      <EventPassZonesDialog activityId={id} open={zonesOpen} onOpenChange={setZonesOpen} onSaved={refresh} />
     </PageShell>
   );
 }

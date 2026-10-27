@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Button } from '@/components/ui/button';
 import { Checkbox, Field, FieldGrid, Input, Select, Textarea } from '@/components/ui/Field';
 import { INTL_LOCALE } from '@/i18n/config';
+import { useEventPassSettings } from './EventPassSettingsDialogs';
 import { formatMobileInput, isValidMobile } from '@/lib/mobile';
 import { cn } from '@/lib/utils';
 import {
@@ -74,6 +75,9 @@ function PassForm({ onOpenChange, activity, pass, onSaved }: Omit<Props, 'open'>
   const [holderRelation, setHolderRelation] = React.useState<EventPassHolderRelation | ''>(pass?.holderRelation ?? '');
   const [tier, setTier] = React.useState<EventPassTier>(pass?.tier ?? 'GENERAL');
   const [members, setMembers] = React.useState(pass?.membersAllowed ?? 1);
+  const { data: settings } = useEventPassSettings();
+  // A pass issued before the limit was lowered may keep its count, never grow past it.
+  const maxMembers = Math.max(settings?.maxPeoplePerPass ?? EVENT_PASS_MAX_MEMBERS, pass?.membersAllowed ?? 1);
   const [showNames, setShowNames] = React.useState((pass?.memberNames.length ?? 0) > 0);
   const [memberNames, setMemberNames] = React.useState<string[]>(pass?.memberNames ?? []);
   const [vehicleType, setVehicleType] = React.useState<EventPassVehicleType | ''>(pass?.vehicleType ?? '');
@@ -131,7 +135,7 @@ function PassForm({ onOpenChange, activity, pass, onSaved }: Omit<Props, 'open'>
   const namesGiven = memberNames.filter((n) => n.trim()).length;
 
   const setMemberCount = (n: number) => {
-    const next = Math.max(1, Math.min(EVENT_PASS_MAX_MEMBERS, n));
+    const next = Math.max(1, Math.min(maxMembers, n));
     setMembers(next);
     setMemberNames((names) => names.slice(0, next));
   };
@@ -310,7 +314,7 @@ function PassForm({ onOpenChange, activity, pass, onSaved }: Omit<Props, 'open'>
 
         {/* ── People ──────────────────────────────────────────────────── */}
         <FieldGrid>
-          <Field label={t('form.members')} hint={t('form.membersHint')}>
+          <Field label={t('form.members')} hint={settings ? t('form.membersHintMax', { max: maxMembers }) : t('form.membersHint')}>
             <div className="flex items-center gap-2">
               <Button type="button" variant="outline" size="icon-sm" onClick={() => setMemberCount(members - 1)} aria-label={t('form.fewer')}>
                 <Minus />
@@ -322,7 +326,7 @@ function PassForm({ onOpenChange, activity, pass, onSaved }: Omit<Props, 'open'>
                 onChange={(e) => setMemberCount(Number(e.target.value.replace(/\D/g, '')) || 1)}
                 aria-label={t('form.members')}
               />
-              <Button type="button" variant="outline" size="icon-sm" onClick={() => setMemberCount(members + 1)} aria-label={t('form.more')}>
+              <Button type="button" variant="outline" size="icon-sm" onClick={() => setMemberCount(members + 1)} disabled={members >= maxMembers} aria-label={t('form.more')}>
                 <Plus />
               </Button>
             </div>
@@ -362,7 +366,7 @@ function PassForm({ onOpenChange, activity, pass, onSaved }: Omit<Props, 'open'>
             checked={showNames}
             onChange={(e) => setShowNames(e.target.checked)}
             label={t('form.addNames')}
-            description={t('form.addNamesHint')}
+            description={settings?.reEntry === 'NAMED_ONLY' ? t('form.addNamesReEntry') : t('form.addNamesHint')}
           />
           {showNames && (
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">

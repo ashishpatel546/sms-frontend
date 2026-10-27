@@ -119,8 +119,11 @@ export default function StudentDashboardPage() {
     const leaveTypeLabel = (s: string) =>
         (LEAVE_TYPE_KEYS as readonly string[]).includes(s) ? t(`leaves.type.${s as (typeof LEAVE_TYPE_KEYS)[number]}`) : s;
 
-    // QR Codes tab: pickup (existing, with history) vs visiting (stateless, no history)
-    const [qrMode, setQrMode] = useState<"pickup" | "visit" | "event">("pickup");
+    // QR Codes tab: pickup (existing, with history) vs visiting (stateless, no history).
+    // A pass notification links here with `?qr=event` to open the passes directly.
+    const [qrMode, setQrMode] = useState<"pickup" | "visit" | "event">(() =>
+        typeof window !== "undefined" && new URLSearchParams(window.location.search).get("qr") === "event" ? "event" : "pickup",
+    );
     // Passes issued to this parent's mobile — the QR tab shows them only when there are some.
     const [eventPasses, setEventPasses] = useState<ParentEventPass[]>([]);
 

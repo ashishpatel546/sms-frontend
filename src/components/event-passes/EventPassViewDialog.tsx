@@ -4,7 +4,7 @@ import * as React from 'react';
 import toast from 'react-hot-toast';
 import useSWR from 'swr';
 import { useLocale, useTranslations } from 'next-intl';
-import { Car, History, Loader2, MapPin, Pencil, Printer, Users } from 'lucide-react';
+import { Car, DoorOpen, History, Loader2, MapPin, Pencil, Printer, Users } from 'lucide-react';
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ import {
   type EventPassEvent,
 } from '@/lib/event-passes-api';
 import { downloadEventPassesPdf, renderEventPassQr } from '@/lib/event-pass-pdf';
+import { reissueReasonLabel } from './EventPassDialogs';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ONE PASS, AS ISSUED
@@ -133,6 +134,17 @@ export function EventPassViewDialog({
                 {shown.issuedByName ? t('view.byOn', { name: shown.issuedByName, when: when(shown.createdAt) }) : when(shown.createdAt)}
               </Fact>
               <Fact label={t('view.printed')}>{shown.printedAt ? when(shown.printedAt) : t('list.notPrinted')}</Fact>
+              {shown.zone && <Fact label={t('zones.label')}>{shown.zone}</Fact>}
+              {shown.reissuedAt && (
+                <Fact label={t('view.replaced')} wide>
+                  {t('view.byOn', { name: shown.reissuedByName ?? '—', when: when(shown.reissuedAt) })}
+                  {shown.reissueReason && (
+                    <span className="text-ink-muted block text-[12px]">
+                      {reissueReasonLabel(shown.reissueReason, (k) => t(`action.reissue.kind.${k}`))}
+                    </span>
+                  )}
+                </Fact>
+              )}
               {shown.inside && shown.insideNames.length > 0 && (
                 <Fact label={t('view.insideNames')} wide>
                   {shown.insideNames.join(', ')}
@@ -233,6 +245,11 @@ function PassFace({
           </p>
           {students && pass.holderName && <p className="text-[12px] text-slate-600">{t('list.parentOf', { names: students })}</p>}
           {pass.memberNames.length > 0 && <p className="mt-1 text-[12px] text-slate-600">{pass.memberNames.join(', ')}</p>}
+          {pass.zone && (
+            <p className="mt-1 flex items-center gap-1 text-[12px] font-semibold text-slate-800">
+              <DoorOpen className="size-3.5" aria-hidden /> {pass.zone}
+            </p>
+          )}
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="flex items-end gap-1">
               <Users className="mb-0.5 size-4 text-slate-500" aria-hidden />

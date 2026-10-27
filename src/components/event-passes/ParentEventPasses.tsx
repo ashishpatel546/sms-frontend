@@ -3,7 +3,7 @@
 import * as React from 'react';
 import toast from 'react-hot-toast';
 import { useLocale, useTranslations } from 'next-intl';
-import { Car, Download, Loader2, MapPin, Sun, Users } from 'lucide-react';
+import { Car, DoorOpen, Download, Loader2, MapPin, RotateCcw, Sun, Users } from 'lucide-react';
 
 import { INTL_LOCALE } from '@/i18n/config';
 import { useSchoolInfo } from '@/lib/useSchoolInfo';
@@ -107,6 +107,11 @@ function PassCard({ pass }: { pass: ParentEventPass }) {
             <MapPin className="size-3.5" aria-hidden /> {event.venue}
           </p>
         )}
+        {pass.zone && (
+          <p className="text-ink mt-1 flex items-center gap-1 text-[13px] font-semibold">
+            <DoorOpen className="size-3.5" aria-hidden /> {t('parent.entry', { zone: pass.zone })}
+          </p>
+        )}
 
         <div className="mx-auto mt-4 aspect-square w-full max-w-[260px] rounded-xl bg-white p-3">
           {qr ? (
@@ -118,6 +123,15 @@ function PassCard({ pass }: { pass: ParentEventPass }) {
             </div>
           )}
         </div>
+
+        {pass.reissuedAt && (
+          <p className="text-ink-muted mt-2 flex items-center justify-center gap-1 text-center text-[12px]">
+            <RotateCcw className="size-3 shrink-0" aria-hidden />
+            {t('parent.newQr', {
+              date: new Intl.DateTimeFormat(intlLocale, { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' }).format(new Date(pass.reissuedAt)),
+            })}
+          </p>
+        )}
 
         <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2.5 text-[13px]">
           {pass.holderName && (

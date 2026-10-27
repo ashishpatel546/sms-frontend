@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Field, Textarea } from '@/components/ui/Field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { INTL_LOCALE } from '@/i18n/config';
+import { cn } from '@/lib/utils';
 import {
   cancelEventPass,
   errorMessage,
@@ -22,6 +23,23 @@ import {
 } from '@/lib/event-passes-api';
 
 export type EventPassAction = 'cancel' | 'reissue' | 'checkOut';
+
+/**
+ * Why a pass was replaced. Stored as a plain English prefix ("Lost: …") so the
+ * audit log reads on its own; `reissueReasonLabel` translates it back.
+ */
+const REISSUE_KINDS = ['LOST', 'DAMAGED', 'OTHER'] as const;
+type ReissueKind = (typeof REISSUE_KINDS)[number];
+const REISSUE_PREFIX: Record<Exclude<ReissueKind, 'OTHER'>, string> = { LOST: 'Lost', DAMAGED: 'Damaged' };
+
+export function reissueReasonLabel(reason: string, kindLabel: (kind: 'LOST' | 'DAMAGED') => string): string {
+  for (const kind of ['LOST', 'DAMAGED'] as const) {
+    const prefix = REISSUE_PREFIX[kind];
+    if (reason === prefix) return kindLabel(kind);
+    if (reason.startsWith(`${prefix}: `)) return `${kindLabel(kind)}: ${reason.slice(prefix.length + 2)}`;
+  }
+  return reason;
+}
 
 /**
  * One dialog for the three actions that need a reason. The reason is not a
@@ -61,13 +79,17 @@ function ReasonForm({
   const t = useTranslations('eventPasses');
   const tc = useTranslations('common');
   const [reason, setReason] = React.useState('');
+  const [kind, setKind] = React.useState<ReissueKind>('LOST');
   const [busy, setBusy] = React.useState(false);
+  const isReissue = action === 'reissue';
+  const note = reason.trim();
+  const finalReason = !isReissue || kind === 'OTHER' ? note : note ? `${REISSUE_PREFIX[kind]}: ${note}` : REISSUE_PREFIX[kind];
 
   const run = async () => {
     setBusy(true);
     try {
       const fn = action === 'cancel' ? cancelEventPass : action === 'reissue' ? reissueEventPass : officeCheckOutEventPass;
-      await fn(activityId, pass.id, reason.trim());
+      await fn(activityId, pass.id, finalReason);
       toast.success(t(`action.${action}.done`));
       onDone();
       onClose();
@@ -87,14 +109,38 @@ function ReasonForm({
         {t(`action.${action}.title`, { serial: passSerial(pass.serial) })}
       </DialogTitle>
       <DialogDescription className="text-ink-muted -mt-2 text-[12.5px]">{t(`action.${action}.explain`)}</DialogDescription>
-      <Field label={t('action.reason')} htmlFor="ep-reason" required>
-        <Textarea id="ep-reason" rows={3} maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
+      {isReissue && (
+        <div role="radiogroup" aria-label={t('action.reason')} className="grid grid-cols-3 gap-1.5">
+          {REISSUE_KINDS.map((k) => (
+            <button
+              key={k}
+              type="button"
+              role="radio"
+              aria-checked={kind === k}
+              onClick={() => setKind(k)}
+              className={cn(
+                'rounded-lg border px-2 py-2 text-[13px] font-medium transition-colors',
+                kind === k ? 'border-brand bg-brand-tint text-ink' : 'border-line text-ink-muted hover:text-ink',
+              )}
+            >
+              {t(`action.reissue.kind.${k}`)}
+            </button>
+          ))}
+        </div>
+      )}
+      <Field
+        label={isReissue && kind !== 'OTHER' ? t('action.reissue.details') : t('action.reason')}
+        hint={isReissue && kind !== 'OTHER' ? t('form.optional') : undefined}
+        htmlFor="ep-reason"
+        required={!isReissue || kind === 'OTHER'}
+      >
+        <Textarea id="ep-reason" rows={3} maxLength={280} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus={!isReissue} />
       </Field>
       <div className="flex justify-end gap-2">
         <Button variant="ghost" onClick={onClose} disabled={busy}>
           {tc('action.cancel')}
         </Button>
-        <Button variant={action === 'cancel' ? 'destructive' : 'primary'} onClick={run} disabled={busy || !reason.trim()}>
+        <Button variant={action === 'cancel' ? 'destructive' : 'primary'} onClick={run} disabled={busy || !finalReason}>
           {busy && <Loader2 className="animate-spin" />}
           {t(`action.${action}.confirm`)}
         </Button>

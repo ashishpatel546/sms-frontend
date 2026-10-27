@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import toast, { Toaster } from 'react-hot-toast';
-import { PartyPopper, Plus } from 'lucide-react';
+import { PartyPopper, Plus, Settings2 } from 'lucide-react';
 
 import {
   ACTIVITY_CATEGORIES,
@@ -27,6 +27,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { useRbac } from '@/lib/rbac';
 import { READ_ONLY_TITLE, useReadOnlySession } from '@/lib/support-session';
 import { useTranslations } from 'next-intl';
+import { useFeatureFlag } from '@/lib/useSchoolFeatures';
+import { EventPassSettingsDialog } from '@/components/event-passes/EventPassSettingsDialogs';
 
 const PAGE_SIZE = 20;
 
@@ -41,6 +43,8 @@ export default function ActivitiesPage() {
   const [search, setSearch] = React.useState('');
   const [page, setPage] = React.useState(1);
   const [creating, setCreating] = React.useState(false);
+  const [passSettingsOpen, setPassSettingsOpen] = React.useState(false);
+  const { enabled: eventPasses } = useFeatureFlag('event_passes');
 
   const query = { status: status || undefined, category: category || undefined, search: search || undefined, page, limit: PAGE_SIZE };
   const { data, isLoading, mutate } = useSWR(`/activities?${JSON.stringify(query)}`, () => fetchActivities(query));
@@ -63,13 +67,20 @@ export default function ActivitiesPage() {
         description={t('list.description')}
         actions={
           rbac.canManageActivities ? (
-            <Button
-              onClick={() => setCreating(true)}
-              disabled={readOnly}
-              title={readOnly ? READ_ONLY_TITLE : undefined}
-            >
-              <Plus /> {t('list.new')}
-            </Button>
+            <>
+              {eventPasses && (
+                <Button variant="outline" onClick={() => setPassSettingsOpen(true)}>
+                  <Settings2 /> {t('list.passSettings')}
+                </Button>
+              )}
+              <Button
+                onClick={() => setCreating(true)}
+                disabled={readOnly}
+                title={readOnly ? READ_ONLY_TITLE : undefined}
+              >
+                <Plus /> {t('list.new')}
+              </Button>
+            </>
           ) : undefined
         }
       />
@@ -129,6 +140,7 @@ export default function ActivitiesPage() {
           }}
         />
       )}
+      {eventPasses && rbac.canManageActivities && <EventPassSettingsDialog open={passSettingsOpen} onOpenChange={setPassSettingsOpen} />}
     </PageShell>
   );
 }
