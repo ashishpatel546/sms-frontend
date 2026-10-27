@@ -34,7 +34,8 @@
     "enteredToday": "আজ ব্যবহৃত পাস",
     "checkIns": "{count} জন চেক-ইন করেছেন",
     "unprinted": "প্রিন্ট হয়নি",
-    "cancelled": "{count}টি বাতিল"
+    "cancelled": "{count}টি বাতিল",
+    "checkInsDenied": "{count} জনের চেক-ইন · {denied} জনকে ঢুকতে দেওয়া হয়নি"
   },
   "list": {
     "tierCount": "{passes}টি পাস, {people} জন",
@@ -70,11 +71,12 @@
   "history": {
     "open": "গেটের রেকর্ড",
     "title": "গেটের রেকর্ড · {serial}",
-    "subtitle": "প্রতিটি চেক-ইন ও চেক-আউট, এবং কে অনুমতি দিয়েছেন।",
+    "subtitle": "প্রতিটি চেক-ইন, চেক-আউট ও ঢুকতে না দেওয়া, এবং কে সিদ্ধান্ত নিয়েছেন।",
     "empty": "এই পাস এখনও গেটে ব্যবহার হয়নি।",
     "in": "{people} জনের চেক-ইন",
     "out": "{people} জনের চেক-আউট",
-    "by": "{when} · {name}"
+    "by": "{when} · {name}",
+    "denied": "ঢুকতে দেওয়া হয়নি"
   },
   "action": {
     "reason": "কারণ",
@@ -157,7 +159,7 @@
     "alreadyInside": "আগে থেকেই ভেতরে · {people}",
     "alreadyInsideDetail": "{time}-এ {name} চেক-ইন করেছেন। আবার ঢুকতে দেওয়ার আগে চেক-আউট করুন।",
     "validHeadline": "বৈধ পাস",
-    "validDetail": "লোক গুনে চেক-ইন করুন।",
+    "validDetail": "লোক গুনুন, তারপর ঢুকতে দিন বা না দিন।",
     "notTodayHeadline": "আজ বৈধ নয়",
     "notTodayDetail": "বৈধ দিন: {days}",
     "cancelledHeadline": "পাস বাতিল",
@@ -179,9 +181,27 @@
     "entriesToday": "আজ {count} বার ঢুকেছেন",
     "howMany": "কতজন ঢুকছেন?",
     "ofAllowed": "{count} জনের মধ্যে",
-    "checkIn": "{people} জনের চেক-ইন করুন",
     "checkOut": "চেক-আউট করুন ({people} জন)",
-    "scanNext": "পরেরটি স্ক্যান করুন"
+    "scanNext": "পরেরটি স্ক্যান করুন",
+    "askAllow": "ঢুকতে দেবেন?",
+    "cannotAllow": "এই পাসে ঢুকতে দেওয়া যাবে না। না দেওয়ার কথা নথিভুক্ত করুন।",
+    "deny": "ঢুকতে দেবেন না",
+    "allow": "{people} জনকে ঢুকতে দিন",
+    "denyTitle": "ঢুকতে দেবেন না",
+    "denyHint": "আপনার নামে লেখা থাকবে। কারণ লিখলে অফিসের সুবিধা হয়।",
+    "reasonPlaceholder": "কারণ (ঐচ্ছিক)",
+    "confirmDeny": "নথিভুক্ত করুন",
+    "deniedHeadline": "ঢুকতে দেওয়া হয়নি",
+    "deniedDetail": "আপনার নামে লেখা হয়েছে।",
+    "reason": {
+      "NOT_TODAY": "আজ বৈধ নয়",
+      "CANCELLED": "পাস বাতিল",
+      "REPLACED": "পুরোনো পাস (বদলানো)",
+      "EVENT_CLOSED": "ইভেন্ট শেষ",
+      "tooMany": "অনুমতির চেয়ে বেশি লোক",
+      "idMismatch": "ব্যক্তি পাসের সঙ্গে মেলে না",
+      "behaviour": "গেটে আচরণ"
+    }
   },
   "parent": {
     "empty": "এখন কোনো ইভেন্ট পাস নেই।",
@@ -192,5 +212,16 @@
     "holder": "পাসধারী",
     "people": "যাঁরা আসবেন",
     "download": "পাস ডাউনলোড করুন"
+  },
+  "view": {
+    "title": "পাস {serial}",
+    "menu": "পাস দেখুন",
+    "issued": "দেওয়া হয়েছে",
+    "byOn": "{when} · {name}",
+    "insideSince": "কখন থেকে ভেতরে",
+    "cancelled": "বাতিল",
+    "edit": "বদলান",
+    "print": "এই পাসটি প্রিন্ট করুন",
+    "printed": "প্রিন্ট হয়েছে"
   }
 }

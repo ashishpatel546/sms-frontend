@@ -6,7 +6,7 @@ import useSWR from 'swr';
 import toast, { Toaster } from 'react-hot-toast';
 import { useLocale, useTranslations } from 'next-intl';
 import {
-  Ban, Car, CheckSquare, DoorOpen, History, Loader2, LogOut, Pencil, Plus, Printer, RotateCcw, Ticket, Users,
+  Ban, Car, CheckSquare, DoorOpen, Eye, History, Loader2, LogOut, Pencil, Plus, Printer, RotateCcw, Ticket, Users,
 } from 'lucide-react';
 
 import { fetchActivity } from '@/lib/activities-api';
@@ -42,6 +42,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EventPassFormDialog } from '@/components/event-passes/EventPassFormDialog';
+import { EventPassViewDialog } from '@/components/event-passes/EventPassViewDialog';
 import {
   EventPassHistoryDialog,
   EventPassReasonDialog,
@@ -85,6 +86,7 @@ export default function EventPassesPage() {
   const [actionPass, setActionPass] = React.useState<EventPass | null>(null);
   const [action, setAction] = React.useState<EventPassAction | null>(null);
   const [historyPass, setHistoryPass] = React.useState<EventPass | null>(null);
+  const [viewing, setViewing] = React.useState<EventPass | null>(null);
   const [printing, setPrinting] = React.useState(false);
 
   React.useEffect(() => {
@@ -245,7 +247,13 @@ export default function EventPassesPage() {
           <StatTile
             label={t('stat.enteredToday')}
             value={summary?.enteredTodayPasses ?? '—'}
-            hint={summary ? t('stat.checkIns', { count: summary.checkInsToday }) : undefined}
+            hint={
+              summary
+                ? summary.deniedToday
+                  ? t('stat.checkInsDenied', { count: summary.checkInsToday, denied: summary.deniedToday })
+                  : t('stat.checkIns', { count: summary.checkInsToday })
+                : undefined
+            }
             icon={<Users />}
           />
           <StatTile
@@ -360,8 +368,12 @@ export default function EventPassesPage() {
                         style={{ backgroundColor: EVENT_PASS_TIER_COLORS[p.tier].band }}
                         aria-hidden
                       />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <button
+                        type="button"
+                        onClick={() => setViewing(p)}
+                        className="hover:bg-brand/5 -my-1 min-w-0 flex-1 cursor-pointer rounded-lg px-1.5 py-1 text-left transition-colors"
+                      >
+                        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           <span className="text-ink-muted font-mono text-[12px]">{passSerial(p.serial)}</span>
                           <span className="text-ink truncate text-[14px] font-semibold">
                             {p.holderName || (students ? t('list.parentOf', { names: students }) : t('list.guest'))}
@@ -375,16 +387,16 @@ export default function EventPassesPage() {
                           {p.status === 'ACTIVE' && !p.printedAt && (
                             <StatusChip status="UNPRINTED" pigment="attn" label={t('list.notPrinted')} />
                           )}
-                        </div>
-                        <p className="text-ink-muted mt-0.5 text-[12.5px]">
+                        </span>
+                        <span className="block text-ink-muted mt-0.5 text-[12.5px]">
                           {[
                             p.mobile,
                             students && p.holderName ? t('list.parentOf', { names: students }) : null,
                           ]
                             .filter(Boolean)
                             .join(' · ')}
-                        </p>
-                        <p className="text-ink-muted mt-0.5 flex flex-wrap items-center gap-x-3 text-[12.5px]">
+                        </span>
+                        <span className="text-ink-muted mt-0.5 flex flex-wrap items-center gap-x-3 text-[12.5px]">
                           <span className="inline-flex items-center gap-1">
                             <Users className="size-3.5" aria-hidden />
                             {t('list.admits', { count: p.membersAllowed })}
@@ -398,17 +410,22 @@ export default function EventPassesPage() {
                               {p.vehicleNumber}
                             </span>
                           )}
-                        </p>
+                        </span>
                         {p.status === 'CANCELLED' && p.cancelReason && (
-                          <p className="text-accent-danger-deep mt-0.5 text-[12px]">
+                          <span className="block text-accent-danger-deep mt-0.5 text-[12px]">
                             {t('list.cancelledBy', { name: p.cancelledByName ?? '—', reason: p.cancelReason })}
-                          </p>
+                          </span>
                         )}
-                      </div>
+                      </button>
                       {canManage && (
                         <RowActionsMenu
                           label={tc('action.actions')}
                           actions={[
+                            {
+                              label: t('view.menu'),
+                              icon: <Eye />,
+                              onSelect: () => setViewing(p),
+                            },
                             p.status === 'ACTIVE' &&
                               !archived && {
                                 label: tc('action.edit'),
@@ -472,6 +489,20 @@ export default function EventPassesPage() {
           setAction(null);
         }}
         onDone={refresh}
+      />
+      <EventPassViewDialog
+        activityId={id}
+        event={activity ?? null}
+        pass={viewing}
+        canManage={canManage}
+        onClose={() => setViewing(null)}
+        onEdit={(p) => {
+          setViewing(null);
+          setEditing(p);
+          setFormOpen(true);
+        }}
+        onHistory={(p) => setHistoryPass(p)}
+        onChanged={refresh}
       />
       <EventPassHistoryDialog activityId={id} pass={historyPass} onClose={() => setHistoryPass(null)} />
     </PageShell>

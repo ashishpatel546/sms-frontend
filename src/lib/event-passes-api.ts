@@ -96,6 +96,7 @@ export interface EventPassSummary {
   insidePeople: number;
   enteredTodayPasses: number;
   checkInsToday: number;
+  deniedToday: number;
 }
 
 export interface EventPassLookup {
@@ -114,7 +115,8 @@ export interface EventPassLookup {
 
 export interface EventPassMovement {
   id: number;
-  direction: 'IN' | 'OUT';
+  /** DENIED = a guard refused entry (people 0, reason in `note`). */
+  direction: 'IN' | 'OUT' | 'DENIED';
   people: number;
   eventDate: string;
   byName: string;
@@ -283,6 +285,14 @@ export function checkInEventPass(token: string, people: number): Promise<EventPa
 
 export function checkOutEventPass(token: string): Promise<EventPassVerifyResult> {
   return send('POST', '/event-passes/check-out', { token });
+}
+
+export function denyEventPass(token: string, reason?: string): Promise<EventPassVerifyResult> {
+  return send('POST', '/event-passes/deny', { token, reason: reason || undefined });
+}
+
+export function fetchEventPass(activityId: string, passId: string): Promise<EventPass> {
+  return request(`${base(activityId)}/${passId}`);
 }
 
 /* ── Parent ─────────────────────────────────────────────────────────────── */

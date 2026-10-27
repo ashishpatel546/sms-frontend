@@ -34,7 +34,8 @@
     "enteredToday": "आज उपयोग हुए पास",
     "checkIns": "{count, plural, one {# व्यक्ति ने चेक-इन किया} other {# लोगों ने चेक-इन किया}}",
     "unprinted": "प्रिंट नहीं हुए",
-    "cancelled": "{count} रद्द"
+    "cancelled": "{count} रद्द",
+    "checkInsDenied": "{count} लोगों का चेक-इन · {denied} को मना किया"
   },
   "list": {
     "tierCount": "{passes, plural, one {# पास} other {# पास}}, {people} लोग",
@@ -70,11 +71,12 @@
   "history": {
     "open": "गेट रिकॉर्ड",
     "title": "गेट रिकॉर्ड · {serial}",
-    "subtitle": "हर चेक-इन और चेक-आउट, और किसने अनुमति दी।",
+    "subtitle": "हर चेक-इन, चेक-आउट और मना किया गया प्रवेश, और किसने निर्णय लिया।",
     "empty": "इस पास का अभी गेट पर उपयोग नहीं हुआ है।",
     "in": "{people} लोगों का चेक-इन",
     "out": "{people} लोगों का चेक-आउट",
-    "by": "{when} · {name} द्वारा"
+    "by": "{when} · {name} द्वारा",
+    "denied": "प्रवेश नहीं दिया गया"
   },
   "action": {
     "reason": "कारण",
@@ -157,7 +159,7 @@
     "alreadyInside": "पहले से अंदर · {people}",
     "alreadyInsideDetail": "{time} पर {name} ने चेक-इन किया। दोबारा अंदर जाने देने से पहले चेक-आउट करें।",
     "validHeadline": "मान्य पास",
-    "validDetail": "लोगों को गिनें और चेक-इन करें।",
+    "validDetail": "लोगों को गिनें, फिर प्रवेश दें या मना करें।",
     "notTodayHeadline": "आज के लिए मान्य नहीं",
     "notTodayDetail": "मान्य दिन: {days}",
     "cancelledHeadline": "पास रद्द है",
@@ -179,9 +181,27 @@
     "entriesToday": "आज {count} बार प्रवेश",
     "howMany": "कितने लोग अंदर जा रहे हैं?",
     "ofAllowed": "{count} में से",
-    "checkIn": "{people} लोगों का चेक-इन करें",
     "checkOut": "चेक-आउट करें ({people} लोग)",
-    "scanNext": "अगला स्कैन करें"
+    "scanNext": "अगला स्कैन करें",
+    "askAllow": "प्रवेश देना है?",
+    "cannotAllow": "इस पास पर प्रवेश नहीं दिया जा सकता। मना करना दर्ज करें।",
+    "deny": "प्रवेश न दें",
+    "allow": "{people} लोगों को प्रवेश दें",
+    "denyTitle": "प्रवेश से मना करें",
+    "denyHint": "यह आपके नाम से दर्ज होगा। कारण लिखने से ऑफ़िस को मदद मिलती है।",
+    "reasonPlaceholder": "कारण (वैकल्पिक)",
+    "confirmDeny": "मना करना दर्ज करें",
+    "deniedHeadline": "प्रवेश नहीं दिया गया",
+    "deniedDetail": "आपके नाम से दर्ज हुआ।",
+    "reason": {
+      "NOT_TODAY": "आज के लिए मान्य नहीं",
+      "CANCELLED": "पास रद्द है",
+      "REPLACED": "पुराना पास (बदला गया)",
+      "EVENT_CLOSED": "इवेंट समाप्त",
+      "tooMany": "अनुमति से ज़्यादा लोग",
+      "idMismatch": "व्यक्ति पास से मेल नहीं खाता",
+      "behaviour": "गेट पर व्यवहार"
+    }
   },
   "parent": {
     "empty": "अभी कोई इवेंट पास नहीं है।",
@@ -192,5 +212,16 @@
     "holder": "पास धारक",
     "people": "लोग",
     "download": "पास डाउनलोड करें"
+  },
+  "view": {
+    "title": "पास {serial}",
+    "menu": "पास देखें",
+    "issued": "जारी किया",
+    "byOn": "{when} · {name}",
+    "insideSince": "कब से अंदर",
+    "cancelled": "रद्द",
+    "edit": "बदलें",
+    "print": "यह पास प्रिंट करें",
+    "printed": "प्रिंट हुआ"
   }
 }

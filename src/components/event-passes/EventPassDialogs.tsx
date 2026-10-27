@@ -4,7 +4,7 @@ import * as React from 'react';
 import toast from 'react-hot-toast';
 import useSWR from 'swr';
 import { useLocale, useTranslations } from 'next-intl';
-import { Ban, Loader2, LogIn, LogOut, RotateCcw } from 'lucide-react';
+import { Ban, Loader2, LogIn, LogOut, RotateCcw, ShieldX } from 'lucide-react';
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -128,6 +128,7 @@ export function EventPassHistoryDialog({
 
   return (
     <Dialog open={!!pass} onOpenChange={(o) => !o && onClose()}>
+      {/* Opened from the pass view as well, so it sits above that dialog. */}
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogTitle className="text-[16px] font-semibold">
           {pass ? t('history.title', { serial: passSerial(pass.serial) }) : ''}
@@ -145,14 +146,26 @@ export function EventPassHistoryDialog({
                   className={
                     m.direction === 'IN'
                       ? 'bg-accent-success-tint text-accent-success-deep grid size-7 shrink-0 place-items-center rounded-full'
-                      : 'bg-surface-sunk text-ink-muted grid size-7 shrink-0 place-items-center rounded-full'
+                      : m.direction === 'DENIED'
+                        ? 'bg-accent-danger-tint text-accent-danger-deep grid size-7 shrink-0 place-items-center rounded-full'
+                        : 'bg-surface-sunk text-ink-muted grid size-7 shrink-0 place-items-center rounded-full'
                   }
                 >
-                  {m.direction === 'IN' ? <LogIn className="size-3.5" aria-hidden /> : <LogOut className="size-3.5" aria-hidden />}
+                  {m.direction === 'IN' ? (
+                    <LogIn className="size-3.5" aria-hidden />
+                  ) : m.direction === 'DENIED' ? (
+                    <ShieldX className="size-3.5" aria-hidden />
+                  ) : (
+                    <LogOut className="size-3.5" aria-hidden />
+                  )}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-ink text-[13.5px] font-medium">
-                    {m.direction === 'IN' ? t('history.in', { people: m.people }) : t('history.out', { people: m.people })}
+                    {m.direction === 'IN'
+                      ? t('history.in', { people: m.people })
+                      : m.direction === 'DENIED'
+                        ? t('history.denied')
+                        : t('history.out', { people: m.people })}
                   </p>
                   <p className="text-ink-muted text-[12px]">
                     {t('history.by', { name: m.byName, when: when.format(new Date(m.createdAt)) })}

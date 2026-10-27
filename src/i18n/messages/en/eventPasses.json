@@ -34,7 +34,8 @@
     "enteredToday": "Passes used today",
     "checkIns": "{count, plural, one {# person checked in} other {# people checked in}}",
     "unprinted": "Not printed",
-    "cancelled": "{count} cancelled"
+    "cancelled": "{count} cancelled",
+    "checkInsDenied": "{count, plural, one {# person checked in} other {# people checked in}} · {denied} refused"
   },
   "list": {
     "tierCount": "{passes, plural, one {# pass} other {# passes}}, {people} people",
@@ -70,11 +71,12 @@
   "history": {
     "open": "Gate history",
     "title": "Gate history · {serial}",
-    "subtitle": "Every check-in and check-out, and who allowed it.",
+    "subtitle": "Every check-in, check-out and refusal, and who decided.",
     "empty": "This pass has not been used at the gate yet.",
     "in": "{people, plural, one {Checked in # person} other {Checked in # people}}",
     "out": "{people, plural, one {Checked out # person} other {Checked out # people}}",
-    "by": "{when} · by {name}"
+    "by": "{when} · by {name}",
+    "denied": "Entry refused"
   },
   "action": {
     "reason": "Reason",
@@ -157,7 +159,7 @@
     "alreadyInside": "Already inside · {people}",
     "alreadyInsideDetail": "Checked in at {time} by {name}. Check out first before letting them in again.",
     "validHeadline": "Valid pass",
-    "validDetail": "Count the people and check them in.",
+    "validDetail": "Count the people, then allow or refuse entry.",
     "notTodayHeadline": "Not valid today",
     "notTodayDetail": "Valid on: {days}",
     "cancelledHeadline": "Pass cancelled",
@@ -179,9 +181,27 @@
     "entriesToday": "{count, plural, one {Entered once today} other {Entered # times today}}",
     "howMany": "How many are entering?",
     "ofAllowed": "of {count}",
-    "checkIn": "{people, plural, one {Check in # person} other {Check in # people}}",
     "checkOut": "{people, plural, one {Check out (# person)} other {Check out (# people)}}",
-    "scanNext": "Scan next"
+    "scanNext": "Scan next",
+    "askAllow": "Allow entry?",
+    "cannotAllow": "This pass cannot be let in. Record the refusal.",
+    "deny": "Don't allow",
+    "allow": "{people, plural, one {Allow # person} other {Allow # people}}",
+    "denyTitle": "Refuse entry",
+    "denyHint": "Recorded with your name. A reason helps the office.",
+    "reasonPlaceholder": "Reason (optional)",
+    "confirmDeny": "Record refusal",
+    "deniedHeadline": "Entry refused",
+    "deniedDetail": "Recorded with your name.",
+    "reason": {
+      "NOT_TODAY": "Not valid today",
+      "CANCELLED": "Pass cancelled",
+      "REPLACED": "Old pass (replaced)",
+      "EVENT_CLOSED": "Event closed",
+      "tooMany": "More people than allowed",
+      "idMismatch": "Person does not match the pass",
+      "behaviour": "Conduct at the gate"
+    }
   },
   "parent": {
     "empty": "No event passes right now.",
@@ -192,5 +212,16 @@
     "holder": "Pass holder",
     "people": "People",
     "download": "Download pass"
+  },
+  "view": {
+    "title": "Pass {serial}",
+    "menu": "View pass",
+    "issued": "Issued",
+    "byOn": "{when} · {name}",
+    "insideSince": "Inside since",
+    "cancelled": "Cancelled",
+    "edit": "Edit",
+    "print": "Print this pass",
+    "printed": "Printed"
   }
 }
