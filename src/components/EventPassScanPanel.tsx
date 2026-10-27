@@ -25,8 +25,12 @@ import {
    Scanning only LOOKS. Every scan then asks the guard one question — allow
    entry or not — and either answer is recorded with the guard's name, which
    is the audit the office reads later. Allowing takes a head count and is
-   refused while the pass is already inside (check out first). A pass that is
-   not valid can only be refused.
+   refused while the pass is already inside (check out first).
+
+   A pass the system already knows is no good — expired, not valid yet, a day
+   it does not cover, cancelled, replaced, event closed — is refused
+   automatically: the refusal is recorded with the reason as soon as it is
+   scanned, and the guard just reads why.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 interface Props {
@@ -50,14 +54,28 @@ export default function EventPassScanPanel({ token, onDone, onCancel }: Props) {
   // "Don't allow" opens a short reason step before it is recorded.
   const [denying, setDenying] = useState(false);
   const [reason, setReason] = useState('');
+  const [autoDenied, setAutoDenied] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     verifyEventPass(token)
-      .then((data) => {
+      .then(async (data) => {
         if (cancelled) return;
         setResult(data);
         setPeople(data.pass.membersAllowed);
+        // Nothing to decide on a pass that cannot be let in: record the refusal
+        // now. A party already inside is not refused — it may still leave.
+        if (data.verdict !== 'VALID' && !data.pass.inside) {
+          try {
+            const next = await denyEventPass(token, t(`reason.${data.verdict}`));
+            if (cancelled) return;
+            setResult(next);
+            setDone('denied');
+            setAutoDenied(true);
+          } catch {
+            // Falls back to the guard's own "Don't allow" below.
+          }
+        }
       })
       .catch((e: unknown) => {
         if (!cancelled) setError(errorMessage(e, t('verifyFailed')));
@@ -125,6 +143,7 @@ export default function EventPassScanPanel({ token, onDone, onCancel }: Props) {
   const inside = pass.inside;
   const tone = EVENT_PASS_TIER_COLORS[pass.tier];
   const students = passStudentsLine(pass.students);
+  const shortDay = (d: string | null) => (d ? passShortDate(d, intlLocale) : '');
   const validDays = pass.allDays
     ? tp('list.allDays')
     : pass.validDates.map((d) => passShortDate(d, intlLocale)).join(', ');
@@ -133,7 +152,7 @@ export default function EventPassScanPanel({ token, onDone, onCancel }: Props) {
     if (done === 'in') {
       return { tone: 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300', icon: <LogIn className="h-5 w-5 shrink-0 text-emerald-400" aria-hidden />, headline: t('checkedIn', { people: pass.checkedInPeople ?? people }), detail: t('checkedInDetail') };
     }
-    if (done === 'denied') {
+    if (done === 'denied' && !autoDenied) {
       return { tone: 'bg-red-500/10 border-red-500/25 text-red-300', icon: <ShieldX className="h-5 w-5 shrink-0 text-red-400" aria-hidden />, headline: t('deniedHeadline'), detail: t('deniedDetail') };
     }
     if (done === 'out') {
@@ -152,6 +171,10 @@ export default function EventPassScanPanel({ token, onDone, onCancel }: Props) {
         return { tone: 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300', icon: <BadgeCheck className="h-5 w-5 shrink-0 text-emerald-400" aria-hidden />, headline: t('validHeadline'), detail: t('validDetail') };
       case 'NOT_TODAY':
         return { tone: 'bg-red-500/10 border-red-500/25 text-red-300', icon: <CalendarX className="h-5 w-5 shrink-0 text-red-400" aria-hidden />, headline: t('notTodayHeadline'), detail: t('notTodayDetail', { days: validDays }) };
+      case 'NOT_YET':
+        return { tone: 'bg-red-500/10 border-red-500/25 text-red-300', icon: <CalendarX className="h-5 w-5 shrink-0 text-red-400" aria-hidden />, headline: t('notYetHeadline'), detail: t('notYetDetail', { date: shortDay(pass.validFrom), days: validDays }) };
+      case 'EXPIRED':
+        return { tone: 'bg-red-500/10 border-red-500/25 text-red-300', icon: <CalendarX className="h-5 w-5 shrink-0 text-red-400" aria-hidden />, headline: t('expiredHeadline'), detail: t('expiredDetail', { date: shortDay(pass.validUntil) }) };
       case 'CANCELLED':
         return { tone: 'bg-red-500/10 border-red-500/25 text-red-300', icon: <Ban className="h-5 w-5 shrink-0 text-red-400" aria-hidden />, headline: t('cancelledHeadline'), detail: pass.cancelReason ?? t('cancelledDetail') };
       case 'REPLACED':
@@ -196,6 +219,11 @@ export default function EventPassScanPanel({ token, onDone, onCancel }: Props) {
         <div className="min-w-0">
           <p className="text-sm font-semibold">{banner.headline}</p>
           <p className="mt-0.5 text-xs opacity-90">{banner.detail}</p>
+          {autoDenied && (
+            <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold">
+              <ShieldX className="h-3.5 w-3.5" aria-hidden /> {t('autoRecorded')}
+            </p>
+          )}
         </div>
       </div>
 

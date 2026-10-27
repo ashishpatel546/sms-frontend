@@ -119,6 +119,13 @@ export function EventPassViewDialog({
                     <StatusChip status="ACTIVE" pigment="success" label={t('status.ACTIVE')} />
                   )}
                   {shown.inside && <StatusChip status="INSIDE" pigment="info" label={t('list.inside', { people: shown.checkedInPeople ?? 0 })} />}
+                  {shown.status === 'ACTIVE' && shown.validity && (
+                    <StatusChip
+                      status={shown.validity}
+                      pigment={shown.validity === 'VALID_TODAY' ? 'success' : shown.validity === 'UPCOMING' ? 'info' : 'neutral'}
+                      label={t(`validity.${shown.validity}`, { date: shown.validFrom ? passShortDate(shown.validFrom, intlLocale) : '' })}
+                    />
+                  )}
                 </span>
               </Fact>
               <Fact label={t('form.mobile')}>{shown.mobile ?? '—'}</Fact>

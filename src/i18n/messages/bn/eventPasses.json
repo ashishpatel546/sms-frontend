@@ -200,8 +200,15 @@
       "EVENT_CLOSED": "ইভেন্ট শেষ",
       "tooMany": "অনুমতির চেয়ে বেশি লোক",
       "idMismatch": "ব্যক্তি পাসের সঙ্গে মেলে না",
-      "behaviour": "গেটে আচরণ"
-    }
+      "behaviour": "গেটে আচরণ",
+      "NOT_YET": "এখনও বৈধ নয়",
+      "EXPIRED": "পাসের মেয়াদ শেষ"
+    },
+    "notYetHeadline": "এখনও বৈধ নয়",
+    "notYetDetail": "{date} থেকে বৈধ ({days})।",
+    "expiredHeadline": "পাসের মেয়াদ শেষ",
+    "expiredDetail": "এটি {date} পর্যন্ত বৈধ ছিল।",
+    "autoRecorded": "নিজে থেকেই ঢুকতে দেওয়া হয়নি এবং নথিভুক্ত হয়েছে।"
   },
   "parent": {
     "empty": "এখন কোনো ইভেন্ট পাস নেই।",
@@ -211,7 +218,13 @@
     "qrAlt": "ইভেন্ট পাসের QR কোড",
     "holder": "পাসধারী",
     "people": "যাঁরা আসবেন",
-    "download": "পাস ডাউনলোড করুন"
+    "download": "পাস ডাউনলোড করুন",
+    "validity": {
+      "VALID_TODAY": "আজ বৈধ",
+      "UPCOMING": "{date} থেকে বৈধ",
+      "OFF_DAY": "আজ বৈধ নয়",
+      "EXPIRED": "মেয়াদ শেষ"
+    }
   },
   "view": {
     "title": "পাস {serial}",
@@ -223,5 +236,11 @@
     "edit": "বদলান",
     "print": "এই পাসটি প্রিন্ট করুন",
     "printed": "প্রিন্ট হয়েছে"
+  },
+  "validity": {
+    "VALID_TODAY": "আজ বৈধ",
+    "UPCOMING": "{date} থেকে",
+    "OFF_DAY": "আজ নয়",
+    "EXPIRED": "মেয়াদ শেষ"
   }
 }

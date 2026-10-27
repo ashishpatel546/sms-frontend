@@ -42,7 +42,7 @@ export interface EventPassStudent {
   admissionNumber: string | null;
 }
 
-export interface EventPass {
+export interface EventPass extends EventPassValidityFields {
   id: string;
   activityId: string;
   serial: number;
@@ -124,7 +124,17 @@ export interface EventPassMovement {
   createdAt: string;
 }
 
-export type EventPassVerdict = 'VALID' | 'NOT_TODAY' | 'CANCELLED' | 'REPLACED' | 'EVENT_CLOSED';
+export type EventPassVerdict = 'VALID' | 'NOT_YET' | 'NOT_TODAY' | 'EXPIRED' | 'CANCELLED' | 'REPLACED' | 'EVENT_CLOSED';
+
+/** Where a pass stands today, from its dates alone (set by the server, IST). */
+export type EventPassValidity = 'VALID_TODAY' | 'UPCOMING' | 'OFF_DAY' | 'EXPIRED';
+
+interface EventPassValidityFields {
+  validity: EventPassValidity | null;
+  /** First and last day the pass is good for. */
+  validFrom: string | null;
+  validUntil: string | null;
+}
 
 export interface EventPassVerifyResult {
   verdict: EventPassVerdict;
@@ -134,7 +144,7 @@ export interface EventPassVerifyResult {
   todayMovements: EventPassMovement[];
 }
 
-export interface ParentEventPass {
+export interface ParentEventPass extends EventPassValidityFields {
   id: string;
   serial: number;
   tier: EventPassTier;

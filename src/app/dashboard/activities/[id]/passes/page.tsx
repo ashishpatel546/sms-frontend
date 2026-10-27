@@ -145,12 +145,13 @@ export default function EventPassesPage() {
   const activeRows = rows.filter((r) => r.status === 'ACTIVE');
   const allOnPage = activeRows.length > 0 && activeRows.every((r) => selected.has(r.id));
 
-  /** Every unprinted active pass in the event, not just this page. */
+  /** Every unprinted active pass in the event, not just this page — except expired ones, which nobody needs printed. */
   const selectUnprinted = async () => {
     try {
       const all = await fetchEventPasses(id, { status: 'ACTIVE', printed: 'unprinted', tier: tier || undefined, limit: 200 });
-      setSelected(new Set(all.data.map((p) => p.id)));
-      toast.success(t('list.selectedN', { count: all.data.length }));
+      const printable = all.data.filter((p) => p.validity !== 'EXPIRED');
+      setSelected(new Set(printable.map((p) => p.id)));
+      toast.success(t('list.selectedN', { count: printable.length }));
     } catch (err) {
       toast.error(errorMessage(err, t('list.loadFailed')));
     }
@@ -384,6 +385,13 @@ export default function EventPassesPage() {
                           ) : p.inside ? (
                             <StatusChip status="INSIDE" pigment="success" label={t('list.inside', { people: p.checkedInPeople ?? 0 })} />
                           ) : null}
+{p.status === 'ACTIVE' && p.validity && p.validity !== 'VALID_TODAY' && (
+                            <StatusChip
+                              status={p.validity}
+                              pigment={p.validity === 'UPCOMING' ? 'info' : 'neutral'}
+                              label={t(`validity.${p.validity}`, { date: p.validFrom ? passShortDate(p.validFrom, intlLocale) : '' })}
+                            />
+                          )}
                           {p.status === 'ACTIVE' && !p.printedAt && (
                             <StatusChip status="UNPRINTED" pigment="attn" label={t('list.notPrinted')} />
                           )}

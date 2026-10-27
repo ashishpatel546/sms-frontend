@@ -200,8 +200,15 @@
       "EVENT_CLOSED": "इवेंट समाप्त",
       "tooMany": "अनुमति से ज़्यादा लोग",
       "idMismatch": "व्यक्ति पास से मेल नहीं खाता",
-      "behaviour": "गेट पर व्यवहार"
-    }
+      "behaviour": "गेट पर व्यवहार",
+      "NOT_YET": "अभी मान्य नहीं",
+      "EXPIRED": "पास की अवधि समाप्त"
+    },
+    "notYetHeadline": "अभी मान्य नहीं",
+    "notYetDetail": "{date} से मान्य ({days})।",
+    "expiredHeadline": "पास की अवधि समाप्त",
+    "expiredDetail": "यह {date} तक मान्य था।",
+    "autoRecorded": "प्रवेश अपने-आप मना हुआ और दर्ज किया गया।"
   },
   "parent": {
     "empty": "अभी कोई इवेंट पास नहीं है।",
@@ -211,7 +218,13 @@
     "qrAlt": "इवेंट पास का QR कोड",
     "holder": "पास धारक",
     "people": "लोग",
-    "download": "पास डाउनलोड करें"
+    "download": "पास डाउनलोड करें",
+    "validity": {
+      "VALID_TODAY": "आज मान्य",
+      "UPCOMING": "{date} से मान्य",
+      "OFF_DAY": "आज मान्य नहीं",
+      "EXPIRED": "समाप्त"
+    }
   },
   "view": {
     "title": "पास {serial}",
@@ -223,5 +236,11 @@
     "edit": "बदलें",
     "print": "यह पास प्रिंट करें",
     "printed": "प्रिंट हुआ"
+  },
+  "validity": {
+    "VALID_TODAY": "आज मान्य",
+    "UPCOMING": "{date} से",
+    "OFF_DAY": "आज नहीं",
+    "EXPIRED": "समाप्त"
   }
 }

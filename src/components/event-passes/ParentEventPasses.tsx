@@ -91,6 +91,17 @@ function PassCard({ pass }: { pass: ParentEventPass }) {
       <div className="p-4">
         <h3 className="text-ink text-base leading-snug font-bold">{event.title}</h3>
         <p className="text-ink-muted mt-0.5 text-[13px]">{dates}</p>
+        {pass.validity && (
+          <span
+            className={`mt-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${
+              pass.validity === 'VALID_TODAY'
+                ? 'bg-accent-success-tint text-accent-success-deep'
+                : 'bg-accent-info-tint text-accent-info-deep'
+            }`}
+          >
+            {t(`parent.validity.${pass.validity}`, { date: pass.validFrom ? passShortDate(pass.validFrom, intlLocale) : '' })}
+          </span>
+        )}
         {event.venue && (
           <p className="text-ink-muted mt-0.5 flex items-center gap-1 text-[13px]">
             <MapPin className="size-3.5" aria-hidden /> {event.venue}

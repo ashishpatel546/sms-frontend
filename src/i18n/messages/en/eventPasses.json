@@ -200,8 +200,15 @@
       "EVENT_CLOSED": "Event closed",
       "tooMany": "More people than allowed",
       "idMismatch": "Person does not match the pass",
-      "behaviour": "Conduct at the gate"
-    }
+      "behaviour": "Conduct at the gate",
+      "NOT_YET": "Not valid yet",
+      "EXPIRED": "Pass expired"
+    },
+    "notYetHeadline": "Not valid yet",
+    "notYetDetail": "Valid from {date} ({days}).",
+    "expiredHeadline": "Pass expired",
+    "expiredDetail": "It was valid until {date}.",
+    "autoRecorded": "Entry refused automatically and recorded."
   },
   "parent": {
     "empty": "No event passes right now.",
@@ -211,7 +218,13 @@
     "qrAlt": "Event pass QR code",
     "holder": "Pass holder",
     "people": "People",
-    "download": "Download pass"
+    "download": "Download pass",
+    "validity": {
+      "VALID_TODAY": "Valid today",
+      "UPCOMING": "Valid from {date}",
+      "OFF_DAY": "Not valid today",
+      "EXPIRED": "Expired"
+    }
   },
   "view": {
     "title": "Pass {serial}",
@@ -223,5 +236,11 @@
     "edit": "Edit",
     "print": "Print this pass",
     "printed": "Printed"
+  },
+  "validity": {
+    "VALID_TODAY": "Valid today",
+    "UPCOMING": "From {date}",
+    "OFF_DAY": "Not today",
+    "EXPIRED": "Expired"
   }
 }
